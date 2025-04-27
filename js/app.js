@@ -31,11 +31,10 @@ document.getElementById('form').addEventListener('submit', e=>{
      add('Low Arousal Threshold',[`ISI ${isi}`,`Arousal/ AHI ${(arInd/ahi).toFixed(1)}`]);
   }
 
-  const cai   = n(f.get('cai'));
   const csr   = n(f.get('csr'));
   const pahic = n(f.get('pahic'));
-  if( cai>=5 || (csr && csr>=10) || (pahic && pahic>=10) || yes(f,'cvd') ){
-     add('High Loop Gain',[`CAI ${cai||'—'}`, csr?`CSR ${csr}%`:'', pahic?`pAHIc ${pahic}`:'', yes(f,'cvd')?'CVD present':'']);
+  if( (csr && csr>=10) || (pahic && pahic>=10) || yes(f,'cvd') ){
+     add('High Loop Gain',[csr?`CSR ${csr}%`:'', pahic?`pAHIc ${pahic}`:'', yes(f,'cvd')?'CVD present':'']);
   }
 
   const remAhi  = n(f.get('ahiREM'))  || n(f.get('remPahi'));
