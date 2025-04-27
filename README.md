@@ -1,8 +1,12 @@
 
-# OSA Phenotyper Prototype – v5
+# OSA Phenotyper v6 – Physical Exam & Imaging
 
-### Added WatchPAT detail
-* **Supine pAHI, REM pAHI, NREM pAHI** fields.
-* Positional & REM‑predominant rules now run for WatchPAT when those values are entered (simple heuristics: Supine pAHI > 2× overall pAHI and overall < 20; REM pAHI > 2× NREM pAHI and REM ≥ 10).
+### Added UI sections
+* **Physical exam:** deviated septum, turbinate hypertrophy, rhinitis type, tonsil size (0‑4), Friedman tongue position (I‑IV).
+* **CT findings:** optional; choose ‘Yes’ then select Normal, Deviated Septum, Turbinate Hypertrophy or Sinusitis.
+* **DISE (VOTE):** optional; Velum, Oropharynx, Tongue base, Epiglottis scores (0‑III).
 
-Everything else from v4 remains.
+### Logic scaffold
+* For now, large tonsils (≥ 3), FTP III‑IV, deviated septum, or moderate‑severe turbinate hypertrophy boost the *High Anatomical Contribution* flag.
+* Hook additional logic as you refine phenotype rules.
+
