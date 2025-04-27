@@ -1,10 +1,17 @@
 
-# OSA Phenotyper v7 – refinements requested 2025‑04‑27
+# OSA Phenotyper v8 – requested quick‑adds
 
-* **Rhinitis** now graded None / Mild / Moderate / Severe. Moderate & severe reinforce High‑Anatomical.
-* **CT Sinus findings** converted to **multi‑select checkboxes** (deviated septum, turbinates, sinusitis).
-* **DISE VOTE** table implemented – degree 0‑2 plus pattern drop‑downs respecting typical options.
-* PE rules updated: large tonsils, high FTP, septal deviation, mod‑severe turbinates, mod‑severe rhinitis, CT corroboration, or DISE degree 2 → reinforce High‑Anatomical phenotype.
+### New inputs
+* **Cardiovascular disease** (yes/no) under Medical History.
+* **Snoring Index** (events/hr) in WatchPAT section.
 
-Sleep‑study inputs are unchanged from v5/v6.
+### New logic / messaging
+* **High Hypoxic Burden** phenotype now shows a blue card in the Patient Summary with CV‑risk language and CPAP‑urgency bullet.  
+  *Triggered when Min SpO₂ < 85 % or ODI ≥ 40 (simple proxy until full HB calculator arrives).*
+* **Symptom subtype** derived from questionnaires:  
+  *Sleepy* (ESS ≥ 15) → extra counselling sentence.  
+  *Disturbed‑sleep* (ISI ≥ 15).  
+  *Minimally Symptomatic* otherwise.
+
+### No HB or ΔHR calculators yet — placeholders only.
 
