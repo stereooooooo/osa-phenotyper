@@ -1,12 +1,10 @@
 
-# OSA Phenotyper v6 – Physical Exam & Imaging
+# OSA Phenotyper v7 – refinements requested 2025‑04‑27
 
-### Added UI sections
-* **Physical exam:** deviated septum, turbinate hypertrophy, rhinitis type, tonsil size (0‑4), Friedman tongue position (I‑IV).
-* **CT findings:** optional; choose ‘Yes’ then select Normal, Deviated Septum, Turbinate Hypertrophy or Sinusitis.
-* **DISE (VOTE):** optional; Velum, Oropharynx, Tongue base, Epiglottis scores (0‑III).
+* **Rhinitis** now graded None / Mild / Moderate / Severe. Moderate & severe reinforce High‑Anatomical.
+* **CT Sinus findings** converted to **multi‑select checkboxes** (deviated septum, turbinates, sinusitis).
+* **DISE VOTE** table implemented – degree 0‑2 plus pattern drop‑downs respecting typical options.
+* PE rules updated: large tonsils, high FTP, septal deviation, mod‑severe turbinates, mod‑severe rhinitis, CT corroboration, or DISE degree 2 → reinforce High‑Anatomical phenotype.
 
-### Logic scaffold
-* For now, large tonsils (≥ 3), FTP III‑IV, deviated septum, or moderate‑severe turbinate hypertrophy boost the *High Anatomical Contribution* flag.
-* Hook additional logic as you refine phenotype rules.
+Sleep‑study inputs are unchanged from v5/v6.
 
