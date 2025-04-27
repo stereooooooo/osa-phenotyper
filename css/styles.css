@@ -1,1 +1,3 @@
-
+:root{--bs-primary:#354A5F;--bs-secondary:#00A5E0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;}
+.card-header{font-weight:600;}

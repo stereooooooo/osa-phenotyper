@@ -3,132 +3,120 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSA Phenotyper • Capital ENT</title>
-
-<!-- Bootstrap 5 -->
+<title>OSA Phenotyper • Capital&nbsp;ENT</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- Icons -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
-<!-- Custom -->
-<link rel="stylesheet" href="css/styles.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="css/styles.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
-<header class="navbar navbar-expand-lg shadow-sm sticky-top" style="background:#00539B;">
+<header class="navbar navbar-expand-lg sticky-top shadow-sm" style="background:#354A5F;">
   <div class="container-fluid">
-    <a class="navbar-brand text-white fw-bold" href="#">Capital ENT • OSA Phenotyper</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div id="nav" class="collapse navbar-collapse">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link text-white" href="https://www.capitalent.com/" target="_blank"><i class="bi bi-house-door"></i> Main Site</a></li>
-      </ul>
-    </div>
+    <a class="navbar-brand text-white fw-bold" href="#">Capital&nbsp;ENT · OSA Phenotyper</a>
   </div>
 </header>
 
 <main class="container my-4">
-
-  <h1 class="h3 mb-4 text-center fw-semibold">Patient Input</h1>
-
-  <form id="phenotypeForm">
-
-    <div class="row g-4">
-
-      <!-- Demographics -->
-      <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
-          <div class="card-header bg-secondary text-white"><i class="bi bi-person"></i>  Demographics</div>
-          <div class="card-body">
-            <div class="mb-3">
-              <label class="form-label">Age</label>
-              <input type="number" class="form-control" name="age" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Sex</label>
-              <select name="sex" class="form-select">
-                <option value="M">Male</option>
-                <option value="F">Female</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">BMI</label>
-              <input type="number" step="0.1" class="form-control" name="bmi">
-            </div>
-          </div>
-        </div>
+<form id="form">
+<!-- ===== Demographics & PE ===== -->
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-secondary text-white"><i class="bi bi-person-badge"></i> Demographics</div>
+      <div class="card-body row g-3">
+        <div class="col-6"><label class="form-label">Age</label><input type="number" name="age" class="form-control"></div>
+        <div class="col-6"><label class="form-label">Sex</label><select name="sex" class="form-select"><option>M</option><option>F</option></select></div>
+        <div class="col-6"><label class="form-label">BMI</label><input type="number" step="0.1" name="bmi" class="form-control"></div>
+        <div class="col-6"><label class="form-label">Neck Circ (in)</label><input type="number" step="0.1" name="neck" class="form-control"></div>
       </div>
-
-      <!-- Medical History -->
-      <div class="col-12 col-lg-6">
-        <div class="card shadow-sm h-100">
-          <div class="card-header bg-secondary text-white"><i class="bi bi-heart-pulse"></i>  Medical History</div>
-          <div class="card-body">
-            <div class="form-check form-switch mb-2">
-              <input class="form-check-input" type="checkbox" id="cvdFlag" name="cvd">
-              <label class="form-check-label" for="cvdFlag">Cardiovascular disease  (HTN / CAD / HF / AF)</label>
-            </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="diabetes" name="dm">
-              <label class="form-check-label" for="diabetes">Diabetes</label>
-            </div>
-            <!-- add more as needed -->
-          </div>
-        </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-secondary text-white"><i class="bi bi-activity"></i> Medical / History</div>
+      <div class="card-body">
+        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="cvd" id="cvd"><label class="form-check-label" for="cvd">Cardiovascular disease (HTN / CAD / HF / AF)</label></div>
       </div>
+    </div>
+  </div>
+</div>
 
-      <!-- Sleep Study – WatchPAT -->
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-header bg-secondary text-white"><i class="bi bi-watch"></i>  WatchPAT</div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-6 col-md-3">
-                <label class="form-label">pAHI</label>
-                <input type="number" class="form-control" name="pahi">
-              </div>
-              <div class="col-6 col-md-3">
-                <label class="form-label">ODI (4%)</label>
-                <input type="number" class="form-control" name="odi">
-              </div>
-              <div class="col-6 col-md-3">
-                <label class="form-label">Snoring Index</label>
-                <input type="number" class="form-control" name="snorIndex">
-              </div>
-              <div class="col-6 col-md-3">
-                <label class="form-label">Min SpO₂ (%)</label>
-                <input type="number" class="form-control" name="nadir">
-              </div>
-            </div>
-          </div>
-        </div>
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-secondary text-white"><i class="bi bi-clipboard-pulse"></i> Physical Exam</div>
+  <div class="card-body row g-3">
+    <div class="col-md-2"><label class="form-label">Deviated Septum</label><select name="septum" class="form-select"><option>None</option><option>Yes</option></select></div>
+    <div class="col-md-2"><label class="form-label">Turbinates</label><select name="turbinates" class="form-select"><option>None</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></div>
+    <div class="col-md-2"><label class="form-label">Rhinitis</label><select name="rhinitis" class="form-select"><option>None</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></div>
+    <div class="col-md-2"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+    <div class="col-md-2"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+  </div>
+</div>
+
+<!-- ===== Imaging & DISE ===== -->
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-secondary text-white"><i class="bi bi-images"></i> Imaging & Endoscopy</div>
+  <div class="card-body">
+    <div class="mb-2">CT Sinus (select all):</div>
+    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctDev" name="ctDev"><label class="form-check-label" for="ctDev">Deviated Septum</label></div>
+    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctTurbs" name="ctTurbs"><label class="form-check-label" for="ctTurbs">Turbinates Hypertrophy</label></div>
+    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctSin" name="ctSin"><label class="form-check-label" for="ctSin">Sinusitis</label></div>
+    <hr>
+    <h6>DISE – VOTE Classification</h6>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Site</th><th style="width:110px;">Degree</th><th style="width:150px;">Pattern</th></tr></thead><tbody>
+        <tr><td>Velum</td><td><select class="form-select form-select-sm" name="vDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="vPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Oropharynx</td><td><select class="form-select form-select-sm" name="oDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="oPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Tongue Base</td><td><select class="form-select form-select-sm" name="tDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="tPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Epiglottis</td><td><select class="form-select form-select-sm" name="eDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="ePat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
+        </tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Questionnaires ===== -->
+<div class="row g-4 mt-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-secondary text-white"><i class="bi bi-question-circle"></i> Questionnaires</div>
+      <div class="card-body row g-3">
+        <div class="col-6"><label class="form-label">ESS</label><input type="number" name="ess" class="form-control"></div>
+        <div class="col-6"><label class="form-label">ISI</label><input type="number" name="isi" class="form-control"></div>
       </div>
+    </div>
+  </div>
+</div>
 
-      <!-- Submit -->
-      <div class="col-12 text-center">
-        <button type="submit" class="btn btn-primary px-5">Generate Reports</button>
+<!-- ===== Sleep Studies ===== -->
+<div class="row g-4 mt-4">
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-secondary text-white"><i class="bi bi-watch"></i> WatchPAT Metrics</div>
+      <div class="card-body row g-3">
+        <div class="col-6 col-md-4"><label class="form-label">pAHI (overall)</label><input type="number" step="0.1" name="pahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Supine pAHI</label><input type="number" step="0.1" name="supPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHI REM</label><input type="number" step="0.1" name="remPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHI NREM</label><input type="number" step="0.1" name="nremPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">PAT RDI</label><input type="number" step="0.1" name="patRdi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">TST (hrs)</label><input type="number" step="0.1" name="tst" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Snoring Index</label><input type="number" step="0.1" name="snoreIdx" class="form-control"></div>
       </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-secondary text-white"><i class="bi bi-hospital"></i> Lab PSG Metrics</div>
+      <div class="card-body row g-3">
+        <div class="col-6 col-md-4"><label class="form-label">AHI (overall)</label><input type="number" step="0.1" name="ahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI Supine</label><input type="number" step="0.1" name="ahiSup" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI Non‑Supine</label><input type="number" step="0.1" name="ahiNonSup" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">CAI</label><input type="number" step="0.1" name="cai" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Arousal Index</label><input type="number" step="0.1" name="arInd" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Nadir SpO₂ (%)</label><input type="number" step="0.1" name="nadirPsg" class="form-control"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    </div><!-- /row -->
+<div class="text-center mt-4">
+  <button type="submit" class="btn btn-primary px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
+</div>
 
-  </form>
+</form>
 
-  <hr class="my-5">
-
-  <div id="patientSummary" class="d-none"></div>
-  <div id="clinicianReport" class="d-none"></div>
-
+<hr class="my-5">
+<div id="patientSummary"></div>
+<div id="clinicianReport" class="mt-4"></div>
 </main>
 
-<footer class="py-3 text-center small" style="background:#f8f9fa;">
-  Capital ENT &amp; Sinus Center © 2025
-</footer>
+<footer class="py-3 text-center small bg-light">Capital ENT & Sinus Center © 2025</footer>
 
-<!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/app.js"></script>
-</body>
-</html>
+</body></html>
