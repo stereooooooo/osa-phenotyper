@@ -2,239 +2,149 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>OSA Phenotyper (Prototype v2)</title>
+<title>OSA Phenotyper (Prototype v5)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-body { padding-top: 20px; }
-.section { margin-bottom: 40px; }
-summary { cursor: pointer; }
+body{padding-top:20px;}
+.section{margin-bottom:40px;}
+summary{cursor:pointer;}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1 class="mb-4">OSA Phenotyping &amp; Recommendation Tool <small class="text-muted">(Prototype v2)</small></h1>
+<h1 class="mb-3">OSA Phenotyping &amp; Recommendation Tool <small class="text-muted">(v5)</small></h1>
 
-  <form id="osaForm">
-    <!-- Demographics -->
-    <div class="section">
-      <h4>Demographics</h4>
-      <div class="row g-3">
-        <div class="col-md-2">
-          <label class="form-label">Age</label>
-          <input type="number" class="form-control" id="age" min="0">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Sex</label>
-          <select class="form-select" id="sex">
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">BMI</label>
-          <input type="number" step="0.1" class="form-control" id="bmi">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Neck Circ. (in)</label>
-          <input type="number" step="0.1" class="form-control" id="neck">
-        </div>
-      </div>
-    </div>
+<!-- Study type -->
+<div class="section">
+<label class="form-label fw-bold me-2">Sleep Study Type:</label>
+<select class="form-select d-inline-block w-auto" id="studyType" onchange="toggleStudySections()">
+  <option value="PSG">Lab PSG (Level I)</option>
+  <option value="WatchPAT">Home Sleep Test – WatchPAT</option>
+</select>
+</div>
 
-    <!-- Questionnaires -->
-    <div class="section">
-      <h4>Questionnaires</h4>
-      <div class="row g-3">
-        <div class="col-md-2">
-          <label class="form-label">ESS Score</label>
-          <input type="number" class="form-control" id="ess">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">ISI Score</label>
-          <input type="number" class="form-control" id="isi">
-        </div>
-      </div>
-    </div>
+<form id="osaForm">
+<!-- Demographics -->
+<div class="section">
+<h4>Demographics</h4>
+<div class="row g-3">
+  <div class="col-md-2"><label class="form-label">Age</label><input type="number" class="form-control" id="age"></div>
+  <div class="col-md-2"><label class="form-label">Sex</label><select class="form-select" id="sex"><option>Male</option><option>Female</option></select></div>
+  <div class="col-md-2"><label class="form-label">BMI</label><input type="number" step="0.1" class="form-control" id="bmi"></div>
+  <div class="col-md-2"><label class="form-label">Neck Circ. (in)</label><input type="number" step="0.1" class="form-control" id="neck"></div>
+</div>
+</div>
 
-    <!-- Sleep study -->
-    <div class="section">
-      <h4>Sleep Study Metrics</h4>
-      <div class="row g-3">
-        <div class="col-md-2">
-          <label class="form-label">AHI (overall)</label>
-          <input type="number" step="0.1" class="form-control" id="ahi">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">AHI Supine</label>
-          <input type="number" step="0.1" class="form-control" id="ahiSupine">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">AHI Non‑Supine</label>
-          <input type="number" step="0.1" class="form-control" id="ahiNonSupine">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">AHI REM</label>
-          <input type="number" step="0.1" class="form-control" id="ahiREM">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">AHI NREM</label>
-          <input type="number" step="0.1" class="form-control" id="ahiNREM">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Central Apnea Index</label>
-          <input type="number" step="0.1" class="form-control" id="cai">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Arousal Index</label>
-          <input type="number" step="0.1" class="form-control" id="arousalIdx">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Nadir SpO₂ (%)</label>
-          <input type="number" step="0.1" class="form-control" id="nadir">
-        </div>
-      </div>
-    </div>
+<!-- Questionnaires -->
+<div class="section">
+<h4>Questionnaires</h4>
+<div class="row g-3">
+  <div class="col-md-2"><label class="form-label">ESS</label><input type="number" class="form-control" id="ess"></div>
+  <div class="col-md-2"><label class="form-label">ISI</label><input type="number" class="form-control" id="isi"></div>
+</div>
+</div>
 
-    <button type="button" class="btn btn-primary" onclick="runAnalysis()">Run Analysis</button>
-  </form>
+<!-- PSG block -->
+<div class="section study-block" data-study="PSG">
+<h4>Lab PSG Metrics</h4>
+<div class="row g-3">
+  <div class="col-md-2"><label class="form-label">AHI (overall)</label><input type="number" step="0.1" class="form-control" id="ahi"></div>
+  <div class="col-md-2"><label class="form-label">AHI Supine</label><input type="number" step="0.1" class="form-control" id="ahiSupine"></div>
+  <div class="col-md-2"><label class="form-label">AHI Non‑Supine</label><input type="number" step="0.1" class="form-control" id="ahiNonSupine"></div>
+  <div class="col-md-2"><label class="form-label">AHI REM</label><input type="number" step="0.1" class="form-control" id="ahiREM"></div>
+  <div class="col-md-2"><label class="form-label">AHI NREM</label><input type="number" step="0.1" class="form-control" id="ahiNREM"></div>
+  <div class="col-md-2"><label class="form-label">CAI</label><input type="number" step="0.1" class="form-control" id="cai"></div>
+  <div class="col-md-2"><label class="form-label">Arousal Index</label><input type="number" step="0.1" class="form-control" id="arousalIdx"></div>
+  <div class="col-md-2"><label class="form-label">Nadir SpO₂ (%)</label><input type="number" step="0.1" class="form-control" id="nadir"></div>
+</div>
+</div>
 
-  <hr>
-  <div id="patientSummary" class="mt-4"></div>
-  <div id="clinicianReport" class="mt-4"></div>
+<!-- WatchPAT block -->
+<div class="section study-block" data-study="WatchPAT" style="display:none;">
+<h4>WatchPAT Metrics</h4>
+<div class="row g-3">
+  <div class="col-md-2"><label class="form-label">pAHI (overall)</label><input type="number" step="0.1" class="form-control" id="pahi"></div>
+  <div class="col-md-2"><label class="form-label">Supine pAHI</label><input type="number" step="0.1" class="form-control" id="pahiSupine"></div>
+  <div class="col-md-2"><label class="form-label">pAHI REM</label><input type="number" step="0.1" class="form-control" id="pahiREM"></div>
+  <div class="col-md-2"><label class="form-label">pAHI NREM</label><input type="number" step="0.1" class="form-control" id="pahiNREM"></div>
+  <div class="col-md-2"><label class="form-label">PAT RDI</label><input type="number" step="0.1" class="form-control" id="rdi"></div>
+  <div class="col-md-2"><label class="form-label">ODI 4%</label><input type="number" step="0.1" class="form-control" id="odi"></div>
+  <div class="col-md-2"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" class="form-control" id="nadirWatch"></div>
+  <div class="col-md-2"><label class="form-label">TST (hrs)</label><input type="number" step="0.1" class="form-control" id="tst"></div>
+</div>
+</div>
+
+<button type="button" class="btn btn-primary" onclick="runAnalysis()">Run Analysis</button>
+</form>
+
+<hr>
+<div id="patientSummary" class="mt-4"></div>
+<div id="clinicianReport" class="mt-4"></div>
 </div>
 
 <script>
-// Utility
-function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
-function list(items) { return items.map(i => '<li>' + i + '</li>').join(''); }
+function num(id){return parseFloat(document.getElementById(id)?.value)||0;}
+function list(arr){return arr.map(x=>'<li>'+x+'</li>').join('');}
+function toggleStudySections(){const v=document.getElementById('studyType').value;document.querySelectorAll('.study-block').forEach(d=>d.style.display=d.getAttribute('data-study')===v?'block':'none');}
 
-function runAnalysis() {
-  const bmi = num('bmi');
-  const neck = num('neck');      // inches
-  const ess  = num('ess');
-  const isi  = num('isi');
-  const ahi  = num('ahi');
-  const ahiSup = num('ahiSupine');
-  const ahiNon = num('ahiNonSupine');
-  const ahiREM = num('ahiREM');
-  const ahiNREM = num('ahiNREM');
-  const cai  = num('cai');
-  const arousal = num('arousalIdx');
-  const nadir = num('nadir');
-  const sex = document.getElementById('sex').value;
+function runAnalysis(){
+ const study=document.getElementById('studyType').value;
+ const sex=document.getElementById('sex').value;
+ const bmi=num('bmi'), neck=num('neck'), ess=num('ess'), isi=num('isi');
+ let ahi=0, supine=0, nonsup=0, rem=0, nrem=0, cai=0, arousal=0, nadir=0;
 
-  const phenotypes = [];
-  const rationale  = {};  // store reasons per phenotype
+ if(study==='PSG'){
+   ahi=num('ahi'); supine=num('ahiSupine'); nonsup=num('ahiNonSupine'); rem=num('ahiREM'); nrem=num('ahiNREM');
+   cai=num('cai'); arousal=num('arousalIdx'); nadir=num('nadir');
+ } else {
+   ahi=num('pahi'); supine=num('pahiSupine'); rem=num('pahiREM'); nrem=num('pahiNREM');
+   nadir=num('nadirWatch');
+ }
 
-  // --- Rule set ---
-  // 1. Anatomy
-  if ((sex === 'Male' && neck >= 17) || (sex === 'Female' && neck >= 16) || bmi >= 30 || ahi >= 30) {
-    phenotypes.push('High Anatomical Contribution');
-    rationale['High Anatomical Contribution'] = [];
-    if (neck) rationale['High Anatomical Contribution'].push(`Neck circumference ${neck.toFixed(1)} in`);
-    if (bmi)  rationale['High Anatomical Contribution'].push(`BMI ${bmi}`);
-    if (ahi)  rationale['High Anatomical Contribution'].push(`AHI ${ahi}`);
-  }
+ const phen=[], why={};
+ const add=(p,r)=>{phen.push(p);why[p]=(why[p]||[]).concat(r);};
 
-  // 2. Low arousal threshold
-  if ((arousal / Math.max(ahi, 1) > 0.5) || isi >= 15) {
-    phenotypes.push('Low Arousal Threshold');
-    rationale['Low Arousal Threshold'] = [];
-    if (arousal) rationale['Low Arousal Threshold'].push(`Arousal index ${arousal}`);
-    if (isi)     rationale['Low Arousal Threshold'].push(`ISI ${isi}`);
-  }
+ if((sex==='Male'&&neck>=17)||(sex==='Female'&&neck>=16)||bmi>=30||ahi>=30)add('High Anatomical Contribution',[`Neck ${neck||'?'}`,`BMI ${bmi||'?'}`,`Index ${ahi}`]);
+ if(study==='PSG' && ((arousal/Math.max(ahi,1)>0.5)||isi>=15)) add('Low Arousal Threshold',[`Arousal ${arousal}`,`ISI ${isi}`]);
+ if(supine && supine>0 && ((study==='PSG' && supine>2*nonsup && nonsup<15) || (study==='WatchPAT' && supine>2*ahi && ahi<20))) add('Positional OSA',[`Supine index ${supine}`,`Overall index ${ahi}`]);
+ if(rem && rem>0 && rem>2*Math.max(nrem,1) && rem>=10) add('REM‑Predominant OSA',[`REM index ${rem}`,`NREM ${nrem}`]);
+ if(cai>=5) add('High Loop Gain / Complex Sleep Apnea risk',[`CAI ${cai}`]);
+ if(nadir && nadir<85) add('High Hypoxic Burden',[`Min SpO₂ ${nadir}%`]);
 
-  // 3. Positional
-  if (ahiSup > 2 * ahiNon && ahiNon < 15) {
-    phenotypes.push('Positional OSA');
-    rationale['Positional OSA'] = [`Supine AHI ${ahiSup}`, `Non‑supine AHI ${ahiNon}`];
-  }
+ const recLib={'High Anatomical Contribution':'CPAP/APAP first‑line; weight optimisation; consider MAD, surgery or Inspire™ if needed.',
+ 'Low Arousal Threshold':'Improve CPAP comfort; CBT‑I; judicious low‑dose sedative under specialist.',
+ 'Positional OSA':'Positional therapy (side‑sleeping device) or oral appliance.',
+ 'REM‑Predominant OSA':'Ensure adequate CPAP in REM (auto‑titrating) or MAD.',
+ 'High Loop Gain / Complex Sleep Apnea risk':'Fixed‑pressure CPAP or ASV (no HFrEF); oxygen supplementation.',
+ 'High Hypoxic Burden':'Prioritise effective therapy to improve oxygen saturation and CV risk.'};
 
-  // 4. REM‑predominant
-  if (ahiREM > 2 * ahiNREM && ahiREM >= 10) {
-    phenotypes.push('REM‑Predominant OSA');
-    rationale['REM‑Predominant OSA'] = [`REM AHI ${ahiREM}`, `NREM AHI ${ahiNREM}`];
-  }
+ const recs=[]; phen.forEach(p=>{if(recLib[p])recs.push(recLib[p]);});
+ if(!recs.length) recs.push('Standard CPAP/APAP remains the first‑line therapy for most OSA patients.');
 
-  // 5. High loop gain / complex
-  if (cai >= 5) {
-    phenotypes.push('High Loop Gain / Complex Sleep Apnea risk');
-    rationale['High Loop Gain / Complex Sleep Apnea risk'] = [`Central apnea index ${cai}`];
-  }
+ const explanations={'High Anatomical Contribution':'Your airway is physically narrow ...',
+ 'Low Arousal Threshold':'You wake easily ...',
+ 'Positional OSA':'Events mainly happen on your back ...',
+ 'REM‑Predominant OSA':'Events mainly in dreaming sleep ...',
+ 'High Loop Gain / Complex Sleep Apnea risk':'Breathing control is unstable ...',
+ 'High Hypoxic Burden':'Oxygen drops quite low ...'};
 
-  // 6. Hypoxic burden
-  if (nadir && nadir < 85) {
-    phenotypes.push('High Hypoxic Burden');
-    rationale['High Hypoxic Burden'] = [`Nadir SpO₂ ${nadir}%`];
-  }
+ // patient summary
+ let pat='<h3>Patient‑Friendly Summary</h3>';
+ if(phen.length){pat+='<p>Your results suggest these contributing factors:</p>';phen.forEach(p=>{pat+=`<details><summary><strong>${p}</strong></summary><div class="mt-2">${explanations[p]||''}</div></details>`;});}
+ else pat+='<p>No clear patterns flagged from the data entered.</p>';
+ pat+='<h5 class="mt-4">Top Treatment Options</h5><ul>'+list(recs)+'</ul><p class="mt-3">Discuss these options with your clinician.</p>';
 
-  // --- Explanations & treatment library ---
-  const explanations = {
-    'High Anatomical Contribution': `Your airway is physically narrow or more likely to collapse during sleep because of factors like a larger neck size, extra tissue from weight around the throat, or jaw structure.  <strong>Why it matters:</strong> Air physically can’t stay open.  <strong>How to improve:</strong> <ul>${list([
-      'Lose weight if overweight (even a 10 lb loss can reduce airway pressure).',
-      'Use a device that splints the airway open (CPAP).',
-      'Consider oral devices that bring the jaw forward (mandibular advancement device) or surgical options (tonsil reduction, Inspire™) if other treatments fail.'])}</ul>`,
-    'Low Arousal Threshold': `You tend to wake up very easily whenever your breathing is disturbed, so even mild airway narrowing fragments your sleep.  <strong>How to improve:</strong> <ul>${list([
-      'Make CPAP as comfortable as possible (proper mask fit, humidification).',
-      'Consider Cognitive Behavioural Therapy for Insomnia (CBT‑I)—a structured program (usually 4‑6 sessions) that retrains sleep habits.',
-      'In some cases, very low‑dose sedatives are used under specialist supervision to raise the arousal threshold.'])}</ul>`,
-    'Positional OSA': `Most events occur when you sleep on your back.  <strong>How to improve:</strong> <ul>${list([
-      'Train yourself to sleep on your side using a positional‑therapy device, backpack, or special pillow.',
-      'An oral appliance can also help by holding the jaw forward in any position.'])}</ul>`,
-    'REM‑Predominant OSA': `Events mainly happen in the dreaming (REM) stage, when muscles naturally relax the most.  <strong>How to improve:</strong> <ul>${list([
-      'Ensure CPAP pressure is high enough during REM (Auto‑CPAP usually handles this).',
-      'Mandibular advancement devices are another option if CPAP is not tolerated.'])}</ul>`,
-    'High Loop Gain / Complex Sleep Apnea risk': `Your brain’s breathing control system is very sensitive, so it may over‑correct and cause pauses (central apneas).  <strong>How to improve:</strong> <ul>${list([
-      'Careful fixed‑pressure CPAP titration rather than wide‑range Auto‑CPAP.',
-      'Sometimes oxygen supplementation or a specialised device (ASV) is used—only after ruling out certain heart conditions.'])}</ul>`,
-    'High Hypoxic Burden': `Your oxygen saturation falls to a low level during sleep, which increases cardiovascular strain.  <strong>Priority:</strong> Choose the most effective treatment (usually CPAP) and retest to confirm oxygen levels improve.`
-  };
+ // clinician report
+ let cli='<h3>Clinician Decision Support</h3><p><strong>Study type:</strong> '+study+'</p>';
+ if(phen.length){cli+='<ul>';phen.forEach(p=>{cli+='<li><strong>'+p+'</strong> — '+why[p].join(', ')+'</li>';});cli+='</ul>';}else{cli+='<p>No phenotype triggered.</p>';}
+ cli+='<p><strong>Recommendations:</strong></p><ol>'+list(recs)+'</ol><p><em>Prototype rules—verify clinically.</em></p>';
 
-  const recsLib = {
-    'High Anatomical Contribution': 'CPAP/APAP first‑line; address weight; consider airway surgery or Inspire™ if CPAP fails.',
-    'Low Arousal Threshold': 'Optimize CPAP comfort; CBT‑I; cautious use of low‑dose sedatives under specialist care.',
-    'Positional OSA': 'Positional therapy (side‑sleeping device); oral appliance as alternative.',
-    'REM‑Predominant OSA': 'Ensure adequate CPAP pressure in REM; Auto‑CPAP or mandibular advancement device.',
-    'High Loop Gain / Complex Sleep Apnea risk': 'Fixed‑pressure CPAP, oxygen supplementation, or ASV (if no heart failure).',
-    'High Hypoxic Burden': 'Prioritize effective therapy (CPAP) to improve oxygen saturation and lower CV risk.'
-  };
-
-  // Collate recommendations (deduplicated, preserve order)
-  const recommendations = [];
-  phenotypes.forEach(p => { if (recsLib[p]) recommendations.push(recsLib[p]); });
-  if (!recommendations.length) recommendations.push('Standard CPAP/APAP remains the most effective first‑line therapy for most OSA patients.');
-
-  // --- Build UI strings ---
-  let patientHTML = '<h3>Patient‑Friendly Summary</h3>';
-  if (phenotypes.length) {
-    patientHTML += '<p>Your results suggest these main factors:</p>';
-    phenotypes.forEach(p => { patientHTML += `<details class="mb-2"><summary><strong>${p.replace(/\//g,' / ')}</strong></summary><div class="mt-2">${explanations[p] || ''}</div></details>`; });
-  } else {
-    patientHTML += '<p>No clear patterns were flagged by the limited data entered.</p>';
-  }
-  patientHTML += '<h5 class="mt-4">Top Treatment Options</h5><ul>' + list(recommendations) + '</ul>';
-  patientHTML += '<p class="mt-3">Discuss these options with your clinician and decide together which makes the most sense for you.</p>';
-
-  // Clinician report with rationale
-  let clinHTML = '<h3>Clinician Decision Support</h3>';
-  if (phenotypes.length) {
-    clinHTML += '<p><strong>Phenotype profile:</strong></p><ul>';
-    phenotypes.forEach(p => {
-      const reasons = rationale[p] ? ' — based on ' + rationale[p].join(', ') : '';
-      clinHTML += `<li><strong>${p}</strong>${reasons}</li>`;
-    });
-    clinHTML += '</ul>';
-  } else {
-    clinHTML += '<p>No phenotype classification triggered.</p>';
-  }
-  clinHTML += '<p><strong>Key metrics entered:</strong> BMI ' + bmi + ', Neck ' + neck + ' in, AHI ' + ahi + ', Supine ' + ahiSup + ', Non‑Supine ' + ahiNon + ', REM ' + ahiREM + ', NREM ' + ahiNREM + ', CAI ' + cai + ', Arousal ' + arousal + ', Nadir SpO₂ ' + nadir + '%.';
-  clinHTML += '</p><p><strong>Recommendations (ranked):</strong></p><ol>' + list(recommendations) + '</ol>';
-  clinHTML += '<p><em>Prototype rule‑based engine; verify with clinical judgment.</em></p>';
-
-  document.getElementById('patientSummary').innerHTML = patientHTML;
-  document.getElementById('clinicianReport').innerHTML = clinHTML;
+ document.getElementById('patientSummary').innerHTML=pat;
+ document.getElementById('clinicianReport').innerHTML=cli;
 }
+
+toggleStudySections();
 </script>
 </body>
 </html>
