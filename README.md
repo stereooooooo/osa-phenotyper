@@ -1,29 +1,17 @@
 
-# OSA Phenotyper Prototype
+# OSA Phenotyper Prototype – v2
 
-This is a **client‑side** prototype web app that collects basic sleep study and clinical data,
-classifies likely obstructive sleep apnea phenotypes, and generates patient‑friendly and clinician‑oriented reports.
+Changes from v1
+---------------
 
-## How to use
+* **Neck circumference field now in inches** (rules use ≥17 in for males and ≥16 in for females per STOP‑BANG).
+* **Rich patient‑friendly explanations** – each phenotype expands to a plain‑language description plus actionable steps.
+* **Clinician Decision Support** – shows explicit rule triggers (e.g., "Neck circumference 17.2 in") so you see why each phenotype was selected.
+* Small UI tweaks: collapsible `<details>` sections, responsive viewport, clearer headings.
 
-1. Download and unzip the package.
-2. Open `index.html` in any modern web browser.
-3. Enter the requested data and click **Run Analysis**.
-4. Two reports will appear:
-   * **Patient‑Friendly Summary**
-   * **Clinician Decision Support**
+To test locally:
+```
+python -m http.server 8000      # optional – or just open index.html
+```
 
-All processing happens locally in the browser — no data are stored or transmitted.
-
-## Customisation
-
-* The rule set can be expanded in `runAnalysis()` inside the HTML file.
-* Styling uses Bootstrap 5; feel free to adjust the CSS in the `<style>` block.
-
-## Limitations
-
-This is a **minimal viable prototype**:
-* Phenotype logic uses simplified, rule‑based heuristics.
-* It does **not** save data or connect to any backend.
-* It is **not** a substitute for clinical judgment.
-
+All processing still happens client‑side; no data are stored or transmitted.

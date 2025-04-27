@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>OSA Phenotyper (Prototype)</title>
+<title>OSA Phenotyper (Prototype v2)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
 body { padding-top: 20px; }
 .section { margin-bottom: 40px; }
+summary { cursor: pointer; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1 class="mb-4">OSA Phenotyping &amp; Recommendation Tool <small class="text-muted">(Prototype)</small></h1>
+  <h1 class="mb-4">OSA Phenotyping &amp; Recommendation Tool <small class="text-muted">(Prototype v2)</small></h1>
 
   <form id="osaForm">
     <!-- Demographics -->
@@ -34,7 +36,7 @@ body { padding-top: 20px; }
           <input type="number" step="0.1" class="form-control" id="bmi">
         </div>
         <div class="col-md-2">
-          <label class="form-label">Neck Circ. (cm)</label>
+          <label class="form-label">Neck Circ. (in)</label>
           <input type="number" step="0.1" class="form-control" id="neck">
         </div>
       </div>
@@ -103,93 +105,135 @@ body { padding-top: 20px; }
 </div>
 
 <script>
-function num(id) {
-  return parseFloat(document.getElementById(id).value) || 0;
-}
+// Utility
+function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function list(items) { return items.map(i => '<li>' + i + '</li>').join(''); }
 
 function runAnalysis() {
   const bmi = num('bmi');
-  const neck = num('neck');
-  const ess = num('ess');
-  const isi = num('isi');
-  const ahi = num('ahi');
+  const neck = num('neck');      // inches
+  const ess  = num('ess');
+  const isi  = num('isi');
+  const ahi  = num('ahi');
   const ahiSup = num('ahiSupine');
   const ahiNon = num('ahiNonSupine');
   const ahiREM = num('ahiREM');
   const ahiNREM = num('ahiNREM');
-  const cai = num('cai');
+  const cai  = num('cai');
   const arousal = num('arousalIdx');
   const nadir = num('nadir');
+  const sex = document.getElementById('sex').value;
 
-  let phenotypes = [];
+  const phenotypes = [];
+  const rationale  = {};  // store reasons per phenotype
 
-  // --- Simple rule set (prototype) ---
-  if (bmi >= 30 || neck >= 40 || ahi >= 30) {
+  // --- Rule set ---
+  // 1. Anatomy
+  if ((sex === 'Male' && neck >= 17) || (sex === 'Female' && neck >= 16) || bmi >= 30 || ahi >= 30) {
     phenotypes.push('High Anatomical Contribution');
+    rationale['High Anatomical Contribution'] = [];
+    if (neck) rationale['High Anatomical Contribution'].push(`Neck circumference ${neck.toFixed(1)} in`);
+    if (bmi)  rationale['High Anatomical Contribution'].push(`BMI ${bmi}`);
+    if (ahi)  rationale['High Anatomical Contribution'].push(`AHI ${ahi}`);
   }
+
+  // 2. Low arousal threshold
   if ((arousal / Math.max(ahi, 1) > 0.5) || isi >= 15) {
     phenotypes.push('Low Arousal Threshold');
+    rationale['Low Arousal Threshold'] = [];
+    if (arousal) rationale['Low Arousal Threshold'].push(`Arousal index ${arousal}`);
+    if (isi)     rationale['Low Arousal Threshold'].push(`ISI ${isi}`);
   }
+
+  // 3. Positional
   if (ahiSup > 2 * ahiNon && ahiNon < 15) {
     phenotypes.push('Positional OSA');
+    rationale['Positional OSA'] = [`Supine AHI ${ahiSup}`, `Non‑supine AHI ${ahiNon}`];
   }
+
+  // 4. REM‑predominant
   if (ahiREM > 2 * ahiNREM && ahiREM >= 10) {
-    phenotypes.push('REM-Predominant OSA');
+    phenotypes.push('REM‑Predominant OSA');
+    rationale['REM‑Predominant OSA'] = [`REM AHI ${ahiREM}`, `NREM AHI ${ahiNREM}`];
   }
+
+  // 5. High loop gain / complex
   if (cai >= 5) {
     phenotypes.push('High Loop Gain / Complex Sleep Apnea risk');
+    rationale['High Loop Gain / Complex Sleep Apnea risk'] = [`Central apnea index ${cai}`];
   }
-  if (nadir < 85 && nadir > 0) {
+
+  // 6. Hypoxic burden
+  if (nadir && nadir < 85) {
     phenotypes.push('High Hypoxic Burden');
+    rationale['High Hypoxic Burden'] = [`Nadir SpO₂ ${nadir}%`];
   }
 
-  // Treatment mapping
-  let recommendations = [];
-  const add = txt => recommendations.push(txt);
+  // --- Explanations & treatment library ---
+  const explanations = {
+    'High Anatomical Contribution': `Your airway is physically narrow or more likely to collapse during sleep because of factors like a larger neck size, extra tissue from weight around the throat, or jaw structure.  <strong>Why it matters:</strong> Air physically can’t stay open.  <strong>How to improve:</strong> <ul>${list([
+      'Lose weight if overweight (even a 10 lb loss can reduce airway pressure).',
+      'Use a device that splints the airway open (CPAP).',
+      'Consider oral devices that bring the jaw forward (mandibular advancement device) or surgical options (tonsil reduction, Inspire™) if other treatments fail.'])}</ul>`,
+    'Low Arousal Threshold': `You tend to wake up very easily whenever your breathing is disturbed, so even mild airway narrowing fragments your sleep.  <strong>How to improve:</strong> <ul>${list([
+      'Make CPAP as comfortable as possible (proper mask fit, humidification).',
+      'Consider Cognitive Behavioural Therapy for Insomnia (CBT‑I)—a structured program (usually 4‑6 sessions) that retrains sleep habits.',
+      'In some cases, very low‑dose sedatives are used under specialist supervision to raise the arousal threshold.'])}</ul>`,
+    'Positional OSA': `Most events occur when you sleep on your back.  <strong>How to improve:</strong> <ul>${list([
+      'Train yourself to sleep on your side using a positional‑therapy device, backpack, or special pillow.',
+      'An oral appliance can also help by holding the jaw forward in any position.'])}</ul>`,
+    'REM‑Predominant OSA': `Events mainly happen in the dreaming (REM) stage, when muscles naturally relax the most.  <strong>How to improve:</strong> <ul>${list([
+      'Ensure CPAP pressure is high enough during REM (Auto‑CPAP usually handles this).',
+      'Mandibular advancement devices are another option if CPAP is not tolerated.'])}</ul>`,
+    'High Loop Gain / Complex Sleep Apnea risk': `Your brain’s breathing control system is very sensitive, so it may over‑correct and cause pauses (central apneas).  <strong>How to improve:</strong> <ul>${list([
+      'Careful fixed‑pressure CPAP titration rather than wide‑range Auto‑CPAP.',
+      'Sometimes oxygen supplementation or a specialised device (ASV) is used—only after ruling out certain heart conditions.'])}</ul>`,
+    'High Hypoxic Burden': `Your oxygen saturation falls to a low level during sleep, which increases cardiovascular strain.  <strong>Priority:</strong> Choose the most effective treatment (usually CPAP) and retest to confirm oxygen levels improve.`
+  };
 
-  if (phenotypes.includes('High Anatomical Contribution')) {
-    add('CPAP/APAP first-line; discuss weight management; consider anatomical surgery or Inspire™ if CPAP fails.');
-  }
-  if (phenotypes.includes('Low Arousal Threshold')) {
-    add('Optimize CPAP comfort; consider CBT‑I; cautious low‑dose sedatives under specialist supervision.');
-  }
-  if (phenotypes.includes('Positional OSA')) {
-    add('Positional therapy (night‑shift device, backpack, specialized pillow).');
-  }
-  if (phenotypes.includes('REM-Predominant OSA')) {
-    add('Ensure adequate CPAP pressure during REM; consider Auto‑CPAP or mandibular advancement device.');
-  }
-  if (phenotypes.includes('High Loop Gain / Complex Sleep Apnea risk')) {
-    add('Careful CPAP titration; consider fixed‑pressure CPAP, oxygen supplementation, or ASV (if no contraindication).');
-  }
-  if (phenotypes.includes('High Hypoxic Burden')) {
-    add('Prioritize effective therapy (CPAP) to improve oxygen saturation; monitor cardiovascular risk.');
-  }
-  if (recommendations.length === 0) {
-    add('Standard CPAP/APAP remains the most effective first‑line therapy for most OSA patients.');
-  }
+  const recsLib = {
+    'High Anatomical Contribution': 'CPAP/APAP first‑line; address weight; consider airway surgery or Inspire™ if CPAP fails.',
+    'Low Arousal Threshold': 'Optimize CPAP comfort; CBT‑I; cautious use of low‑dose sedatives under specialist care.',
+    'Positional OSA': 'Positional therapy (side‑sleeping device); oral appliance as alternative.',
+    'REM‑Predominant OSA': 'Ensure adequate CPAP pressure in REM; Auto‑CPAP or mandibular advancement device.',
+    'High Loop Gain / Complex Sleep Apnea risk': 'Fixed‑pressure CPAP, oxygen supplementation, or ASV (if no heart failure).',
+    'High Hypoxic Burden': 'Prioritize effective therapy (CPAP) to improve oxygen saturation and lower CV risk.'
+  };
 
-  // Patient summary
-  const patientHTML = `
-    <h3>Patient‑Friendly Summary</h3>
-    <p>Your sleep information suggests the following contributing factors: <strong>${phenotypes.join(', ') || 'none specifically flagged'}</strong>.</p>
-    <p>The following treatment options are likely to work best for you:</p>
-    <ul>${recommendations.map(r => `<li>${r}</li>`).join('')}</ul>
-    <p>Please discuss these options with your clinician to decide which approach suits you best.</p>
-  `;
+  // Collate recommendations (deduplicated, preserve order)
+  const recommendations = [];
+  phenotypes.forEach(p => { if (recsLib[p]) recommendations.push(recsLib[p]); });
+  if (!recommendations.length) recommendations.push('Standard CPAP/APAP remains the most effective first‑line therapy for most OSA patients.');
 
-  // Clinician report
-  const clinicianHTML = `
-    <h3>Clinician Decision Support</h3>
-    <p><strong>Phenotype profile:</strong> ${phenotypes.join(', ') || 'Not enough data for phenotype classification'}.</p>
-    <p><strong>Key metrics:</strong> BMI ${bmi}, Neck ${neck} cm, AHI ${ahi}, Supine AHI ${ahiSup}, Non‑Supine AHI ${ahiNon}, REM AHI ${ahiREM}, NREM AHI ${ahiNREM}, CAI ${cai}, Arousal Index ${arousal}, Nadir SpO₂ ${nadir}%.</p>
-    <p><strong>Recommendations (ranked):</strong></p>
-    <ol>${recommendations.map(r => `<li>${r}</li>`).join('')}</ol>
-    <p><em>Disclaimer: Prototype algorithm based on simplified rules from current literature; clinician judgment required.</em></p>
-  `;
+  // --- Build UI strings ---
+  let patientHTML = '<h3>Patient‑Friendly Summary</h3>';
+  if (phenotypes.length) {
+    patientHTML += '<p>Your results suggest these main factors:</p>';
+    phenotypes.forEach(p => { patientHTML += `<details class="mb-2"><summary><strong>${p.replace(/\//g,' / ')}</strong></summary><div class="mt-2">${explanations[p] || ''}</div></details>`; });
+  } else {
+    patientHTML += '<p>No clear patterns were flagged by the limited data entered.</p>';
+  }
+  patientHTML += '<h5 class="mt-4">Top Treatment Options</h5><ul>' + list(recommendations) + '</ul>';
+  patientHTML += '<p class="mt-3">Discuss these options with your clinician and decide together which makes the most sense for you.</p>';
+
+  // Clinician report with rationale
+  let clinHTML = '<h3>Clinician Decision Support</h3>';
+  if (phenotypes.length) {
+    clinHTML += '<p><strong>Phenotype profile:</strong></p><ul>';
+    phenotypes.forEach(p => {
+      const reasons = rationale[p] ? ' — based on ' + rationale[p].join(', ') : '';
+      clinHTML += `<li><strong>${p}</strong>${reasons}</li>`;
+    });
+    clinHTML += '</ul>';
+  } else {
+    clinHTML += '<p>No phenotype classification triggered.</p>';
+  }
+  clinHTML += '<p><strong>Key metrics entered:</strong> BMI ' + bmi + ', Neck ' + neck + ' in, AHI ' + ahi + ', Supine ' + ahiSup + ', Non‑Supine ' + ahiNon + ', REM ' + ahiREM + ', NREM ' + ahiNREM + ', CAI ' + cai + ', Arousal ' + arousal + ', Nadir SpO₂ ' + nadir + '%.';
+  clinHTML += '</p><p><strong>Recommendations (ranked):</strong></p><ol>' + list(recommendations) + '</ol>';
+  clinHTML += '<p><em>Prototype rule‑based engine; verify with clinical judgment.</em></p>';
 
   document.getElementById('patientSummary').innerHTML = patientHTML;
-  document.getElementById('clinicianReport').innerHTML = clinicianHTML;
+  document.getElementById('clinicianReport').innerHTML = clinHTML;
 }
 </script>
 </body>
