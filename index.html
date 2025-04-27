@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OSA Phenotyper (Prototype)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { padding-top: 20px; }
+.section { margin-bottom: 40px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 class="mb-4">OSA Phenotyping &amp; Recommendation Tool <small class="text-muted">(Prototype)</small></h1>
+
+  <form id="osaForm">
+    <!-- Demographics -->
+    <div class="section">
+      <h4>Demographics</h4>
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label class="form-label">Age</label>
+          <input type="number" class="form-control" id="age" min="0">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Sex</label>
+          <select class="form-select" id="sex">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">BMI</label>
+          <input type="number" step="0.1" class="form-control" id="bmi">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Neck Circ. (cm)</label>
+          <input type="number" step="0.1" class="form-control" id="neck">
+        </div>
+      </div>
+    </div>
+
+    <!-- Questionnaires -->
+    <div class="section">
+      <h4>Questionnaires</h4>
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label class="form-label">ESS Score</label>
+          <input type="number" class="form-control" id="ess">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">ISI Score</label>
+          <input type="number" class="form-control" id="isi">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sleep study -->
+    <div class="section">
+      <h4>Sleep Study Metrics</h4>
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label class="form-label">AHI (overall)</label>
+          <input type="number" step="0.1" class="form-control" id="ahi">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">AHI Supine</label>
+          <input type="number" step="0.1" class="form-control" id="ahiSupine">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">AHI Non‑Supine</label>
+          <input type="number" step="0.1" class="form-control" id="ahiNonSupine">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">AHI REM</label>
+          <input type="number" step="0.1" class="form-control" id="ahiREM">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">AHI NREM</label>
+          <input type="number" step="0.1" class="form-control" id="ahiNREM">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Central Apnea Index</label>
+          <input type="number" step="0.1" class="form-control" id="cai">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Arousal Index</label>
+          <input type="number" step="0.1" class="form-control" id="arousalIdx">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Nadir SpO₂ (%)</label>
+          <input type="number" step="0.1" class="form-control" id="nadir">
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn-primary" onclick="runAnalysis()">Run Analysis</button>
+  </form>
+
+  <hr>
+  <div id="patientSummary" class="mt-4"></div>
+  <div id="clinicianReport" class="mt-4"></div>
+</div>
+
+<script>
+function num(id) {
+  return parseFloat(document.getElementById(id).value) || 0;
+}
+
+function runAnalysis() {
+  const bmi = num('bmi');
+  const neck = num('neck');
+  const ess = num('ess');
+  const isi = num('isi');
+  const ahi = num('ahi');
+  const ahiSup = num('ahiSupine');
+  const ahiNon = num('ahiNonSupine');
+  const ahiREM = num('ahiREM');
+  const ahiNREM = num('ahiNREM');
+  const cai = num('cai');
+  const arousal = num('arousalIdx');
+  const nadir = num('nadir');
+
+  let phenotypes = [];
+
+  // --- Simple rule set (prototype) ---
+  if (bmi >= 30 || neck >= 40 || ahi >= 30) {
+    phenotypes.push('High Anatomical Contribution');
+  }
+  if ((arousal / Math.max(ahi, 1) > 0.5) || isi >= 15) {
+    phenotypes.push('Low Arousal Threshold');
+  }
+  if (ahiSup > 2 * ahiNon && ahiNon < 15) {
+    phenotypes.push('Positional OSA');
+  }
+  if (ahiREM > 2 * ahiNREM && ahiREM >= 10) {
+    phenotypes.push('REM-Predominant OSA');
+  }
+  if (cai >= 5) {
+    phenotypes.push('High Loop Gain / Complex Sleep Apnea risk');
+  }
+  if (nadir < 85 && nadir > 0) {
+    phenotypes.push('High Hypoxic Burden');
+  }
+
+  // Treatment mapping
+  let recommendations = [];
+  const add = txt => recommendations.push(txt);
+
+  if (phenotypes.includes('High Anatomical Contribution')) {
+    add('CPAP/APAP first-line; discuss weight management; consider anatomical surgery or Inspire™ if CPAP fails.');
+  }
+  if (phenotypes.includes('Low Arousal Threshold')) {
+    add('Optimize CPAP comfort; consider CBT‑I; cautious low‑dose sedatives under specialist supervision.');
+  }
+  if (phenotypes.includes('Positional OSA')) {
+    add('Positional therapy (night‑shift device, backpack, specialized pillow).');
+  }
+  if (phenotypes.includes('REM-Predominant OSA')) {
+    add('Ensure adequate CPAP pressure during REM; consider Auto‑CPAP or mandibular advancement device.');
+  }
+  if (phenotypes.includes('High Loop Gain / Complex Sleep Apnea risk')) {
+    add('Careful CPAP titration; consider fixed‑pressure CPAP, oxygen supplementation, or ASV (if no contraindication).');
+  }
+  if (phenotypes.includes('High Hypoxic Burden')) {
+    add('Prioritize effective therapy (CPAP) to improve oxygen saturation; monitor cardiovascular risk.');
+  }
+  if (recommendations.length === 0) {
+    add('Standard CPAP/APAP remains the most effective first‑line therapy for most OSA patients.');
+  }
+
+  // Patient summary
+  const patientHTML = `
+    <h3>Patient‑Friendly Summary</h3>
+    <p>Your sleep information suggests the following contributing factors: <strong>${phenotypes.join(', ') || 'none specifically flagged'}</strong>.</p>
+    <p>The following treatment options are likely to work best for you:</p>
+    <ul>${recommendations.map(r => `<li>${r}</li>`).join('')}</ul>
+    <p>Please discuss these options with your clinician to decide which approach suits you best.</p>
+  `;
+
+  // Clinician report
+  const clinicianHTML = `
+    <h3>Clinician Decision Support</h3>
+    <p><strong>Phenotype profile:</strong> ${phenotypes.join(', ') || 'Not enough data for phenotype classification'}.</p>
+    <p><strong>Key metrics:</strong> BMI ${bmi}, Neck ${neck} cm, AHI ${ahi}, Supine AHI ${ahiSup}, Non‑Supine AHI ${ahiNon}, REM AHI ${ahiREM}, NREM AHI ${ahiNREM}, CAI ${cai}, Arousal Index ${arousal}, Nadir SpO₂ ${nadir}%.</p>
+    <p><strong>Recommendations (ranked):</strong></p>
+    <ol>${recommendations.map(r => `<li>${r}</li>`).join('')}</ol>
+    <p><em>Disclaimer: Prototype algorithm based on simplified rules from current literature; clinician judgment required.</em></p>
+  `;
+
+  document.getElementById('patientSummary').innerHTML = patientHTML;
+  document.getElementById('clinicianReport').innerHTML = clinicianHTML;
+}
+</script>
+</body>
+</html>
