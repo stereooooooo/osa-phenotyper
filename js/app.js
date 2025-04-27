@@ -1,6 +1,7 @@
-/*  ──────────────────────────────────────────────────────────────
-    OSA Phenotyper logic  •  PALM  + positional/REM/hypoxic burden
-    ────────────────────────────────────────────────────────────── */
+
+/*  OSA Phenotyper logic  •  PALM + positional/REM/hypoxic burden
+    US‑English wording, CSR & pAHIc inputs supported.
+----------------------------------------------------------------*/
 
 function n(v){ return isNaN(+v) ? null : +v; }
 function ratio(a,b){ return (n(b) && b!==0) ? n(a)/n(b) : null; }
@@ -11,152 +12,139 @@ document.getElementById('form').addEventListener('submit', e=>{
   const f   = new FormData(e.target);
   const res = { phen:[], why:{}, recs:[] };
 
-  /* ─── Helper to push phenotype with reasons ─── */
-  const add = (tag, reasonArr)=>{ res.phen.push(tag); res.why[tag]=reasonArr; };
+  const add = (tag, reasonArr)=>{ res.phen.push(tag); res.why[tag]=reasonArr.filter(Boolean); };
 
-  /* ──────────────────────────────────────────────
-     1.  PALM phenotypes
-  ────────────────────────────────────────────── */
-  /* P-ANATOMY */
+  /* ── PALM ─────────────────────────────── */
   const bmi  = n(f.get('bmi'));
   const neck = n(f.get('neck'));
   const tons = n(f.get('tonsils'));
-  const mall = f.get('ftp');                  // I-IV
+  const mall = f.get('ftp');
   const ahi  = n(f.get('ahi')) || n(f.get('pahi'));
-  const strongAnat = (bmi>=30)+(neck>=17)+(tons>=3)+(mall==='III'||mall==='IV')+(ahi>=30);
-  if(strongAnat>=3){ add('High Anatomical Contribution',
-      [`BMI ${bmi||'?'}`,`Neck Circ ${neck||'?'}`,`Tonsils ${tons}`,`Mallampati ${mall}`,`AHI ${ahi}`]); }
 
-  /* A-AROUSAL THRESHOLD (LOW) */
+  if([bmi>=30, neck>=17, tons>=3, mall==='III'||mall==='IV', ahi>=30].filter(Boolean).length>=3){
+     add('High Anatomical Contribution',[`BMI ${bmi}`,`Neck ${neck} in`,`Tonsils ${tons}`,`Mallampati ${mall}`,`AHI ${ahi}`]);
+  }
+
   const arInd = n(f.get('arInd'));
   const isi   = n(f.get('isi'));
   if( isi>=15 || (arInd && ahi && arInd/ahi>1.5) ){
-      add('Low Arousal Threshold', [`ISI ${isi||'—'}`,`Arousal Idx/ AHI ${(arInd/ahi).toFixed(1)}`]);
+     add('Low Arousal Threshold',[`ISI ${isi}`,`Arousal/ AHI ${(arInd/ahi).toFixed(1)}`]);
   }
 
-  /* L-LOOP GAIN (HIGH)  – proxy using CAI + cardiovascular disease */
-  const cai = n(f.get('cai'));
-  if( cai>=5 || yes(f,'cvd') ){
-      add('High Loop Gain', [`CAI ${cai||'—'}`, yes(f,'cvd')?'CV disease present':'' ]);
+  const cai   = n(f.get('cai'));
+  const csr   = n(f.get('csr'));
+  const pahic = n(f.get('pahic'));
+  if( cai>=5 || (csr && csr>=10) || (pahic && pahic>=10) || yes(f,'cvd') ){
+     add('High Loop Gain',[`CAI ${cai||'—'}`, csr?`CSR ${csr}%`:'', pahic?`pAHIc ${pahic}`:'', yes(f,'cvd')?'CVD present':'']);
   }
 
-  /* M-MUSCLE RESPONSIVENESS (POOR) – severe OSA with REM/Supine dependence */
   const remAhi  = n(f.get('ahiREM'))  || n(f.get('remPahi'));
   const nremAhi = n(f.get('ahiNREM')) || n(f.get('nremPahi'));
   if( ahi>=30 && remAhi && nremAhi && remAhi/nremAhi>2 ){
-      add('Poor UA Muscle Responsiveness', [`REM AHI ${(remAhi)}`,`REM/NREM ratio ${(remAhi/nremAhi).toFixed(1)}`]);
+     add('Poor Muscle Responsiveness',[`REM/NREM ratio ${(remAhi/nremAhi).toFixed(1)}`]);
   }
 
-  /* ──────────────────────────────────────────────
-     2.  Additional phenotypes
-  ────────────────────────────────────────────── */
-  /* Positional */
-  const sup   = n(f.get('ahiSup'))   || n(f.get('supPahi'));
-  const nons  = n(f.get('ahiNonSup'));
+  /* ── additional ───────────────────────── */
+  const sup = n(f.get('ahiSup')) || n(f.get('supPahi'));
+  const nons= n(f.get('ahiNonSup'));
   if( sup && nons && sup/nons>2 && nons<15 ){
-      add('Positional OSA', [`Supine/Non-sup ${(sup/nons).toFixed(1)}`]);
+     add('Positional OSA',[`Supine/Non-sup ${(sup/nons).toFixed(1)}`]);
   }
 
-  /* REM-predominant */
   if( remAhi && nremAhi && remAhi/nremAhi>2 && nremAhi<15 ){
-      add('REM-Predominant OSA', [`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`]);
+     add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`]);
   }
 
-  /* High Hypoxic Burden */
   const odi   = n(f.get('odi'));
   const nadir = Math.min( n(f.get('nadir'))||99 , n(f.get('nadirPsg'))||99 );
   if( (nadir && nadir<85) || (odi && odi>=40) ){
-      add('High Hypoxic Burden', [`Nadir SpO₂ ${nadir}%`,`ODI 4% ${odi||'—'}`]);
+     add('High Hypoxic Burden',[`Nadir SpO₂ ${nadir}%`,`ODI4 ${odi}`]);
   }
 
-  /* Symptom cluster */
+  /* ── symptom cluster ───────────────────── */
   const ess = n(f.get('ess'));
-  let subtype='Minimally-symptomatic';
-  if( ess>=15 )        subtype='Sleepy';
-  else if( isi>=15 )   subtype='Disturbed-sleep';
+  let subtype='Minimally‑symptomatic';
+  if( ess>=15 ) subtype='Sleepy';
+  else if( isi>=15 ) subtype='Disturbed‑sleep';
 
-  /* ──────────────────────────────────────────────
-     3.  Map to recommendations
-  ────────────────────────────────────────────── */
-  const pushRec = r=>{ if(!res.recs.includes(r)) res.recs.push(r); };
+  /* ── recommendations map ──────────────── */
+  const pushRec=r=>{ if(!res.recs.includes(r)) res.recs.push(r); };
 
   res.phen.forEach(p=>{
     switch(p){
       case 'High Anatomical Contribution':
-          pushRec('Start CPAP/APAP (gold-standard for anatomical OSA)');
-          pushRec('If CPAP intolerant: mandibular advancement device (mild-mod) or site-directed surgery/hypoglossal-nerve stimulation');
-          if(bmi>=30) pushRec('Structured weight-loss programme to reduce airway crowding');
-          break;
+        pushRec('Start CPAP/APAP (most effective for anatomical causes).');
+        if(bmi>=30) pushRec('Enroll in a structured weight‑loss program.');
+        pushRec('If CPAP fails: consider mandibular‑advancement device or site‑directed surgery / Inspire®.');
+        break;
       case 'Low Arousal Threshold':
-          pushRec('Optimise CPAP comfort (auto-adjust, humidification, mask fit)');
-          pushRec('Consider CBT-I and cautious low-dose sedative (e.g., trazodone) under sleep-specialist guidance');
-          break;
+        pushRec('Optimize CPAP comfort (humidification, auto‑ramp, mask fit).');
+        pushRec('Add CBT‑I; low‑dose sedative (e.g., trazodone) only under sleep‑specialist care.');
+        break;
       case 'High Loop Gain':
-          pushRec('Consider fixed-pressure CPAP (vs APAP) and monitor for treatment-emergent centrals');
-          pushRec('If centrals persist: trial oxygen or acetazolamide; escalate to ASV **unless** LVEF ≤ 45 %');
-          break;
-      case 'Poor UA Muscle Responsiveness':
-          pushRec('Re-emphasise CPAP adherence; if CPAP fails, assess candidacy for hypoglossal-nerve stimulation');
-          break;
+        pushRec('Use fixed‑pressure CPAP and monitor for treatment‑emergent central apneas.');
+        pushRec('If centrals persist: consider nocturnal O₂, acetazolamide, or ASV (contraindicated if LVEF ≤ 45 %).');
+        break;
+      case 'Poor Muscle Responsiveness':
+        pushRec('Ensure adequate CPAP titration; evaluate for hypoglossal‑nerve stimulation if CPAP fails.');
+        break;
       case 'Positional OSA':
-          pushRec('Positional therapy (vibratory trainer / backpack) as first-line or adjunct');
-          break;
+        pushRec('Begin positional therapy (vibratory trainer / back‑pack pillow).');
+        break;
       case 'REM-Predominant OSA':
-          pushRec('Ensure therapy (CPAP/MAD) is effective throughout REM sleep—may require higher pressure settings');
-          break;
+        pushRec('Verify therapy is effective during REM; CPAP pressure may need to be higher in REM.');
+        break;
       case 'High Hypoxic Burden':
-          pushRec('Urgent initiation of effective therapy (usually CPAP) to mitigate cardiovascular risk');
-          break;
+        pushRec('Initiate effective therapy promptly to lower cardiovascular risk.');
+        break;
     }
   });
+  if(!res.recs.length) pushRec('Initiate CPAP/APAP (first‑line therapy for most patients).');
 
-  if(!res.recs.length){ pushRec('Initiate CPAP/APAP (broadly effective first-line therapy)'); }
+  /* ── patient summary ───────────────────── */
+  const groupInfo={
+    'Sleepy':'People in this group feel very tired during the day. Effective treatment usually improves alertness and driving safety.',
+    'Disturbed‑sleep':'Your sleep is broken or restless even if you are not very sleepy in the daytime.',
+    'Minimally‑symptomatic':'You do not notice many symptoms, but untreated breathing pauses can still affect long‑term health.'
+  };
 
-  /* ──────────────────────────────────────────────
-     4.  Build PATIENT summary (plain language)
-  ────────────────────────────────────────────── */
-  let pSum = `<h2 class="h4">Patient-Friendly Summary</h2>
-  <p>Your sleep-apnea pattern places you in the <strong>${subtype}</strong> group.</p>`;
+  let pHTML=`<h2 class="h4">Patient‑Friendly Summary</h2>
+  <p>You are in the <strong>${subtype}</strong> group.<br><em>${groupInfo[subtype]}</em></p>`;
 
   if(res.phen.length){
-    pSum += '<p>The main factors contributing to your breathing interruptions are:</p><ul>';
-    res.phen.forEach(p=>{
-      const expl = {
-        'High Anatomical Contribution':'The airway is relatively narrow / crowded.',
-        'Low Arousal Threshold':'You wake up very easily, so even mild events disturb sleep.',
-        'High Loop Gain':'Your breathing control system is extra sensitive and can overshoot.',
-        'Poor UA Muscle Responsiveness':'Muscles that normally keep the airway open don’t respond strongly enough.',
-        'Positional OSA':'Events mainly occur when you sleep on your back.',
-        'REM-Predominant OSA':'Events mainly occur in dream (REM) sleep.',
-        'High Hypoxic Burden':'Your oxygen level spends a lot of time low during sleep.'
-      }[p];
-      pSum += `<li><strong>${p}</strong> – ${expl}</li>`;
-    });
-    pSum+='</ul>';
+    pHTML+='<h5>Main contributing factors</h5><ul>';
+    const expl={
+      'High Anatomical Contribution':'Your airway is relatively narrow or crowded.',
+      'Low Arousal Threshold':'You wake up very easily; even small breathing disturbances can fragment sleep.',
+      'High Loop Gain':'Your breathing control system is extra sensitive and can “over‑correct,” causing pauses.',
+      'Poor Muscle Responsiveness':'Muscles that normally hold the airway open during sleep do not respond strongly.',
+      'Positional OSA':'Problems arise mainly when you sleep on your back.',
+      'REM-Predominant OSA':'Problems arise mainly during dream (REM) sleep.',
+      'High Hypoxic Burden':'Your oxygen level spends a lot of time low during sleep, which can strain the heart.'
+    };
+    res.phen.forEach(p=>pHTML+=`<li><strong>${p}.</strong> ${expl[p]}</li>`);
+    pHTML+='</ul>';
   }
 
-  pSum += '<h5 class="mt-3">Recommended next steps</h5><ul>';
-  res.recs.slice(0,4).forEach(r=>pSum+=`<li>${r}</li>`);
-  pSum+='</ul>';
+  pHTML+='<h5 class="mt-3">Recommended next steps</h5><ul>';
+  res.recs.slice(0,5).forEach(r=>pHTML+=`<li>${r}</li>`);
+  pHTML+='</ul>';
 
-  /* ──────────────────────────────────────────────
-     5.  Build CLINICIAN report
-  ────────────────────────────────────────────── */
-  let cSum = `<h2 class="h4">Clinician Decision Support</h2>
+  /* ── clinician report ───────────────────── */
+  let cHTML=`<h2 class="h4">Clinician Decision Support</h2>
   <p><strong>Subtype:</strong> ${subtype} (ESS ${ess||'—'}, ISI ${isi||'—'})</p>`;
 
   if(res.phen.length){
-    cSum += '<p><strong>Identified phenotypes & triggers</strong></p><ul>';
-    res.phen.forEach(p=> cSum+=`<li>${p} → ${res.why[p].filter(Boolean).join(', ')}</li>`);
-    cSum += '</ul>';
+    cHTML+='<p><strong>Phenotypes & triggers</strong></p><ul>';
+    res.phen.forEach(p=>cHTML+=`<li>${p}: ${res.why[p].join(', ')}</li>`);
+    cHTML+='</ul>';
   }
 
-  cSum += '<p><strong>Ranked treatment recommendations</strong></p><ol>';
-  res.recs.forEach(r=>cSum+=`<li>${r}</li>`);
-  cSum+='</ol>';
+  cHTML+='<p><strong>Ranked treatment plan</strong></p><ol>';
+  res.recs.forEach(r=>cHTML+=`<li>${r}</li>`);
+  cHTML+='</ol>';
 
-  /* ─── Inject into page ─── */
-  document.getElementById('patientSummary').innerHTML   = pSum;
-  document.getElementById('clinicianReport').innerHTML  = cSum;
+  document.getElementById('patientSummary').innerHTML=pHTML;
+  document.getElementById('clinicianReport').innerHTML=cHTML;
   window.scrollTo({top:document.getElementById('patientSummary').offsetTop-80,behavior:'smooth'});
 });
