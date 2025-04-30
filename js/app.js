@@ -38,7 +38,7 @@ document.getElementById('form').addEventListener('submit',e=>{
   const nremAhi = n(f.get('ahiNREM')) || n(f.get('nremPahi'));
 
   const sup  = n(f.get('ahiSup')) || n(f.get('supPahi'));
-  let nons   = n(f.get('ahiNonSup'));
+  let nons = n(f.get('ahiNonSup')) || n(f.get('nonSupPahi'));
   if(nons===null) nons = 1;   // default when blank
 
   const odi   = n(f.get('odi'));
