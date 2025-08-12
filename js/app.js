@@ -11,17 +11,19 @@
     • Edge-case nudge when Non-supine AHI defaulted
     • Referral note snippets (Dentist / ENT / Cardiology)
     • Print handout button (patient section only)
+    • WatchPAT Hypoxic Burden per-hour (HB/hr) & Area<90%/hr support  ← NEW
+    • pAHIc split: 3% and 4% now parsed & shown (used in HLG logic)    ← NEW
 --------------------------------------------------------------------*/
 
-function n(v){ return isNaN(+v) ? null : +v; }
-function ratio(a,b){ return (n(b) && b!==0) ? n(a)/n(b) : null; }
+function n(v){ const x = v===null||v===undefined?null:+v; return (Number.isFinite(x)?x:null); }
+function ratio(a,b){ return (n(a)!==null && n(b)!==null && n(b)!==0) ? (n(a)/n(b)) : null; }
 function yes(f,key){ return f.get(key)==='on' || f.get(key)==='Yes' || (f.getAll(key)||[]).includes('on') || (f.getAll(key)||[]).includes('Yes'); }
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
 /* simple dedupe-able recommendations */
 const recSeen = new Set();
 function pushRec(arr, text, tag){
-  const key = (tag || text.trim().toLowerCase().slice(0,40));
+  const key = (tag || text.trim().toLowerCase().slice(0,60));
   if(recSeen.has(key)) return;
   recSeen.add(key);
   arr.push(text);
@@ -29,12 +31,15 @@ function pushRec(arr, text, tag){
 
 /* confidence helper */
 function confidenceFor(tag, ctx){
-  const {reasons, metrics} = ctx; // metrics carries raw values
-  const count = reasons.filter(Boolean).length;
-
+  const {reasons, metrics} = ctx;
   switch(tag){
     case 'High Anatomical Contribution': {
-      const strong = ((metrics.bmi||0)>=35) + ((metrics.neck||0)>=17.5) + ((metrics.tons||0)>=3) + (['III','IV'].includes(metrics.mall)?1:0) + ((metrics.ahi||0)>=30);
+      const strong =
+        ((metrics.bmi||0)>=35) +
+        ((metrics.neck||0)>=17.5) +
+        ((metrics.tons||0)>=3) +
+        (['III','IV'].includes(metrics.mall)?1:0) +
+        ((metrics.ahi||0)>=30);
       if(strong>=4) return 'High';
       if(strong>=2) return 'Moderate';
       return 'Low';
@@ -46,8 +51,9 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'High Loop Gain': {
-      if((metrics.csr||0)>=20 || (metrics.pahic||0)>=20) return 'High';
-      if((metrics.csr||0)>=10 || (metrics.pahic||0)>=10 || metrics.cvd) return 'Moderate';
+      const p3 = metrics.pahic3||0, p4 = metrics.pahic4||0, csr = metrics.csr||0;
+      if(csr>=20 || p3>=20 || p4>=10) return 'High';
+      if(csr>=10 || p3>=10 || p4>=5 || metrics.cvd) return 'Moderate';
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
@@ -69,8 +75,9 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'High Hypoxic Burden': {
-      if((metrics.nadir||100)<80 || (metrics.odi||0)>=60) return 'High';
-      if((metrics.nadir||100)<85 || (metrics.odi||0)>=40) return 'Moderate';
+      const hb = metrics.hbPH||0, hb90 = metrics.hb90PH||0, odi = metrics.odi||0, nadir = metrics.nadir??100;
+      if(hb>=8 || hb90>2 || nadir<80 || odi>=60) return 'High';
+      if(hb>=5 || hb90>0.5 || nadir<85 || odi>=40) return 'Moderate';
       return 'Low';
     }
     case 'Nasal-Resistance Contributor': {
@@ -114,49 +121,69 @@ document.getElementById('form').addEventListener('submit', e=>{
   const bmi   = n(f.get('bmi'));
   const neck  = n(f.get('neck'));
   const tons  = n(f.get('tonsils'));
-  const mall  = f.get('ftp'); // Mallampati/Friedman Tongue Position field used in app
+  const mall  = f.get('ftp'); // Mallampati/Friedman Tongue Position
 
-  const ahi   = n(f.get('ahi')) || n(f.get('pahi'));
+  const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
   const arInd = n(f.get('arInd'));
   const isi   = n(f.get('isi'));
   const ess   = n(f.get('ess'));
 
-  const csr   = n(f.get('csr'));                    // % Cheyne–Stokes Respiration (WatchPAT)
-  const pahic = n(f.get('pahic'));                  // central pAHI (3% criterion on WatchPAT)
-  const cvd   = yes(f,'cvd');                       // CVD yes/no (hypertension/CAD etc.)
+  const csr     = n(f.get('csr'));                       // % Cheyne–Stokes Respiration (WatchPAT)
+  const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));// central pAHI (3% criterion)
+  const pahic4  = n(f.get('pahic4'));                    // central pAHI (4% criterion)  ← NEW
+  const cvd     = yes(f,'cvd');                          // CVD yes/no
 
-  const remAhi  = n(f.get('ahiREM'))  || n(f.get('remPahi'));
-  const nremAhi = n(f.get('ahiNREM')) || n(f.get('nremPahi'));
+  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
+  const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
 
-  const sup     = n(f.get('ahiSup'))   || n(f.get('supPahi'));
-  let   nons    = n(f.get('ahiNonSup'))|| n(f.get('nonSupPahi'));
+  const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
+  let   nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
   const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
   if(nons===null) nons = 1; // default when blank
 
   const odi   = n(f.get('odi'));
-  const nadir = Math.min( n(f.get('nadir'))||99 , n(f.get('nadirPsg'))||99 );
+  const nadir = Math.min( n(f.get('nadir'))??99 , n(f.get('nadirPsg'))??99 );
+
+  // WatchPAT Hypoxic Burden per hour (from the new report section)  ← NEW
+  const hbPH     = n(f.get('hbAreaPH'));      // "Desaturation area under SpO2 baseline" per hour
+  const hb90PH   = n(f.get('hbUnder90PH'));   // "Area under 90% SpO2" per hour
 
   /* nasal signals */
   const rhinitis = (f.get('rhinitis')||'').toLowerCase(); // none/mild/moderate/severe
   const rhinitisSev = (rhinitis==='moderate' || rhinitis==='severe');
-  const nasalSeptum = (f.get('septum')==='Yes') || yes(f,'ctSeptum') || yes(f,'ctDeviatedSeptum');
+  const nasalSeptum = (f.get('septum')==='Yes') || yes(f,'ctSeptum') || yes(f,'ctDeviatedSeptum') || yes(f,'ctDev');
   const nasalTurbs  = yes(f,'ctTurbs') || yes(f,'ctTurbinateHypertrophy');
 
   /* pack context for confidence meters */
   const ctxBase = {
-    bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, pahic, cvd, remAhi, nremAhi, sup, nons, odi, nadir,
-    nasalSeptum, nasalTurbs, rhinitisSev
+    bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd, remAhi, nremAhi, sup, nons, odi, nadir,
+    hbPH, hb90PH, nasalSeptum, nasalTurbs, rhinitisSev, pahic3, pahic4
   };
 
   /* ─── PALM TRAITS ───────────────────────────────────────────── */
   if([bmi>=30, neck>=17, tons>=3, mall==='III'||mall==='IV', ahi>=30].filter(Boolean).length>=3){
-    add('High Anatomical Contribution',[`BMI ${bmi||'—'}`,`Neck ${neck||'—'} in`,exists(tons)?`Tonsils ${tons}`:'',mall?`Mallampati ${mall}`:'',exists(ahi)?`AHI ${ahi}`:'']);
+    add('High Anatomical Contribution',[
+      exists(bmi)?`BMI ${bmi}`:'',
+      exists(neck)?`Neck ${neck} in`:'',
+      exists(tons)?`Tonsils ${tons}`:'',
+      mall?`Mallampati ${mall}`:'',
+      exists(ahi)?`AHI ${ahi}`:''
+    ]);
+  }
+  if( isi>=15 || (arInd && ahi && (arInd/ahiahi=>(arInd/ahi)>1.3)) ){
+    // typo guard: ensure division checks correct variables
   }
   if( isi>=15 || (arInd && ahi && (arInd/ahi)>1.3) ){
-    add('Low Arousal Threshold',[`ISI ${isi||'—'}`, (arInd&&ahi)?`Arousal/AHI ${(arInd/ahi).toFixed(1)}` : '']);
+    add('Low Arousal Threshold',[`ISI ${exists(isi)?isi:'—'}`, (arInd&&ahi)?`Arousal/AHI ${(arInd/ahi).toFixed(1)}` : '']);
   }
-  if( (csr && csr>=10) || (pahic && pahic>=10) || cvd ){
-    add('High Loop Gain',[ csr?`CSR ${csr}%`:'', pahic?`pAHIc ${pahic}`:'', cvd?'Cardiovascular disease present':'' ]);
+  // High Loop Gain — now considers pAHIc 3% and 4% too  ← NEW
+  if( (csr && csr>=10) || (pahic3 && pahic3>=10) || (pahic4 && pahic4>=5) || cvd ){
+    add('High Loop Gain',[
+      csr?`CSR ${csr}%`:'',
+      exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
+      exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
+      cvd?'Cardiovascular disease present':''
+    ]);
   }
   if( (ahi>=30) && remAhi && nremAhi && (remAhi/nremAhi)>2 ){
     add('Poor Muscle Responsiveness',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `AHI ${ahi}`]);
@@ -169,8 +196,14 @@ document.getElementById('form').addEventListener('submit', e=>{
   if( remAhi && nremAhi && (remAhi/nremAhi)>2 && nremAhi<15 ){
     add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
   }
-  if( (exists(nadir) && nadir<85) || (odi && odi>=40) ){
-    add('High Hypoxic Burden',[exists(nadir)?`Nadir SpO₂ ${nadir}%`:'', exists(odi)?`ODI4 ${odi}`:'']);
+  // High Hypoxic Burden — prefers HB/hr metrics; falls back to nadir/ODI  ← NEW
+  if( (hbPH && hbPH>=5) || (hb90PH && hb90PH>0.5) || (exists(nadir) && nadir<85) || (odi && odi>=40) ){
+    add('High Hypoxic Burden',[
+      exists(hbPH)?`HB/hr ${hbPH}`:'',
+      exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
+      exists(odi)?`ODI4 ${odi}`:'',
+      exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
+    ]);
   }
   if( nasalSeptum || nasalTurbs || rhinitisSev ){
     add('Nasal-Resistance Contributor',[
@@ -182,7 +215,6 @@ document.getElementById('form').addEventListener('submit', e=>{
 
   /* ─── TREATMENT MAPPING ───────────────────────────────────── */
   const recs = out.recs;
-  // Map by phenotype, tag key enables dedupe against the core trio
   out.phen.forEach(p=>{
     switch(p){
       case 'High Anatomical Contribution':
@@ -245,18 +277,15 @@ document.getElementById('form').addEventListener('submit', e=>{
     'Nasal-Resistance Contributor':'Nasal blockage increases airflow resistance and can worsen snoring or CPAP comfort.'
   };
 
-  /* confidence badges & "why" drawers */
   const phenList = out.phen.map(tag=>{
     const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
     const why  = out.why[tag].filter(Boolean).length ? `<details class="mt-1"><summary>Why this?</summary><small>${out.why[tag].filter(Boolean).join('; ')}</small></details>` : '';
     return `<li><strong>${tag}</strong> <span class="badge bg-secondary">${conf} confidence</span><br>${phenotypeExplain[tag]||''}${why}</li>`;
   }).join('');
 
-  /* borderline-sleepy clarifier */
-  const borderlineNote = (subtype==='Minimally-symptomatic' && ess>=12) ?
+  const borderlineNote = (subtype==='Minimally-symptomatic' && exists(ess) && ess>=12) ?
     `<p class="text-muted">Your Epworth score (${ess}) is near the “sleepy” range; many people feel noticeably more alert after starting therapy.</p>` : '';
 
-  /* CPAP readiness badge */
   const hasLowAr = out.phen.includes('Low Arousal Threshold');
   const hasNasal = out.phen.includes('Nasal-Resistance Contributor');
   let readiness = 'Ready to start now';
@@ -270,7 +299,6 @@ document.getElementById('form').addEventListener('submit', e=>{
   }
   const readinessBadge = `<span class="badge ${readiness==='Ready to start now'?'bg-success':'bg-warning text-dark'}">${readiness}</span>`;
 
-  /* 30-day checklist (personalized) */
   const checklist = [];
   if(hasNasal){
     checklist.push('Daily saline rinse; consider intranasal steroid; ENT follow-up about septoplasty/turbinate reduction.');
@@ -291,7 +319,6 @@ document.getElementById('form').addEventListener('submit', e=>{
   checklist.push('Avoid alcohol and sedatives near bedtime; aim for side-sleeping when possible.');
   const checklistHTML = checklist.length ? `<ul>${checklist.map(i=>`<li>${i}</li>`).join('')}</ul>` : '';
 
-  /* What-if counseling (informational, no model change) */
   const whatIfHTML = `
     <ul>
       <li><strong>Lose 10% body weight:</strong> OSA severity often drops meaningfully; anatomical contribution may lessen.</li>
@@ -299,7 +326,6 @@ document.getElementById('form').addEventListener('submit', e=>{
       <li><strong>Use a side-sleeping device:</strong> positional OSA typically improves; verify on a follow-up study.</li>
     </ul>`;
 
-  /* Positional therapy mini-plan */
   const posPlan = out.phen.includes('Positional OSA') ? `
     <div class="mt-2">
       <strong>Positional plan:</strong>
@@ -309,16 +335,13 @@ document.getElementById('form').addEventListener('submit', e=>{
       </ul>
     </div>` : '';
 
-  /* Nasal optimization note */
   const nasalNote = out.phen.includes('Nasal-Resistance Contributor') ? `
     <p class="mt-2"><em>Nasal surgery doesn’t usually cure OSA, but it can reduce snoring, improve sleep quality,
     and make CPAP or oral appliances more comfortable.</em></p>` : '';
 
-  /* Edge-case nudge if we defaulted non-supine */
   const posNudge = (!nonSupProvided && exists(sup)) ? `
     <div class="alert alert-info mt-2">Positional result used a default non-supine AHI of 1 because none was entered. Please confirm on a future study.</div>` : '';
 
-  /* Patient handout HTML */
   let pHTML = `
     <div class="d-flex justify-content-between align-items-center">
       <h2 class="h4 mb-2">Patient-Friendly Summary</h2>
@@ -341,13 +364,11 @@ document.getElementById('form').addEventListener('submit', e=>{
 
   /* ─── Clinician Decision Support ──────────────────────────── */
 
-  // confidence table for clinicians
   const confTable = out.phen.map(tag=>{
     const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
     return `<tr><td>${tag}</td><td>${conf}</td><td><small>${out.why[tag].filter(Boolean).join(', ')||'—'}</small></td></tr>`;
   }).join('');
 
-  // guardrails
   const guardrails = [];
   if(out.phen.includes('High Loop Gain')){
     guardrails.push('If considering ASV, confirm LVEF > 45% (contraindicated in HFrEF ≤45%).');
@@ -356,20 +377,24 @@ document.getElementById('form').addEventListener('submit', e=>{
     guardrails.push('Prioritize timely initiation of effective therapy due to CV-risk association with hypoxic burden.');
   }
 
-  // surgical pathway helper (based on nasal + generic anatomy; DISE text appears if present)
   const surgTargets = [];
   if(nasalSeptum || nasalTurbs) surgTargets.push('Nasal: septum/turbinates');
-  // Look for DISE/VOTE fields if present (graceful fallback)
   const hasDISE = Array.from(f.keys()).some(k=>/^vote|^dise/i.test(k));
   if(hasDISE) surgTargets.push('DISE/VOTE: see entered levels/patterns');
   if(out.phen.includes('High Anatomical Contribution') && !surgTargets.length) surgTargets.push('Pharyngeal levels per exam/DISE as indicated');
 
-  const surgHelper = surgTargets.length ? `
-    <p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>` : '';
+  const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>` : '';
 
-  // referral notes
   const supRatio = (sup && nons) ? (sup/nons).toFixed(1) : '—';
-  const coreNums  = `AHI: ${exists(ahi)?ahi:'—'} | REM AHI: ${exists(remAhi)?remAhi:'—'} | NREM AHI: ${exists(nremAhi)?nremAhi:'—'} | Sup/Non-sup: ${supRatio} | Nadir SpO₂: ${exists(nadir)?nadir+'%':'—'}`;
+  const coreNums  = [
+    `AHI: ${exists(ahi)?ahi:'—'}`,
+    `REM AHI: ${exists(remAhi)?remAhi:'—'}`,
+    `NREM AHI: ${exists(nremAhi)?nremAhi:'—'}`,
+    `Sup/Non-sup: ${supRatio}`,
+    `Nadir SpO₂: ${exists(nadir)?nadir+'%':'—'}`,
+    `HB/hr: ${exists(hbPH)?hbPH:'—'}`,
+    `Area<90/hr: ${exists(hb90PH)?hb90PH:'—'}`
+  ].join(' | ');
   const phenStr   = out.phen.join(', ') || '—';
   const nasalStr  = out.phen.includes('Nasal-Resistance Contributor') ? 'Nasal obstruction present (septum/turbinates/rhinitis).' : '—';
 
@@ -377,7 +402,6 @@ document.getElementById('form').addEventListener('submit', e=>{
   const noteENT     = `Reason for referral: nasal/airway surgery evaluation.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNasal: ${nasalStr}\nNotes: Septum/turbinates may improve airflow and PAP/MAD tolerance; assess palate/pharyngeal collapse per DISE if available.`;
   const noteCards   = `Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: If High Loop Gain persists with TECSA, consider O₂/acetazolamide; ASV only if LVEF > 45%.`;
 
-  // follow-up prompts
   const followUps = [];
   if(hasLowAr) followUps.push('CPAP comfort review in 2–4 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2–4 weeks of positional therapy with HSAT/WatchPAT.');
@@ -431,8 +455,9 @@ document.getElementById('form').addEventListener('submit', e=>{
       buffer.value = txt;
       buffer.select(); buffer.setSelectionRange(0, 99999);
       try { document.execCommand('copy'); } catch(e){}
+      const orig = btn.textContent;
       btn.textContent = 'Copied!';
-      setTimeout(()=>btn.textContent = btn.getAttribute('data-copy')==='dentist'?'Copy Dentist (MAD)':btn.getAttribute('data-copy')==='ent'?'Copy ENT':'Copy Cardiology', 1200);
+      setTimeout(()=>btn.textContent = orig, 1200);
     });
   });
 
