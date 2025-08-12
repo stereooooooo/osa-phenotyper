@@ -2,7 +2,7 @@
     WHAT'S NEW (no input/layout changes):
     • Confidence meter per phenotype (+ "Why this?" drawers)
     • CPAP readiness/adherence risk badge
-    • What-if counseling (−10% weight, septoplasty done, side-sleeping)
+    • What-if counseling (−10% weight, septoplasty done, side-sleeping)  ← now patient-specific
     • Surgical pathway helper (uses CT + nasal flags; shows DISE when present)
     • Contraindication guardrails (HLG → ASV caution / LVEF check)
     • Positional therapy mini-plan
@@ -13,6 +13,7 @@
     • Print handout button (patient section only)
     • WatchPAT Hypoxic Burden per-hour (HB/hr) & Area<90%/hr support  ← NEW
     • pAHIc split: 3% and 4% now parsed & shown (used in HLG logic)    ← NEW
+    • Soft-tissue surgery nudge (tonsillectomy ± expansion pharyngoplasty)  ← NEW
 --------------------------------------------------------------------*/
 
 function n(v){ const x = v===null||v===undefined?null:+v; return (Number.isFinite(x)?x:null); }
@@ -31,7 +32,7 @@ function pushRec(arr, text, tag){
 
 /* confidence helper */
 function confidenceFor(tag, ctx){
-  const {reasons, metrics} = ctx;
+  const {metrics} = ctx;
   switch(tag){
     case 'High Anatomical Contribution': {
       const strong =
@@ -128,10 +129,10 @@ document.getElementById('form').addEventListener('submit', e=>{
   const isi   = n(f.get('isi'));
   const ess   = n(f.get('ess'));
 
-  const csr     = n(f.get('csr'));                       // % Cheyne–Stokes Respiration (WatchPAT)
+  const csr     = n(f.get('csr'));                        // % Cheyne–Stokes Respiration (WatchPAT)
   const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));// central pAHI (3% criterion)
-  const pahic4  = n(f.get('pahic4'));                    // central pAHI (4% criterion)  ← NEW
-  const cvd     = yes(f,'cvd');                          // CVD yes/no
+  const pahic4  = n(f.get('pahic4'));                     // central pAHI (4% criterion)
+  const cvd     = yes(f,'cvd');                           // CVD yes/no
 
   const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
   const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
@@ -144,7 +145,7 @@ document.getElementById('form').addEventListener('submit', e=>{
   const odi   = n(f.get('odi'));
   const nadir = Math.min( n(f.get('nadir'))??99 , n(f.get('nadirPsg'))??99 );
 
-  // WatchPAT Hypoxic Burden per hour (from the new report section)  ← NEW
+  // WatchPAT Hypoxic Burden per hour (from the new report section)
   const hbPH     = n(f.get('hbAreaPH'));      // "Desaturation area under SpO2 baseline" per hour
   const hb90PH   = n(f.get('hbUnder90PH'));   // "Area under 90% SpO2" per hour
 
@@ -153,18 +154,6 @@ document.getElementById('form').addEventListener('submit', e=>{
   const rhinitisSev = (rhinitis==='moderate' || rhinitis==='severe');
   const nasalSeptum = (f.get('septum')==='Yes') || yes(f,'ctSeptum') || yes(f,'ctDeviatedSeptum') || yes(f,'ctDev');
   const nasalTurbs  = yes(f,'ctTurbs') || yes(f,'ctTurbinateHypertrophy');
-
-  /* ─── SOFT-TISSUE SURGERY CANDIDACY (NEW) ─────────────────── */
-  const ftp = mall; // alias: Mallampati/Friedman Tongue Position (I–IV)
-  const softSxStrong =
-    (tons!==null && tons>=3) &&
-    (ftp==='I' || ftp==='II') &&
-    (exists(bmi) && bmi<=28);
-  const softSxConsider =
-    (tons!==null && tons>=3) && (
-      (ftp==='I' || ftp==='II') ? (!exists(bmi) || bmi<=32)
-                                : (exists(bmi) && bmi<=28)
-    );
 
   /* pack context for confidence meters */
   const ctxBase = {
@@ -182,17 +171,10 @@ document.getElementById('form').addEventListener('submit', e=>{
       exists(ahi)?`AHI ${ahi}`:''
     ]);
   }
-
-  /* (typo-guard block removed to avoid syntax error)
-  if( isi>=15 || (arInd && ahi && (arInd/ahiahi=>(arInd/ahi)>1.3)) ){
-    // typo guard
-  }
-  */
-
   if( isi>=15 || (arInd && ahi && (arInd/ahi)>1.3) ){
     add('Low Arousal Threshold',[`ISI ${exists(isi)?isi:'—'}`, (arInd&&ahi)?`Arousal/AHI ${(arInd/ahi).toFixed(1)}` : '']);
   }
-  // High Loop Gain — now considers pAHIc 3% and 4% too  ← NEW
+  // High Loop Gain — considers pAHIc 3% and 4%
   if( (csr && csr>=10) || (pahic3 && pahic3>=10) || (pahic4 && pahic4>=5) || cvd ){
     add('High Loop Gain',[
       csr?`CSR ${csr}%`:'',
@@ -212,7 +194,7 @@ document.getElementById('form').addEventListener('submit', e=>{
   if( remAhi && nremAhi && (remAhi/nremAhi)>2 && nremAhi<15 ){
     add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
   }
-  // High Hypoxic Burden — prefers HB/hr metrics; falls back to nadir/ODI  ← NEW
+  // High Hypoxic Burden — prefers HB/hr metrics; falls back to nadir/ODI
   if( (hbPH && hbPH>=5) || (hb90PH && hb90PH>0.5) || (exists(nadir) && nadir<85) || (odi && odi>=40) ){
     add('High Hypoxic Burden',[
       exists(hbPH)?`HB/hr ${hbPH}`:'',
@@ -265,19 +247,17 @@ document.getElementById('form').addEventListener('submit', e=>{
     }
   });
 
-  /* NEW: soft-tissue surgery recommendation (tonsils/FTP/BMI) */
-  if (softSxStrong) {
-    pushRec(
-      recs,
-      'Strongly consider tonsillectomy ± expansion pharyngoplasty (favorable anatomy: FTP I–II, tonsils 3–4, BMI ≤28).',
-      'SOFT-ESP-STRONG'
-    );
-  } else if (softSxConsider) {
-    pushRec(
-      recs,
-      'Consider tonsillectomy ± expansion pharyngoplasty (large tonsils with favorable FTP or low BMI).',
-      'SOFT-ESP'
-    );
+  /* Soft-tissue surgery: tonsillectomy ± expansion pharyngoplasty (adult) */
+  const ftpIorII = (mall==='I' || mall==='II');
+  const highAnat = out.phen.includes('High Anatomical Contribution');
+  if(exists(tons) && tons>=3){
+    if((bmi||0) < 30 && ftpIorII){
+      pushRec(recs,'Strongly consider tonsillectomy ± expansion pharyngoplasty (favorable airway: large tonsils, low FTP, BMI < 30).','SOFT-TISSUE-STRONG');
+    } else if((bmi||0) >= 30 && (bmi||0) < 35 && ftpIorII){
+      pushRec(recs,'Consider tonsillectomy ± expansion pharyngoplasty as part of multilevel plan (large tonsils, low FTP, BMI 30–34.9).','SOFT-TISSUE-CONSIDER');
+    } else if(highAnat && ftpIorII){
+      pushRec(recs,'Consider tonsillectomy ± expansion pharyngoplasty based on anatomic crowding and large tonsils.','SOFT-TISSUE-GENERAL');
+    }
   }
 
   /* Ensure the core trio is always present (deduped by tag) */
@@ -350,12 +330,18 @@ document.getElementById('form').addEventListener('submit', e=>{
   checklist.push('Avoid alcohol and sedatives near bedtime; aim for side-sleeping when possible.');
   const checklistHTML = checklist.length ? `<ul>${checklist.map(i=>`<li>${i}</li>`).join('')}</ul>` : '';
 
-  const whatIfHTML = `
-    <ul>
-      <li><strong>Lose 10% body weight:</strong> OSA severity often drops meaningfully; anatomical contribution may lessen.</li>
-      <li><strong>Septoplasty/turbinate surgery:</strong> improves nasal airflow and CPAP/MAD comfort; rarely cures OSA alone.</li>
-      <li><strong>Use a side-sleeping device:</strong> positional OSA typically improves; verify on a follow-up study.</li>
-    </ul>`;
+  /* Patient-specific "What if…?" */
+  const whatIfItems = [];
+  if(bmi>=27){
+    whatIfItems.push('<strong>Lose 10% body weight:</strong> OSA severity often drops meaningfully; anatomical contribution may lessen.');
+  }
+  if(nasalSeptum || nasalTurbs){
+    whatIfItems.push('<strong>Septoplasty/turbinate surgery:</strong> improves nasal airflow and CPAP/MAD comfort; rarely cures OSA alone.');
+  }
+  if(out.phen.includes('Positional OSA')){
+    whatIfItems.push('<strong>Use a side-sleeping device:</strong> positional OSA typically improves; verify on a follow-up study.');
+  }
+  const whatIfHTML = whatIfItems.length ? `<ul>${whatIfItems.map(i=>`<li>${i}</li>`).join('')}</ul>` : '<p>No additional “what if” scenarios apply based on your current inputs.</p>';
 
   const posPlan = out.phen.includes('Positional OSA') ? `
     <div class="mt-2">
@@ -412,10 +398,6 @@ document.getElementById('form').addEventListener('submit', e=>{
   if(nasalSeptum || nasalTurbs) surgTargets.push('Nasal: septum/turbinates');
   const hasDISE = Array.from(f.keys()).some(k=>/^vote|^dise/i.test(k));
   if(hasDISE) surgTargets.push('DISE/VOTE: see entered levels/patterns');
-
-  /* NEW: add soft-tissue target when candidacy present */
-  if (softSxStrong || softSxConsider) surgTargets.push('Oropharynx: tonsillectomy ± expansion pharyngoplasty');
-
   if(out.phen.includes('High Anatomical Contribution') && !surgTargets.length) surgTargets.push('Pharyngeal levels per exam/DISE as indicated');
 
   const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>` : '';
