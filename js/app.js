@@ -1,252 +1,241 @@
 /*  OSA Phenotyper – PALM + extras (US-English)
-    - Confidence meter per phenotype (+ "Why this?" drawers)
-    - CPAP readiness/adherence risk badge
-    - What-if counseling (−10% weight, septoplasty, side-sleeping)
-    - Surgical pathway helper (CT + nasal flags; DISE hint)
-    - Contraindication guardrails (HLG → ASV caution / LVEF check)
-    - Positional therapy mini-plan
-    - Richer Sleepy/Disturbed/Minimal explainer
-    - Edge-case nudge when Non-supine AHI defaulted
-    - Referral note snippets (Dentist / ENT / Cardiology)
-    - Print handout button (patient section only)
-    - WatchPAT extras accepted: Hypoxic Burden (total/per hr), AUC<90, pAHIc 3% & 4%
-*/
+    WHAT'S NEW (no input/layout changes):
+    • Confidence meter per phenotype (+ "Why this?" drawers)
+    • CPAP readiness/adherence risk badge
+    • What-if counseling (−10% weight, septoplasty done, side-sleeping)
+    • Surgical pathway helper (uses CT + nasal flags; shows DISE when present)
+    • Contraindication guardrails (HLG → ASV caution / LVEF check)
+    • Positional therapy mini-plan
+    • Richer Sleepy/Disturbed/Minimal explainer
+    • First 30 days checklist (personalized)
+    • Edge-case nudge when Non-supine AHI defaulted
+    • Referral note snippets (Dentist / ENT / Cardiology)
+    • Print handout button (patient section only)
+    • WatchPAT Hypoxic Burden per-hour (HB/hr) & Area<90%/hr support  ← NEW
+    • pAHIc split: 3% and 4% now parsed & shown (used in HLG logic)    ← NEW
+--------------------------------------------------------------------*/
 
-'use strict';
-
-/* ---------- tiny helpers ---------- */
-function n(v){ return (v===null||v===undefined||v==='') ? null : (isNaN(+v) ? null : +v); }
+function n(v){ const x = v===null||v===undefined?null:+v; return (Number.isFinite(x)?x:null); }
+function ratio(a,b){ return (n(a)!==null && n(b)!==null && n(b)!==0) ? (n(a)/n(b)) : null; }
 function yes(f,key){ return f.get(key)==='on' || f.get(key)==='Yes' || (f.getAll(key)||[]).includes('on') || (f.getAll(key)||[]).includes('Yes'); }
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
-/* ---------- deduped recs ---------- */
+/* simple dedupe-able recommendations */
 const recSeen = new Set();
 function pushRec(arr, text, tag){
-  const key = (tag || text.trim().toLowerCase().slice(0, 64));
+  const key = (tag || text.trim().toLowerCase().slice(0,60));
   if(recSeen.has(key)) return;
   recSeen.add(key);
   arr.push(text);
 }
 
-/* ---------- confidence helper ---------- */
+/* confidence helper */
 function confidenceFor(tag, ctx){
-  const m = ctx.metrics || {};
+  const {reasons, metrics} = ctx;
   switch(tag){
     case 'High Anatomical Contribution': {
       const strong =
-        ((m.bmi||0) >= 35) +
-        ((m.neck||0) >= 17.5) +
-        ((m.tons||0) >= 3) +
-        (['III','IV'].includes(m.mall) ? 1 : 0) +
-        ((m.ahi||0) >= 30);
-      if (strong >= 4) return 'High';
-      if (strong >= 2) return 'Moderate';
+        ((metrics.bmi||0)>=35) +
+        ((metrics.neck||0)>=17.5) +
+        ((metrics.tons||0)>=3) +
+        (['III','IV'].includes(metrics.mall)?1:0) +
+        ((metrics.ahi||0)>=30);
+      if(strong>=4) return 'High';
+      if(strong>=2) return 'Moderate';
       return 'Low';
     }
     case 'Low Arousal Threshold': {
-      const arRatio = (m.arInd && m.ahi) ? (m.arInd/m.ahi) : 0;
-      if ((m.isi||0) >= 22 || arRatio >= 1.8) return 'High';
-      if ((m.isi||0) >= 15 || arRatio >= 1.3) return 'Moderate';
+      const arRatio = (metrics.arInd && metrics.ahi) ? (metrics.arInd/metrics.ahi) : 0;
+      if((metrics.isi||0)>=22 || arRatio>=1.8) return 'High';
+      if((metrics.isi||0)>=15 || arRatio>=1.3) return 'Moderate';
       return 'Low';
     }
     case 'High Loop Gain': {
-      if ((m.csr||0) >= 20 || (m.pahic3||0) >= 20 || (m.pahic4||0) >= 20) return 'High';
-      if ((m.csr||0) >= 10 || (m.pahic3||0) >= 10 || (m.pahic4||0) >= 10 || m.cvd) return 'Moderate';
+      const p3 = metrics.pahic3||0, p4 = metrics.pahic4||0, csr = metrics.csr||0;
+      if(csr>=20 || p3>=20 || p4>=10) return 'High';
+      if(csr>=10 || p3>=10 || p4>=5 || metrics.cvd) return 'Moderate';
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
-      const remNrem = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      if ((m.ahi||0) >= 30 && remNrem > 2.5) return 'High';
-      if (remNrem > 2) return 'Moderate';
+      const remNrem = (metrics.remAhi && metrics.nremAhi) ? (metrics.remAhi/metrics.nremAhi) : 0;
+      if((metrics.ahi||0)>=30 && remNrem>2.5) return 'High';
+      if(remNrem>2) return 'Moderate';
       return 'Low';
     }
     case 'Positional OSA': {
-      const pr = (m.sup && m.nons) ? (m.sup/m.nons) : 0;
-      if (pr >= 3 && (m.nons||0) < 10) return 'High';
-      if (pr >= 2 && (m.nons||0) < 15) return 'Moderate';
+      const pr = (metrics.sup && metrics.nons) ? (metrics.sup/metrics.nons) : 0;
+      if(pr>=3 && (metrics.nons||0)<10) return 'High';
+      if(pr>=2 && (metrics.nons||0)<15) return 'Moderate';
       return 'Low';
     }
     case 'REM-Predominant OSA': {
-      const rr = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      if (rr >= 3 && (m.nremAhi||0) < 10) return 'High';
-      if (rr >= 2 && (m.nremAhi||0) < 15) return 'Moderate';
+      const rr = (metrics.remAhi && metrics.nremAhi) ? (metrics.remAhi/metrics.nremAhi) : 0;
+      if(rr>=3 && (metrics.nremAhi||0)<10) return 'High';
+      if(rr>=2 && (metrics.nremAhi||0)<15) return 'Moderate';
       return 'Low';
     }
     case 'High Hypoxic Burden': {
-      const hbHit = (m.hbPerHr||0) >= 5 || (m.hbTotal||0) >= 30 || (m.areaU90||0) >= 1;
-      if (hbHit || (m.nadir||100) < 80 || (m.odi||0) >= 60) return 'High';
-      if ((m.nadir||100) < 85 || (m.odi||0) >= 40) return 'Moderate';
+      const hb = metrics.hbPH||0, hb90 = metrics.hb90PH||0, odi = metrics.odi||0, nadir = metrics.nadir??100;
+      if(hb>=8 || hb90>2 || nadir<80 || odi>=60) return 'High';
+      if(hb>=5 || hb90>0.5 || nadir<85 || odi>=40) return 'Moderate';
       return 'Low';
     }
     case 'Nasal-Resistance Contributor': {
-      const flags = (m.nasalSeptum?1:0) + (m.nasalTurbs?1:0) + (m.rhinitisSev?1:0);
-      if (flags >= 2) return 'High';
-      if (flags === 1) return 'Moderate';
+      const flags = (metrics.nasalSeptum?1:0) + (metrics.nasalTurbs?1:0) + (metrics.rhinitisSev?1:0);
+      if(flags>=2) return 'High';
+      if(flags===1) return 'Moderate';
       return 'Low';
     }
     default: return 'Moderate';
   }
 }
 
-/* ---------- print styles (patient handout only) ---------- */
+/* inject minimal print CSS so only patient handout prints nicely */
 (function ensurePrintStyles(){
-  var style = document.createElement('style');
+  const style = document.createElement('style');
   style.type='text/css';
-  style.textContent =
-    '@media print {' +
-      'body * { visibility: hidden !important; }' +
-      '#patientSummary, #patientSummary * { visibility: visible !important; }' +
-      '#patientSummary { position: absolute; left: 0; top: 0; width: 100%; padding: 1rem; }' +
-      '.no-print { display: none !important; }' +
-      'h2, h3, h4, h5 { page-break-after: avoid; }' +
-      'ul, ol { page-break-inside: avoid; }' +
-    '}';
+  style.textContent = `
+    @media print {
+      body * { visibility: hidden !important; }
+      #patientSummary, #patientSummary * { visibility: visible !important; }
+      #patientSummary { position: absolute; left: 0; top: 0; width: 100%; padding: 1rem; }
+      .no-print { display: none !important; }
+      h2, h3, h4, h5 { page-break-after: avoid; }
+      ul, ol { page-break-inside: avoid; }
+    }
+  `;
   document.head.appendChild(style);
 })();
 
-/* =================================================================== */
-/* =======================  MAIN SUBMIT LOGIC  ======================= */
-/* =================================================================== */
-window.runPhenotyper = function(ev){
+document.getElementById('form').addEventListener('submit', e=>{
+  e.preventDefault();
   recSeen.clear();
-  var form = ev.target;
-  var f = new FormData(form);
+  const f = new FormData(e.target);
 
-  var out = { phen:[], why:{}, recs:[] };
-  function add(tag, reasons){
-    if (out.phen.indexOf(tag) === -1){
-      out.phen.push(tag);
-      out.why[tag] = (reasons||[]).filter(Boolean);
-    }
-  }
-
-  /* -------- inputs -------- */
-  var bmi   = n(f.get('bmi'));
-  var neck  = n(f.get('neck'));
-  var tons  = n(f.get('tonsils'));
-  var mall  = f.get('ftp');
-
-  var ahi   = n(f.get('ahi')) || n(f.get('pahi'));
-  var arInd = n(f.get('arInd'));
-  var isi   = n(f.get('isi'));
-  var ess   = n(f.get('ess'));
-
-  var csr     = n(f.get('csr'));
-  var pahic3  = n(f.get('pahic3')) || n(f.get('pahic')); // support old name
-  var pahic4  = n(f.get('pahic4'));
-  var cvd     = yes(f,'cvd');
-
-  var remAhi  = n(f.get('ahiREM'))  || n(f.get('remPahi'));
-  var nremAhi = n(f.get('ahiNREM')) || n(f.get('nremPahi'));
-
-  var sup     = n(f.get('ahiSup'))   || n(f.get('supPahi'));
-  var nonsIn  = n(f.get('ahiNonSup'))|| n(f.get('nonSupPahi'));
-  var nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
-  var nons    = (nonsIn===null ? 1 : nonsIn); // default if blank
-
-  var odi   = n(f.get('odi'));
-  var nadir = Math.min( n(f.get('nadir'))||99 , n(f.get('nadirPsg'))||99 );
-
-  // New WatchPAT metrics (optional)
-  var hbTotal  = n(f.get('hbTotal'))   || n(f.get('hypoxicBurdenTotal'));
-  var hbPerHr  = n(f.get('hbPerHour')) || n(f.get('hbPerHr')) || n(f.get('hbph'));
-  var areaU90  = n(f.get('au90'))      || n(f.get('areaUnder90')) || n(f.get('areaBelow90'));
-  // (desaturation event count under 90% not used in logic but safe to parse)
-  var desatUnder90Cnt = n(f.get('desatUnder90')) || n(f.get('eventsUnder90'));
-
-  // Nasal signals
-  var rhinitisVal = (f.get('rhinitis')||'').toLowerCase();
-  var rhinitisSev = (rhinitisVal==='moderate' || rhinitisVal==='severe');
-  var nasalSeptum = (f.get('septum')==='Yes') || yes(f,'ctSeptum') || yes(f,'ctDeviatedSeptum') || yes(f,'ctDev');
-  var nasalTurbs  = yes(f,'ctTurbs') || yes(f,'ctTurbinateHypertrophy');
-
-  var ctxBase = {
-    bmi, neck, tons, mall, ahi, arInd, isi, ess,
-    csr, pahic3, pahic4, cvd,
-    remAhi, nremAhi, sup, nons,
-    odi, nadir, hbTotal, hbPerHr, areaU90,
-    nasalSeptum, nasalTurbs, rhinitisSev
+  const out = { phen:[], why:{}, recs:[] };
+  const add = (tag, reason) => {
+    if(!out.phen.includes(tag)){ out.phen.push(tag); out.why[tag] = reason.filter(Boolean); }
   };
 
-  /* -------- PALM traits -------- */
-  var anatHits = 0;
-  if (exists(bmi) && bmi>=30) anatHits++;
-  if (exists(neck) && neck>=17) anatHits++;
-  if (exists(tons) && +tons>=3) anatHits++;
-  if (mall==='III' || mall==='IV') anatHits++;
-  if (exists(ahi) && ahi>=30) anatHits++;
-  if (anatHits>=3){
-    add('High Anatomical Contribution', [
-      exists(bmi)?('BMI '+bmi):'',
-      exists(neck)?('Neck '+neck+' in'):'',
-      exists(tons)?('Tonsils '+tons):'',
-      mall?('Mallampati '+mall):'',
-      exists(ahi)?('AHI '+ahi):''
+  /* ─── INPUTS ────────────────────────────────────────────────── */
+  const bmi   = n(f.get('bmi'));
+  const neck  = n(f.get('neck'));
+  const tons  = n(f.get('tonsils'));
+  const mall  = f.get('ftp'); // Mallampati/Friedman Tongue Position
+
+  const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
+  const arInd = n(f.get('arInd'));
+  const isi   = n(f.get('isi'));
+  const ess   = n(f.get('ess'));
+
+  const csr     = n(f.get('csr'));                       // % Cheyne–Stokes Respiration (WatchPAT)
+  const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));// central pAHI (3% criterion)
+  const pahic4  = n(f.get('pahic4'));                    // central pAHI (4% criterion)  ← NEW
+  const cvd     = yes(f,'cvd');                          // CVD yes/no
+
+  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
+  const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
+
+  const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
+  let   nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
+  const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
+  if(nons===null) nons = 1; // default when blank
+
+  const odi   = n(f.get('odi'));
+  const nadir = Math.min( n(f.get('nadir'))??99 , n(f.get('nadirPsg'))??99 );
+
+  // WatchPAT Hypoxic Burden per hour (from the new report section)  ← NEW
+  const hbPH     = n(f.get('hbAreaPH'));      // "Desaturation area under SpO2 baseline" per hour
+  const hb90PH   = n(f.get('hbUnder90PH'));   // "Area under 90% SpO2" per hour
+
+  /* nasal signals */
+  const rhinitis = (f.get('rhinitis')||'').toLowerCase(); // none/mild/moderate/severe
+  const rhinitisSev = (rhinitis==='moderate' || rhinitis==='severe');
+  const nasalSeptum = (f.get('septum')==='Yes') || yes(f,'ctSeptum') || yes(f,'ctDeviatedSeptum') || yes(f,'ctDev');
+  const nasalTurbs  = yes(f,'ctTurbs') || yes(f,'ctTurbinateHypertrophy');
+
+  /* ─── SOFT-TISSUE SURGERY CANDIDACY (NEW) ─────────────────── */
+  const ftp = mall; // alias: Mallampati/Friedman Tongue Position (I–IV)
+  const softSxStrong =
+    (tons!==null && tons>=3) &&
+    (ftp==='I' || ftp==='II') &&
+    (exists(bmi) && bmi<=28);
+  const softSxConsider =
+    (tons!==null && tons>=3) && (
+      (ftp==='I' || ftp==='II') ? (!exists(bmi) || bmi<=32)
+                                : (exists(bmi) && bmi<=28)
+    );
+
+  /* pack context for confidence meters */
+  const ctxBase = {
+    bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd, remAhi, nremAhi, sup, nons, odi, nadir,
+    hbPH, hb90PH, nasalSeptum, nasalTurbs, rhinitisSev, pahic3, pahic4
+  };
+
+  /* ─── PALM TRAITS ───────────────────────────────────────────── */
+  if([bmi>=30, neck>=17, tons>=3, mall==='III'||mall==='IV', ahi>=30].filter(Boolean).length>=3){
+    add('High Anatomical Contribution',[
+      exists(bmi)?`BMI ${bmi}`:'',
+      exists(neck)?`Neck ${neck} in`:'',
+      exists(tons)?`Tonsils ${tons}`:'',
+      mall?`Mallampati ${mall}`:'',
+      exists(ahi)?`AHI ${ahi}`:''
     ]);
   }
 
-  if ((exists(isi) && isi>=15) || (exists(arInd) && exists(ahi) && (arInd/ahi)>1.3)){
-    add('Low Arousal Threshold', [
-      exists(isi)?('ISI '+isi):'',
-      (exists(arInd)&&exists(ahi))?('Arousal/AHI '+(arInd/ahi).toFixed(1)):''
-    ]);
+  /* (typo-guard block removed to avoid syntax error)
+  if( isi>=15 || (arInd && ahi && (arInd/ahiahi=>(arInd/ahi)>1.3)) ){
+    // typo guard
   }
+  */
 
-  if ((exists(csr) && csr>=10) || (exists(pahic3) && pahic3>=10) || (exists(pahic4) && pahic4>=10) || cvd){
-    add('High Loop Gain', [
-      exists(csr)?('CSR '+csr+'%'):'',
-      exists(pahic3)?('pAHIc 3% '+pahic3):'',
-      exists(pahic4)?('pAHIc 4% '+pahic4):'',
+  if( isi>=15 || (arInd && ahi && (arInd/ahi)>1.3) ){
+    add('Low Arousal Threshold',[`ISI ${exists(isi)?isi:'—'}`, (arInd&&ahi)?`Arousal/AHI ${(arInd/ahi).toFixed(1)}` : '']);
+  }
+  // High Loop Gain — now considers pAHIc 3% and 4% too  ← NEW
+  if( (csr && csr>=10) || (pahic3 && pahic3>=10) || (pahic4 && pahic4>=5) || cvd ){
+    add('High Loop Gain',[
+      csr?`CSR ${csr}%`:'',
+      exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
+      exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
       cvd?'Cardiovascular disease present':''
     ]);
   }
+  if( (ahi>=30) && remAhi && nremAhi && (remAhi/nremAhi)>2 ){
+    add('Poor Muscle Responsiveness',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `AHI ${ahi}`]);
+  }
 
-  if (exists(ahi) && ahi>=30 && exists(remAhi) && exists(nremAhi) && (remAhi/nremAhi)>2){
-    add('Poor Muscle Responsiveness', [
-      'REM/NREM '+(remAhi/nremAhi).toFixed(1),
-      'AHI '+ahi
+  /* ─── ADDITIONAL PHENOTYPES ───────────────────────────────── */
+  if( sup && nons && (sup/nons)>2 && nons<15 ){
+    add('Positional OSA',[`Sup/Non-sup ${(sup/nons).toFixed(1)}`, `Non-sup AHI ${nons}`]);
+  }
+  if( remAhi && nremAhi && (remAhi/nremAhi)>2 && nremAhi<15 ){
+    add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
+  }
+  // High Hypoxic Burden — prefers HB/hr metrics; falls back to nadir/ODI  ← NEW
+  if( (hbPH && hbPH>=5) || (hb90PH && hb90PH>0.5) || (exists(nadir) && nadir<85) || (odi && odi>=40) ){
+    add('High Hypoxic Burden',[
+      exists(hbPH)?`HB/hr ${hbPH}`:'',
+      exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
+      exists(odi)?`ODI4 ${odi}`:'',
+      exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
     ]);
   }
-
-  /* -------- additional phenotypes -------- */
-  if (exists(sup) && exists(nons) && (sup/nons)>2 && nons<15){
-    add('Positional OSA', [
-      'Sup/Non-sup '+(sup/nons).toFixed(1),
-      'Non-sup AHI '+nons
-    ]);
-  }
-  if (exists(remAhi) && exists(nremAhi) && (remAhi/nremAhi)>2 && nremAhi<15){
-    add('REM-Predominant OSA', [
-      'REM/NREM '+(remAhi/nremAhi).toFixed(1),
-      'NREM AHI '+nremAhi
-    ]);
-  }
-
-  var hbTriggers = [];
-  if (exists(hbPerHr) && hbPerHr>=5) hbTriggers.push('HB/hr '+hbPerHr);
-  if (exists(hbTotal) && hbTotal>=30) hbTriggers.push('HB total '+hbTotal);
-  if (exists(areaU90) && areaU90>0)   hbTriggers.push('Area under 90% '+areaU90);
-  if (exists(nadir) && nadir<85)      hbTriggers.push('Nadir SpO₂ '+nadir+'%');
-  if (exists(odi) && odi>=40)         hbTriggers.push('ODI4 '+odi);
-  if (hbTriggers.length){
-    add('High Hypoxic Burden', hbTriggers);
-  }
-
-  if (nasalSeptum || nasalTurbs || rhinitisSev){
-    add('Nasal-Resistance Contributor', [
+  if( nasalSeptum || nasalTurbs || rhinitisSev ){
+    add('Nasal-Resistance Contributor',[
       nasalSeptum?'Deviated septum':'',
       nasalTurbs?'Turbinate hypertrophy':'',
-      rhinitisSev?('Rhinitis '+(f.get('rhinitis')||'')):''
+      rhinitisSev?`Rhinitis ${f.get('rhinitis')}`:''
     ]);
   }
 
-  /* -------- treatment mapping -------- */
-  var recs = out.recs;
-  function mapPhen(p){
+  /* ─── TREATMENT MAPPING ───────────────────────────────────── */
+  const recs = out.recs;
+  out.phen.forEach(p=>{
     switch(p){
       case 'High Anatomical Contribution':
         pushRec(recs,'Start CPAP/APAP (most effective for anatomical narrowing).','CPAP');
-        if (exists(bmi) && bmi>=30) pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
+        if(bmi>=30) pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
         pushRec(recs,'If CPAP fails or not tolerated: mandibular-advancement device or site-directed surgery / Inspire®.','SURGALT');
         break;
       case 'Low Arousal Threshold':
@@ -273,29 +262,42 @@ window.runPhenotyper = function(ev){
       case 'Nasal-Resistance Contributor':
         pushRec(recs,'Septoplasty and/or turbinate reduction can improve airflow and CPAP/MAD tolerance.','NASAL-SURG');
         break;
-      default: break;
     }
-  }
-  for (var i=0;i<out.phen.length;i++) mapPhen(out.phen[i]);
+  });
 
-  // Force core trio
+  /* NEW: soft-tissue surgery recommendation (tonsils/FTP/BMI) */
+  if (softSxStrong) {
+    pushRec(
+      recs,
+      'Strongly consider tonsillectomy ± expansion pharyngoplasty (favorable anatomy: FTP I–II, tonsils 3–4, BMI ≤28).',
+      'SOFT-ESP-STRONG'
+    );
+  } else if (softSxConsider) {
+    pushRec(
+      recs,
+      'Consider tonsillectomy ± expansion pharyngoplasty (large tonsils with favorable FTP or low BMI).',
+      'SOFT-ESP'
+    );
+  }
+
+  /* Ensure the core trio is always present (deduped by tag) */
   pushRec(recs,'Start CPAP/APAP','CPAP');
   pushRec(recs,'Custom oral appliance (MAD)','MAD');
   pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
 
-  /* -------- symptom subtype -------- */
-  var subtype = 'Minimally-symptomatic';
-  if (exists(ess) && ess>=15) subtype = 'Sleepy';
-  else if (exists(isi) && isi>=15) subtype = 'Disturbed-sleep';
+  /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
+  let subtype='Minimally-symptomatic';
+  if(ess>=15) subtype='Sleepy';
+  else if(isi>=15) subtype='Disturbed-sleep';
 
-  var groupInfo = {
+  const groupInfo={
     'Sleepy': 'You feel very sleepy during the day. Treating OSA usually improves alertness, mood, and driving safety within weeks.',
     'Disturbed-sleep': 'Your sleep is broken or restless even if you are not very sleepy in the day. Treating the breathing problem and insomnia together works best.',
     'Minimally-symptomatic': 'You may not notice many symptoms, but repeated breathing pauses can strain the heart and brain over time.'
   };
 
-  /* -------- patient summary -------- */
-  var phenotypeExplain = {
+  /* ─── Build Patient-Friendly Summary ─────────────────────── */
+  const phenotypeExplain = {
     'High Anatomical Contribution':'Your airway is relatively narrow or crowded (weight, tongue/tonsils, palate shape).',
     'Low Arousal Threshold':'You wake up very easily; even small breathing changes can disrupt sleep.',
     'High Loop Gain':'Your breathing control system is extra sensitive and can “over-correct,” causing pauses.',
@@ -306,199 +308,194 @@ window.runPhenotyper = function(ev){
     'Nasal-Resistance Contributor':'Nasal blockage increases airflow resistance and can worsen snoring or CPAP comfort.'
   };
 
-  var phenListHTML = '';
-  for (var p=0;p<out.phen.length;p++){
-    var tag = out.phen[p];
-    var conf = confidenceFor(tag,{metrics: ctxBase});
-    var whyArr = out.why[tag] || [];
-    var whyHTML = (whyArr.length ? ('<details class="mt-1"><summary>Why this?</summary><small>'+ whyArr.join('; ') +'</small></details>') : '');
-    phenListHTML += '<li><strong>'+tag+'</strong> <span class="badge bg-secondary">'+conf+' confidence</span><br>'+ (phenotypeExplain[tag]||'') + whyHTML + '</li>';
-  }
+  const phenList = out.phen.map(tag=>{
+    const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
+    const why  = out.why[tag].filter(Boolean).length ? `<details class="mt-1"><summary>Why this?</summary><small>${out.why[tag].filter(Boolean).join('; ')}</small></details>` : '';
+    return `<li><strong>${tag}</strong> <span class="badge bg-secondary">${conf} confidence</span><br>${phenotypeExplain[tag]||''}${why}</li>`;
+  }).join('');
 
-  var borderlineNote = (subtype==='Minimally-symptomatic' && exists(ess) && ess>=12)
-    ? ('<p class="text-muted">Your Epworth score ('+ess+') is near the “sleepy” range; many people feel noticeably more alert after starting therapy.</p>')
-    : '';
+  const borderlineNote = (subtype==='Minimally-symptomatic' && exists(ess) && ess>=12) ?
+    `<p class="text-muted">Your Epworth score (${ess}) is near the “sleepy” range; many people feel noticeably more alert after starting therapy.</p>` : '';
 
-  var hasLowAr = out.phen.indexOf('Low Arousal Threshold')>-1;
-  var hasNasal = out.phen.indexOf('Nasal-Resistance Contributor')>-1;
-  var readiness = 'Ready to start now';
-  var readinessDetail = 'No major barriers predicted.';
-  if (hasLowAr || hasNasal){
+  const hasLowAr = out.phen.includes('Low Arousal Threshold');
+  const hasNasal = out.phen.includes('Nasal-Resistance Contributor');
+  let readiness = 'Ready to start now';
+  let readinessDetail = 'No major barriers predicted.';
+  if(hasLowAr || hasNasal){
     readiness = 'Optimize comfort first';
-    readinessDetail = (hasLowAr?'light, fragmented sleep (low arousal threshold)':'') +
-                      (hasLowAr && hasNasal?' + ':'') +
-                      (hasNasal?'nasal blockage':'') +
-                      '. Work on comfort/airflow to boost success.';
+    readinessDetail = [
+      hasLowAr?'light, fragmented sleep (low arousal threshold)':'',
+      hasNasal?'nasal blockage':''
+    ].filter(Boolean).join(' + ') + '. Work on comfort/airflow to boost success.';
   }
-  var readinessBadge =
-    '<span class="badge '+
-    (readiness==='Ready to start now'?'bg-success':'bg-warning text-dark')+
-    '">'+readiness+'</span>';
+  const readinessBadge = `<span class="badge ${readiness==='Ready to start now'?'bg-success':'bg-warning text-dark'}">${readiness}</span>`;
 
-  var checklist = [];
-  if (hasNasal) checklist.push('Daily saline rinse; consider intranasal steroid; ENT follow-up about septoplasty/turbinate reduction.');
-  if (hasLowAr){
+  const checklist = [];
+  if(hasNasal){
+    checklist.push('Daily saline rinse; consider intranasal steroid; ENT follow-up about septoplasty/turbinate reduction.');
+  }
+  if(hasLowAr){
     checklist.push('Start CBT-I or brief behavioral insomnia therapy; consistent sleep/wake schedule.');
     checklist.push('Mask desensitization: wear mask while reading/TV for 15–30 min/day before bed.');
   }
-  if (out.phen.indexOf('Positional OSA')>-1) checklist.push('Trial a positional therapy device or backpack/pillow solution for 2–4 weeks.');
-  if (out.phen.indexOf('High Hypoxic Burden')>-1) checklist.push('Prioritize timely start of effective therapy to protect the heart.');
-  if (exists(bmi) && bmi>=27) checklist.push('Begin weight-management plan; even ~10% weight loss can meaningfully reduce OSA severity.');
+  if(out.phen.includes('Positional OSA')){
+    checklist.push('Trial a positional therapy device or backpack/pillow solution for 2–4 weeks.');
+  }
+  if(out.phen.includes('High Hypoxic Burden')){
+    checklist.push('Prioritize timely start of effective therapy to protect the heart.');
+  }
+  if(bmi>=27){
+    checklist.push('Begin weight-management plan; even ~10% weight loss can meaningfully reduce OSA severity.');
+  }
   checklist.push('Avoid alcohol and sedatives near bedtime; aim for side-sleeping when possible.');
+  const checklistHTML = checklist.length ? `<ul>${checklist.map(i=>`<li>${i}</li>`).join('')}</ul>` : '';
 
-  var checklistHTML = '<ul>' + checklist.map(function(i){ return '<li>'+i+'</li>'; }).join('') + '</ul>';
+  const whatIfHTML = `
+    <ul>
+      <li><strong>Lose 10% body weight:</strong> OSA severity often drops meaningfully; anatomical contribution may lessen.</li>
+      <li><strong>Septoplasty/turbinate surgery:</strong> improves nasal airflow and CPAP/MAD comfort; rarely cures OSA alone.</li>
+      <li><strong>Use a side-sleeping device:</strong> positional OSA typically improves; verify on a follow-up study.</li>
+    </ul>`;
 
-  var whatIfHTML =
-    '<ul>' +
-      '<li><strong>Lose 10% body weight:</strong> OSA severity often drops meaningfully; anatomical contribution may lessen.</li>' +
-      '<li><strong>Septoplasty/turbinate surgery:</strong> improves nasal airflow and CPAP/MAD comfort; rarely cures OSA alone.</li>' +
-      '<li><strong>Use a side-sleeping device:</strong> positional OSA typically improves; verify on a follow-up study.</li>' +
-    '</ul>';
+  const posPlan = out.phen.includes('Positional OSA') ? `
+    <div class="mt-2">
+      <strong>Positional plan:</strong>
+      <ul>
+        <li>Use a vibratory trainer or backpack/pillow method nightly for 2–4 weeks.</li>
+        <li>Recheck response with a home sleep test or device report focusing on non-supine vs supine.</li>
+      </ul>
+    </div>` : '';
 
-  var posPlan = (out.phen.indexOf('Positional OSA')>-1)
-    ? ('<div class="mt-2"><strong>Positional plan:</strong><ul><li>Use a vibratory trainer or backpack/pillow method nightly for 2–4 weeks.</li><li>Recheck response with a home sleep test or device report focusing on non-supine vs supine.</li></ul></div>')
-    : '';
+  const nasalNote = out.phen.includes('Nasal-Resistance Contributor') ? `
+    <p class="mt-2"><em>Nasal surgery doesn’t usually cure OSA, but it can reduce snoring, improve sleep quality,
+    and make CPAP or oral appliances more comfortable.</em></p>` : '';
 
-  var nasalNote = (out.phen.indexOf('Nasal-Resistance Contributor')>-1)
-    ? ('<p class="mt-2"><em>Nasal surgery doesn’t usually cure OSA, but it can reduce snoring, improve sleep quality, and make CPAP or oral appliances more comfortable.</em></p>')
-    : '';
+  const posNudge = (!nonSupProvided && exists(sup)) ? `
+    <div class="alert alert-info mt-2">Positional result used a default non-supine AHI of 1 because none was entered. Please confirm on a future study.</div>` : '';
 
-  var posNudge = (!nonSupProvided && exists(sup))
-    ? ('<div class="alert alert-info mt-2">Positional result used a default non-supine AHI of 1 because none was entered. Please confirm on a future study.</div>')
-    : '';
+  let pHTML = `
+    <div class="d-flex justify-content-between align-items-center">
+      <h2 class="h4 mb-2">Patient-Friendly Summary</h2>
+      <button class="btn btn-outline-primary btn-sm no-print" id="btnPrintHandout">Print handout</button>
+    </div>
+    <p>You are in the <strong>${subtype}</strong> group. <br><em>${groupInfo[subtype]}</em></p>
+    ${borderlineNote}
+    <p><strong>CPAP readiness:</strong> ${readinessBadge} <small class="text-muted"> ${readinessDetail}</small></p>
+    ${out.phen.length ? `<h5 class="mt-3">Main contributing factors</h5><ul>${phenList}</ul>` : ''}
+    ${nasalNote}
+    ${posPlan}
+    <h5 class="mt-3">Recommended next steps</h5>
+    <ul>${recs.slice(0,8).map(r=>`<li>${r}</li>`).join('')}</ul>
+    <h5 class="mt-3">Your first 30 days</h5>
+    ${checklistHTML}
+    <h5 class="mt-3">What if…?</h5>
+    ${whatIfHTML}
+    ${posNudge}
+  `;
 
-  var pHTML =
-    '<div class="d-flex justify-content-between align-items-center">' +
-      '<h2 class="h4 mb-2">Patient-Friendly Summary</h2>' +
-      '<button class="btn btn-outline-primary btn-sm no-print" id="btnPrintHandout">Print handout</button>' +
-    '</div>' +
-    '<p>You are in the <strong>'+subtype+'</strong> group. <br><em>'+groupInfo[subtype]+'</em></p>' +
-    borderlineNote +
-    '<p><strong>CPAP readiness:</strong> '+readinessBadge+' <small class="text-muted"> '+readinessDetail+'</small></p>' +
-    (out.phen.length ? ('<h5 class="mt-3">Main contributing factors</h5><ul>'+phenListHTML+'</ul>') : '') +
-    nasalNote +
-    posPlan +
-    '<h5 class="mt-3">Recommended next steps</h5>' +
-    '<ul>'+ out.recs.slice(0,8).map(function(r){ return '<li>'+r+'</li>'; }).join('') +'</ul>' +
-    '<h5 class="mt-3">Your first 30 days</h5>' +
-    checklistHTML +
-    '<h5 class="mt-3">What if…?</h5>' +
-    whatIfHTML +
-    posNudge;
+  /* ─── Clinician Decision Support ──────────────────────────── */
 
-  /* -------- clinician decision support -------- */
-  var confTable = '';
-  for (var c=0;c<out.phen.length;c++){
-    var t = out.phen[c];
-    var conf = confidenceFor(t,{metrics: ctxBase});
-    confTable += '<tr><td>'+t+'</td><td>'+conf+'</td><td><small>'+(out.why[t]||[]).join(', ')||'—'+'</small></td></tr>';
+  const confTable = out.phen.map(tag=>{
+    const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
+    return `<tr><td>${tag}</td><td>${conf}</td><td><small>${out.why[tag].filter(Boolean).join(', ')||'—'}</small></td></tr>`;
+  }).join('');
+
+  const guardrails = [];
+  if(out.phen.includes('High Loop Gain')){
+    guardrails.push('If considering ASV, confirm LVEF > 45% (contraindicated in HFrEF ≤45%).');
+  }
+  if(out.phen.includes('High Hypoxic Burden')){
+    guardrails.push('Prioritize timely initiation of effective therapy due to CV-risk association with hypoxic burden.');
   }
 
-  var guardrails = [];
-  if (out.phen.indexOf('High Loop Gain')>-1) guardrails.push('If considering ASV, confirm LVEF > 45% (contraindicated in HFrEF ≤45%).');
-  if (out.phen.indexOf('High Hypoxic Burden')>-1) guardrails.push('Prioritize timely initiation of effective therapy due to CV-risk association with hypoxic burden.');
+  const surgTargets = [];
+  if(nasalSeptum || nasalTurbs) surgTargets.push('Nasal: septum/turbinates');
+  const hasDISE = Array.from(f.keys()).some(k=>/^vote|^dise/i.test(k));
+  if(hasDISE) surgTargets.push('DISE/VOTE: see entered levels/patterns');
 
-  var supRatio = (exists(sup) && exists(nons)) ? (sup/nons).toFixed(1) : '—';
-  var coreNums  = 'AHI: ' + (exists(ahi)?ahi:'—') +
-                  ' | REM AHI: ' + (exists(remAhi)?remAhi:'—') +
-                  ' | NREM AHI: ' + (exists(nremAhi)?nremAhi:'—') +
-                  ' | Sup/Non-sup: ' + supRatio +
-                  ' | Nadir SpO₂: ' + (exists(nadir)?(nadir+'%'):'—');
-  var phenStr   = out.phen.join(', ') || '—';
-  var nasalStr  = (out.phen.indexOf('Nasal-Resistance Contributor')>-1) ? 'Nasal obstruction present (septum/turbinates/rhinitis).' : '—';
+  /* NEW: add soft-tissue target when candidacy present */
+  if (softSxStrong || softSxConsider) surgTargets.push('Oropharynx: tonsillectomy ± expansion pharyngoplasty');
 
-  var noteDentist = 'Reason for referral: mandibular advancement device (MAD) evaluation.\nSummary: '+coreNums+'\nPhenotypes: '+phenStr+'\nNotes: Consider REM-predominant/positional involvement if listed. Coordinate titration and follow-up HSAT/PSG.';
-  var noteENT     = 'Reason for referral: nasal/airway surgery evaluation.\nSummary: '+coreNums+'\nPhenotypes: '+phenStr+'\nNasal: '+nasalStr+'\nNotes: Septum/turbinates may improve airflow and PAP/MAD tolerance; assess palate/pharyngeal collapse per DISE if available.';
-  var noteCards   = 'Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: '+coreNums+'\nPhenotypes: '+phenStr+'\nNotes: If High Loop Gain persists with TECSA, consider O₂/acetazolamide; ASV only if LVEF > 45%.';
+  if(out.phen.includes('High Anatomical Contribution') && !surgTargets.length) surgTargets.push('Pharyngeal levels per exam/DISE as indicated');
 
-  var followUps = [];
-  if (hasLowAr) followUps.push('CPAP comfort review in 2–4 weeks; CBT-I progress.');
-  if (out.phen.indexOf('Positional OSA')>-1) followUps.push('Reassess after 2–4 weeks of positional therapy with HSAT/WatchPAT.');
-  if (out.phen.indexOf('Nasal-Resistance Contributor')>-1) followUps.push('Post-septoplasty/turbinate check and repeat sleep testing as needed.');
+  const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>` : '';
+
+  const supRatio = (sup && nons) ? (sup/nons).toFixed(1) : '—';
+  const coreNums  = [
+    `AHI: ${exists(ahi)?ahi:'—'}`,
+    `REM AHI: ${exists(remAhi)?remAhi:'—'}`,
+    `NREM AHI: ${exists(nremAhi)?nremAhi:'—'}`,
+    `Sup/Non-sup: ${supRatio}`,
+    `Nadir SpO₂: ${exists(nadir)?nadir+'%':'—'}`,
+    `HB/hr: ${exists(hbPH)?hbPH:'—'}`,
+    `Area<90/hr: ${exists(hb90PH)?hb90PH:'—'}`
+  ].join(' | ');
+  const phenStr   = out.phen.join(', ') || '—';
+  const nasalStr  = out.phen.includes('Nasal-Resistance Contributor') ? 'Nasal obstruction present (septum/turbinates/rhinitis).' : '—';
+
+  const noteDentist = `Reason for referral: mandibular advancement device (MAD) evaluation.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: Consider REM-predominant/positional involvement if listed. Coordinate titration and follow-up HSAT/PSG.`;
+  const noteENT     = `Reason for referral: nasal/airway surgery evaluation.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNasal: ${nasalStr}\nNotes: Septum/turbinates may improve airflow and PAP/MAD tolerance; assess palate/pharyngeal collapse per DISE if available.`;
+  const noteCards   = `Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: If High Loop Gain persists with TECSA, consider O₂/acetazolamide; ASV only if LVEF > 45%.`;
+
+  const followUps = [];
+  if(hasLowAr) followUps.push('CPAP comfort review in 2–4 weeks; CBT-I progress.');
+  if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2–4 weeks of positional therapy with HSAT/WatchPAT.');
+  if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Post-septoplasty/turbinate check and repeat sleep testing as needed.');
   followUps.push('Therapy effectiveness check (adherence, residual AHI/ODI, symptoms) at 4–8 weeks.');
 
-  var cHTML =
-    '<h2 class="h4">Clinician Decision Support</h2>' +
-    '<p><strong>Subtype:</strong> '+subtype+' (ESS '+(exists(ess)?ess:'—')+', ISI '+(exists(isi)?isi:'—')+')</p>' +
-    '<p><strong>Key numbers:</strong> '+coreNums+'</p>' +
-    (out.phen.length ?
-      ('<div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Phenotype</th><th>Confidence</th><th>Triggers</th></tr></thead><tbody>'+confTable+'</tbody></table></div>') : ''
-    ) +
-    '<p><strong>Ranked treatment plan</strong></p>' +
-    '<ol>'+recs.map(function(r){ return '<li>'+r+'</li>'; }).join('') +'</ol>' +
-    (guardrails.length?('<div class="alert alert-warning mt-2"><strong>Guardrails:</strong> <ul>'+guardrails.map(function(g){return '<li>'+g+'</li>';}).join('')+'</ul></div>'):'') +
-    ( (nasalSeptum||nasalTurbs) ? '<p><strong>Surgical targets (if pursuing intervention):</strong> Nasal: septum/turbinates.</p>' : '' ) +
-    '<h5 class="mt-3">Referral notes</h5>' +
-    '<div class="row g-2">' +
-      '<div class="col-md-4"><button class="btn btn-outline-secondary btn-sm w-100 no-print" data-copy="dentist">Copy Dentist (MAD)</button></div>' +
-      '<div class="col-md-4"><button class="btn btn-outline-secondary btn-sm w-100 no-print" data-copy="ent">Copy ENT</button></div>' +
-      '<div class="col-md-4"><button class="btn btn-outline-secondary btn-sm w-100 no-print" data-copy="cards">Copy Cardiology</button></div>' +
-    '</div>' +
-    '<textarea id="refNoteBuffer" class="form-control mt-2 no-print" rows="6" placeholder="Referral note will appear here when you click one of the buttons." readonly></textarea>' +
-    '<h5 class="mt-3">Follow-up</h5>' +
-    '<ul>'+followUps.map(function(x){ return '<li>'+x+'</li>'; }).join('') +'</ul>';
+  let cHTML = `
+    <h2 class="h4">Clinician Decision Support</h2>
+    <p><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'—'}, ISI ${exists(isi)?isi:'—'})</p>
+    <p><strong>Key numbers:</strong> ${coreNums}</p>
+    ${out.phen.length ? `
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Phenotype</th><th>Confidence</th><th>Triggers</th></tr></thead>
+          <tbody>${confTable}</tbody>
+        </table>
+      </div>` : ''
+    }
+    <p><strong>Ranked treatment plan</strong></p>
+    <ol>${recs.map(r=>`<li>${r}</li>`).join('')}</ol>
+    ${guardrails.length?`<div class="alert alert-warning mt-2"><strong>Guardrails:</strong> <ul>${guardrails.map(g=>`<li>${g}</li>`).join('')}</ul></div>`:''}
+    ${surgHelper}
+    <h5 class="mt-3">Referral notes</h5>
+    <div class="row g-2">
+      <div class="col-md-4"><button class="btn btn-outline-secondary btn-sm w-100 no-print" data-copy="dentist">Copy Dentist (MAD)</button></div>
+      <div class="col-md-4"><button class="btn btn-outline-secondary btn-sm w-100 no-print" data-copy="ent">Copy ENT</button></div>
+      <div class="col-md-4"><button class="btn btn-outline-secondary btn-sm w-100 no-print" data-copy="cards">Copy Cardiology</button></div>
+    </div>
+    <textarea id="refNoteBuffer" class="form-control mt-2 no-print" rows="6" placeholder="Referral note will appear here when you click one of the buttons." readonly></textarea>
+    <h5 class="mt-3">Follow-up</h5>
+    <ul>${followUps.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
 
+  /* Render */
   document.getElementById('patientSummary').innerHTML = pHTML;
   document.getElementById('clinicianReport').innerHTML = cHTML;
 
-  // Print button
-  var btnPrint = document.getElementById('btnPrintHandout');
-  if (btnPrint){ btnPrint.addEventListener('click', function(){ window.print(); }); }
+  /* Wire print button */
+  const btnPrint = document.getElementById('btnPrintHandout');
+  if(btnPrint) btnPrint.addEventListener('click', ()=> window.print());
 
-  // Referral copiers
-  var buffer = document.getElementById('refNoteBuffer');
-  var btns = document.querySelectorAll('[data-copy]');
-  for (var b=0;b<btns.length;b++){
-    (function(btn){
-      btn.addEventListener('click', function(){
-        var kind = btn.getAttribute('data-copy');
-        var txt = (kind==='dentist') ? noteDentist : (kind==='ent') ? noteENT : noteCards;
-        buffer.value = txt;
-        if (navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(txt).catch(function(){ /* ignore */ });
-        } else {
-          buffer.select();
-          try { document.execCommand('copy'); } catch(e){}
-        }
-        var original = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(function(){ btn.textContent = original; }, 1200);
-      });
-    })(btns[b]);
-  }
-
-  // Smooth scroll
-  var target = document.getElementById('patientSummary');
-  if (target && target.offsetTop){
-    window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
-  }
-};
-
-/* =================================================================== */
-/* ====================  SAFE FORM WIRING ON LOAD  =================== */
-/* =================================================================== */
-(function wireSubmit(){
-  function init(){
-    var form = document.getElementById('form');
-    if (!form){
-      console.error('[Phenotyper] #form not found. Check index.html id.');
-      return;
-    }
-    if (form.__phenotyperWired) return;
-    form.__phenotyperWired = true;
-    form.addEventListener('submit', function(e){
-      e.preventDefault();
-      try { window.runPhenotyper(e); }
-      catch(err){
-        console.error('[Phenotyper] submit failed:', err);
-        alert('Oops—something went wrong. See console for details.');
-      }
+  /* Referral note copier */
+  const buffer = document.getElementById('refNoteBuffer');
+  document.querySelectorAll('[data-copy]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const kind = btn.getAttribute('data-copy');
+      let txt = '';
+      if(kind==='dentist') txt = noteDentist;
+      if(kind==='ent')     txt = noteENT;
+      if(kind==='cards')   txt = noteCards;
+      buffer.value = txt;
+      buffer.select(); buffer.setSelectionRange(0, 99999);
+      try { document.execCommand('copy'); } catch(e){}
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(()=>btn.textContent = orig, 1200);
     });
-    console.log('[Phenotyper] submit handler wired');
-  }
-  if (document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
+  });
+
+  /* Smooth scroll to patient section */
+  window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth' });
+});
