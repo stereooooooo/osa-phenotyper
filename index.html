@@ -12,19 +12,32 @@
   .card { border-radius: 16px; }
   .section-title{ font-weight:600; color:#334155; }
   .kv { font-variant-numeric: tabular-nums; }
-  @media print {
-    body * { visibility: hidden !important; }
-    #patientSummary, #patientSummary * { visibility: visible !important; }
-    #patientSummary { position: absolute; inset: 0; padding: 1rem; }
-    .no-print { display:none !important; }
-  }
+@media print {
+  body * { visibility: hidden !important; }
+
+  body.print-patient #patientSummary,
+  body.print-patient #patientSummary * { visibility: visible !important; }
+  body.print-patient #patientSummary { position: absolute; inset: 0; padding: 1rem; }
+
+  body.print-clinician #patientSummary,
+  body.print-clinician #clinician,
+  body.print-clinician #patientSummary *,
+  body.print-clinician #clinician * { visibility: visible !important; }
+  body.print-clinician #patientSummary { position: absolute; top: 0; left: 0; right: 0; padding: 1rem; }
+  body.print-clinician #clinician { position: absolute; left: 0; right: 0; top: 55%; padding: 1rem; }
+
+  .no-print { display: none !important; }
+}
 </style>
 </head>
 <body>
   <header class="navbar navbar-expand-lg sticky-top shadow-sm" style="background:#354A5F;">
     <div class="container-fluid">
       <span class="navbar-brand text-white fw-semibold">OSA Phenotyper – MVP</span>
-      <button class="btn btn-outline-light btn-sm no-print" id="btnPrint">Print handout</button>
+      <div class="d-flex gap-2 no-print">
+        <button class="btn btn-outline-light btn-sm" id="btnPrintPatient">Print patient</button>
+        <button class="btn btn-outline-light btn-sm" id="btnPrintClinician">Print clinician</button>
+      </div>
     </div>
   </header>
 
@@ -89,6 +102,7 @@
 
       <div class="col-12 text-center">
         <button class="btn btn-primary px-5" type="submit"><i class="bi bi-bar-chart"></i> Generate</button>
+        <button class="btn btn-outline-secondary ms-2" type="button" id="btnReset"><i class="bi bi-person-plus"></i> New patient</button>
       </div>
     </form>
 
@@ -132,8 +146,8 @@
         }
         case 'High Hypoxic Burden':{
           const hb=m.hbPH||0, hb90=m.hb90PH||0, odi=m.odi||0, nadir=(m.nadir??100);
-          if(hb>=8 || hb90>2 || nadir<80 || odi>=60) return 'High';
-          if(hb>=5 || hb90>0.5 || nadir<85 || odi>=40) return 'Moderate';
+          if(hb>=100 || hb90>5 || nadir<80 || odi>=60) return 'High';
+          if(hb>=30  || hb90>2 || (nadir<85 && nadir>=80) || (odi>=40 && odi<60)) return 'Moderate';
           return 'Low';
         }
         case 'Nasal-Resistance Contributor':{
@@ -167,7 +181,7 @@
       if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd) add('High Loop Gain', []);
       if((m.sup && m.nons) && ((m.sup/m.nons)>2) && (m.nons<15)) add('Positional OSA', []);
       if((m.rem && m.nrem) && ((m.rem/m.nrem)>2) && (m.nrem<15)) add('REM-Predominant OSA', []);
-      if(((m.hbPH||0)>=5) || ((m.hb90PH||0)>0.5) || ((m.nadir??100)<85) || ((m.odi||0)>=40)) add('High Hypoxic Burden', []);
+      if(((m.hbPH||0)>=30) || ((m.hb90PH||0)>2) || ((m.nadir??100)<85) || ((m.odi||0)>=40)) add('High Hypoxic Burden', []);
       if(m.nasal && m.nasal!=='None') add('Nasal-Resistance Contributor', []);
 
       // Symptom subtype
@@ -188,6 +202,10 @@
       if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
       if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat nasal obstruction (saline/steroid); consider septoplasty/turbinate reduction.');
 
+      // High HB urgent banner
+      const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) > 5) || ((m.nadir??100) < 80) || ((m.odi||0) >= 60);
+      if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — oxygen drops increase cardiovascular risk.');
+
       const top3 = rec.slice(0,3);
 
       // Patient summary
@@ -202,8 +220,16 @@
       };
 
       const phenList = phen.map(p=>`<li><strong>${p.tag}</strong> <span class="badge badge-soft">${p.conf} confidence</span><br><small>${explain[p.tag]||''}</small></li>`).join('');
+
+      const sev = (ahi)=>{
+        if(ahi==null) return '—';
+        if(ahi<5)  return 'None';
+        if(ahi<15) return 'Mild';
+        if(ahi<30) return 'Moderate';
+        return 'Severe';
+      };
       const core = [
-        `AHI: <span class=kv>${exists(m.ahi)?m.ahi:'—'}</span>`,
+        `AHI: <span class=kv>${exists(m.ahi)?m.ahi:'—'}</span> (<strong>${sev(m.ahi)} OSA</strong>)`,
         `REM: <span class=kv>${exists(m.rem)?m.rem:'—'}</span>`,
         `NREM: <span class=kv>${exists(m.nrem)?m.nrem:'—'}</span>`,
         `Sup/Non‑sup: <span class=kv>${(m.sup&&m.nons)?(m.sup/m.nons).toFixed(1):'—'}</span>`,
@@ -242,8 +268,20 @@
     }
 
     document.getElementById('form').addEventListener('submit', onSubmit);
-    document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+
+    // Dual print buttons
+    const printWithMode = (mode)=>{ document.body.classList.add(mode); window.print(); setTimeout(()=>{ document.body.classList.remove(mode); }, 100); };
+    document.getElementById('btnPrintPatient').addEventListener('click', ()=>printWithMode('print-patient'));
+    document.getElementById('btnPrintClinician').addEventListener('click', ()=>printWithMode('print-clinician'));
+    // New patient reset button
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  document.getElementById('form').reset();
+  document.getElementById('patientSummary').innerHTML = '';
+  document.getElementById('clinician').innerHTML = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
   </script>
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
