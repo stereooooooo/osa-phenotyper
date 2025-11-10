@@ -145,9 +145,9 @@
           return 'Low';
         }
         case 'High Hypoxic Burden':{
-          const hb=m.hbPH||0, hb90=m.hb90PH||0, odi=m.odi||0, nadir=(m.nadir??100);
-          if(hb>=100 || hb90>5 || nadir<80 || odi>=60) return 'High';
-          if(hb>=30  || hb90>2 || (nadir<85 && nadir>=80) || (odi>=40 && odi<60)) return 'Moderate';
+          const hb = m.hbPH || 0, hb90 = m.hb90PH || 0, odi = m.odi || 0, nadir = (m.nadir ?? 100);
+          if (hb >= 60 || hb90 >= 3 || odi >= 50 || nadir < 80) return 'High';
+          if (hb >= 30 || hb90 >= 1.5 || (nadir < 85 && nadir >= 80) || (odi >= 30 && odi < 50)) return 'Moderate';
           return 'Low';
         }
         case 'Nasal-Resistance Contributor':{
@@ -202,9 +202,14 @@
       if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
       if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat nasal obstruction (saline/steroid); consider septoplasty/turbinate reduction.');
 
-      // High HB urgent banner
-      const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) > 5) || ((m.nadir??100) < 80) || ((m.odi||0) >= 60);
-      if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — oxygen drops increase cardiovascular risk.');
+      // High HB urgent banner (very high burden or severe desaturation)
+      const highHBAlert =
+        ((m.hbPH || 0) >= 100) ||
+        ((m.hb90PH || 0) >= 5) ||
+        ((m.nadir ?? 100) < 80);
+      
+      if (highHBAlert)
+        rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
 
       const top3 = rec.slice(0,3);
 
