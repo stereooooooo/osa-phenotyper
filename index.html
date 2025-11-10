@@ -1,122 +1,250 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSA Phenotyper • Capital&nbsp;ENT</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-<link href="css/styles.css" rel="stylesheet">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OSA Phenotyper • MVP</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+<style>
+  body { background:#f6f7fb; }
+  .badge-soft { background:#eef2f7; color:#334155; }
+  .card { border-radius: 16px; }
+  .section-title{ font-weight:600; color:#334155; }
+  .kv { font-variant-numeric: tabular-nums; }
+  @media print {
+    body * { visibility: hidden !important; }
+    #patientSummary, #patientSummary * { visibility: visible !important; }
+    #patientSummary { position: absolute; inset: 0; padding: 1rem; }
+    .no-print { display:none !important; }
+  }
+</style>
 </head>
-<body class="bg-light">
+<body>
+  <header class="navbar navbar-expand-lg sticky-top shadow-sm" style="background:#354A5F;">
+    <div class="container-fluid">
+      <span class="navbar-brand text-white fw-semibold">OSA Phenotyper – MVP</span>
+      <button class="btn btn-outline-light btn-sm no-print" id="btnPrint">Print handout</button>
+    </div>
+  </header>
 
-<header class="navbar navbar-expand-lg sticky-top shadow-sm" style="background:#354A5F;">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#"><img src="capentlogo.svg" alt="Capital ENT logo" style="height:45px;"></a>
-  </div>
-</header>
+  <main class="container my-4">
+    <p class="text-muted">Minimal inputs → fast phenotype + top‑3 treatment guidance. You can expand later.</p>
 
-<main class="container my-4">
-<form id="form">
-<!-- ===== Demographics & PE ===== -->
-<div class="row g-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-person-badge"></i> Demographics</div>
-      <div class="card-body row g-3">
-        <div class="col-6"><label class="form-label">Age</label><input type="number" name="age" class="form-control"></div>
-        <div class="col-6"><label class="form-label">Sex</label><select name="sex" class="form-select"><option>M</option><option>F</option></select></div>
-        <div class="col-6"><label class="form-label">BMI</label><input type="number" step="0.1" name="bmi" class="form-control"></div>
-        <div class="col-6"><label class="form-label">Neck Circ (in)</label><input type="number" step="0.1" name="neck" class="form-control"></div>
+    <form id="form" class="row g-4">
+      <!-- LEFT: Questionnaires + Exam -->
+      <div class="col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-header bg-secondary text-white"><i class="bi bi-question-circle"></i> Questionnaires</div>
+          <div class="card-body row g-3">
+            <div class="col-6">
+              <label class="form-label">Epworth (ESS)</label>
+              <input type="number" class="form-control" name="ess" min="0" max="24" />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Insomnia Severity (ISI)</label>
+              <input type="number" class="form-control" name="isi" min="0" max="28" />
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="cvd" name="cvd" />
+                <label class="form-check-label" for="cvd">Cardiovascular disease (HTN/CAD/HF/AF)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+          <div class="card-header bg-secondary text-white"><i class="bi bi-clipboard-pulse"></i> Physical Exam</div>
+          <div class="card-body row g-3">
+            <div class="col-6"><label class="form-label">BMI</label><input type="number" step="0.1" class="form-control" name="bmi" /></div>
+            <div class="col-6"><label class="form-label">Neck (in)</label><input type="number" step="0.1" class="form-control" name="neck" /></div>
+            <div class="col-4"><label class="form-label">Tonsils</label><select class="form-select" name="tonsils"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+            <div class="col-4"><label class="form-label">FTP</label><select class="form-select" name="ftp"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+            <div class="col-4"><label class="form-label">Nasal Obs.</label><select class="form-select" name="nasal"><option>None</option><option>Septum</option><option>Turbinates</option><option>Rhinitis</option><option>≥2 issues</option></select></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-activity"></i> Medical / History</div>
-      <div class="card-body">
-        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="cvd" id="cvd"><label class="form-check-label" for="cvd">Cardiovascular disease (HTN / CAD / HF / AF)</label></div>
+
+      <!-- RIGHT: Sleep Study -->
+      <div class="col-lg-7">
+        <div class="card shadow-sm">
+          <div class="card-header bg-secondary text-white"><i class="bi bi-activity"></i> Sleep Study (WatchPAT or PSG)</div>
+          <div class="card-body row g-3">
+            <div class="col-4"><label class="form-label">AHI overall</label><input type="number" step="0.1" name="ahi" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">AHI supine</label><input type="number" step="0.1" name="ahiSup" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">AHI non‑supine</label><input type="number" step="0.1" name="ahiNonSup" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">HB / hr</label><input type="number" step="0.1" name="hbPH" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">Area &lt; 90% / hr</label><input type="number" step="0.1" name="hb90PH" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">% CSR</label><input type="number" step="0.1" name="csr" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">pAHIc 3%</label><input type="number" step="0.1" name="pahic3" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">pAHIc 4%</label><input type="number" step="0.1" name="pahic4" class="form-control" /></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
-<div class="card shadow-sm mt-4">
-  <div class="card-header bg-secondary text-white"><i class="bi bi-clipboard-pulse"></i> Physical Exam</div>
-  <div class="card-body row g-3">
-    <div class="col-md-2"><label class="form-label">Deviated Septum</label><select name="septum" class="form-select"><option>None</option><option>Yes</option></select></div>
-    <div class="col-md-2"><label class="form-label">Turbinates</label><select name="turbinates" class="form-select"><option>None</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></div>
-    <div class="col-md-2"><label class="form-label">Rhinitis</label><select name="rhinitis" class="form-select"><option>None</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></div>
-    <div class="col-md-2"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-    <div class="col-md-2"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
-  </div>
-</div>
-
-<!-- ===== Imaging & DISE ===== -->
-<div class="card shadow-sm mt-4">
-  <div class="card-header bg-secondary text-white"><i class="bi bi-images"></i> Imaging & Endoscopy</div>
-  <div class="card-body">
-    <div class="mb-2">CT Sinus (select all):</div>
-    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctDev" name="ctDev"><label class="form-check-label" for="ctDev">Deviated Septum</label></div>
-    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctTurbs" name="ctTurbs"><label class="form-check-label" for="ctTurbs">Turbinates Hypertrophy</label></div>
-    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctSin" name="ctSin"><label class="form-check-label" for="ctSin">Sinusitis</label></div>
-    <hr>
-    <h6>DISE – VOTE Classification</h6>
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Site</th><th style="width:110px;">Degree</th><th style="width:150px;">Pattern</th></tr></thead><tbody>
-        <tr><td>Velum</td><td><select class="form-select form-select-sm" name="vDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="vPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Oropharynx</td><td><select class="form-select form-select-sm" name="oDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="oPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Tongue Base</td><td><select class="form-select form-select-sm" name="tDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="tPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Epiglottis</td><td><select class="form-select form-select-sm" name="eDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="ePat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
-        </tbody></table>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Questionnaires ===== -->
-<div class="row g-4 mt-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-question-circle"></i> Questionnaires</div>
-      <div class="card-body row g-3">
-        <div class="col-6"><label class="form-label">ESS</label><input type="number" name="ess" class="form-control"></div>
-        <div class="col-6"><label class="form-label">ISI</label><input type="number" name="isi" class="form-control"></div>
+      <div class="col-12 text-center">
+        <button class="btn btn-primary px-5" type="submit"><i class="bi bi-bar-chart"></i> Generate</button>
       </div>
-    </div>
-  </div>
-</div>
-  
-<!-- ===== Sleep Studies ===== -->
-<div class="row g-4 mt-4">
-  <div class="col-12 col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-watch"></i> WatchPAT Metrics</div>
-      <div class="card-body row g-3">
-        <div class="col-6 col-md-4"><label class="form-label">pAHI (overall)</label><input type="number" step="0.1" name="pahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Supine pAHI</label><input type="number" step="0.1" name="supPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Non-Supine pAHI</label><input type="number" step="0.1" name="nonSupPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHI REM</label><input type="number" step="0.1" name="remPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHI NREM</label><input type="number" step="0.1" name="nremPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">PAT RDI</label><input type="number" step="0.1" name="patRdi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">% CSR</label> <input type="number" step="0.1" name="csr" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHIc 3 %</label>  <input type="number" step="0.1" name="pahic" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHIc 4 %</label><input type="number" step="0.1" name="pahic4" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">TST (hrs)</label><input type="number" step="0.1" name="tst" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Snoring Index</label><input type="number" step="0.1" name="snoreIdx" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Hypoxic Burden (per hr)</label><input type="number" step="0.1" name="hbAreaPH" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Area < 90% (per hr)</label><input type="number" step="0.1" name="hbUnder90PH" class="form-control"></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-hospital"></i> Lab PSG Metrics</div>
-      <div class="card-body row g-3">
-        <div class="col-6 col-md-4"><label class="form-label">AHI (overall)</label><input type="number" step="0.1" name="ahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI Supine</label><input type="number" step="0.1" name="ahiSup" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI Non‑Supine</label><input type="number" step="0.1" name="ahiNonSup" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">CAI</label><input type="number" step="0.1" name="cai" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Arousal Index</label><input type="number" step="0.1" name="arInd" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Nadir SpO₂ (%)</label><input type="number" step="0.1" name="nadirPsg" class="form-control"></div>
-      </div>
-    </div>
-  </div>
-</div>
+    </form>
 
-<div class="text-center mt-4">
-  <button type="submit" class="btn btn-primary px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
-</div>
+    <hr class="my-4" />
 
-</form>
+    <div id="patientSummary"></div>
+    <div id="clinician"></div>
+  </main>
 
-<hr class="my-5">
-<div id="patientSummary"></div>
-<div id="clinicianReport" class="mt-4"></div>
-</main>
+  <script>
+    const n = v => (v===null||v===undefined||v===''?null:+v);
+    function exists(v){ return v!==null && v!==undefined && v!==''; }
 
-<footer class="py-3 text-center small bg-light">Capital ENT & Sinus Center © 2025</footer>
+    function conf(tag, m){
+      switch(tag){
+        case 'High Anatomical Contribution':{
+          const strong = ((m.bmi||0)>=30) + ((m.neck||0)>=17) + ((m.tons||0)>=3) + (['III','IV'].includes(m.ftp)?1:0) + ((m.ahi||0)>=30);
+          return strong>=4?'High':strong>=2?'Moderate':'Low';
+        }
+        case 'Low Arousal Threshold':{
+          const ar = (m.isi||0);
+          const arRatio = (m.arInd && m.ahi)?(m.arInd/m.ahi):0;
+          if(ar>=15 || arRatio>1.3) return (ar>=22||arRatio>=1.8)?'High':'Moderate';
+          return 'Low';
+        }
+        case 'High Loop Gain':{
+          if((m.csr||0)>=10 || (m.pahic3||0)>=10 || (m.pahic4||0)>=5 || m.cvd) return 'Moderate';
+          return 'Low';
+        }
+        case 'Positional OSA':{
+          const pr = (m.sup && m.nons)?(m.sup/m.nons):0;
+          if(pr>=3 && (m.nons||0)<10) return 'High';
+          if(pr>=2 && (m.nons||0)<15) return 'Moderate';
+          return 'Low';
+        }
+        case 'REM-Predominant OSA':{
+          const rr = (m.rem && m.nrem)?(m.rem/m.nrem):0;
+          if(rr>=3 && (m.nrem||0)<10) return 'High';
+          if(rr>=2 && (m.nrem||0)<15) return 'Moderate';
+          return 'Low';
+        }
+        case 'High Hypoxic Burden':{
+          const hb=m.hbPH||0, hb90=m.hb90PH||0, odi=m.odi||0, nadir=(m.nadir??100);
+          if(hb>=8 || hb90>2 || nadir<80 || odi>=60) return 'High';
+          if(hb>=5 || hb90>0.5 || nadir<85 || odi>=40) return 'Moderate';
+          return 'Low';
+        }
+        case 'Nasal-Resistance Contributor':{
+          const f = m.nasal;
+          if(f==='≥2 issues') return 'High';
+          if(['Septum','Turbinates','Rhinitis'].includes(f)) return 'Moderate';
+          return 'Low';
+        }
+        default: return 'Low';
+      }
+    }
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="js/app.js"></script>
-</body></html>
+    function onSubmit(e){
+      e.preventDefault();
+      const f = new FormData(e.target);
+
+      const m = {
+        ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd')==='on',
+        bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'), nasal: f.get('nasal'),
+        ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup'))||1, rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
+        odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
+        csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
+        arInd: n(f.get('arInd'))
+      };
+
+      const phen = [];
+      // Core phenotypes
+      const add=(tag, why)=>{ if(!phen.find(p=>p.tag===tag)) phen.push({tag, why, conf:conf(tag,m)}); };
+      if([ (m.bmi||0)>=30, (m.neck||0)>=17, (m.tons||0)>=3, ['III','IV'].includes(m.ftp), (m.ahi||0)>=30 ].filter(Boolean).length>=3) add('High Anatomical Contribution', []);
+      if((m.isi||0)>=15 || ((m.arInd&&m.ahi)&& (m.arInd/m.ahi)>1.3)) add('Low Arousal Threshold', []);
+      if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd) add('High Loop Gain', []);
+      if((m.sup && m.nons) && ((m.sup/m.nons)>2) && (m.nons<15)) add('Positional OSA', []);
+      if((m.rem && m.nrem) && ((m.rem/m.nrem)>2) && (m.nrem<15)) add('REM-Predominant OSA', []);
+      if(((m.hbPH||0)>=5) || ((m.hb90PH||0)>0.5) || ((m.nadir??100)<85) || ((m.odi||0)>=40)) add('High Hypoxic Burden', []);
+      if(m.nasal && m.nasal!=='None') add('Nasal-Resistance Contributor', []);
+
+      // Symptom subtype
+      let subtype='Minimally‑symptomatic';
+      if((m.ess||0)>=15) subtype='Sleepy'; else if((m.isi||0)>=15) subtype='Disturbed‑sleep';
+
+      // Top‑3 recommendations (deduped)
+      const rec=[]; const seen=new Set();
+      const push=(x)=>{ if(seen.has(x)) return; seen.add(x); rec.push(x); };
+      // universal trio
+      push('Start CPAP/APAP (gold‑standard).');
+      push('Custom oral appliance (MAD) if CPAP fails/intolerant.');
+      push('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).');
+      // phenotype‑specific nudges
+      if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow‑up test.');
+      if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
+      if(phen.some(p=>p.tag==='Low Arousal Threshold')) push('Add CBT‑I and optimize CPAP comfort (humidification, ramp, mask fit).');
+      if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
+      if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat nasal obstruction (saline/steroid); consider septoplasty/turbinate reduction.');
+
+      const top3 = rec.slice(0,3);
+
+      // Patient summary
+      const explain = {
+        'High Anatomical Contribution':'Your airway is relatively narrow/crowded (weight, tongue/tonsils, palate shape).',
+        'Low Arousal Threshold':'You wake easily; even small breathing changes disrupt sleep.',
+        'High Loop Gain':'Your breathing control is overly sensitive and can over‑correct.',
+        'Positional OSA':'Breathing problems occur mainly when you sleep on your back.',
+        'REM-Predominant OSA':'Breathing problems occur mainly during dream (REM) sleep.',
+        'High Hypoxic Burden':'Your oxygen level spends a lot of time low during sleep, which strains the heart.',
+        'Nasal-Resistance Contributor':'Nasal blockage increases airflow resistance and can worsen snoring or CPAP comfort.'
+      };
+
+      const phenList = phen.map(p=>`<li><strong>${p.tag}</strong> <span class="badge badge-soft">${p.conf} confidence</span><br><small>${explain[p.tag]||''}</small></li>`).join('');
+      const core = [
+        `AHI: <span class=kv>${exists(m.ahi)?m.ahi:'—'}</span>`,
+        `REM: <span class=kv>${exists(m.rem)?m.rem:'—'}</span>`,
+        `NREM: <span class=kv>${exists(m.nrem)?m.nrem:'—'}</span>`,
+        `Sup/Non‑sup: <span class=kv>${(m.sup&&m.nons)?(m.sup/m.nons).toFixed(1):'—'}</span>`,
+        `ODI4: <span class=kv>${exists(m.odi)?m.odi:'—'}</span>`,
+        `Nadir: <span class=kv>${exists(m.nadir)?m.nadir+'%':'—'}</span>`,
+        `HB/hr: <span class=kv>${exists(m.hbPH)?m.hbPH:'—'}</span>`,
+        `Area<90/hr: <span class=kv>${exists(m.hb90PH)?m.hb90PH:'—'}</span>`
+      ].join(' | ');
+
+      document.getElementById('patientSummary').innerHTML = `
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="h5 section-title">Patient Summary</h2>
+            <p><strong>Symptom subtype:</strong> ${subtype}</p>
+            ${phen.length?`<h6 class="mt-3">Main contributing factors</h6><ul>${phenList}</ul>`:'<p>No phenotype flags based on current inputs.</p>'}
+            <h6 class="mt-3">Top actions</h6>
+            <ol>${top3.map(x=>`<li>${x}</li>`).join('')}</ol>
+            <p class="mt-3"><strong>Key numbers:</strong> ${core}</p>
+          </div>
+        </div>`;
+
+      // Clinician panel
+      const allRecs = rec.map(x=>`<li>${x}</li>`).join('');
+      const rows = phen.map(p=>`<tr><td>${p.tag}</td><td>${p.conf}</td></tr>`).join('');
+      document.getElementById('clinician').innerHTML = `
+        <div class="card shadow-sm mt-3">
+          <div class="card-body">
+            <h2 class="h6 section-title">Clinician Guidance</h2>
+            ${phen.length?`<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Phenotype</th><th>Confidence</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
+            <h6>Ranked plan</h6>
+            <ol>${allRecs}</ol>
+          </div>
+        </div>`;
+
+      window.scrollTo({top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth'});
+    }
+
+    document.getElementById('form').addEventListener('submit', onSubmit);
+    document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
