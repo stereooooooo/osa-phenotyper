@@ -12,37 +12,39 @@
   .card { border-radius: 16px; }
   .section-title{ font-weight:600; color:#334155; }
   .kv { font-variant-numeric: tabular-nums; }
-@media print {
-  body * { visibility: hidden !important; }
+  .header-controls > * { margin-left: .5rem; }
 
-  body.print-patient #patientSummary,
-  body.print-patient #patientSummary * { visibility: visible !important; }
-  body.print-patient #patientSummary { position: absolute; inset: 0; padding: 1rem; }
+  @media print {
+    body * { visibility: hidden !important; }
 
-  body.print-clinician #patientSummary,
-  body.print-clinician #clinician,
-  body.print-clinician #patientSummary *,
-  body.print-clinician #clinician * { visibility: visible !important; }
-  body.print-clinician #patientSummary { position: absolute; top: 0; left: 0; right: 0; padding: 1rem; }
-  body.print-clinician #clinician { position: absolute; left: 0; right: 0; top: 55%; padding: 1rem; }
+    body.print-patient #patientSummary,
+    body.print-patient #patientSummary * { visibility: visible !important; }
+    body.print-patient #patientSummary { position: absolute; inset: 0; padding: 1rem; }
 
-  .no-print { display: none !important; }
-}
+    body.print-clinician #patientSummary,
+    body.print-clinician #clinician,
+    body.print-clinician #patientSummary *,
+    body.print-clinician #clinician * { visibility: visible !important; }
+    body.print-clinician #patientSummary { position: absolute; top: 0; left: 0; right: 0; padding: 1rem; }
+    body.print-clinician #clinician { position: absolute; left: 0; right: 0; top: 55%; padding: 1rem; }
+
+    .no-print { display: none !important; }
+  }
 </style>
 </head>
 <body>
   <header class="navbar navbar-expand-lg sticky-top shadow-sm" style="background:#354A5F;">
     <div class="container-fluid">
       <span class="navbar-brand text-white fw-semibold">OSA Phenotyper – MVP</span>
-      <div class="d-flex gap-2 no-print">
-        <button class="btn btn-outline-light btn-sm" id="btnPrintPatient">Print patient</button>
-        <button class="btn btn-outline-light btn-sm" id="btnPrintClinician">Print clinician</button>
-        <select id="demoSelect" class="form-select form-select-sm w-auto">
-        <option value="modHighHB">Demo: Moderate positional + high HB</option>
-        <option value="mildLowHB">Demo: Mild OSA + low HB</option>
-        <option value="severeHNS">Demo: Severe OSA (HNS screen)</option>
-      </select>
-<button class="btn btn-outline-light btn-sm" type="button" id="btnFill">Fill demo</button>
+      <div class="d-flex align-items-center header-controls no-print">
+        <button class="btn btn-outline-light btn-sm" id="btnPrintPatient" title="Print patient handout">Print patient</button>
+        <button class="btn btn-outline-light btn-sm" id="btnPrintClinician" title="Print clinician copy">Print clinician</button>
+        <select id="demoSelect" class="form-select form-select-sm w-auto" title="Fill demo case">
+          <option value="modHighHB">Demo: Positional + High HB</option>
+          <option value="mildLowHB">Demo: Mild OSA + Low HB</option>
+          <option value="severeHNS">Demo: Severe OSA (HNS screen)</option>
+        </select>
+        <button class="btn btn-outline-light btn-sm" type="button" id="btnFill" title="Fill demo data">Fill demo</button>
       </div>
     </div>
   </header>
@@ -151,9 +153,10 @@
           return 'Low';
         }
         case 'High Hypoxic Burden':{
-          const hb = m.hbPH || 0, hb90 = m.hb90PH || 0, odi = m.odi || 0, nadir = (m.nadir ?? 100);
-          if (hb >= 60 || hb90 >= 3 || odi >= 50 || nadir < 80) return 'High';
-          if (hb >= 30 || hb90 >= 1.5 || (nadir < 85 && nadir >= 80) || (odi >= 30 && odi < 50)) return 'Moderate';
+          // Evidence-aligned bands: High >=60; Moderate 30-59; include alternates
+          const hb=m.hbPH||0, hb90=m.hb90PH||0, odi=m.odi||0, nadir=(m.nadir??100);
+          if(hb>=60 || hb90>=3 || odi>=50 || nadir<80) return 'High';
+          if(hb>=30 || hb90>=1.5 || (nadir<85 && nadir>=80) || (odi>=30 && odi<50)) return 'Moderate';
           return 'Low';
         }
         case 'Nasal-Resistance Contributor':{
@@ -184,31 +187,80 @@
       const friedman = m.ftp;                    // I–IV
       const bmi = +m.bmi || 0;
       const ahiOverall = +m.ahi || 0;
-      
-      const favorableSoftTissue =
-        (tonsilGrade >= 3) && (friedman === 'I' || friedman === 'II');
-      
-      const considerSoftTissue =
-        favorableSoftTissue && (ahiOverall >= 5); // any OSA if anatomy favorable
-      
-      // HNS: simple screening (clinic-safe defaults)
-      // - AHI 15–65, BMI ≤32, and no clear central/CSR signal
-      const considerHNS =
-        (ahiOverall >= 15 && ahiOverall <= 65) &&
-        (bmi <= 32) &&
-        !((m.csr || 0) >= 10) &&     // CSR not prominent
-        !((m.pahic4 || 0) >= 5);     // central index low
-      
+
+      const favorableSoftTissue = (tonsilGrade >= 3) && (friedman === 'I' || friedman === 'II');
+      const considerSoftTissue = favorableSoftTissue && (ahiOverall >= 5);
+
+      // HNS screen: AHI 15–65, BMI ≤32, and no clear central/CSR signal
+      const considerHNS = (ahiOverall >= 15 && ahiOverall <= 65) && (bmi <= 32) && !((m.csr || 0) >= 10) && !((m.pahic4 || 0) >= 5);
+
       const phen = [];
-      // Core phenotypes
       const add=(tag, why)=>{ if(!phen.find(p=>p.tag===tag)) phen.push({tag, why, conf:conf(tag,m)}); };
-      if([ (m.bmi||0)>=30, (m.neck||0)>=17, (m.tons||0)>=3, ['III','IV'].includes(m.ftp), (m.ahi||0)>=30 ].filter(Boolean).length>=3) add('High Anatomical Contribution', []);
-      if((m.isi||0)>=15 || ((m.arInd&&m.ahi)&& (m.arInd/m.ahi)>1.3)) add('Low Arousal Threshold', []);
-      if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd) add('High Loop Gain', []);
-      if((m.sup && m.nons) && ((m.sup/m.nons)>2) && (m.nons<15)) add('Positional OSA', []);
-      if((m.rem && m.nrem) && ((m.rem/m.nrem)>2) && (m.nrem<15)) add('REM-Predominant OSA', []);
-      if(((m.hbPH||0)>=30) || ((m.hb90PH||0)>2) || ((m.nadir??100)<85) || ((m.odi||0)>=40)) add('High Hypoxic Burden', []);
-      if(m.nasal && m.nasal!=='None') add('Nasal-Resistance Contributor', []);
+
+      // ----- phenotype reasons helpers -----
+      const reasons = {};
+      const addReason = (tag, txt) => { if (!reasons[tag]) reasons[tag] = []; reasons[tag].push(txt); };
+      const fmt = (v) => (v==null || v==='') ? '—' : (typeof v === 'number' ? (+v).toFixed(1) : String(v));
+
+      // Core phenotypes + reasons
+      if([ (m.bmi||0)>=30, (m.neck||0)>=17, (m.tons||0)>=3, ['III','IV'].includes(m.ftp), (m.ahi||0)>=30 ].filter(Boolean).length>=3) {
+        const anaBits = [];
+        if ((m.bmi||0) >= 30) anaBits.push(`BMI ${fmt(m.bmi)}`);
+        if ((m.neck||0) >= 17) anaBits.push(`Neck ${fmt(m.neck)} in`);
+        if ((m.tons||0) >= 3) anaBits.push(`Tonsils ${m.tons}`);
+        if (['III','IV'].includes(m.ftp)) anaBits.push(`Friedman ${m.ftp}`);
+        if ((m.ahi||0) >= 30) anaBits.push(`AHI ${fmt(m.ahi)}`);
+        addReason('High Anatomical Contribution', anaBits.join('; '));
+        add('High Anatomical Contribution', []);
+      }
+
+      if((m.isi||0)>=15 || ((m.arInd&&m.ahi)&& (m.arInd/m.ahi)>1.3)) {
+        const bits = [];
+        if ((m.isi||0) >= 15) bits.push(`ISI ${fmt(m.isi)}`);
+        if ((m.arInd&&m.ahi) && (m.arInd/m.ahi)>1.3) bits.push(`Arousal index/AHI ${fmt(m.arInd/m.ahi)}`);
+        addReason('Low Arousal Threshold', bits.join('; '));
+        add('Low Arousal Threshold', []);
+      }
+
+      if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd) {
+        const bits = [];
+        if ((m.csr||0) >= 10) bits.push(`CSR ${fmt(m.csr)}%`);
+        if ((m.pahic3||0) >= 10) bits.push(`pAHIc3 ${fmt(m.pahic3)}/h`);
+        if ((m.pahic4||0) >= 5)  bits.push(`pAHIc4 ${fmt(m.pahic4)}/h`);
+        if (m.cvd) bits.push('CVD present');
+        addReason('High Loop Gain', bits.join('; '));
+        add('High Loop Gain', []);
+      }
+
+      if((m.sup && m.nons) && ((m.sup/m.nons)>2) && (m.nons<15)) {
+        addReason('Positional OSA', `Sup/Non-sup ratio ${fmt(m.sup/m.nons)}; Non-sup AHI ${fmt(m.nons)}`);
+        add('Positional OSA', []);
+      }
+
+      if((m.rem && m.nrem) && ((m.rem/m.nrem)>2) && (m.nrem<15)) {
+        addReason('REM-Predominant OSA', `REM/NREM ratio ${fmt(m.rem/m.nrem)}; NREM AHI ${fmt(m.nrem)}`);
+        add('REM-Predominant OSA', []);
+      }
+
+      if(((m.hbPH||0)>=30) || ((m.hb90PH||0)>2) || ((m.nadir??100)<85) || ((m.odi||0)>=40)) {
+        const bits = [];
+        if ((m.hbPH||0)  >= 30) bits.push(`HB/hr ${fmt(m.hbPH)}`);
+        if ((m.hbPH||0)  >= 60) bits.push('≥60 (↑ CV risk)');
+        if ((m.hb90PH||0)>  2) bits.push(`Area<90/hr ${fmt(m.hb90PH)}`);
+        if ((m.odi||0)   >= 40) bits.push(`ODI4 ${fmt(m.odi)}/h`);
+        if ((m.nadir??100) < 85) bits.push(`Nadir ${fmt(m.nadir)}%`);
+        addReason('High Hypoxic Burden', bits.join('; '));
+        add('High Hypoxic Burden', []);
+      }
+
+      if(m.nasal && m.nasal!=='None') {
+        const nasalMap = { 'Septum':'DNS', 'Turbinates':'ITH', 'Rhinitis':'Rhinitis', '≥2 issues':'DNS + ITH / ≥2' };
+        addReason('Nasal-Resistance Contributor', nasalMap[m.nasal] || m.nasal);
+        add('Nasal-Resistance Contributor', []);
+      }
+
+      // attach reasons into phen objects for display
+      phen.forEach(p => { p.why = (reasons[p.tag] || []).join('; '); });
 
       // Symptom subtype
       let subtype='Minimally‑symptomatic';
@@ -217,40 +269,30 @@
       // Top‑3 recommendations (deduped)
       const rec=[]; const seen=new Set();
       const push=(x)=>{ if(seen.has(x)) return; seen.add(x); rec.push(x); };
+
       // universal trio
       push('Start CPAP/APAP (gold‑standard).');
       push('Custom oral appliance (MAD) if CPAP fails/intolerant.');
       push('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).');
+
       // phenotype‑specific nudges
       if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow‑up test.');
       if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
       if(phen.some(p=>p.tag==='Low Arousal Threshold')) push('Add CBT‑I and optimize CPAP comfort (humidification, ramp, mask fit).');
       if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
-      if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat nasal obstruction (saline/steroid); consider septoplasty/turbinate reduction.');
+      if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).');
 
       // anatomy-specific surgery nudges
       if (considerSoftTissue) {
         push('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).');
       }
-      
-      // If nasal phenotype is present and exam shows anatomic issue, suggest structural fix after meds
-      if (phen.some(p => p.tag === 'Nasal-Resistance Contributor') && (m.nasal && m.nasal !== 'None')) {
-        push('Address anatomic nasal obstruction: consider septoplasty and/or turbinate reduction after medical therapy.');
-      }
-      
-      // Screen for HNS candidacy (simple)
       if (considerHNS) {
         push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
       }
-      
+
       // High HB urgent banner (very high burden or severe desaturation)
-      const highHBAlert =
-        ((m.hbPH || 0) >= 100) ||
-        ((m.hb90PH || 0) >= 5) ||
-        ((m.nadir ?? 100) < 80);
-      
-      if (highHBAlert)
-        rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
+      const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
+      if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
 
       const top3 = rec.slice(0,3);
 
@@ -267,13 +309,7 @@
 
       const phenList = phen.map(p=>`<li><strong>${p.tag}</strong> <span class="badge badge-soft">${p.conf} confidence</span><br><small>${explain[p.tag]||''}</small></li>`).join('');
 
-      const sev = (ahi)=>{
-        if(ahi==null) return '—';
-        if(ahi<5)  return 'None';
-        if(ahi<15) return 'Mild';
-        if(ahi<30) return 'Moderate';
-        return 'Severe';
-      };
+      const sev = (ahi)=>{ if(ahi==null) return '—'; if(ahi<5)  return 'None'; if(ahi<15) return 'Mild'; if(ahi<30) return 'Moderate'; return 'Severe'; };
       const core = [
         `AHI: <span class=kv>${exists(m.ahi)?m.ahi:'—'}</span> (<strong>${sev(m.ahi)} OSA</strong>)`,
         `REM: <span class=kv>${exists(m.rem)?m.rem:'—'}</span>`,
@@ -297,14 +333,14 @@
           </div>
         </div>`;
 
-      // Clinician panel
+      // Clinician panel (with WHY column)
       const allRecs = rec.map(x=>`<li>${x}</li>`).join('');
-      const rows = phen.map(p=>`<tr><td>${p.tag}</td><td>${p.conf}</td></tr>`).join('');
+      const rows = phen.map(p=>`<tr><td>${p.tag}</td><td>${p.conf}</td><td>${p.why || ''}</td></tr>`).join('');
       document.getElementById('clinician').innerHTML = `
         <div class="card shadow-sm mt-3">
           <div class="card-body">
             <h2 class="h6 section-title">Clinician Guidance</h2>
-            ${phen.length?`<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Phenotype</th><th>Confidence</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
+            ${phen.length?`<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Phenotype</th><th>Confidence</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
             <h6>Ranked plan</h6>
             <ol>${allRecs}</ol>
           </div>
@@ -319,93 +355,67 @@
     const printWithMode = (mode)=>{ document.body.classList.add(mode); window.print(); setTimeout(()=>{ document.body.classList.remove(mode); }, 100); };
     document.getElementById('btnPrintPatient').addEventListener('click', ()=>printWithMode('print-patient'));
     document.getElementById('btnPrintClinician').addEventListener('click', ()=>printWithMode('print-clinician'));
+
     // New patient reset button
-document.getElementById('btnReset').addEventListener('click', ()=>{
-  document.getElementById('form').reset();
-  document.getElementById('patientSummary').innerHTML = '';
-  document.getElementById('clinician').innerHTML = '';
-  window.scrollTo({top:0, behavior:'smooth'});
-});
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      document.getElementById('form').reset();
+      document.getElementById('patientSummary').innerHTML = '';
+      document.getElementById('clinician').innerHTML = '';
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
 
     // ---- Demo filler ----
-const demoCases = {
-  // Aligned to your latest thresholds: High HB >= 60, urgent if >=100 or nadir<80
-  modHighHB: {
-    ess: 8, isi: 6, cvd: false,
-    bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II', nasal: 'Rhinitis',
-    ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
-    odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
-    csr: 0.0, pahic3: 2.0, pahic4: 1.0
-  },
-  mildLowHB: {
-    ess: 6, isi: 7, cvd: false,
-    bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II', nasal: 'None',
-    ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
-    odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
-    csr: 0.0, pahic3: 1.0, pahic4: 0.5
-  },
-  severeHNS: {
-    // HNS screen: AHI 15–65, BMI <=32, low central indices/CSR
-    ess: 10, isi: 10, cvd: false,
-    bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II', nasal: 'Septum',
-    ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
-    odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
-    csr: 0.0, pahic3: 2.0, pahic4: 1.0
-  }
-};
+    const demoCases = {
+      modHighHB: {
+        ess: 8, isi: 6, cvd: false,
+        bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II', nasal: 'Rhinitis',
+        ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+        odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+        csr: 0.0, pahic3: 2.0, pahic4: 1.0
+      },
+      mildLowHB: {
+        ess: 6, isi: 7, cvd: false,
+        bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II', nasal: 'None',
+        ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+        odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+        csr: 0.0, pahic3: 1.0, pahic4: 0.5
+      },
+      severeHNS: {
+        ess: 10, isi: 10, cvd: false,
+        bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II', nasal: 'Septum',
+        ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+        odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+        csr: 0.0, pahic3: 2.0, pahic4: 1.0
+      }
+    };
 
-function setVal(name, value) {
-  const el = document.querySelector(`[name="${name}"]`);
-  if (!el) return;
-  if (el.type === 'checkbox') {
-    el.checked = !!value;
-  } else {
-    el.value = value;
-  }
-}
+    function setVal(name, value) {
+      const el = document.querySelector(`[name="${name}"]`);
+      if (!el) return;
+      if (el.type === 'checkbox') {
+        el.checked = !!value;
+      } else {
+        el.value = value;
+      }
+    }
 
-function fillDemo(caseKey) {
-  // Clear then populate for predictable results
-  document.getElementById('form').reset();
-  const d = demoCases[caseKey] || demoCases.modHighHB;
+    function fillDemo(caseKey) {
+      document.getElementById('form').reset();
+      const d = demoCases[caseKey] || demoCases.modHighHB;
+      setVal('ess', d.ess); setVal('isi', d.isi); setVal('cvd', d.cvd);
+      setVal('bmi', d.bmi); setVal('neck', d.neck); setVal('tonsils', d.tonsils); setVal('ftp', d.ftp); setVal('nasal', d.nasal);
+      setVal('ahi', d.ahi); setVal('ahiSup', d.ahiSup); setVal('ahiNonSup', d.ahiNonSup); setVal('ahiREM', d.ahiREM); setVal('ahiNREM', d.ahiNREM);
+      setVal('odi', d.odi); setVal('nadir', d.nadir); setVal('hbPH', d.hbPH); setVal('hb90PH', d.hb90PH);
+      setVal('csr', d.csr); setVal('pahic3', d.pahic3); setVal('pahic4', d.pahic4);
+      // Optionally auto-run: document.getElementById('form').dispatchEvent(new Event('submit',{cancelable:true}));
+    }
 
-  setVal('ess', d.ess);
-  setVal('isi', d.isi);
-  setVal('cvd', d.cvd);
-
-  setVal('bmi', d.bmi);
-  setVal('neck', d.neck);
-  setVal('tonsils', d.tonsils);
-  setVal('ftp', d.ftp);
-  setVal('nasal', d.nasal);
-
-  setVal('ahi', d.ahi);
-  setVal('ahiSup', d.ahiSup);
-  setVal('ahiNonSup', d.ahiNonSup);
-  setVal('ahiREM', d.ahiREM);
-  setVal('ahiNREM', d.ahiNREM);
-
-  setVal('odi', d.odi);
-  setVal('nadir', d.nadir);
-  setVal('hbPH', d.hbPH);      // %·min/h per hour
-  setVal('hb90PH', d.hb90PH);  // area <90% per hour
-
-  setVal('csr', d.csr);
-  setVal('pahic3', d.pahic3);
-  setVal('pahic4', d.pahic4);
-
-  // Optionally auto-generate results right after fill:
-  // document.getElementById('form').dispatchEvent(new Event('submit', {cancelable:true}));
-}
-
-document.getElementById('btnFill').addEventListener('click', ()=>{
-  const key = document.getElementById('demoSelect').value;
-  fillDemo(key);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
-    
+    document.getElementById('btnFill').addEventListener('click', ()=>{
+      const key = document.getElementById('demoSelect').value;
+      fillDemo(key);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   </script>
-
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
