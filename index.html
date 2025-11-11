@@ -37,6 +37,12 @@
       <div class="d-flex gap-2 no-print">
         <button class="btn btn-outline-light btn-sm" id="btnPrintPatient">Print patient</button>
         <button class="btn btn-outline-light btn-sm" id="btnPrintClinician">Print clinician</button>
+        <select id="demoSelect" class="form-select form-select-sm w-auto">
+        <option value="modHighHB">Demo: Moderate positional + high HB</option>
+        <option value="mildLowHB">Demo: Mild OSA + low HB</option>
+        <option value="severeHNS">Demo: Severe OSA (HNS screen)</option>
+      </select>
+<button class="btn btn-outline-light btn-sm" type="button" id="btnFill">Fill demo</button>
       </div>
     </div>
   </header>
@@ -320,6 +326,84 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
   document.getElementById('clinician').innerHTML = '';
   window.scrollTo({top:0, behavior:'smooth'});
 });
+
+    // ---- Demo filler ----
+const demoCases = {
+  // Aligned to your latest thresholds: High HB >= 60, urgent if >=100 or nadir<80
+  modHighHB: {
+    ess: 8, isi: 6, cvd: false,
+    bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II', nasal: 'Rhinitis',
+    ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+    odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+    csr: 0.0, pahic3: 2.0, pahic4: 1.0
+  },
+  mildLowHB: {
+    ess: 6, isi: 7, cvd: false,
+    bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II', nasal: 'None',
+    ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+    odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+    csr: 0.0, pahic3: 1.0, pahic4: 0.5
+  },
+  severeHNS: {
+    // HNS screen: AHI 15–65, BMI <=32, low central indices/CSR
+    ess: 10, isi: 10, cvd: false,
+    bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II', nasal: 'Septum',
+    ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+    odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+    csr: 0.0, pahic3: 2.0, pahic4: 1.0
+  }
+};
+
+function setVal(name, value) {
+  const el = document.querySelector(`[name="${name}"]`);
+  if (!el) return;
+  if (el.type === 'checkbox') {
+    el.checked = !!value;
+  } else {
+    el.value = value;
+  }
+}
+
+function fillDemo(caseKey) {
+  // Clear then populate for predictable results
+  document.getElementById('form').reset();
+  const d = demoCases[caseKey] || demoCases.modHighHB;
+
+  setVal('ess', d.ess);
+  setVal('isi', d.isi);
+  setVal('cvd', d.cvd);
+
+  setVal('bmi', d.bmi);
+  setVal('neck', d.neck);
+  setVal('tonsils', d.tonsils);
+  setVal('ftp', d.ftp);
+  setVal('nasal', d.nasal);
+
+  setVal('ahi', d.ahi);
+  setVal('ahiSup', d.ahiSup);
+  setVal('ahiNonSup', d.ahiNonSup);
+  setVal('ahiREM', d.ahiREM);
+  setVal('ahiNREM', d.ahiNREM);
+
+  setVal('odi', d.odi);
+  setVal('nadir', d.nadir);
+  setVal('hbPH', d.hbPH);      // %·min/h per hour
+  setVal('hb90PH', d.hb90PH);  // area <90% per hour
+
+  setVal('csr', d.csr);
+  setVal('pahic3', d.pahic3);
+  setVal('pahic4', d.pahic4);
+
+  // Optionally auto-generate results right after fill:
+  // document.getElementById('form').dispatchEvent(new Event('submit', {cancelable:true}));
+}
+
+document.getElementById('btnFill').addEventListener('click', ()=>{
+  const key = document.getElementById('demoSelect').value;
+  fillDemo(key);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+    
   </script>
 
 
