@@ -173,6 +173,26 @@
         arInd: n(f.get('arInd'))
       };
 
+      // --- Surgical candidacy helpers (simple rules) ---
+      const tonsilGrade = +m.tons || 0;          // 0–4
+      const friedman = m.ftp;                    // I–IV
+      const bmi = +m.bmi || 0;
+      const ahiOverall = +m.ahi || 0;
+      
+      const favorableSoftTissue =
+        (tonsilGrade >= 3) && (friedman === 'I' || friedman === 'II');
+      
+      const considerSoftTissue =
+        favorableSoftTissue && (ahiOverall >= 5); // any OSA if anatomy favorable
+      
+      // HNS: simple screening (clinic-safe defaults)
+      // - AHI 15–65, BMI ≤32, and no clear central/CSR signal
+      const considerHNS =
+        (ahiOverall >= 15 && ahiOverall <= 65) &&
+        (bmi <= 32) &&
+        !((m.csr || 0) >= 10) &&     // CSR not prominent
+        !((m.pahic4 || 0) >= 5);     // central index low
+      
       const phen = [];
       // Core phenotypes
       const add=(tag, why)=>{ if(!phen.find(p=>p.tag===tag)) phen.push({tag, why, conf:conf(tag,m)}); };
@@ -202,6 +222,21 @@
       if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
       if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat nasal obstruction (saline/steroid); consider septoplasty/turbinate reduction.');
 
+      // anatomy-specific surgery nudges
+      if (considerSoftTissue) {
+        push('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).');
+      }
+      
+      // If nasal phenotype is present and exam shows anatomic issue, suggest structural fix after meds
+      if (phen.some(p => p.tag === 'Nasal-Resistance Contributor') && (m.nasal && m.nasal !== 'None')) {
+        push('Address anatomic nasal obstruction: consider septoplasty and/or turbinate reduction after medical therapy.');
+      }
+      
+      // Screen for HNS candidacy (simple)
+      if (considerHNS) {
+        push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
+      }
+      
       // High HB urgent banner (very high burden or severe desaturation)
       const highHBAlert =
         ((m.hbPH || 0) >= 100) ||
