@@ -367,6 +367,34 @@
         }
       }
 
+      // Build patient-specific explanation for central/periodic patterns
+      let centralExpl = '';
+      const csr = m.csr ?? null;
+      const c3 = m.pahic3 ?? null;
+      const c4 = m.pahic4 ?? null;
+      
+      const centralCount = (c3 || 0) + (c4 || 0);
+      
+      // Decision logic
+      if ((csr !== null && csr >= 10)) {
+        centralExpl =
+          'Your study shows a higher amount of Cheyne–Stokes breathing (an unstable, repeating breathing pattern). ' +
+          'This pattern is often linked with heart conditions or high loop gain. Because of this, your clinician may avoid certain CPAP modes and choose settings or devices that stabilize breathing. ' +
+          'Further evaluation may be recommended.';
+      } else if (centralCount >= 10) {
+        centralExpl =
+          'You had a higher number of central breathing pauses. Central events occur when the brain briefly stops sending the signal to breathe. ' +
+          'This can sometimes appear when starting CPAP, or in people with sensitive breathing control ("high loop gain"). ' +
+          'Your clinician will determine whether standard CPAP is appropriate or whether added oxygen or a different machine would be safer.';
+      } else if (centralCount >= 3) {
+        centralExpl =
+          'You had a small number of central breathing pauses. This can happen in many people and often improves with ongoing CPAP use or as sleep becomes more stable. ' +
+          'Your overall pattern still appears mostly obstructive.';
+      } else {
+        centralExpl =
+          'You did not have meaningful central breathing pauses. Your pattern is mainly obstructive, meaning the airway narrows or collapses during sleep rather than the brain forgetting to breathe.';
+      }
+      
       // “Sleep Test Results” with brief explanations + norms
             const resultsTable = `
         <table class="kpi-table"><tbody>
@@ -446,13 +474,11 @@
           <tr>
             <th>Periodic/central patterns</th>
             <td>
-              CSR (Cheyne–Stokes breathing): <strong>${exists(m.csr)?m.csr+'%':'—'}</strong>;
-              pAHIc 3%: <strong>${exists(m.pahic3)?m.pahic3:'—'}</strong>/hour;
-              pAHIc 4%: <strong>${exists(m.pahic4)?m.pahic4:'—'}</strong>/hour.
-              These measurements look for breathing that stops because the brain briefly stops sending the
-              signal to breathe (central events) or becomes very unstable in a repeating pattern.
-              Your clinician uses these numbers to decide whether standard CPAP is enough or whether a
-              different type of device or added oxygen is safer for you.
+              Cheyne–Stokes breathing: <strong>${exists(m.csr)?m.csr+'%':'—'}</strong><br>
+              Central breathing pauses (3% criteria): <strong>${exists(m.pahic3)?m.pahic3:'—'}</strong> per hour<br>
+              Central breathing pauses (4% criteria): <strong>${exists(m.pahic4)?m.pahic4:'—'}</strong> per hour
+              <br><br>
+              ${centralExpl}
             </td>
           </tr>
 
