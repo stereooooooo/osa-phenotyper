@@ -368,16 +368,18 @@
       }
 
       // “Sleep Test Results” with brief explanations + norms
-      const resultsTable = `
+            const resultsTable = `
         <table class="kpi-table"><tbody>
           <tr>
             <th>AHI — Apnea–Hypopnea Index</th>
             <td>
-              ${exists(m.ahi)?m.ahi:'—'} events/hour. This is the average number of breathing pauses per hour of sleep.
-              Fewer events is better. <em>Normal is &lt;5.</em> Your overall severity is <strong>${sev(m.ahi)}</strong>.
+              You had an average of <strong>${exists(m.ahi)?m.ahi:'—'}</strong> breathing pauses per hour of sleep.
+              This number summarizes how often your breathing was partly or fully blocked throughout the night.
+              <em>Normal is less than 5 events per hour.</em> Your overall severity is <strong>${sev(m.ahi)}</strong>.
             </td>
           </tr>
-                    <tr>
+
+          <tr>
             <th>AHI by body position (supine / non-supine)</th>
             <td>
               While sleeping on your back, you had
@@ -387,63 +389,93 @@
               ${posExpl}
             </td>
           </tr>
+
           <tr>
             <th>AHI by sleep stage (REM / NREM)</th>
             <td>
-              ${exists(m.rem)?m.rem:'—'} / ${exists(m.nrem)?m.nrem:'—'} events/hour.
-              REM is “dream sleep.” Some people have apnea mainly in REM; treatment is still helpful even if daytime sleepiness is mild.
+              During dream sleep (REM), you had
+              <strong>${exists(m.rem)?m.rem:'—'}</strong> breathing pauses per hour.
+              In non-dream sleep (NREM), you had
+              <strong>${exists(m.nrem)?m.nrem:'—'}</strong> pauses per hour.
+              REM is the stage when muscles relax more, so breathing problems can be worse there.
+              Even if daytime sleepiness is mild, high REM numbers still matter and usually benefit from treatment.
             </td>
           </tr>
+
           <tr>
             <th>ODI 4% — Oxygen Desaturation Index</th>
             <td>
-              ${exists(m.odi)?m.odi:'—'} drops/hour of at least 4% in oxygen.
-              This reflects how often your oxygen dips; <em>lower is better (often &lt;5/hour is near normal)</em>.
+              Your oxygen level dropped by at least 4 percentage points
+              <strong>${exists(m.odi)?m.odi:'—'}</strong> times per hour on average.
+              This reflects how often your body is exposed to brief drops in oxygen during sleep.
+              <em>Many people without sleep apnea have fewer than about 5 drops per hour; lower is better.</em>
             </td>
           </tr>
+
           <tr>
             <th>Oxygen nadir (lowest level)</th>
             <td>
-              ${exists(m.nadir)?m.nadir+'%':'—'}.
-              Short dips can happen, but very low values suggest significant stress on the body.
-              <em>We generally aim for values above 90%.</em>
+              Your lowest recorded oxygen level during the study was
+              <strong>${exists(m.nadir)?m.nadir+'%':'—'}</strong>.
+              Short dips can happen, but deeper or repeated drops suggest more strain on the heart and brain.
+              <em>We generally aim to keep oxygen above about 90% for most of the night.</em>
             </td>
           </tr>
+
           <tr>
             <th>Hypoxic burden</th>
             <td>
-              ${exists(m.hbPH)?m.hbPH:'—'} %·min/hour.
-              This sums <em>how long</em> and <em>how deep</em> your oxygen is low during sleep.
-              Higher values mean more nightly oxygen stress. Values around <em>≥60</em> have been linked to higher heart-risk in studies.
+              Your hypoxic burden was
+              <strong>${exists(m.hbPH)?m.hbPH:'—'} %·min/hour</strong>.
+              This number adds up both <em>how long</em> and <em>how deep</em> your oxygen is low across the night.
+              Higher values mean more nightly oxygen stress. Studies have found that values around
+              <em>60 or higher</em> are linked to a higher risk of heart and blood-vessel problems.
             </td>
           </tr>
+
           <tr>
             <th>Time under 90% oxygen (Area &lt;90%)</th>
             <td>
-              ${exists(m.hb90PH)?m.hb90PH:'—'} %·min/hour.
-              This is the time your oxygen stayed below 90%. <em>Lower is better and often near 0.</em>
+              Your oxygen was below 90% for a total of about
+              <strong>${exists(m.hb90PH)?m.hb90PH:'—'} %·min/hour</strong>.
+              This is another way of describing how much time your body spends with less-than-ideal oxygen levels.
+              <em>Lower values, especially near 0, are better.</em>
             </td>
           </tr>
+
           <tr>
             <th>Periodic/central patterns</th>
             <td>
-              CSR: ${exists(m.csr)?m.csr+'%':'—'}; pAHIc 3%: ${exists(m.pahic3)?m.pahic3:'—'}/h; pAHIc 4%: ${exists(m.pahic4)?m.pahic4:'—'}/h.
-              These look for breathing that is unstable or central (brain-driven) rather than blocked.
-              Your clinician uses these to choose the safest device settings if needed.
+              CSR (Cheyne–Stokes breathing): <strong>${exists(m.csr)?m.csr+'%':'—'}</strong>;
+              pAHIc 3%: <strong>${exists(m.pahic3)?m.pahic3:'—'}</strong>/hour;
+              pAHIc 4%: <strong>${exists(m.pahic4)?m.pahic4:'—'}</strong>/hour.
+              These measurements look for breathing that stops because the brain briefly stops sending the
+              signal to breathe (central events) or becomes very unstable in a repeating pattern.
+              Your clinician uses these numbers to decide whether standard CPAP is enough or whether a
+              different type of device or added oxygen is safer for you.
             </td>
           </tr>
+
           <tr>
             <th>BMI / Neck size</th>
             <td>
-              ${exists(m.bmi)?m.bmi:'—'} / ${exists(m.neck)?m.neck+' in':'—'}.
-              Body and neck size can affect airway crowding; in men, a neck &gt;17 inches can add risk.
+              Your body mass index (BMI) was
+              <strong>${exists(m.bmi)?m.bmi:'—'}</strong> and your neck size was
+              <strong>${exists(m.neck)?m.neck+' inches':'—'}</strong>.
+              Extra tissue around the neck and upper airway can narrow the breathing space.
+              In many studies, a neck size above about 17 inches in men (and 16 inches in women) is associated with higher risk of OSA.
             </td>
           </tr>
+
           <tr>
             <th>Throat and nose exam</th>
             <td>
-              Tonsils: ${exists(m.tons)?m.tons:'—'}; Friedman (palate/tongue position): ${exists(m.ftp)?m.ftp:'—'}; Nasal finding: ${exists(m.nasal)?m.nasal:'—'}.
-              Anatomy can influence comfort with CPAP and whether procedures might help.
+              Tonsils: <strong>${exists(m.tons)?m.tons:'—'}</strong>;
+              Friedman palate/tongue position: <strong>${exists(m.ftp)?m.ftp:'—'}</strong>;
+              Nasal finding: <strong>${exists(m.nasal)?m.nasal:'—'}</strong>.
+              These anatomic features help explain how much of your sleep apnea is due to crowding in the nose and throat,
+              and whether procedures on the tonsils, soft palate, or nose might meaningfully support CPAP or, in some
+              cases, serve as additional treatment.
             </td>
           </tr>
         </tbody></table>`;
