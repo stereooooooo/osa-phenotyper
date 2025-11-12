@@ -30,6 +30,17 @@
 
     .no-print { display: none !important; }
   }
+  .handout { background:#fff; padding: 1.25rem; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .handout .brand-row { display:flex; align-items:center; gap:1rem; margin-bottom: .75rem; }
+  .handout-logo { width: 220px; height: auto; }
+  .handout h1 { font-size: 1.5rem; margin: 0; color:#1b3a57; font-weight:700; }
+  .handout h2 { font-size: 1.125rem; color:#1b3a57; margin-top:1rem; font-weight:700; }
+  .handout p, .handout li { font-size: 0.98rem; line-height: 1.55; color:#374151; }
+  .kpi-table { width:100%; border-collapse: collapse; font-size:.95rem; }
+  .kpi-table th, .kpi-table td { padding:.5rem .6rem; border-top:1px solid #e5e7eb; vertical-align: top; }
+  .muted { color:#6b7280; }
+  .chip { display:inline-block; background:#eef2f7; color:#334155; border-radius:999px; padding:.15rem .5rem; font-size:.8rem; margin-left:.35rem; }
+
 </style>
 </head>
 <body>
@@ -321,17 +332,77 @@
         `Area<90/hr: <span class=kv>${exists(m.hb90PH)?m.hb90PH:'—'}</span>`
       ].join(' | ');
 
-      document.getElementById('patientSummary').innerHTML = `
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <h2 class="h5 section-title">Patient Summary</h2>
-            <p><strong>Symptom subtype:</strong> ${subtype}</p>
-            ${phen.length?`<h6 class="mt-3">Main contributing factors</h6><ul>${phenList}</ul>`:'<p>No phenotype flags based on current inputs.</p>'}
-            <h6 class="mt-3">Top actions</h6>
-            <ol>${top3.map(x=>`<li>${x}</li>`).join('')}</ol>
-            <p class="mt-3"><strong>Key numbers:</strong> ${core}</p>
-          </div>
-        </div>`;
+      const today = new Date().toLocaleDateString();
+
+// Patient-friendly rewrite of recommendations
+const toPatient = (s)=>{
+  return s
+    .replace('Start CPAP/APAP (gold‑standard).', 'Start CPAP (first‑line treatment).')
+    .replace('Custom oral appliance (MAD) if CPAP fails/intolerant.', 'If CPAP is hard to tolerate, consider a custom oral appliance (mandibular advancement device).')
+    .replace('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).', 'If anatomy is a major factor, we will discuss surgical options that fit your exam and sleep study.')
+    .replace('Begin positional therapy for 2–4 weeks; verify on follow‑up test.', 'Try side‑sleeping (positional therapy) for 2–4 weeks and repeat testing to confirm improvement.')
+    .replace('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.', 'If central events persist, your clinician may consider oxygen or specific therapies after heart evaluation.')
+    .replace('Add CBT‑I and optimize CPAP comfort (humidification, ramp, mask fit).', 'Add insomnia care (CBT‑I) and adjust CPAP comfort settings (humidification, ramp, mask fit).')
+    .replace('Prioritize timely therapy to reduce desaturation burden and CV risk.', 'Treat promptly to reduce low‑oxygen events and protect your heart.')
+    .replace('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).', 'Treat nasal blockage (sprays first; procedures like septoplasty or turbinate reduction if needed).')
+    .replace('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).', 'Your anatomy may suit soft‑tissue surgery (for example, tonsillectomy or soft‑palate procedures).')
+    .replace('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.', 'You may qualify for hypoglossal nerve stimulation (a pacemaker‑like device for the tongue).');
+};
+const patientRecs = top3.map(toPatient);
+
+// Build findings list for patient in plain language + why
+const findingExplain = {
+  'High Anatomical Contribution':'Your airway is relatively narrow/crowded (weight, tongue/tonsils, palate shape) which can narrow breathing space during sleep.',
+  'Low Arousal Threshold':'You wake easily; even small breathing changes disrupt sleep and fragment rest.',
+  'High Loop Gain':'Your breathing control is extra sensitive and can over‑correct, causing unstable breathing.',
+  'Positional OSA':'Breathing problems are worse when sleeping on your back. Side‑sleeping often helps.',
+  'REM-Predominant OSA':'Breathing problems are worse during dream (REM) sleep.',
+  'High Hypoxic Burden':'Your oxygen spends more time low during sleep; this can strain the heart over time.',
+  'Nasal-Resistance Contributor':'Nasal blockage raises airflow resistance and can worsen snoring or CPAP comfort.'
+};
+const findingsUl = phen.map(p=>`<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br><span class="muted">Why: ${p.why||'pattern seen on your exam or study'}</span><br>${findingExplain[p.tag]||''}</li>`).join('');
+
+const handoutHTML = `
+  <section class="handout" id="handout">
+    <div class="brand-row">
+      <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.jpeg" />
+      <div>
+        <h1>Your Personalized Sleep Report</h1>
+        <div class="muted">Date: ${today}</div>
+      </div>
+    </div>
+
+    <h2>Overview</h2>
+    <p>You have <strong>${sev(m.ahi)} obstructive sleep apnea</strong>. This report explains your specific pattern of sleep‑disordered breathing and outlines the next steps most likely to help you.</p>
+
+    <h2>Your main findings</h2>
+    <ul>${findingsUl || '<li>No specific patterns were flagged based on the current inputs.</li>'}</ul>
+
+    <h2>What this means for you</h2>
+    <ol>${patientRecs.map(r=>`<li>${r}</li>`).join('')}</ol>
+
+    <h2>Your key sleep metrics</h2>
+    <table class="kpi-table">
+      <tbody>
+        <tr><th>AHI (overall)</th><td>${exists(m.ahi)?m.ahi:'—'} <span class="muted">(${sev(m.ahi)} OSA)</span></td></tr>
+        <tr><th>AHI (REM / NREM)</th><td>${exists(m.rem)?m.rem:'—'} / ${exists(m.nrem)?m.nrem:'—'}</td></tr>
+        <tr><th>AHI (supine / non‑supine)</th><td>${exists(m.sup)?m.sup:'—'} / ${exists(m.nons)?m.nons:'—'} <span class="muted">(ratio ${(m.sup&&m.nons)?(m.sup/m.nons).toFixed(1):'—'})</span></td></tr>
+        <tr><th>ODI 4%</th><td>${exists(m.odi)?m.odi:'—'} /h</td></tr>
+        <tr><th>Oxygen nadir</th><td>${exists(m.nadir)?m.nadir+'%':'—'}</td></tr>
+        <tr><th>Hypoxic burden</th><td>${exists(m.hbPH)?m.hbPH:'—'} %·min/h <span class="muted">(higher risk usually ≥60)</span></td></tr>
+        <tr><th>Area &lt; 90% SpO₂</th><td>${exists(m.hb90PH)?m.hb90PH:'—'} %·min/h</td></tr>
+        <tr><th>BMI / Neck</th><td>${exists(m.bmi)?m.bmi:'—'} / ${exists(m.neck)?m.neck+' in':'—'}</td></tr>
+        <tr><th>Tonsils / Friedman</th><td>${exists(m.tons)?m.tons:'—'} / ${exists(m.ftp)?m.ftp:'—'}</td></tr>
+        <tr><th>Nasal finding</th><td>${exists(m.nasal)?m.nasal:'—'}</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Next steps</h2>
+    <p>We will review these results together and decide on a plan that fits you best. Bring this report to your follow‑up visit.</p>
+  </section>`;
+
+// Inject handout
+document.getElementById('patientSummary').innerHTML = handoutHTML;
 
       // Clinician panel (with WHY column)
       const allRecs = rec.map(x=>`<li>${x}</li>`).join('');
