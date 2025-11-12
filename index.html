@@ -226,6 +226,10 @@
         addWhy('Low Arousal Threshold', bits.join('; '));
         add('Low Arousal Threshold');
       }
+      if ((m.isi || 0) >= 15) {
+        addWhy('Insomnia / COMISA pattern', `ISI ${m.isi} (≥15 suggests clinically significant insomnia symptoms)`);
+        add('Insomnia / COMISA pattern');
+      }
       if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd){
         const bits=[];
         if ((m.csr||0) >= 10) bits.push(`CSR ${m.csr}%`);
@@ -313,7 +317,8 @@
         'Positional OSA':'Breathing problems are worse when you sleep on your back. Side-sleeping often helps.',
         'REM-Predominant OSA':'Breathing problems are worse during dream (REM) sleep.',
         'High Hypoxic Burden':'Your oxygen spends more time lower than ideal during sleep; over time this can strain the heart.',
-        'Nasal-Resistance Contributor':'Nasal blockage (deviated septum, swollen turbinates, or rhinitis) raises resistance and can worsen snoring or CPAP comfort.'
+        'Nasal-Resistance Contributor':'Nasal blockage (deviated septum, swollen turbinates, or rhinitis) raises resistance and can worsen snoring or CPAP comfort.',
+        'Insomnia / COMISA pattern':'Your Insomnia Severity Index score suggests significant trouble falling or staying asleep. Insomnia often occurs together with sleep apnea (called COMISA). Treating insomnia (for example, with CBT-I and better sleep habits) often makes it easier to use CPAP and feel better during the day, and treating your apnea can also improve insomnia over time.'
       };
       const findingsUl = phen.map(p=>`<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${patientFindingText[p.tag]||''}</li>`).join('');
 
