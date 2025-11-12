@@ -370,29 +370,31 @@
       // Build patient-specific explanation for central/periodic patterns
       let centralExpl = '';
       const csr = m.csr ?? null;
-      const c3 = m.pahic3 ?? null;
-      const c4 = m.pahic4 ?? null;
+      const c3 = m.pahic3 ?? 0;
+      const c4 = m.pahic4 ?? 0;
+      const centralTotal = c3 + c4;
       
-      const centralCount = (c3 || 0) + (c4 || 0);
+      // Helper: short explanation of "high loop gain"
+      const loopGain =
+        'People with this pattern often have a very sensitive breathing-control system, meaning their body "overcorrects" when carbon dioxide changes. This is called high loop gain, and it can make breathing unstable during sleep.';
       
       // Decision logic
-      if ((csr !== null && csr >= 10)) {
+      if (csr !== null && csr >= 10) {
         centralExpl =
-          'Your study shows a higher amount of Cheyne–Stokes breathing (an unstable, repeating breathing pattern). ' +
-          'This pattern is often linked with heart conditions or high loop gain. Because of this, your clinician may avoid certain CPAP modes and choose settings or devices that stabilize breathing. ' +
-          'Further evaluation may be recommended.';
-      } else if (centralCount >= 10) {
+          'Your study shows an elevated amount of Cheyne–Stokes breathing, an unstable, repeating breathing pattern that causes rhythmic ups and downs in airflow. This is often associated with heart conditions or a very sensitive breathing response during sleep. ' +
+          loopGain +
+          ' Because of this pattern, your clinician may avoid certain CPAP modes and may choose device settings or additional treatments that help stabilize your breathing. Further evaluation may be recommended.';
+      } else if (centralTotal >= 10) {
         centralExpl =
-          'You had a higher number of central breathing pauses. Central events occur when the brain briefly stops sending the signal to breathe. ' +
-          'This can sometimes appear when starting CPAP, or in people with sensitive breathing control ("high loop gain"). ' +
-          'Your clinician will determine whether standard CPAP is appropriate or whether added oxygen or a different machine would be safer.';
-      } else if (centralCount >= 3) {
+          'You had a higher number of central breathing pauses. Central events happen when the brain briefly stops sending the signal to breathe, rather than the airway being blocked. ' +
+          loopGain +
+          ' Your clinician will use this information to determine whether standard CPAP is appropriate or whether a different device or added oxygen might be safer.';
+      } else if (centralTotal >= 3) {
         centralExpl =
-          'You had a small number of central breathing pauses. This can happen in many people and often improves with ongoing CPAP use or as sleep becomes more stable. ' +
-          'Your overall pattern still appears mostly obstructive.';
+          'You had a small number of central breathing pauses. These can happen in many people and often improve with treatment or as sleep becomes more stable. Your overall pattern still appears mostly obstructive.';
       } else {
         centralExpl =
-          'You did not have meaningful central breathing pauses. Your pattern is mainly obstructive, meaning the airway narrows or collapses during sleep rather than the brain forgetting to breathe.';
+          'You did not have a meaningful number of central breathing pauses. Your breathing pattern is mainly obstructive, meaning the airway narrows or collapses during sleep rather than the brain forgetting to breathe.';
       }
       
       // “Sleep Test Results” with brief explanations + norms
@@ -475,8 +477,11 @@
             <th>Periodic/central patterns</th>
             <td>
               Cheyne–Stokes breathing: <strong>${exists(m.csr)?m.csr+'%':'—'}</strong><br>
-              Central breathing pauses (3% criteria): <strong>${exists(m.pahic3)?m.pahic3:'—'}</strong> per hour<br>
-              Central breathing pauses (4% criteria): <strong>${exists(m.pahic4)?m.pahic4:'—'}</strong> per hour
+              Central breathing pauses (combined): <strong>${
+                exists(m.pahic3) || exists(m.pahic4)
+                  ? ((m.pahic3 || 0) + (m.pahic4 || 0))
+                  : '—'
+              }</strong> per hour
               <br><br>
               ${centralExpl}
             </td>
