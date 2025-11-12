@@ -302,8 +302,6 @@
       
       const top3 = rec.slice(0,3);
 
-      const top3 = rec.slice(0,3);
-
       // Handout: patient-friendly text
       const sev = ahi => ahi==null?'—':ahi<5?'None':ahi<15?'Mild':ahi<30?'Moderate':'Severe';
       const today = new Date().toLocaleDateString();
@@ -426,7 +424,7 @@
       const handoutHTML = `
         <section class="handout" id="handout">
           <div class="brand-row">
-            <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.jpeg" />
+            <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
             <div>
               <h1>Your Personalized Sleep Report</h1>
               <div class="muted">Date: ${today}</div>
@@ -589,7 +587,11 @@
     document.getElementById('btnFill').addEventListener('click', ()=>{
       const key = document.getElementById('demoSelect').value;
       fillDemo(key);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // auto-generate after filling
+      const form = document.getElementById('form');
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+      window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior: 'smooth' });
     });
   </script>
 
