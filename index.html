@@ -267,20 +267,40 @@
       // Ranked recs
       const rec=[]; const seen=new Set();
       const push=(x)=>{ if(seen.has(x)) return; seen.add(x); rec.push(x); };
-      push('Start CPAP/APAP (gold-standard).');
-      push('Custom oral appliance (MAD) if CPAP fails/intolerant.');
+      
+      // --- Core first-line therapy ---
+      // CPAP phrasing: start OR continue (covers existing users)
+      push('Start or continue CPAP/APAP (gold-standard).');
+      
+      // Oral appliance ONLY for mild–moderate OSA, and clarify its role
+      const isMildMod = (ahiOverall >= 5 && ahiOverall < 30);
+      if (isMildMod) {
+        push('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.');
+      }
+      
+      // Anatomic bucket stays
       push('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).');
+      
+      // --- Phenotype-specific nudges ---
       if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow-up test.');
       if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
       if(phen.some(p=>p.tag==='Low Arousal Threshold')) push('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).');
       if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
       if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).');
-      if (considerSoftTissue) push('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).');
-      if (considerHNS) push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
-
-      // Very high HB alert
+      
+      // Anatomy-specific surgery nudges
+      if (considerSoftTissue) {
+        push('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).');
+      }
+      if (considerHNS) {
+        push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
+      }
+      
+      // High HB urgent banner
       const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
       if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
+      
+      const top3 = rec.slice(0,3);
 
       const top3 = rec.slice(0,3);
 
@@ -301,31 +321,105 @@
 
       // Translate top recs into patient descriptions
       const toPatient = s => s
-        .replace('Start CPAP/APAP (gold-standard).', 'Start CPAP: a bedside machine that gently blows air through a mask to keep your airway open all night. Most effective when used regularly.')
-        .replace('Custom oral appliance (MAD) if CPAP fails/intolerant.', 'Consider a custom oral appliance: a dentist-made mouthpiece that moves the lower jaw slightly forward to help keep the airway open.')
-        .replace('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).', 'If anatomy is a major factor, we will discuss surgical options tailored to your exam and sleep study.')
-        .replace('Begin positional therapy for 2–4 weeks; verify on follow-up test.', 'Try side-sleeping (positional therapy) for 2–4 weeks and repeat testing to confirm improvement.')
-        .replace('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.', 'If central events persist, your clinician may consider oxygen or specific therapies after a heart evaluation.')
-        .replace('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).', 'Add insomnia care (CBT-I) and adjust CPAP comfort settings like humidification, ramp, and mask fit.')
-        .replace('Prioritize timely therapy to reduce desaturation burden and CV risk.', 'Treat promptly to reduce low-oxygen events and protect your heart.')
-        .replace('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).', 'Treat nasal blockage (sprays first; procedures like septoplasty or turbinate reduction if needed).')
-        .replace('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).', 'Your anatomy may suit soft-tissue surgery (e.g., tonsillectomy or soft-palate procedures).')
-        .replace('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.', 'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that moves the tongue forward during sleep).');
+        .replace('Start or continue CPAP/APAP (gold-standard).',
+                 'Start or continue CPAP: a bedside machine that gently blows air through a mask to keep your airway open all night. It works best when used regularly and correctly fitted.')
+        .replace('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.',
+                 'Consider a custom oral appliance (mandibular advancement device): a dentist-made mouthpiece that moves the lower jaw slightly forward to keep the airway open. It’s best for mild to moderate OSA and for people who cannot tolerate CPAP or would prefer not to use it.')
+        .replace('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).',
+                 'If anatomy is a major factor, we will discuss surgical options tailored to your exam and sleep study (nose, soft palate/tonsils, or nerve-stimulation treatments).')
+        .replace('Begin positional therapy for 2–4 weeks; verify on follow-up test.',
+                 'Try side-sleeping (positional therapy) for 2–4 weeks; we’ll recheck to see if your numbers improve.')
+        .replace('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.',
+                 'If central events continue, your clinician may consider oxygen or specific therapies/devices after a heart evaluation.')
+        .replace('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).',
+                 'Add insomnia care (CBT-I) and adjust CPAP comfort settings like humidification, ramp, and mask fit.')
+        .replace('Prioritize timely therapy to reduce desaturation burden and CV risk.',
+                 'Treat promptly to reduce low-oxygen time at night and protect your heart.')
+        .replace('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).',
+                 'Treat nasal blockage: start with saline and steroid sprays; if blockage persists, procedures like septoplasty or turbinate reduction can improve airflow and CPAP comfort.')
+        .replace('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).',
+                 'Your anatomy may suit soft-tissue surgery (for example, tonsillectomy or soft-palate procedures) to enlarge the airway.')
+        .replace('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.',
+                 'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that gently moves the tongue forward during sleep).');
       const patientRecs = top3.map(toPatient);
 
       // “Sleep Test Results” with brief explanations + norms
       const resultsTable = `
         <table class="kpi-table"><tbody>
-          <tr><th>AHI (Apnea–Hypopnea Index)</th><td>${exists(m.ahi)?m.ahi:'—'} <span class="muted">events/hour — average breathing pauses. <em>Normal: &lt;5</em>. Severity: ${sev(m.ahi)}.</span></td></tr>
-          <tr><th>AHI (REM / NREM)</th><td>${exists(m.rem)?m.rem:'—'} / ${exists(m.nrem)?m.nrem:'—'} <span class="muted">events/hour in dream vs non-dream sleep.</span></td></tr>
-          <tr><th>AHI (supine / non-supine)</th><td>${exists(m.sup)?m.sup:'—'} / ${exists(m.nons)?m.nons:'—'} <span class="muted">higher on the back suggests positional OSA (ratio ${(m.sup&&m.nons)?(m.sup/m.nons).toFixed(1):'—'}).</span></td></tr>
-          <tr><th>ODI 4%</th><td>${exists(m.odi)?m.odi:'—'} /h <span class="muted">number of oxygen drops ≥4%. <em>Lower is better; often &lt;5/h is near normal.</em></span></td></tr>
-          <tr><th>Oxygen nadir</th><td>${exists(m.nadir)?m.nadir+'%':'—'} <span class="muted">lowest oxygen seen. <em>Typical target: &gt;90%</em>.</span></td></tr>
-          <tr><th>Hypoxic burden</th><td>${exists(m.hbPH)?m.hbPH:'—'} %·min/h <span class="muted">total time-under-oxygen per hour. <em>Higher risk has been seen when ≥60</em>.</span></td></tr>
-          <tr><th>Area &lt; 90% SpO₂</th><td>${exists(m.hb90PH)?m.hb90PH:'—'} %·min/h <span class="muted">time your oxygen stayed below 90%. <em>Lower is better; often near 0</em>.</span></td></tr>
-          <tr><th>BMI / Neck</th><td>${exists(m.bmi)?m.bmi:'—'} / ${exists(m.neck)?m.neck+' in':'—'} <span class="muted">body and neck size can influence airway crowding.</span></td></tr>
-          <tr><th>Tonsils / Friedman</th><td>${exists(m.tons)?m.tons:'—'} / ${exists(m.ftp)?m.ftp:'—'} <span class="muted">throat space exam that affects airflow.</span></td></tr>
-          <tr><th>Nasal finding</th><td>${exists(m.nasal)?m.nasal:'—'} <span class="muted">nose blockage can worsen snoring and CPAP comfort.</span></td></tr>
+          <tr>
+            <th>AHI — Apnea–Hypopnea Index</th>
+            <td>
+              ${exists(m.ahi)?m.ahi:'—'} events/hour. This is the average number of breathing pauses per hour of sleep.
+              Fewer events is better. <em>Normal is &lt;5.</em> Your overall severity is <strong>${sev(m.ahi)}</strong>.
+            </td>
+          </tr>
+          <tr>
+            <th>AHI by body position (supine / non-supine)</th>
+            <td>
+              ${exists(m.sup)?m.sup:'—'} / ${exists(m.nons)?m.nons:'—'} events/hour.
+              If the number is much higher on your back, sleeping on your side can help.
+              The ratio is ${(m.sup&&m.nons)?(m.sup/m.nons).toFixed(1):'—'}.
+            </td>
+          </tr>
+          <tr>
+            <th>AHI by sleep stage (REM / NREM)</th>
+            <td>
+              ${exists(m.rem)?m.rem:'—'} / ${exists(m.nrem)?m.nrem:'—'} events/hour.
+              REM is “dream sleep.” Some people have apnea mainly in REM; treatment is still helpful even if daytime sleepiness is mild.
+            </td>
+          </tr>
+          <tr>
+            <th>ODI 4% — Oxygen Desaturation Index</th>
+            <td>
+              ${exists(m.odi)?m.odi:'—'} drops/hour of at least 4% in oxygen.
+              This reflects how often your oxygen dips; <em>lower is better (often &lt;5/hour is near normal)</em>.
+            </td>
+          </tr>
+          <tr>
+            <th>Oxygen nadir (lowest level)</th>
+            <td>
+              ${exists(m.nadir)?m.nadir+'%':'—'}.
+              Short dips can happen, but very low values suggest significant stress on the body.
+              <em>We generally aim for values above 90%.</em>
+            </td>
+          </tr>
+          <tr>
+            <th>Hypoxic burden</th>
+            <td>
+              ${exists(m.hbPH)?m.hbPH:'—'} %·min/hour.
+              This sums <em>how long</em> and <em>how deep</em> your oxygen is low during sleep.
+              Higher values mean more nightly oxygen stress. Values around <em>≥60</em> have been linked to higher heart-risk in studies.
+            </td>
+          </tr>
+          <tr>
+            <th>Time under 90% oxygen (Area &lt;90%)</th>
+            <td>
+              ${exists(m.hb90PH)?m.hb90PH:'—'} %·min/hour.
+              This is the time your oxygen stayed below 90%. <em>Lower is better and often near 0.</em>
+            </td>
+          </tr>
+          <tr>
+            <th>Periodic/central patterns</th>
+            <td>
+              CSR: ${exists(m.csr)?m.csr+'%':'—'}; pAHIc 3%: ${exists(m.pahic3)?m.pahic3:'—'}/h; pAHIc 4%: ${exists(m.pahic4)?m.pahic4:'—'}/h.
+              These look for breathing that is unstable or central (brain-driven) rather than blocked.
+              Your clinician uses these to choose the safest device settings if needed.
+            </td>
+          </tr>
+          <tr>
+            <th>BMI / Neck size</th>
+            <td>
+              ${exists(m.bmi)?m.bmi:'—'} / ${exists(m.neck)?m.neck+' in':'—'}.
+              Body and neck size can affect airway crowding; in men, a neck &gt;17 inches can add risk.
+            </td>
+          </tr>
+          <tr>
+            <th>Throat and nose exam</th>
+            <td>
+              Tonsils: ${exists(m.tons)?m.tons:'—'}; Friedman (palate/tongue position): ${exists(m.ftp)?m.ftp:'—'}; Nasal finding: ${exists(m.nasal)?m.nasal:'—'}.
+              Anatomy can influence comfort with CPAP and whether procedures might help.
+            </td>
+          </tr>
         </tbody></table>`;
 
       // Build patient handout
@@ -375,14 +469,54 @@
 
       // Build patient-facing treatment details for recommended options
       const txMap = [
-        { key: 'CPAP', match: /Start CPAP|CPAP\/APAP/i, title: 'CPAP (Continuous Positive Airway Pressure)', desc: 'A small bedside machine sends gentle air through a mask to keep your airway open all night. Works for most people when used regularly.' },
-        { key: 'MAD', match: /oral appliance|mandibular/i, title: 'Custom Oral Appliance (Mandibular Advancement Device)', desc: 'A dentist-made mouthpiece holds the lower jaw slightly forward to keep the airway open. Helpful for snoring and many cases of mild–moderate OSA.' },
-        { key: 'Positional', match: /positional therapy/i, title: 'Positional Therapy', desc: 'Training yourself to sleep on your side (and avoid the back) using wearable devices or simple tricks. We recheck to confirm improvement.' },
-        { key: 'Nasal', match: /nasal obstruction|septoplasty|turbinate/i, title: 'Nasal Treatments', desc: 'Start with nasal saline and steroid sprays. If blockage persists, procedures like septoplasty or turbinate reduction can improve airflow and CPAP comfort.' },
-        { key: 'SoftTissue', match: /soft tissue surgery|tonsillectomy/i, title: 'Soft-Tissue Surgery', desc: 'When anatomy is favorable (e.g., large tonsils, roomy palate), surgery such as tonsillectomy or soft-palate procedures can enlarge the airway.' },
-        { key: 'HNS', match: /hypoglossal nerve stimulation|HNS/i, title: 'Hypoglossal Nerve Stimulation (HNS)', desc: 'A pacemaker-like device gently moves the tongue forward during sleep to keep the airway open. For selected patients after evaluation.' },
-        { key: 'CBTI', match: /CBT-I|insomnia/i, title: 'CBT-I (Insomnia Therapy)', desc: 'Structured program to improve sleep quality and reduce nighttime awakenings; often improves CPAP success.' },
-        { key: 'OxygenASV', match: /oxygen|ASV|acetazolamide/i, title: 'Central Event Therapies', desc: 'If central apneas continue, your clinician may consider oxygen or specific devices after heart evaluation. Not needed for most with purely obstructive OSA.' }
+        {
+          key: 'CPAP',
+          match: /Start or continue CPAP|CPAP\/APAP/i,
+          title: 'CPAP (Continuous Positive Airway Pressure)',
+          desc: 'A bedside machine gently sends air through a mask to keep your airway open all night. Masks come in different styles; comfort improves with proper fit, humidification, and ramp settings. When used regularly, CPAP lowers snoring, improves daytime alertness, and reduces oxygen stress.'
+        },
+        {
+          key: 'MAD',
+          match: /oral appliance|mandibular/i,
+          title: 'Custom Oral Appliance (Mandibular Advancement Device)',
+          desc: 'A dentist-made mouthpiece holds the lower jaw slightly forward to prevent collapse. Best for mild to moderate OSA or when someone cannot tolerate CPAP or prefers a non-CPAP option. Side effects can include jaw soreness or bite changes; follow-up titration and a repeat sleep test check effectiveness.'
+        },
+        {
+          key: 'Positional',
+          match: /positional therapy/i,
+          title: 'Positional Therapy',
+          desc: 'Techniques or wearable devices that keep you off your back if apnea is mainly supine. Works best when your non-supine AHI is much lower. We usually reassess with home testing to confirm benefit.'
+        },
+        {
+          key: 'Nasal',
+          match: /nasal obstruction|septoplasty|turbinate/i,
+          title: 'Nasal Treatments',
+          desc: 'Improving nasal airflow (saline and steroid sprays first) can reduce snoring and make CPAP far more comfortable. If blockage persists—such as a deviated septum or enlarged turbinates—simple procedures (septoplasty, turbinate reduction) can help.'
+        },
+        {
+          key: 'SoftTissue',
+          match: /soft tissue surgery|tonsillectomy/i,
+          title: 'Soft-Tissue Surgery',
+          desc: 'When anatomy is favorable (e.g., large tonsils, Friedman I–II), surgery like tonsillectomy or soft-palate procedures can enlarge and stabilize the airway. Usually paired with follow-up testing to document improvement.'
+        },
+        {
+          key: 'HNS',
+          match: /hypoglossal nerve stimulation|HNS/i,
+          title: 'Hypoglossal Nerve Stimulation (Inspire)',
+          desc: 'A small implanted device gently moves the tongue forward during sleep. Candidates typically have AHI 15–65, BMI ≤32, and minimal central apnea. It is activated nightly with a remote and titrated over several months.'
+        },
+        {
+          key: 'CBTI',
+          match: /CBT-I|insomnia/i,
+          title: 'CBT-I (Cognitive Behavioral Therapy for Insomnia)',
+          desc: 'A structured program that retrains sleep patterns, reduces nighttime awakenings, and often improves CPAP success. Delivered via trained clinicians or validated digital programs over several weeks.'
+        },
+        {
+          key: 'OxygenASV',
+          match: /oxygen|ASV|acetazolamide/i,
+          title: 'Therapies for Central/Complex Apnea',
+          desc: 'If central apneas persist after starting CPAP, your clinician may consider supplemental oxygen, medication (e.g., acetazolamide), or specialized devices (e.g., ASV) after confirming heart function. Not needed for most people with purely obstructive OSA.'
+        }
       ];
       const used = new Set();
       const detailLis = rec.map(r=>{
