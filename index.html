@@ -346,6 +346,27 @@
                  'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that gently moves the tongue forward during sleep).');
       const patientRecs = top3.map(toPatient);
 
+            // Position-specific explanation for patients
+      let posExpl = '';
+      if (exists(m.sup) && exists(m.nons)) {
+        if (m.sup > m.nons * 1.5) {
+          posExpl =
+            'You had many more breathing pauses while on your back. ' +
+            'For many people, the tongue and soft tissues fall backward in this position, ' +
+            'narrowing the airway. This makes side-sleeping an important part of treatment.';
+        } else if (m.nons > m.sup * 1.5) {
+          posExpl =
+            'You actually had more breathing pauses when you were not on your back. ' +
+            'In your case, body position is less helpful as a treatment lever, ' +
+            'so we focus more on other therapies.';
+        } else {
+          posExpl =
+            'You had a similar number of breathing pauses in all positions. ' +
+            'Simply avoiding your back is unlikely to be enough by itself, ' +
+            'so we usually still recommend other treatments.';
+        }
+      }
+
       // “Sleep Test Results” with brief explanations + norms
       const resultsTable = `
         <table class="kpi-table"><tbody>
@@ -356,12 +377,14 @@
               Fewer events is better. <em>Normal is &lt;5.</em> Your overall severity is <strong>${sev(m.ahi)}</strong>.
             </td>
           </tr>
-          <tr>
+                    <tr>
             <th>AHI by body position (supine / non-supine)</th>
             <td>
-              ${exists(m.sup)?m.sup:'—'} / ${exists(m.nons)?m.nons:'—'} events/hour.
-              If the number is much higher on your back, sleeping on your side can help.
-              The ratio is ${(m.sup&&m.nons)?(m.sup/m.nons).toFixed(1):'—'}.
+              While sleeping on your back, you had
+              <strong>${exists(m.sup)?m.sup:'—'}</strong> breathing pauses per hour.
+              While on your side or stomach, you had
+              <strong>${exists(m.nons)?m.nons:'—'}</strong> pauses per hour.
+              ${posExpl}
             </td>
           </tr>
           <tr>
