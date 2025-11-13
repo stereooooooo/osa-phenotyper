@@ -196,7 +196,7 @@
       odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
       arInd: n(f.get('arInd')),
-      nose: n(f.get('nose'))   // <-- the missing comma is now here
+      nose: n(f.get('nose'))
     };
 
     // Surgical candidacy helpers
@@ -312,11 +312,6 @@
 
     const top3 = rec.slice(0,3);
 
-    const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
-    if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
-
-    const top3 = rec.slice(0,3);
-
     const sev = ahi => ahi == null ? '—'
       : ahi < 5  ? 'None'
       : ahi < 15 ? 'Mild'
@@ -327,124 +322,120 @@
 
     // Build patient-facing "Your main findings" summary for ALL patients
     const patientFindings = [];
-    // ...
-    
-  // Build patient-facing "Your main findings" summary for ALL patients
-  const patientFindings = [];
 
-  // 1) Overall severity (AHI)
-  if (exists(m.ahi)) {
-    const s = sev(m.ahi);
-    if (s === 'None') {
-      patientFindings.push(
-        'Your sleep test did not show obstructive sleep apnea based on the main index (AHI).'
-      );
-    } else {
-      const freq =
-        s === 'Mild'
-          ? 'are present but not extremely frequent.'
-          : s === 'Moderate'
-          ? 'happen often enough that we recommend active treatment.'
-          : 'are frequent and more severe; treatment is strongly recommended.';
-      patientFindings.push(
-        `Your sleep apnea is in the <strong>${s.toLowerCase()}</strong> range. This means breathing pauses ${freq}`
-      );
+    // 1) Overall severity (AHI)
+    if (exists(m.ahi)) {
+      const s = sev(m.ahi);
+      if (s === 'None') {
+        patientFindings.push(
+          'Your sleep test did not show obstructive sleep apnea based on the main index (AHI).'
+        );
+      } else {
+        const freq =
+          s === 'Mild'
+            ? 'are present but not extremely frequent.'
+            : s === 'Moderate'
+            ? 'happen often enough that we recommend active treatment.'
+            : 'are frequent and more severe; treatment is strongly recommended.';
+        patientFindings.push(
+          `Your sleep apnea is in the <strong>${s.toLowerCase()}</strong> range. This means breathing pauses ${freq}`
+        );
+      }
     }
-  }
 
-  // 2) Body position (supine vs non-supine)
-  if (exists(m.sup) && exists(m.nons)) {
-    if (m.sup > m.nons * 1.5) {
-      patientFindings.push(
-        'You had many more breathing pauses while sleeping on your back than on your side or stomach, so body position is an important part of your treatment plan.'
-      );
-    } else if (m.nons > m.sup * 1.5) {
-      patientFindings.push(
-        'You actually had more breathing pauses when you were not on your back, so simple side-sleeping alone is unlikely to fix the problem.'
-      );
-    } else {
-      patientFindings.push(
-        'You had a similar number of breathing pauses on your back and on your side or stomach, so we focus more on other treatments than on body position alone.'
-      );
+    // 2) Body position (supine vs non-supine)
+    if (exists(m.sup) && exists(m.nons)) {
+      if (m.sup > m.nons * 1.5) {
+        patientFindings.push(
+          'You had many more breathing pauses while sleeping on your back than on your side or stomach, so body position is an important part of your treatment plan.'
+        );
+      } else if (m.nons > m.sup * 1.5) {
+        patientFindings.push(
+          'You actually had more breathing pauses when you were not on your back, so simple side-sleeping alone is unlikely to fix the problem.'
+        );
+      } else {
+        patientFindings.push(
+          'You had a similar number of breathing pauses on your back and on your side or stomach, so we focus more on other treatments than on body position alone.'
+        );
+      }
     }
-  }
 
-  // 3) Sleep stage (REM vs NREM)
-  if (exists(m.rem) && exists(m.nrem)) {
-    if (m.rem > m.nrem * 1.5) {
-      patientFindings.push(
-        'Your breathing problems were worse during dream (REM) sleep, which still carries risk even if you do not feel very sleepy during the day.'
-      );
-    } else if (m.nrem > m.rem * 1.5) {
-      patientFindings.push(
-        'Your breathing problems were a bit worse outside of dream (REM) sleep, meaning the pattern is present throughout the night.'
-      );
-    } else {
-      patientFindings.push(
-        'Your breathing pattern was similar in dream (REM) and non-dream (NREM) sleep.'
-      );
+    // 3) Sleep stage (REM vs NREM)
+    if (exists(m.rem) && exists(m.nrem)) {
+      if (m.rem > m.nrem * 1.5) {
+        patientFindings.push(
+          'Your breathing problems were worse during dream (REM) sleep, which still carries risk even if you do not feel very sleepy during the day.'
+        );
+      } else if (m.nrem > m.rem * 1.5) {
+        patientFindings.push(
+          'Your breathing problems were a bit worse outside of dream (REM) sleep, meaning the pattern is present throughout the night.'
+        );
+      } else {
+        patientFindings.push(
+          'Your breathing pattern was similar in dream (REM) and non-dream (NREM) sleep.'
+        );
+      }
     }
-  }
 
-  // 4) Oxygen / hypoxic burden
-  const hbConf = conf('High Hypoxic Burden', m);
-  if (hbConf === 'High') {
-    patientFindings.push(
-      'Your oxygen spent a significant amount of time lower than ideal during sleep, which can add strain on the heart and blood vessels over time. We see this as a priority to treat.'
-    );
-  } else if (hbConf === 'Moderate') {
-    patientFindings.push(
-      'You had a moderate amount of time with oxygen lower than ideal during sleep; treating your sleep apnea can help reduce this strain.'
-    );
-  } else {
-    patientFindings.push(
-      'Your oxygen levels stayed relatively stable through the night, with only mild oxygen stress on the heart and blood vessels.'
-    );
-  }
-
-  // 5) Nose / anatomy contribution
-  const nasalConf = conf('Nasal-Resistance Contributor', m);
-  if (nasalConf === 'High' || nasalConf === 'Moderate') {
-    patientFindings.push(
-      'Findings in your nose suggest that nasal blockage contributes to your snoring or sleep apnea and may affect CPAP comfort.'
-    );
-  } else {
-    patientFindings.push(
-      'Your nose and throat exam did not show major anatomic blockage.'
-    );
-  }
-
-  // 6) Central / periodic breathing pattern
-  const csrMF = m.csr ?? null;
-  const centralIndexMF = m.pahic3 ?? null;
-  if (csrMF !== null || centralIndexMF !== null) {
-    if (csrMF !== null && csrMF >= 10) {
+    // 4) Oxygen / hypoxic burden
+    const hbConf = conf('High Hypoxic Burden', m);
+    if (hbConf === 'High') {
       patientFindings.push(
-        'Your study showed a repeating “central” breathing pattern (Cheyne–Stokes). This can be linked with heart conditions or a very sensitive breathing response, and your clinician will factor this in when choosing the safest device or settings.'
+        'Your oxygen spent a significant amount of time lower than ideal during sleep, which can add strain on the heart and blood vessels over time. We see this as a priority to treat.'
       );
-    } else if (centralIndexMF !== null && centralIndexMF >= 10) {
+    } else if (hbConf === 'Moderate') {
       patientFindings.push(
-        'You had a higher number of central breathing pauses, where the brain briefly stops sending the signal to breathe. This will be considered when selecting the right device or settings.'
-      );
-    } else if (centralIndexMF !== null && centralIndexMF >= 3) {
-      patientFindings.push(
-        'A small number of central breathing pauses were seen; these will be monitored, but your pattern still appears mainly obstructive.'
+        'You had a moderate amount of time with oxygen lower than ideal during sleep; treating your sleep apnea can help reduce this strain.'
       );
     } else {
       patientFindings.push(
-        'No significant central-breathing pattern was seen; your breathing interruptions are primarily due to airway narrowing or collapse.'
+        'Your oxygen levels stayed relatively stable through the night, with only mild oxygen stress on the heart and blood vessels.'
       );
     }
-  }
 
-  // 7) Insomnia / COMISA
-  if ((m.isi || 0) >= 15) {
-    patientFindings.push(
-      'Your questionnaire suggests clinically significant insomnia symptoms. Insomnia often occurs together with sleep apnea (COMISA), and treating both usually improves sleep quality more than treating either alone.'
-    );
-  }
+    // 5) Nose / anatomy contribution
+    const nasalConf = conf('Nasal-Resistance Contributor', m);
+    if (nasalConf === 'High' || nasalConf === 'Moderate') {
+      patientFindings.push(
+        'Findings in your nose suggest that nasal blockage contributes to your snoring or sleep apnea and may affect CPAP comfort.'
+      );
+    } else {
+      patientFindings.push(
+        'Your nose and throat exam did not show major anatomic blockage.'
+      );
+    }
 
-  const findingsUl = patientFindings.map(t => `<li>${t}</li>`).join('');
+    // 6) Central / periodic breathing pattern
+    const csrMF = m.csr ?? null;
+    const centralIndexMF = m.pahic3 ?? null;
+    if (csrMF !== null || centralIndexMF !== null) {
+      if (csrMF !== null && csrMF >= 10) {
+        patientFindings.push(
+          'Your study showed a repeating “central” breathing pattern (Cheyne–Stokes). This can be linked with heart conditions or a very sensitive breathing response, and your clinician will factor this in when choosing the safest device or settings.'
+        );
+      } else if (centralIndexMF !== null && centralIndexMF >= 10) {
+        patientFindings.push(
+          'You had a higher number of central breathing pauses, where the brain briefly stops sending the signal to breathe. This will be considered when selecting the right device or settings.'
+        );
+      } else if (centralIndexMF !== null && centralIndexMF >= 3) {
+        patientFindings.push(
+          'A small number of central breathing pauses were seen; these will be monitored, but your pattern still appears mainly obstructive.'
+        );
+      } else {
+        patientFindings.push(
+          'No significant central-breathing pattern was seen; your breathing interruptions are primarily due to airway narrowing or collapse.'
+        );
+      }
+    }
+
+    // 7) Insomnia / COMISA
+    if ((m.isi || 0) >= 15) {
+      patientFindings.push(
+        'Your questionnaire suggests clinically significant insomnia symptoms. Insomnia often occurs together with sleep apnea (COMISA), and treating both usually improves sleep quality more than treating either alone.'
+      );
+    }
+
+    const findingsUl = patientFindings.map(t => `<li>${t}</li>`).join('');
 
     const toPatient = s => s
       .replace('Start or continue CPAP/APAP (gold-standard).',
