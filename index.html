@@ -136,599 +136,552 @@
     <div id="clinician"></div>
   </main>
 
-  <script>
-    const n = v => (v===null||v===undefined||v===''?null:+v);
-    const exists = v => v!==null && v!==undefined && v!=='';
+<script>
+  const n = v => (v===null||v===undefined||v===''?null:+v);
+  const exists = v => v!==null && v!==undefined && v!=='';
 
-    function conf(tag, m){
-      switch(tag){
-        case 'High Anatomical Contribution':{
-          const strong = ((m.bmi||0)>=30) + ((m.neck||0)>=17) + ((m.tons||0)>=3) + (['III','IV'].includes(m.ftp)?1:0) + ((m.ahi||0)>=30);
-          return strong>=4?'High':strong>=2?'Moderate':'Low';
-        }
-        case 'Low Arousal Threshold':{
-          const ar = (m.isi||0);
-          const arRatio = (m.arInd && m.ahi)?(m.arInd/m.ahi):0;
-          if(ar>=15 || arRatio>1.3) return (ar>=22||arRatio>=1.8)?'High':'Moderate';
-          return 'Low';
-        }
-        case 'High Loop Gain':{
-          if((m.csr||0)>=10 || (m.pahic3||0)>=10 || (m.pahic4||0)>=5 || m.cvd) return 'Moderate';
-          return 'Low';
-        }
-        case 'Positional OSA':{
-          const pr = (m.sup && m.nons)?(m.sup/m.nons):0;
-          if(pr>=3 && (m.nons||0)<10) return 'High';
-          if(pr>=2 && (m.nons||0)<15) return 'Moderate';
-          return 'Low';
-        }
-        case 'REM-Predominant OSA':{
-          const rr = (m.rem && m.nrem)?(m.rem/m.nrem):0;
-          if(rr>=3 && (m.nrem||0)<10) return 'High';
-          if(rr>=2 && (m.nrem||0)<15) return 'Moderate';
-          return 'Low';
-        }
-        case 'High Hypoxic Burden':{
-          // Evidence-aligned bands: High >=60; Moderate 30-59; alternate drivers as proxies
-          const hb=m.hbPH||0, hb90=m.hb90PH||0, odi=m.odi||0, nadir=(m.nadir??100);
-          if(hb>=60 || hb90>=3 || odi>=50 || nadir<80) return 'High';
-          if(hb>=30 || hb90>=1.5 || (nadir<85 && nadir>=80) || (odi>=30 && odi<50)) return 'Moderate';
-          return 'Low';
-        }
-        case 'Nasal-Resistance Contributor':{
-          const f = m.nasal;
-          const nose = m.nose || 0;
-
-          // High if multiple structural issues or very high NOSE
-          if (f === '≥2 issues' || nose >= 60) return 'High';
-
-          // Moderate if any single nasal issue or NOSE in 30–59 range
-          if (['Septum','Turbinates','Rhinitis'].includes(f) || nose >= 30) return 'Moderate';
-
-          return 'Low';
-        }
-        default: return 'Low';
+  function conf(tag, m){
+    switch(tag){
+      case 'High Anatomical Contribution':{
+        const strong = ((m.bmi||0)>=30) + ((m.neck||0)>=17) + ((m.tons||0)>=3) + (['III','IV'].includes(m.ftp)?1:0) + ((m.ahi||0)>=30);
+        return strong>=4?'High':strong>=2?'Moderate':'Low';
       }
+      case 'Low Arousal Threshold':{
+        const ar = (m.isi||0);
+        const arRatio = (m.arInd && m.ahi)?(m.arInd/m.ahi):0;
+        if(ar>=15 || arRatio>1.3) return (ar>=22||arRatio>=1.8)?'High':'Moderate';
+        return 'Low';
+      }
+      case 'High Loop Gain':{
+        if((m.csr||0)>=10 || (m.pahic3||0)>=10 || (m.pahic4||0)>=5 || m.cvd) return 'Moderate';
+        return 'Low';
+      }
+      case 'Positional OSA':{
+        const pr = (m.sup && m.nons)?(m.sup/m.nons):0;
+        if(pr>=3 && (m.nons||0)<10) return 'High';
+        if(pr>=2 && (m.nons||0)<15) return 'Moderate';
+        return 'Low';
+      }
+      case 'REM-Predominant OSA':{
+        const rr = (m.rem && m.nrem)?(m.rem/m.nrem):0;
+        if(rr>=3 && (m.nrem||0)<10) return 'High';
+        if(rr>=2 && (m.nrem||0)<15) return 'Moderate';
+        return 'Low';
+      }
+      case 'High Hypoxic Burden':{
+        const hb=m.hbPH||0, hb90=m.hb90PH||0, odi=m.odi||0, nadir=(m.nadir??100);
+        if(hb>=60 || hb90>=3 || odi>=50 || nadir<80) return 'High';
+        if(hb>=30 || hb90>=1.5 || (nadir<85 && nadir>=80) || (odi>=30 && odi<50)) return 'Moderate';
+        return 'Low';
+      }
+      case 'Nasal-Resistance Contributor':{
+        const f = m.nasal;
+        const nose = m.nose || 0;
+        if (f === '≥2 issues' || nose >= 60) return 'High';
+        if (['Septum','Turbinates','Rhinitis'].includes(f) || nose >= 30) return 'Moderate';
+        return 'Low';
+      }
+      default: return 'Low';
     }
+  }
 
-    function onSubmit(e){
-      e.preventDefault();
-      const f = new FormData(e.target);
+  function onSubmit(e){
+    e.preventDefault();
+    const f = new FormData(e.target);
 
-      const m = {
-        ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd')==='on',
-        bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'), nasal: f.get('nasal'),
-        ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup'))||1, rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
-        odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
-        csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
-        arInd: n(f.get('arInd'))
-        nose: n(f.get('nose')) 
-      };
-
-      // Surgical candidacy helpers
-      const tonsilGrade = +m.tons || 0;
-      const friedman = m.ftp;
-      const bmi = +m.bmi || 0;
-      const ahiOverall = +m.ahi || 0;
-      const favorableSoftTissue = (tonsilGrade >= 3) && (friedman === 'I' || friedman === 'II');
-      const considerSoftTissue = favorableSoftTissue && (ahiOverall >= 5);
-      const considerHNS = (ahiOverall >= 15 && ahiOverall <= 65) && (bmi <= 32) && !((m.csr || 0) >= 10) && !((m.pahic4 || 0) >= 5);
-
-      // Phenotypes + reasons (for clinician table)
-      const phen = [];
-      const reasons = {};
-      const add=(tag)=>{ if(!phen.find(p=>p.tag===tag)) phen.push({tag, conf:conf(tag,m)}); };
-      const addWhy=(tag,txt)=>{ if(!reasons[tag]) reasons[tag]=[]; reasons[tag].push(txt); };
-
-      if([ (m.bmi||0)>=30, (m.neck||0)>=17, (m.tons||0)>=3, ['III','IV'].includes(m.ftp), (m.ahi||0)>=30 ].filter(Boolean).length>=3){
-        const bits=[];
-        if ((m.bmi||0) >= 30) bits.push(`BMI ${m.bmi}`);
-        if ((m.neck||0) >= 17) bits.push(`Neck ${m.neck} in`);
-        if ((m.tons||0) >= 3) bits.push(`Tonsils ${m.tons}`);
-        if (['III','IV'].includes(m.ftp)) bits.push(`Friedman ${m.ftp}`);
-        if ((m.ahi||0) >= 30) bits.push(`AHI ${m.ahi}`);
-        addWhy('High Anatomical Contribution', bits.join('; '));
-        add('High Anatomical Contribution');
-      }
-      if((m.isi||0)>=15 || ((m.arInd&&m.ahi)&& (m.arInd/m.ahi)>1.3)){
-        const bits=[];
-        if ((m.isi||0) >= 15) bits.push(`ISI ${m.isi}`);
-        if ((m.arInd&&m.ahi) && (m.arInd/m.ahi)>1.3) bits.push(`Arousal index/AHI ${(m.arInd/m.ahi).toFixed(1)}`);
-        addWhy('Low Arousal Threshold', bits.join('; '));
-        add('Low Arousal Threshold');
-      }
-      if ((m.isi || 0) >= 15) {
-        addWhy('Insomnia / COMISA pattern', `ISI ${m.isi} (≥15 suggests clinically significant insomnia symptoms)`);
-        add('Insomnia / COMISA pattern');
-      }
-      if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd){
-        const bits=[];
-        if ((m.csr||0) >= 10) bits.push(`CSR ${m.csr}%`);
-        if ((m.pahic3||0) >= 10) bits.push(`pAHIc3 ${m.pahic3}/h`);
-        if ((m.pahic4||0) >= 5)  bits.push(`pAHIc4 ${m.pahic4}/h`);
-        if (m.cvd) bits.push('CVD present');
-        addWhy('High Loop Gain', bits.join('; '));
-        add('High Loop Gain');
-      }
-      if((m.sup && m.nons) && ((m.sup/m.nons)>2) && (m.nons<15)){
-        addWhy('Positional OSA', `Sup/Non-sup ${(m.sup/m.nons).toFixed(1)}; Non-sup AHI ${m.nons}`);
-        add('Positional OSA');
-      }
-      if((m.rem && m.nrem) && ((m.rem/m.nrem)>2) && (m.nrem<15)){
-        addWhy('REM-Predominant OSA', `REM/NREM ${(m.rem/m.nrem).toFixed(1)}; NREM AHI ${m.nrem}`);
-        add('REM-Predominant OSA');
-      }
-      if(((m.hbPH||0)>=30) || ((m.hb90PH||0)>2) || ((m.nadir??100)<85) || ((m.odi||0)>=40)){
-        const bits=[];
-        if ((m.hbPH||0)  >= 30) bits.push(`HB/hr ${m.hbPH}`);
-        if ((m.hbPH||0)  >= 60) bits.push('≥60 (↑ CV risk)');
-        if ((m.hb90PH||0)>  2) bits.push(`Area<90/hr ${m.hb90PH}`);
-        if ((m.odi||0)   >= 40) bits.push(`ODI4 ${m.odi}/h`);
-        if ((m.nadir??100) < 85) bits.push(`Nadir ${m.nadir}%`);
-        addWhy('High Hypoxic Burden', bits.join('; '));
-        add('High Hypoxic Burden');
-      }
-      const highNOSE = (m.nose || 0) >= 30;
-      if ((m.nasal && m.nasal !== 'None') || highNOSE) {
-        const nasalMap = {
-          'Septum':'Deviated septum',
-          'Turbinates':'Inferior turbinate hypertrophy',
-          'Rhinitis':'Rhinitis',
-          '≥2 issues':'Multiple nasal issues'
-        };
-        const bits = [];
-        if (m.nasal && m.nasal !== 'None') bits.push(nasalMap[m.nasal] || m.nasal);
-        if (exists(m.nose)) bits.push(`NOSE ${m.nose}/100`);
-        addWhy('Nasal-Resistance Contributor', bits.join('; '));
-        add('Nasal-Resistance Contributor');
-      }
-      phen.forEach(p=>p.why=(reasons[p.tag]||[]).join('; '));
-
-      // Symptom subtype
-      let subtype='Minimally-symptomatic';
-      if((m.ess||0)>=15) subtype='Sleepy'; else if((m.isi||0)>=15) subtype='Disturbed-sleep';
-
-      // Ranked recs
-      const rec=[]; const seen=new Set();
-      const push=(x)=>{ if(seen.has(x)) return; seen.add(x); rec.push(x); };
-      
-      // --- Core first-line therapy ---
-      // CPAP phrasing: start OR continue (covers existing users)
-      push('Start or continue CPAP/APAP (gold-standard).');
-      
-      // Oral appliance ONLY for mild–moderate OSA, and clarify its role
-      const isMildMod = (ahiOverall >= 5 && ahiOverall < 30);
-      if (isMildMod) {
-        push('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.');
-      }
-      
-      // Anatomic bucket stays
-      push('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).');
-      
-      // --- Phenotype-specific nudges ---
-      if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow-up test.');
-      if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
-      if(phen.some(p=>p.tag==='Low Arousal Threshold')) push('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).');
-      if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
-      if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).');
-      
-      // Anatomy-specific surgery nudges
-      if (considerSoftTissue) {
-        push('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).');
-      }
-      if (considerHNS) {
-        push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
-      }
-      
-      // High HB urgent banner
-      const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
-      if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
-      
-      const top3 = rec.slice(0,3);
-
-      // Handout: patient-friendly text
-      const sev = ahi => ahi==null?'—':ahi<5?'None':ahi<15?'Mild':ahi<30?'Moderate':'Severe';
-      const today = new Date().toLocaleDateString();
-
-      const patientFindingText = {
-        'High Anatomical Contribution':'Your airway is relatively narrow or crowded (weight, tonsils, or palate/jaw shape), which makes collapse more likely during sleep.',
-        'Low Arousal Threshold':'You wake easily; even small breathing changes interrupt sleep and leave you unrefreshed.',
-        'High Loop Gain':'Your breathing control system is extra sensitive, which can cause unstable breathing while asleep.',
-        'Positional OSA':'Breathing problems are worse when you sleep on your back. Side-sleeping often helps.',
-        'REM-Predominant OSA':'Breathing problems are worse during dream (REM) sleep.',
-        'High Hypoxic Burden':'Your oxygen spends more time lower than ideal during sleep; over time this can strain the heart.',
-        'Nasal-Resistance Contributor':'Nasal blockage (deviated septum, swollen turbinates, or rhinitis) raises resistance and can worsen snoring or CPAP comfort.'
-      };
-
-      // Add brief CSA / periodic-breathing note when present
-      const csrMF = m.csr ?? null;
-      const centralIndexMF = m.pahic3 ?? null;
-      let centralSideNote = '';
-
-      if (csrMF !== null && csrMF >= 10) {
-        centralSideNote =
-          ' Your test also showed a repeating pattern of central breathing (Cheyne–Stokes), which your clinician will factor in when choosing the safest device type and settings.';
-      } else if (centralIndexMF !== null && centralIndexMF >= 10) {
-        centralSideNote =
-          ' Your test also showed a higher number of central breathing pauses, where the brain briefly stops sending the signal to breathe.';
-      } else if (centralIndexMF !== null && centralIndexMF >= 3) {
-        centralSideNote =
-          ' A small number of central breathing pauses were seen; these will be monitored, but your pattern still appears mainly obstructive.';
-      }
-
-      const findingsUl = phen.map(p => {
-        let txt = patientFindingText[p.tag] || '';
-        if (p.tag === 'High Loop Gain' && centralSideNote) {
-          txt += ' ' + centralSideNote;
-        }
-        return `<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${txt}</li>`;
-      }).join('');
-
-      // Translate top recs into patient descriptions
-      const toPatient = s => s
-        .replace('Start or continue CPAP/APAP (gold-standard).',
-                 'Start or continue CPAP: a bedside machine that gently blows air through a mask to keep your airway open all night. It works best when used regularly and correctly fitted.')
-        .replace('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.',
-                 'Consider a custom oral appliance (mandibular advancement device): a dentist-made mouthpiece that moves the lower jaw slightly forward to keep the airway open. It’s best for mild to moderate OSA and for people who cannot tolerate CPAP or would prefer not to use it.')
-        .replace('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).',
-                 'If anatomy is a major factor, we will discuss surgical options tailored to your exam and sleep study (nose, soft palate/tonsils, or nerve-stimulation treatments).')
-        .replace('Begin positional therapy for 2–4 weeks; verify on follow-up test.',
-                 'Try side-sleeping (positional therapy) for 2–4 weeks; we’ll recheck to see if your numbers improve.')
-        .replace('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.',
-                 'If central events continue, your clinician may consider oxygen or specific therapies/devices after a heart evaluation.')
-        .replace('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).',
-                 'Add insomnia care (CBT-I) and adjust CPAP comfort settings like humidification, ramp, and mask fit.')
-        .replace('Prioritize timely therapy to reduce desaturation burden and CV risk.',
-                 'Treat promptly to reduce low-oxygen time at night and protect your heart.')
-        .replace('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).',
-                 'Treat nasal blockage: start with saline and steroid sprays; if blockage persists, procedures like septoplasty or turbinate reduction can improve airflow and CPAP comfort.')
-        .replace('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).',
-                 'Your anatomy may suit soft-tissue surgery (for example, tonsillectomy or soft-palate procedures) to enlarge the airway.')
-        .replace('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.',
-                 'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that gently moves the tongue forward during sleep).');
-      const patientRecs = top3.map(toPatient);
-
-            // Position-specific explanation for patients
-      let posExpl = '';
-      if (exists(m.sup) && exists(m.nons)) {
-        if (m.sup > m.nons * 1.5) {
-          posExpl =
-            'You had many more breathing pauses while on your back. ' +
-            'For many people, the tongue and soft tissues fall backward in this position, ' +
-            'narrowing the airway. This makes side-sleeping an important part of treatment.';
-        } else if (m.nons > m.sup * 1.5) {
-          posExpl =
-            'You actually had more breathing pauses when you were not on your back. ' +
-            'In your case, body position is less helpful as a treatment lever, ' +
-            'so we focus more on other therapies.';
-        } else {
-          posExpl =
-            'You had a similar number of breathing pauses in all positions. ' +
-            'Simply avoiding your back is unlikely to be enough by itself, ' +
-            'so we usually still recommend other treatments.';
-        }
-      }
-
-      // Patient-friendly explanation for CSR and central events
-        let centralExpl = '';
-        const csr = m.csr ?? null;
-        const centralIndex = m.pahic3 ?? null;
-        
-        // Brief plain-language definition of high loop gain
-        const loopGain =
-          'People with this pattern often have a very sensitive breathing-control system. Their body “overcorrects” when carbon dioxide levels change, causing breathing to become unstable during sleep. This is called high loop gain.';
-        
-        if (csr !== null && csr >= 10) {
-          centralExpl =
-            'Your study shows an elevated amount of Cheyne–Stokes breathing, an unstable, repeating breathing pattern that causes rhythmic ups and downs in airflow. This pattern is often linked with heart conditions or a very sensitive breathing response. ' +
-            loopGain +
-            ' Because of this pattern, your clinician may avoid certain CPAP modes and may choose device settings or additional treatments that help stabilize your breathing. Further evaluation may be recommended.';
-        } else if (centralIndex !== null && centralIndex >= 10) {
-          centralExpl =
-            'You had a higher number of central breathing pauses. These events occur when the brain briefly stops sending the signal to breathe rather than the airway being blocked. ' +
-            loopGain +
-            ' Your clinician will use this information to determine whether standard CPAP is appropriate or whether a different device or added oxygen may be safer for you.';
-        } else if (centralIndex !== null && centralIndex >= 3) {
-          centralExpl =
-            'You had a small number of central breathing pauses. These can occur in many people and often improve with treatment or as sleep becomes more stable. Your overall pattern still appears mainly obstructive.';
-        } else {
-          centralExpl =
-            'No meaningful pattern of central breathing pauses was seen. Your breathing interruptions are primarily obstructive, meaning they are caused by airway narrowing or collapse rather than the brain forgetting to breathe.';
-        }
-      
-      // “Sleep Test Results” with brief explanations + norms
-            const resultsTable = `
-        <table class="kpi-table"><tbody>
-          <tr>
-            <th>AHI — Apnea–Hypopnea Index</th>
-            <td>
-              You had an average of <strong>${exists(m.ahi)?m.ahi:'—'}</strong> breathing pauses per hour of sleep.
-              This number summarizes how often your breathing was partly or fully blocked throughout the night.
-              <em>Normal is less than 5 events per hour.</em> Your overall severity is <strong>${sev(m.ahi)}</strong>.
-            </td>
-          </tr>
-
-          <tr>
-            <th>AHI by body position (supine / non-supine)</th>
-            <td>
-              While sleeping on your back, you had
-              <strong>${exists(m.sup)?m.sup:'—'}</strong> breathing pauses per hour.
-              While on your side or stomach, you had
-              <strong>${exists(m.nons)?m.nons:'—'}</strong> pauses per hour.
-              ${posExpl}
-            </td>
-          </tr>
-
-          <tr>
-            <th>AHI by sleep stage (REM / NREM)</th>
-            <td>
-              During dream sleep (REM), you had
-              <strong>${exists(m.rem)?m.rem:'—'}</strong> breathing pauses per hour.
-              In non-dream sleep (NREM), you had
-              <strong>${exists(m.nrem)?m.nrem:'—'}</strong> pauses per hour.
-              REM is the stage when muscles relax more, so breathing problems can be worse there.
-              Even if daytime sleepiness is mild, high REM numbers still matter and usually benefit from treatment.
-            </td>
-          </tr>
-
-          <tr>
-            <th>ODI 4% — Oxygen Desaturation Index</th>
-            <td>
-              Your oxygen level dropped by at least 4 percentage points
-              <strong>${exists(m.odi)?m.odi:'—'}</strong> times per hour on average.
-              This reflects how often your body is exposed to brief drops in oxygen during sleep.
-              <em>Many people without sleep apnea have fewer than about 5 drops per hour; lower is better.</em>
-            </td>
-          </tr>
-
-          <tr>
-            <th>Oxygen nadir (lowest level)</th>
-            <td>
-              Your lowest recorded oxygen level during the study was
-              <strong>${exists(m.nadir)?m.nadir+'%':'—'}</strong>.
-              Short dips can happen, but deeper or repeated drops suggest more strain on the heart and brain.
-              <em>We generally aim to keep oxygen above about 90% for most of the night.</em>
-            </td>
-          </tr>
-
-          <tr>
-            <th>Hypoxic burden</th>
-            <td>
-              Your hypoxic burden was
-              <strong>${exists(m.hbPH)?m.hbPH:'—'} %·min/hour</strong>.
-              This number adds up both <em>how long</em> and <em>how deep</em> your oxygen is low across the night.
-              Higher values mean more nightly oxygen stress. Studies have found that values around
-              <em>60 or higher</em> are linked to a higher risk of heart and blood-vessel problems.
-            </td>
-          </tr>
-
-          <tr>
-            <th>Time under 90% oxygen (Area &lt;90%)</th>
-            <td>
-              Your oxygen was below 90% for a total of about
-              <strong>${exists(m.hb90PH)?m.hb90PH:'—'} %·min/hour</strong>.
-              This is another way of describing how much time your body spends with less-than-ideal oxygen levels.
-              <em>Lower values, especially near 0, are better.</em>
-            </td>
-          </tr>
-
-          <tr>
-            <th>Periodic/central patterns</th>
-            <td>
-              Cheyne–Stokes breathing: <strong>${exists(m.csr) ? m.csr + '%' : '—'}</strong><br>
-              Central breathing pauses (3% criteria): <strong>${exists(m.pahic3) ? m.pahic3 + '/hour' : '—'}</strong>
-              <br><br>
-              ${centralExpl}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Questionnaire scores</th>
-            <td>
-              Epworth sleepiness scale (ESS): ${exists(m.ess)?m.ess:'—'} (higher scores mean more daytime sleepiness; values ≥10 are often considered elevated).<br>
-              Insomnia Severity Index (ISI): ${exists(m.isi)?m.isi:'—'} (scores ≥15 suggest clinically significant insomnia).<br>
-              NOSE score: ${exists(m.nose)?m.nose:'—'}/100 (higher scores mean more nasal blockage; scores ≥30 suggest moderate symptoms, ≥50 more severe).
-            </td>
-          </tr>
-
-          <tr>
-            <th>BMI / Neck size</th>
-            <td>
-              Your body mass index (BMI) was
-              <strong>${exists(m.bmi)?m.bmi:'—'}</strong> and your neck size was
-              <strong>${exists(m.neck)?m.neck+' inches':'—'}</strong>.
-              Extra tissue around the neck and upper airway can narrow the breathing space.
-              In many studies, a neck size above about 17 inches in men (and 16 inches in women) is associated with higher risk of OSA.
-            </td>
-          </tr>
-
-          <tr>
-            <th>Throat and nose exam</th>
-            <td>
-              Tonsils: <strong>${exists(m.tons)?m.tons:'—'}</strong>;
-              Friedman palate/tongue position: <strong>${exists(m.ftp)?m.ftp:'—'}</strong>;
-              Nasal finding: <strong>${exists(m.nasal)?m.nasal:'—'}</strong>.
-              These anatomic features help explain how much of your sleep apnea is due to crowding in the nose and throat,
-              and whether procedures on the tonsils, soft palate, or nose might meaningfully support CPAP or, in some
-              cases, serve as additional treatment.
-            </td>
-          </tr>
-        </tbody></table>`;
-
-      // Build patient handout
-      const handoutHTML = `
-        <section class="handout" id="handout">
-          <div class="brand-row">
-            <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
-            <div>
-              <h1>Your Personalized Sleep Report</h1>
-              <div class="muted">Date: ${today}</div>
-            </div>
-          </div>
-
-          <h2>Overview</h2>
-          <p><strong>Obstructive sleep apnea (OSA)</strong> happens when the airway partly or fully closes during sleep. This leads to pauses in breathing and drops in oxygen, which can fragment sleep and, over years, raise risks for high blood pressure, heart disease, stroke, and problems with memory and focus. Your results below are personalized from your sleep test and exam.</p>
-
-          <h2>Your main findings</h2>
-          <ul>${findingsUl || '<li>No specific patterns were flagged based on the current inputs.</li>'}</ul>
-
-          <h2>What this means for you</h2>
-          <ol>${patientRecs.map(r=>`<li>${r}</li>`).join('')}</ol>
-
-          <h2>Your Sleep Test Results</h2>
-          <p class="muted">These are the main numbers from your test with a short note about what they mean. Normal ranges are listed where helpful.</p>
-          ${resultsTable}
-
-          <h2>Treatment details (what each option means)</h2>
-          <ul id="treatDetails"></ul>
-
-          <h2>Next steps</h2>
-          <p>We will review these results together and decide on a plan that fits you best. Bring this report to your follow-up visit.</p>
-        </section>`;
-      document.getElementById('patientSummary').innerHTML = handoutHTML;
-
-      // Clinician panel (with WHY column)
-      const allRecs = rec.map(x=>`<li>${x}</li>`).join('');
-      const rows = phen.map(p=>`<tr><td>${p.tag}</td><td>${p.conf}</td><td>${p.why || ''}</td></tr>`).join('');
-      document.getElementById('clinician').innerHTML = `
-        <div class="card shadow-sm mt-3">
-          <div class="card-body">
-            <h2 class="h6 section-title">Clinician Guidance</h2>
-            ${phen.length?`<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Phenotype</th><th>Confidence</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
-            <h6>Ranked plan</h6>
-            <ol>${allRecs}</ol>
-          </div>
-        </div>`;
-
-      // Build patient-facing treatment details for recommended options
-      const txMap = [
-        {
-          key: 'CPAP',
-          match: /Start or continue CPAP|CPAP\/APAP/i,
-          title: 'CPAP (Continuous Positive Airway Pressure)',
-          desc: 'A bedside machine gently sends air through a mask to keep your airway open all night. Masks come in different styles; comfort improves with proper fit, humidification, and ramp settings. When used regularly, CPAP lowers snoring, improves daytime alertness, and reduces oxygen stress.'
-        },
-        {
-          key: 'MAD',
-          match: /oral appliance|mandibular/i,
-          title: 'Custom Oral Appliance (Mandibular Advancement Device)',
-          desc: 'A dentist-made mouthpiece holds the lower jaw slightly forward to prevent collapse. Best for mild to moderate OSA or when someone cannot tolerate CPAP or prefers a non-CPAP option. Side effects can include jaw soreness or bite changes; follow-up titration and a repeat sleep test check effectiveness.'
-        },
-        {
-          key: 'Positional',
-          match: /positional therapy/i,
-          title: 'Positional Therapy',
-          desc: 'Techniques or wearable devices that keep you off your back if apnea is mainly supine. Works best when your non-supine AHI is much lower. We usually reassess with home testing to confirm benefit.'
-        },
-        {
-          key: 'Nasal',
-          match: /nasal obstruction|septoplasty|turbinate/i,
-          title: 'Nasal Treatments',
-          desc: 'Improving nasal airflow (saline and steroid sprays first) can reduce snoring and make CPAP far more comfortable. If blockage persists—such as a deviated septum or enlarged turbinates—simple procedures (septoplasty, turbinate reduction) can help.'
-        },
-        {
-          key: 'SoftTissue',
-          match: /soft tissue surgery|tonsillectomy/i,
-          title: 'Soft-Tissue Surgery',
-          desc: 'When anatomy is favorable (e.g., large tonsils, Friedman I–II), surgery like tonsillectomy or soft-palate procedures can enlarge and stabilize the airway. Usually paired with follow-up testing to document improvement.'
-        },
-        {
-          key: 'HNS',
-          match: /hypoglossal nerve stimulation|HNS/i,
-          title: 'Hypoglossal Nerve Stimulation (Inspire)',
-          desc: 'A small implanted device gently moves the tongue forward during sleep. Candidates typically have AHI 15–65, BMI ≤32, and minimal central apnea. It is activated nightly with a remote and titrated over several months.'
-        },
-        {
-          key: 'CBTI',
-          match: /CBT-I|insomnia/i,
-          title: 'CBT-I (Cognitive Behavioral Therapy for Insomnia)',
-          desc: 'A structured program that retrains sleep patterns, reduces nighttime awakenings, and often improves CPAP success. Delivered via trained clinicians or validated digital programs over several weeks.'
-        },
-        {
-          key: 'OxygenASV',
-          match: /oxygen|ASV|acetazolamide/i,
-          title: 'Therapies for Central/Complex Apnea',
-          desc: 'If central apneas persist after starting CPAP, your clinician may consider supplemental oxygen, medication (e.g., acetazolamide), or specialized devices (e.g., ASV) after confirming heart function. Not needed for most people with purely obstructive OSA.'
-        }
-      ];
-      const used = new Set();
-      const detailLis = rec.map(r=>{
-        const hit = txMap.find(t=>t.match.test(r));
-        if(!hit || used.has(hit.key)) return '';
-        used.add(hit.key);
-        return `<li><strong>${hit.title}</strong><br><span class="muted">${hit.desc}</span></li>`;
-      }).join('');
-      document.querySelector('#treatDetails').innerHTML = detailLis || '<li><span class="muted">No specific treatments were recommended based on the current inputs.</span></li>';
-
-      // Scroll to handout
-      window.scrollTo({top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth'});
-    }
-
-    document.getElementById('form').addEventListener('submit', onSubmit);
-
-    // Dual print buttons
-    const printWithMode = (mode)=>{ document.body.classList.add(mode); window.print(); setTimeout(()=>{ document.body.classList.remove(mode); }, 100); };
-    document.getElementById('btnPrintPatient').addEventListener('click', ()=>printWithMode('print-patient'));
-    document.getElementById('btnPrintClinician').addEventListener('click', ()=>printWithMode('print-clinician'));
-
-    // New patient reset button
-    document.getElementById('btnReset').addEventListener('click', ()=>{
-      document.getElementById('form').reset();
-      document.getElementById('patientSummary').innerHTML = '';
-      document.getElementById('clinician').innerHTML = '';
-      window.scrollTo({top:0, behavior:'smooth'});
-    });
-
-    // ---- Demo filler ----
-    const demoCases = {
-      modHighHB: {
-        ess: 8, isi: 6, cvd: false,
-        bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II', nasal: 'Rhinitis',
-        ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
-        odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
-        csr: 0.0, pahic3: 2.0, pahic4: 1.0
-      },
-      mildLowHB: {
-        ess: 6, isi: 7, cvd: false,
-        bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II', nasal: 'None',
-        ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
-        odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
-        csr: 0.0, pahic3: 1.0, pahic4: 0.5
-      },
-      severeHNS: {
-        ess: 10, isi: 10, cvd: false,
-        bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II', nasal: 'Septum',
-        ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
-        odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
-        csr: 0.0, pahic3: 2.0, pahic4: 1.0
-      }
+    const m = {
+      ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd')==='on',
+      bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'), nasal: f.get('nasal'),
+      ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup'))||1, rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
+      odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
+      csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
+      arInd: n(f.get('arInd')),
+      nose: n(f.get('nose'))   // <-- the missing comma is now here
     };
 
-    function setVal(name, value) {
-      const el = document.querySelector(`[name="${name}"]`);
-      if (!el) return;
-      if (el.type === 'checkbox') el.checked = !!value;
-      else el.value = value;
+    // Surgical candidacy helpers
+    const tonsilGrade = +m.tons || 0;
+    const friedman = m.ftp;
+    const bmi = +m.bmi || 0;
+    const ahiOverall = +m.ahi || 0;
+    const favorableSoftTissue = (tonsilGrade >= 3) && (friedman === 'I' || friedman === 'II');
+    const considerSoftTissue = favorableSoftTissue && (ahiOverall >= 5);
+    const considerHNS = (ahiOverall >= 15 && ahiOverall <= 65) && (bmi <= 32) && !((m.csr || 0) >= 10) && !((m.pahic4 || 0) >= 5);
+
+    // Phenotypes + reasons
+    const phen = [];
+    const reasons = {};
+    const add=(tag)=>{ if(!phen.find(p=>p.tag===tag)) phen.push({tag, conf:conf(tag,m)}); };
+    const addWhy=(tag,txt)=>{ if(!reasons[tag]) reasons[tag]=[]; reasons[tag].push(txt); };
+
+    if([ (m.bmi||0)>=30, (m.neck||0)>=17, (m.tons||0)>=3, ['III','IV'].includes(m.ftp), (m.ahi||0)>=30 ].filter(Boolean).length>=3){
+      const bits=[];
+      if ((m.bmi||0) >= 30) bits.push(`BMI ${m.bmi}`);
+      if ((m.neck||0) >= 17) bits.push(`Neck ${m.neck} in`);
+      if ((m.tons||0) >= 3) bits.push(`Tonsils ${m.tons}`);
+      if (['III','IV'].includes(m.ftp)) bits.push(`Friedman ${m.ftp}`);
+      if ((m.ahi||0) >= 30) bits.push(`AHI ${m.ahi}`);
+      addWhy('High Anatomical Contribution', bits.join('; '));
+      add('High Anatomical Contribution');
     }
-    function fillDemo(caseKey) {
-      document.getElementById('form').reset();
-      const d = demoCases[caseKey] || demoCases.modHighHB;
-      setVal('ess', d.ess); setVal('isi', d.isi); setVal('cvd', d.cvd);
-      setVal('bmi', d.bmi); setVal('neck', d.neck); setVal('tonsils', d.tonsils); setVal('ftp', d.ftp); setVal('nasal', d.nasal);
-      setVal('ahi', d.ahi); setVal('ahiSup', d.ahiSup); setVal('ahiNonSup', d.ahiNonSup); setVal('ahiREM', d.ahiREM); setVal('ahiNREM', d.ahiNREM);
-      setVal('odi', d.odi); setVal('nadir', d.nadir); setVal('hbPH', d.hbPH); setVal('hb90PH', d.hb90PH);
-      setVal('csr', d.csr); setVal('pahic3', d.pahic3); setVal('pahic4', d.pahic4);
+    if((m.isi||0)>=15 || ((m.arInd&&m.ahi)&& (m.arInd/m.ahi)>1.3)){
+      const bits=[];
+      if ((m.isi||0) >= 15) bits.push(`ISI ${m.isi}`);
+      if ((m.arInd&&m.ahi) && (m.arInd/m.ahi)>1.3) bits.push(`Arousal index/AHI ${(m.arInd/m.ahi).toFixed(1)}`);
+      addWhy('Low Arousal Threshold', bits.join('; '));
+      add('Low Arousal Threshold');
     }
-    document.getElementById('btnFill').addEventListener('click', ()=>{
-      const key = document.getElementById('demoSelect').value;
-      fillDemo(key);
-      // auto-generate after filling
-      const form = document.getElementById('form');
-      if (form.requestSubmit) form.requestSubmit();
-      else form.dispatchEvent(new Event('submit', { cancelable: true }));
-      window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior: 'smooth' });
-    });
-  </script>
+    if ((m.isi || 0) >= 15) {
+      addWhy('Insomnia / COMISA pattern', `ISI ${m.isi} (≥15 suggests clinically significant insomnia symptoms)`);
+      add('Insomnia / COMISA pattern');
+    }
+    if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd){
+      const bits=[];
+      if ((m.csr||0) >= 10) bits.push(`CSR ${m.csr}%`);
+      if ((m.pahic3||0) >= 10) bits.push(`pAHIc3 ${m.pahic3}/h`);
+      if ((m.pahic4||0) >= 5)  bits.push(`pAHIc4 ${m.pahic4}/h`);
+      if (m.cvd) bits.push('CVD present');
+      addWhy('High Loop Gain', bits.join('; '));
+      add('High Loop Gain');
+    }
+    if((m.sup && m.nons) && ((m.sup/m.nons)>2) && (m.nons<15)){
+      addWhy('Positional OSA', `Sup/Non-sup ${(m.sup/m.nons).toFixed(1)}; Non-sup AHI ${m.nons}`);
+      add('Positional OSA');
+    }
+    if((m.rem && m.nrem) && ((m.rem/m.nrem)>2) && (m.nrem<15)){
+      addWhy('REM-Predominant OSA', `REM/NREM ${(m.rem/m.nrem).toFixed(1)}; NREM AHI ${m.nrem}`);
+      add('REM-Predominant OSA');
+    }
+    if(((m.hbPH||0)>=30) || ((m.hb90PH||0)>2) || ((m.nadir??100)<85) || ((m.odi||0)>=40)){
+      const bits=[];
+      if ((m.hbPH||0)  >= 30) bits.push(`HB/hr ${m.hbPH}`);
+      if ((m.hbPH||0)  >= 60) bits.push('≥60 (↑ CV risk)');
+      if ((m.hb90PH||0)>  2) bits.push(`Area<90/hr ${m.hb90PH}`);
+      if ((m.odi||0)   >= 40) bits.push(`ODI4 ${m.odi}/h`);
+      if ((m.nadir??100) < 85) bits.push(`Nadir ${m.nadir}%`);
+      addWhy('High Hypoxic Burden', bits.join('; '));
+      add('High Hypoxic Burden');
+    }
+    const highNOSE = (m.nose || 0) >= 30;
+    if ((m.nasal && m.nasal !== 'None') || highNOSE) {
+      const nasalMap = {
+        'Septum':'Deviated septum',
+        'Turbinates':'Inferior turbinate hypertrophy',
+        'Rhinitis':'Rhinitis',
+        '≥2 issues':'Multiple nasal issues'
+      };
+      const bits = [];
+      if (m.nasal && m.nasal !== 'None') bits.push(nasalMap[m.nasal] || m.nasal);
+      if (exists(m.nose)) bits.push(`NOSE ${m.nose}/100`);
+      addWhy('Nasal-Resistance Contributor', bits.join('; '));
+      add('Nasal-Resistance Contributor');
+    }
+    phen.forEach(p=>p.why=(reasons[p.tag]||[]).join('; '));
+
+    // Symptom subtype
+    let subtype='Minimally-symptomatic';
+    if((m.ess||0)>=15) subtype='Sleepy'; else if((m.isi||0)>=15) subtype='Disturbed-sleep';
+
+    // Ranked recs
+    const rec=[]; const seen=new Set();
+    const push=(x)=>{ if(seen.has(x)) return; seen.add(x); rec.push(x); };
+
+    push('Start or continue CPAP/APAP (gold-standard).');
+
+    const isMildMod = (ahiOverall >= 5 && ahiOverall < 30);
+    if (isMildMod) {
+      push('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.');
+    }
+    push('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).');
+
+    if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow-up test.');
+    if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
+    if(phen.some(p=>p.tag==='Low Arousal Threshold')) push('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).');
+    if(phen.some(p=>p.tag==='High Hypoxic Burden')) push('Prioritize timely therapy to reduce desaturation burden and CV risk.');
+    if(phen.some(p=>p.tag==='Nasal-Resistance Contributor')) push('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).');
+
+    if (considerSoftTissue) {
+      push('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).');
+    }
+    if (considerHNS) {
+      push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
+    }
+
+    const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
+    if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
+
+    const top3 = rec.slice(0,3);
+
+    const sev = ahi => ahi==null?'—':ahi<5?'None':ahi<15?'Mild':ahi<30?'Moderate':'Severe';
+    const today = new Date().toLocaleDateString();
+
+    const patientFindingText = {
+      'High Anatomical Contribution':'Your airway is relatively narrow or crowded (weight, tonsils, or palate/jaw shape), which makes collapse more likely during sleep.',
+      'Low Arousal Threshold':'You wake easily; even small breathing changes interrupt sleep and leave you unrefreshed.',
+      'High Loop Gain':'Your breathing control system is extra sensitive, which can cause unstable breathing while asleep.',
+      'Positional OSA':'Breathing problems are worse when you sleep on your back. Side-sleeping often helps.',
+      'REM-Predominant OSA':'Breathing problems are worse during dream (REM) sleep.',
+      'High Hypoxic Burden':'Your oxygen spends more time lower than ideal during sleep; over time this can strain the heart.',
+      'Nasal-Resistance Contributor':'Nasal blockage (deviated septum, swollen turbinates, or rhinitis) raises resistance and can worsen snoring or CPAP comfort.',
+      'Insomnia / COMISA pattern':'Your questionnaire suggests trouble falling or staying asleep (insomnia). Insomnia often occurs together with sleep apnea (sometimes called COMISA). Treating both the breathing problem and the insomnia usually leads to the best sleep and daytime function.'
+    };
+
+    // CSA / periodic-breathing note in findings
+    const csrMF = m.csr ?? null;
+    const centralIndexMF = m.pahic3 ?? null;
+    let centralSideNote = '';
+    if (csrMF !== null && csrMF >= 10) {
+      centralSideNote =
+        ' Your test also showed a repeating pattern of central breathing (Cheyne–Stokes), which your clinician will factor in when choosing the safest device type and settings.';
+    } else if (centralIndexMF !== null && centralIndexMF >= 10) {
+      centralSideNote =
+        ' Your test also showed a higher number of central breathing pauses, where the brain briefly stops sending the signal to breathe.';
+    } else if (centralIndexMF !== null && centralIndexMF >= 3) {
+      centralSideNote =
+        ' A small number of central breathing pauses were seen; these will be monitored, but your pattern still appears mainly obstructive.';
+    }
+
+    const findingsUl = phen.map(p => {
+      let txt = patientFindingText[p.tag] || '';
+      if (p.tag === 'High Loop Gain' && centralSideNote) {
+        txt += ' ' + centralSideNote;
+      }
+      return `<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${txt}</li>`;
+    }).join('');
+
+    const toPatient = s => s
+      .replace('Start or continue CPAP/APAP (gold-standard).',
+               'Start or continue CPAP: a bedside machine that gently blows air through a mask to keep your airway open all night. It works best when used regularly and correctly fitted.')
+      .replace('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.',
+               'Consider a custom oral appliance (mandibular advancement device): a dentist-made mouthpiece that moves the lower jaw slightly forward to keep the airway open. It’s best for mild to moderate OSA and for people who cannot tolerate CPAP or would prefer not to use it.')
+      .replace('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).',
+               'If anatomy is a major factor, we will discuss surgical options tailored to your exam and sleep study (nose, soft palate/tonsils, or nerve-stimulation treatments).')
+      .replace('Begin positional therapy for 2–4 weeks; verify on follow-up test.',
+               'Try side-sleeping (positional therapy) for 2–4 weeks; we’ll recheck to see if your numbers improve.')
+      .replace('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.',
+               'If central events continue, your clinician may consider oxygen or specific therapies/devices after a heart evaluation.')
+      .replace('Add CBT-I and optimize CPAP comfort (humidification, ramp, mask fit).',
+               'Add insomnia care (CBT-I) and adjust CPAP comfort settings like humidification, ramp, and mask fit.')
+      .replace('Prioritize timely therapy to reduce desaturation burden and CV risk.',
+               'Treat promptly to reduce low-oxygen time at night and protect your heart.')
+      .replace('Treat anatomic nasal obstruction (saline/steroid first; septoplasty/turbinate reduction if persistent).',
+               'Treat nasal blockage: start with saline and steroid sprays; if blockage persists, procedures like septoplasty or turbinate reduction can improve airflow and CPAP comfort.')
+      .replace('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).',
+               'Your anatomy may suit soft-tissue surgery (for example, tonsillectomy or soft-palate procedures) to enlarge the airway.')
+      .replace('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.',
+               'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that gently moves the tongue forward during sleep).');
+    const patientRecs = top3.map(toPatient);
+
+    // Positional explanation
+    let posExpl = '';
+    if (exists(m.sup) && exists(m.nons)) {
+      if (m.sup > m.nons * 1.5) {
+        posExpl =
+          'You had many more breathing pauses while on your back. For many people, the tongue and soft tissues fall backward in this position, narrowing the airway. This makes side-sleeping an important part of treatment.';
+      } else if (m.nons > m.sup * 1.5) {
+        posExpl =
+          'You actually had more breathing pauses when you were not on your back. In your case, body position is less helpful as a treatment lever, so we focus more on other therapies.';
+      } else {
+        posExpl =
+          'You had a similar number of breathing pauses in all positions. Simply avoiding your back is unlikely to be enough by itself, so we usually still recommend other treatments.';
+      }
+    }
+
+    // CSR / central explanation block
+    let centralExpl = '';
+    const csr = m.csr ?? null;
+    const centralIndex = m.pahic3 ?? null;
+    const loopGain =
+      'People with this pattern often have a very sensitive breathing-control system. Their body “overcorrects” when carbon dioxide levels change, causing breathing to become unstable during sleep. This is called high loop gain.';
+    if (csr !== null && csr >= 10) {
+      centralExpl =
+        'Your study shows an elevated amount of Cheyne–Stokes breathing, an unstable, repeating breathing pattern that causes rhythmic ups and downs in airflow. This pattern is often associated with heart conditions or a very sensitive breathing response during sleep. ' +
+        loopGain +
+        ' Because of this pattern, your clinician may avoid certain CPAP modes and may choose device settings or additional treatments that help stabilize your breathing. Further evaluation may be recommended.';
+    } else if (centralIndex !== null && centralIndex >= 10) {
+      centralExpl =
+        'You had a higher number of central breathing pauses. These events occur when the brain briefly stops sending the signal to breathe rather than the airway being blocked. ' +
+        loopGain +
+        ' Your clinician will use this information to determine whether standard CPAP is appropriate or whether a different device or added oxygen may be safer for you.';
+    } else if (centralIndex !== null && centralIndex >= 3) {
+      centralExpl =
+        'You had a small number of central breathing pauses. These can occur in many people and often improve with treatment or as sleep becomes more stable. Your overall pattern still appears mainly obstructive.';
+    } else {
+      centralExpl =
+        'No meaningful pattern of central breathing pauses was seen. Your breathing interruptions are primarily obstructive, meaning they are caused by airway narrowing or collapse rather than the brain forgetting to breathe.';
+    }
+
+    const resultsTable = `
+      <table class="kpi-table"><tbody>
+        <tr>
+          <th>AHI — Apnea–Hypopnea Index</th>
+          <td>
+            You had an average of <strong>${exists(m.ahi)?m.ahi:'—'}</strong> breathing pauses per hour of sleep.
+            This number summarizes how often your breathing was partly or fully blocked throughout the night.
+            <em>Normal is less than 5 events per hour.</em> Your overall severity is <strong>${sev(m.ahi)}</strong>.
+          </td>
+        </tr>
+        <tr>
+          <th>AHI by body position (supine / non-supine)</th>
+          <td>
+            While sleeping on your back, you had
+            <strong>${exists(m.sup)?m.sup:'—'}</strong> breathing pauses per hour.
+            While on your side or stomach, you had
+            <strong>${exists(m.nons)?m.nons:'—'}</strong> pauses per hour.
+            ${posExpl}
+          </td>
+        </tr>
+        <tr>
+          <th>AHI by sleep stage (REM / NREM)</th>
+          <td>
+            During dream sleep (REM), you had
+            <strong>${exists(m.rem)?m.rem:'—'}</strong> breathing pauses per hour.
+            In non-dream sleep (NREM), you had
+            <strong>${exists(m.nrem)?m.nrem:'—'}</strong> pauses per hour.
+            REM is the stage when muscles relax more, so breathing problems can be worse there.
+            Even if daytime sleepiness is mild, high REM numbers still matter and usually benefit from treatment.
+          </td>
+        </tr>
+        <tr>
+          <th>ODI 4% — Oxygen Desaturation Index</th>
+          <td>
+            Your oxygen level dropped by at least 4 percentage points
+            <strong>${exists(m.odi)?m.odi:'—'}</strong> times per hour on average.
+            This reflects how often your body is exposed to brief drops in oxygen during sleep.
+            <em>Many people without sleep apnea have fewer than about 5 drops per hour; lower is better.</em>
+          </td>
+        </tr>
+        <tr>
+          <th>Oxygen nadir (lowest level)</th>
+          <td>
+            Your lowest recorded oxygen level during the study was
+            <strong>${exists(m.nadir)?m.nadir+'%':'—'}</strong>.
+            Short dips can happen, but deeper or repeated drops suggest more strain on the heart and brain.
+            <em>We generally aim to keep oxygen above about 90% for most of the night.</em>
+          </td>
+        </tr>
+        <tr>
+          <th>Hypoxic burden</th>
+          <td>
+            Your hypoxic burden was
+            <strong>${exists(m.hbPH)?m.hbPH:'—'} %·min/hour</strong>.
+            This number adds up both <em>how long</em> and <em>how deep</em> your oxygen is low across the night.
+            Higher values mean more nightly oxygen stress. Studies have found that values around
+            <em>60 or higher</em> are linked to a higher risk of heart and blood-vessel problems.
+          </td>
+        </tr>
+        <tr>
+          <th>Time under 90% oxygen (Area &lt;90%)</th>
+          <td>
+            Your oxygen was below 90% for a total of about
+            <strong>${exists(m.hb90PH)?m.hb90PH:'—'} %·min/hour</strong>.
+            This is another way of describing how much time your body spends with less-than-ideal oxygen levels.
+            <em>Lower values, especially near 0, are better.</em>
+          </td>
+        </tr>
+        <tr>
+          <th>Periodic/central patterns</th>
+          <td>
+            Cheyne–Stokes breathing: <strong>${exists(m.csr) ? m.csr + '%' : '—'}</strong><br>
+            Central breathing pauses (3% criteria): <strong>${exists(m.pahic3) ? m.pahic3 + '/hour' : '—'}</strong>
+            <br><br>
+            ${centralExpl}
+          </td>
+        </tr>
+        <tr>
+          <th>Questionnaire scores</th>
+          <td>
+            Epworth sleepiness scale (ESS): ${exists(m.ess)?m.ess:'—'} (higher scores mean more daytime sleepiness; values ≥10 are often considered elevated).<br>
+            Insomnia Severity Index (ISI): ${exists(m.isi)?m.isi:'—'} (scores ≥15 suggest clinically significant insomnia).<br>
+            NOSE score: ${exists(m.nose)?m.nose:'—'}/100 (higher scores mean more nasal blockage; scores ≥30 suggest moderate symptoms, ≥50 more severe).
+          </td>
+        </tr>
+        <tr>
+          <th>BMI / Neck size</th>
+          <td>
+            Your body mass index (BMI) was
+            <strong>${exists(m.bmi)?m.bmi:'—'}</strong> and your neck size was
+            <strong>${exists(m.neck)?m.neck+' inches':'—'}</strong>.
+            Extra tissue around the neck and upper airway can narrow the breathing space.
+            In many studies, a neck size above about 17 inches in men (and 16 inches in women) is associated with higher risk of OSA.
+          </td>
+        </tr>
+        <tr>
+          <th>Throat and nose exam</th>
+          <td>
+            Tonsils: <strong>${exists(m.tons)?m.tons:'—'}</strong>;
+            Friedman palate/tongue position: <strong>${exists(m.ftp)?m.ftp:'—'}</strong>;
+            Nasal finding: <strong>${exists(m.nasal)?m.nasal:'—'}</strong>.
+            These anatomic features help explain how much of your sleep apnea is due to crowding in the nose and throat,
+            and whether procedures on the tonsils, soft palate, or nose might meaningfully support CPAP or, in some
+            cases, serve as additional treatment.
+          </td>
+        </tr>
+      </tbody></table>`;
+
+    const handoutHTML = `
+      <section class="handout" id="handout">
+        <div class="brand-row">
+          <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
+          <div>
+            <h1>Your Personalized Sleep Report</h1>
+            <div class="muted">Date: ${today}</div>
+          </div>
+        </div>
+        <h2>Overview</h2>
+        <p><strong>Obstructive sleep apnea (OSA)</strong> happens when the airway partly or fully closes during sleep. This leads to pauses in breathing and drops in oxygen, which can fragment sleep and, over years, raise risks for high blood pressure, heart disease, stroke, and problems with memory and focus. Your results below are personalized from your sleep test and exam.</p>
+        <h2>Your main findings</h2>
+        <ul>${findingsUl || '<li>No specific patterns were flagged based on the current inputs.</li>'}</ul>
+        <h2>What this means for you</h2>
+        <ol>${patientRecs.map(r=>`<li>${r}</li>`).join('')}</ol>
+        <h2>Your Sleep Test Results</h2>
+        <p class="muted">These are the main numbers from your test with a short note about what they mean. Normal ranges are listed where helpful.</p>
+        ${resultsTable}
+        <h2>Treatment details (what each option means)</h2>
+        <ul id="treatDetails"></ul>
+        <h2>Next steps</h2>
+        <p>We will review these results together and decide on a plan that fits you best. Bring this report to your follow-up visit.</p>
+      </section>`;
+    document.getElementById('patientSummary').innerHTML = handoutHTML;
+
+    const allRecs = rec.map(x=>`<li>${x}</li>`).join('');
+    const rows = phen.map(p=>`<tr><td>${p.tag}</td><td>${p.conf}</td><td>${p.why || ''}</td></tr>`).join('');
+    document.getElementById('clinician').innerHTML = `
+      <div class="card shadow-sm mt-3">
+        <div class="card-body">
+          <h2 class="h6 section-title">Clinician Guidance</h2>
+          ${phen.length?`<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Phenotype</th><th>Confidence</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
+          <h6>Ranked plan</h6>
+          <ol>${allRecs}</ol>
+        </div>
+      </div>`;
+
+    const txMap = [
+      {
+        key: 'CPAP',
+        match: /Start or continue CPAP|CPAP\/APAP/i,
+        title: 'CPAP (Continuous Positive Airway Pressure)',
+        desc: 'A bedside machine gently sends air through a mask to keep your airway open all night. Masks come in different styles; comfort improves with proper fit, humidification, and ramp settings. When used regularly, CPAP lowers snoring, improves daytime alertness, and reduces oxygen stress.'
+      },
+      {
+        key: 'MAD',
+        match: /oral appliance|mandibular/i,
+        title: 'Custom Oral Appliance (Mandibular Advancement Device)',
+        desc: 'A dentist-made mouthpiece holds the lower jaw slightly forward to prevent collapse. Best for mild to moderate OSA or when someone cannot tolerate CPAP or prefers a non-CPAP option. Side effects can include jaw soreness or bite changes; follow-up titration and a repeat sleep test check effectiveness.'
+      },
+      {
+        key: 'Positional',
+        match: /positional therapy/i,
+        title: 'Positional Therapy',
+        desc: 'Techniques or wearable devices that keep you off your back if apnea is mainly supine. Works best when your non-supine AHI is much lower. We usually reassess with home testing to confirm benefit.'
+      },
+      {
+        key: 'Nasal',
+        match: /nasal obstruction|septoplasty|turbinate/i,
+        title: 'Nasal Treatments',
+        desc: 'Improving nasal airflow (saline and steroid sprays first) can reduce snoring and make CPAP far more comfortable. If blockage persists—such as a deviated septum or enlarged turbinates—simple procedures (septoplasty, turbinate reduction) can help.'
+      },
+      {
+        key: 'SoftTissue',
+        match: /soft tissue surgery|tonsillectomy/i,
+        title: 'Soft-Tissue Surgery',
+        desc: 'When anatomy is favorable (e.g., large tonsils, Friedman I–II), surgery like tonsillectomy or soft-palate procedures can enlarge and stabilize the airway. Usually paired with follow-up testing to document improvement.'
+      },
+      {
+        key: 'HNS',
+        match: /hypoglossal nerve stimulation|HNS/i,
+        title: 'Hypoglossal Nerve Stimulation (Inspire)',
+        desc: 'A small implanted device gently moves the tongue forward during sleep. Candidates typically have AHI 15–65, BMI ≤32, and minimal central apnea. It is activated nightly with a remote and titrated over several months.'
+      },
+      {
+        key: 'CBTI',
+        match: /CBT-I|insomnia/i,
+        title: 'CBT-I (Cognitive Behavioral Therapy for Insomnia)',
+        desc: 'A structured program that retrains sleep patterns, reduces nighttime awakenings, and often improves CPAP success. Delivered via trained clinicians or validated digital programs over several weeks.'
+      },
+      {
+        key: 'OxygenASV',
+        match: /oxygen|ASV|acetazolamide/i,
+        title: 'Therapies for Central/Complex Apnea',
+        desc: 'If central apneas persist after starting CPAP, your clinician may consider supplemental oxygen, medication (e.g., acetazolamide), or specialized devices (e.g., ASV) after confirming heart function. Not needed for most people with purely obstructive OSA.'
+      }
+    ];
+    const used = new Set();
+    const detailLis = rec.map(r=>{
+      const hit = txMap.find(t=>t.match.test(r));
+      if(!hit || used.has(hit.key)) return '';
+      used.add(hit.key);
+      return `<li><strong>${hit.title}</strong><br><span class="muted">${hit.desc}</span></li>`;
+    }).join('');
+    document.querySelector('#treatDetails').innerHTML = detailLis || '<li><span class="muted">No specific treatments were recommended based on the current inputs.</span></li>';
+
+    window.scrollTo({top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth'});
+  }
+
+  document.getElementById('form').addEventListener('submit', onSubmit);
+
+  // Dual print buttons
+  const printWithMode = (mode)=>{ document.body.classList.add(mode); window.print(); setTimeout(()=>{ document.body.classList.remove(mode); }, 100); };
+  document.getElementById('btnPrintPatient').addEventListener('click', ()=>printWithMode('print-patient'));
+  document.getElementById('btnPrintClinician').addEventListener('click', ()=>printWithMode('print-clinician'));
+
+  // New patient reset button
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    document.getElementById('form').reset();
+    document.getElementById('patientSummary').innerHTML = '';
+    document.getElementById('clinician').innerHTML = '';
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+
+  // ---- Demo filler ----
+  const demoCases = {
+    modHighHB: {
+      ess: 8, isi: 6, nose: 55, cvd: false,
+      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II', nasal: 'Rhinitis',
+      ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+      odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0
+    },
+    mildLowHB: {
+      ess: 6, isi: 7, nose: 15, cvd: false,
+      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II', nasal: 'None',
+      ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+      odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+      csr: 0.0, pahic3: 1.0, pahic4: 0.5
+    },
+    severeHNS: {
+      ess: 10, isi: 10, nose: 40, cvd: false,
+      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II', nasal: 'Septum',
+      ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+      odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0
+    }
+  };
+
+  function setVal(name, value) {
+    const el = document.querySelector(`[name="${name}"]`);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!value;
+    else el.value = value;
+  }
+  function fillDemo(caseKey) {
+    document.getElementById('form').reset();
+    const d = demoCases[caseKey] || demoCases.modHighHB;
+    setVal('ess', d.ess); setVal('isi', d.isi); setVal('nose', d.nose); setVal('cvd', d.cvd);
+    setVal('bmi', d.bmi); setVal('neck', d.neck); setVal('tonsils', d.tonsils); setVal('ftp', d.ftp); setVal('nasal', d.nasal);
+    setVal('ahi', d.ahi); setVal('ahiSup', d.ahiSup); setVal('ahiNonSup', d.ahiNonSup); setVal('ahiREM', d.ahiREM); setVal('ahiNREM', d.ahiNREM);
+    setVal('odi', d.odi); setVal('nadir', d.nadir); setVal('hbPH', d.hbPH); setVal('hb90PH', d.hb90PH);
+    setVal('csr', d.csr); setVal('pahic3', d.pahic3); setVal('pahic4', d.pahic4);
+  }
+  document.getElementById('btnFill').addEventListener('click', ()=>{
+    const key = document.getElementById('demoSelect').value;
+    fillDemo(key);
+    const form = document.getElementById('form');
+    if (form.requestSubmit) form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior: 'smooth' });
+  });
+</script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
