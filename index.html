@@ -79,6 +79,10 @@
               <input type="number" class="form-control" name="isi" min="0" max="28" />
             </div>
             <div class="col-12">
+              <label class="form-label">NOSE score (0–100)</label>
+              <input type="number" class="form-control" name="nose" min="0" max="100" />
+            </div>
+            <div class="col-12">
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="cvd" name="cvd" />
                 <label class="form-check-label" for="cvd">Cardiovascular disease (HTN/CAD/HF/AF)</label>
@@ -173,8 +177,14 @@
         }
         case 'Nasal-Resistance Contributor':{
           const f = m.nasal;
-          if(f==='≥2 issues') return 'High';
-          if(['Septum','Turbinates','Rhinitis'].includes(f)) return 'Moderate';
+          const nose = m.nose || 0;
+
+          // High if multiple structural issues or very high NOSE
+          if (f === '≥2 issues' || nose >= 60) return 'High';
+
+          // Moderate if any single nasal issue or NOSE in 30–59 range
+          if (['Septum','Turbinates','Rhinitis'].includes(f) || nose >= 30) return 'Moderate';
+
           return 'Low';
         }
         default: return 'Low';
@@ -192,6 +202,7 @@
         odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
         csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
         arInd: n(f.get('arInd'))
+        nose: n(f.get('nose')) 
       };
 
       // Surgical candidacy helpers
@@ -257,9 +268,18 @@
         addWhy('High Hypoxic Burden', bits.join('; '));
         add('High Hypoxic Burden');
       }
-      if(m.nasal && m.nasal!=='None'){
-        const nasalMap = { 'Septum':'DNS', 'Turbinates':'ITH', 'Rhinitis':'Rhinitis', '≥2 issues':'DNS + ITH / ≥2' };
-        addWhy('Nasal-Resistance Contributor', nasalMap[m.nasal] || m.nasal);
+      const highNOSE = (m.nose || 0) >= 30;
+      if ((m.nasal && m.nasal !== 'None') || highNOSE) {
+        const nasalMap = {
+          'Septum':'Deviated septum',
+          'Turbinates':'Inferior turbinate hypertrophy',
+          'Rhinitis':'Rhinitis',
+          '≥2 issues':'Multiple nasal issues'
+        };
+        const bits = [];
+        if (m.nasal && m.nasal !== 'None') bits.push(nasalMap[m.nasal] || m.nasal);
+        if (exists(m.nose)) bits.push(`NOSE ${m.nose}/100`);
+        addWhy('Nasal-Resistance Contributor', bits.join('; '));
         add('Nasal-Resistance Contributor');
       }
       phen.forEach(p=>p.why=(reasons[p.tag]||[]).join('; '));
@@ -499,6 +519,15 @@
               Central breathing pauses (3% criteria): <strong>${exists(m.pahic3) ? m.pahic3 + '/hour' : '—'}</strong>
               <br><br>
               ${centralExpl}
+            </td>
+          </tr>
+
+          <tr>
+            <th>Questionnaire scores</th>
+            <td>
+              Epworth sleepiness scale (ESS): ${exists(m.ess)?m.ess:'—'} (higher scores mean more daytime sleepiness; values ≥10 are often considered elevated).<br>
+              Insomnia Severity Index (ISI): ${exists(m.isi)?m.isi:'—'} (scores ≥15 suggest clinically significant insomnia).<br>
+              NOSE score: ${exists(m.nose)?m.nose:'—'}/100 (higher scores mean more nasal blockage; scores ≥30 suggest moderate symptoms, ≥50 more severe).
             </td>
           </tr>
 
