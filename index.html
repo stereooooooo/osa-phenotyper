@@ -317,10 +317,32 @@
         'Positional OSA':'Breathing problems are worse when you sleep on your back. Side-sleeping often helps.',
         'REM-Predominant OSA':'Breathing problems are worse during dream (REM) sleep.',
         'High Hypoxic Burden':'Your oxygen spends more time lower than ideal during sleep; over time this can strain the heart.',
-        'Nasal-Resistance Contributor':'Nasal blockage (deviated septum, swollen turbinates, or rhinitis) raises resistance and can worsen snoring or CPAP comfort.',
-        'Insomnia / COMISA pattern':'Your Insomnia Severity Index score suggests significant trouble falling or staying asleep. Insomnia often occurs together with sleep apnea (called COMISA). Treating insomnia (for example, with CBT-I and better sleep habits) often makes it easier to use CPAP and feel better during the day, and treating your apnea can also improve insomnia over time.'
+        'Nasal-Resistance Contributor':'Nasal blockage (deviated septum, swollen turbinates, or rhinitis) raises resistance and can worsen snoring or CPAP comfort.'
       };
-      const findingsUl = phen.map(p=>`<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${patientFindingText[p.tag]||''}</li>`).join('');
+
+      // Add brief CSA / periodic-breathing note when present
+      const csrMF = m.csr ?? null;
+      const centralIndexMF = m.pahic3 ?? null;
+      let centralSideNote = '';
+
+      if (csrMF !== null && csrMF >= 10) {
+        centralSideNote =
+          ' Your test also showed a repeating pattern of central breathing (Cheyne–Stokes), which your clinician will factor in when choosing the safest device type and settings.';
+      } else if (centralIndexMF !== null && centralIndexMF >= 10) {
+        centralSideNote =
+          ' Your test also showed a higher number of central breathing pauses, where the brain briefly stops sending the signal to breathe.';
+      } else if (centralIndexMF !== null && centralIndexMF >= 3) {
+        centralSideNote =
+          ' A small number of central breathing pauses were seen; these will be monitored, but your pattern still appears mainly obstructive.';
+      }
+
+      const findingsUl = phen.map(p => {
+        let txt = patientFindingText[p.tag] || '';
+        if (p.tag === 'High Loop Gain' && centralSideNote) {
+          txt += ' ' + centralSideNote;
+        }
+        return `<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${txt}</li>`;
+      }).join('');
 
       // Translate top recs into patient descriptions
       const toPatient = s => s
