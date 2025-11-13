@@ -312,6 +312,23 @@
 
     const top3 = rec.slice(0,3);
 
+    const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
+    if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
+
+    const top3 = rec.slice(0,3);
+
+    const sev = ahi => ahi == null ? '—'
+      : ahi < 5  ? 'None'
+      : ahi < 15 ? 'Mild'
+      : ahi < 30 ? 'Moderate'
+      : 'Severe';
+
+    const today = new Date().toLocaleDateString();
+
+    // Build patient-facing "Your main findings" summary for ALL patients
+    const patientFindings = [];
+    // ...
+    
   // Build patient-facing "Your main findings" summary for ALL patients
   const patientFindings = [];
 
