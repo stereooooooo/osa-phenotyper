@@ -341,13 +341,89 @@
         ' A small number of central breathing pauses were seen; these will be monitored, but your pattern still appears mainly obstructive.';
     }
 
-    const findingsUl = phen.map(p => {
-      let txt = patientFindingText[p.tag] || '';
-      if (p.tag === 'High Loop Gain' && centralSideNote) {
-        txt += ' ' + centralSideNote;
+      let findingsUl = phen.map(p => {
+        let txt = patientFindingText[p.tag] || '';
+        if (p.tag === 'High Loop Gain' && centralSideNote) {
+          txt += ' ' + centralSideNote;
+        }
+        return `<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${txt}</li>`;
+      }).join('');
+
+      // Fallback summary when no specific phenotype is flagged
+      if (!phen.length) {
+        const fb = [];
+
+        // Overall OSA severity
+        if (exists(m.ahi)) {
+          let sevLabel = 'None';
+          if (m.ahi < 5) sevLabel = 'None';
+          else if (m.ahi < 15) sevLabel = 'Mild';
+          else if (m.ahi < 30) sevLabel = 'Moderate';
+          else sevLabel = 'Severe';
+
+          if (sevLabel === 'Mild') {
+            fb.push('Your sleep apnea is in the <strong>mild</strong> range. This means breathing pauses are present but not extremely frequent.');
+          } else if (sevLabel === 'Moderate') {
+            fb.push('Your sleep apnea is in the <strong>moderate</strong> range, with more frequent breathing pauses that still respond well to treatment.');
+          } else if (sevLabel === 'Severe') {
+            fb.push('Your sleep apnea is in the <strong>severe</strong> range, with frequent breathing pauses that carry higher health risk and clearly benefit from treatment.');
+          }
+        }
+
+        // Positional pattern
+        if (exists(m.sup) && exists(m.nons)) {
+          if (m.sup > m.nons * 1.5) {
+            fb.push('You had clearly more breathing pauses while sleeping on your back than on your side or stomach.');
+          } else if (m.nons > m.sup * 1.5) {
+            fb.push('You actually had more breathing pauses when you were not on your back, so body position alone is unlikely to be the main driver.');
+          } else {
+            fb.push('You had a similar number of breathing pauses in all sleep positions.');
+          }
+        }
+
+        // REM vs NREM
+        if (exists(m.rem) && exists(m.nrem)) {
+          if (m.rem > m.nrem * 1.5) {
+            fb.push('Your breathing pauses were more pronounced during dream (REM) sleep, when muscles relax more.');
+          } else {
+            fb.push('Your breathing pattern was similar in dream (REM) and non-dream (NREM) sleep.');
+          }
+        }
+
+        // Oxygen / hypoxic burden
+        if (exists(m.hbPH)) {
+          if (m.hbPH < 30) {
+            fb.push('Your oxygen levels stayed relatively stable through the night, with only mild oxygen stress on the heart and blood vessels.');
+          } else {
+            fb.push('Your oxygen levels spent a meaningful amount of time below ideal, which your clinician will factor into treatment planning.');
+          }
+        }
+
+        // Anatomy
+        if (m.nasal === 'None' && (!exists(m.tons) || m.tons <= 1)) {
+          fb.push('Your nose and throat exam did not show major anatomic blockage.');
+        }
+
+        // Central vs obstructive pattern
+        if ((m.csr || 0) === 0 && (m.pahic3 || 0) < 3) {
+          fb.push('No significant pattern of central breathing pauses was seen; your breathing interruptions are primarily due to airway narrowing or collapse.');
+        }
+
+        // Symptoms (sleepiness / insomnia)
+        if (exists(m.ess) && m.ess >= 10) {
+          fb.push('Your questionnaire suggests increased daytime sleepiness, which often improves once breathing during sleep is treated.');
+        }
+        if (exists(m.isi) && m.isi >= 15) {
+          fb.push('Your questionnaire suggests clinically important insomnia symptoms. Treating both insomnia and sleep apnea together often gives the best results.');
+        }
+
+        // Absolute fallback sentence so the section is never empty
+        if (!fb.length) {
+          fb.push('Your study shows a generally mild pattern of obstructive sleep apnea without any dominant special pattern. Treatment decisions focus on your overall severity, symptoms, and preferences.');
+        }
+
+        findingsUl = fb.map(x => `<li>${x}</li>`).join('');
       }
-      return `<li><strong>${p.tag}</strong><span class="chip">${p.conf} confidence</span><br>${txt}</li>`;
-    }).join('');
 
     const toPatient = s => s
       .replace('Start or continue CPAP/APAP (gold-standard).',
