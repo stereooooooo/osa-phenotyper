@@ -99,25 +99,54 @@
   }
   
 @media print {
-  body * { visibility: hidden !important; }
+  /* Basic page setup */
+  body {
+    margin: 0;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide interactive / navigation UI in print */
+  header,
+  form,
+  hr,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Normalize cards/handouts for print */
+  #patientSummary,
+  #clinician {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0;
+    padding: 0.5in;
+    page-break-inside: avoid;
+  }
 
   /* PATIENT-ONLY PRINT */
-  body.print-patient #patientSummary,
-  body.print-patient #patientSummary * {
-    visibility: visible !important;
-  }
   body.print-patient #patientSummary {
-    position: static;
-    padding: 0.5in;
+    display: block !important;
+  }
+  body.print-patient #clinician {
+    display: none !important;
   }
 
   /* PATIENT + CLINICIAN PRINT */
-  body.print-clinician #patientSummary,
-  body.print-clinician #clinician,
-  body.print-clinician #patientSummary *,
-  body.print-clinician #clinician * {
-    visibility: visible !important;
+  body.print-clinician #patientSummary {
+    display: block !important;
+    page-break-after: always; /* force clinician onto a fresh page */
   }
+  body.print-clinician #clinician {
+    display: block !important;
+  }
+}
 
   body.print-clinician #patientSummary {
     position: static;
