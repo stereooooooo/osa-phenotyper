@@ -141,25 +141,11 @@
   /* PATIENT + CLINICIAN PRINT */
   body.print-clinician #patientSummary {
     display: block !important;
-    page-break-after: always; /* force clinician onto a fresh page */
+    page-break-after: always; /* clinician handout on page 1 */
   }
   body.print-clinician #clinician {
-    display: block !important;
+    display: block !important; /* clinician summary starts on page 2 */
   }
-}
-
-  body.print-clinician #patientSummary {
-    position: static;
-    padding: 0.5in;
-  }
-
-  body.print-clinician #clinician {
-    position: static;
-    padding: 0.5in;
-    page-break-before: always; /* clinician handout starts on a new page */
-  }
-
-  .no-print { display: none !important; }
 }
 </style>
 </head>
