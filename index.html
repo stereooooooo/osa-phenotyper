@@ -82,22 +82,56 @@
   .muted { color:#6b7280; }
   .chip { display:inline-block; background:#eef2f7; color:#334155; border-radius:999px; padding:.15rem .5rem; font-size:.8rem; margin-left:.35rem; }
 
-  @media print {
-    body * { visibility: hidden !important; }
-
-    body.print-patient #patientSummary,
-    body.print-patient #patientSummary * { visibility: visible !important; }
-    body.print-patient #patientSummary { position: absolute; inset: 0; padding: 1rem; }
-
-    body.print-clinician #patientSummary,
-    body.print-clinician #clinician,
-    body.print-clinician #patientSummary *,
-    body.print-clinician #clinician * { visibility: visible !important; }
-    body.print-clinician #patientSummary { position: absolute; top: 0; left: 0; right: 0; padding: 1rem; }
-    body.print-clinician #clinician { position: absolute; left: 0; right: 0; top: 55%; padding: 1rem; }
-
-    .no-print { display: none !important; }
+  .clinician-sheet {
+    margin-top: 1.5rem;
   }
+  
+  .clinician-sheet .clinician-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1b3a57;
+    margin-bottom: 0.25rem;
+  }
+  
+  .clinician-sheet .clinician-meta {
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+  
+@media print {
+  body * { visibility: hidden !important; }
+
+  /* PATIENT-ONLY PRINT */
+  body.print-patient #patientSummary,
+  body.print-patient #patientSummary * {
+    visibility: visible !important;
+  }
+  body.print-patient #patientSummary {
+    position: static;
+    padding: 0.5in;
+  }
+
+  /* PATIENT + CLINICIAN PRINT */
+  body.print-clinician #patientSummary,
+  body.print-clinician #clinician,
+  body.print-clinician #patientSummary *,
+  body.print-clinician #clinician * {
+    visibility: visible !important;
+  }
+
+  body.print-clinician #patientSummary {
+    position: static;
+    padding: 0.5in;
+  }
+
+  body.print-clinician #clinician {
+    position: static;
+    padding: 0.5in;
+    page-break-before: always; /* clinician handout starts on a new page */
+  }
+
+  .no-print { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -975,47 +1009,46 @@
     const studyDateDisplay = m.studyDate ? new Date(m.studyDate).toLocaleDateString() : '';
 
     document.getElementById('clinician').innerHTML = `
-      <div class="card shadow-sm mt-3">
-        <div class="card-body">
-    
-          <h2 class="h6 section-title mb-1">Clinician Guidance</h2>
-          <div class="small text-muted mb-2">
-            ${m.ptName ? `<strong>${m.ptName}</strong>` : '<em>No patient name</em>'}
-            ${dobDisplay ? ` • DOB: ${dobDisplay}` : ''}
-            ${studyDateDisplay ? ` • Study: ${studyDateDisplay}` : ''}
-            ${m.studyType ? ` • ${m.studyType}` : ''}
-          </div>
-    
-          ${snapshot}
-          ${adequacyHtml}
-    
-          ${tagChips ? `<div class="mb-3">${tagChips}</div>` : ''}
-    
-          <div class="row">
-            <div class="col-lg-6 mb-3">
-              <h6 class="fw-semibold">Phenotype summary</h6>
-              ${
-                phen.length
-                  ? `<div class="table-responsive">
-                       <table class="table table-sm align-middle mb-0">
-                         <thead>
-                           <tr><th>Phenotype</th><th>Confidence</th><th>Key drivers</th></tr>
-                         </thead>
-                         <tbody>${rows}</tbody>
-                       </table>
-                     </div>`
-                  : '<p class="text-muted small mb-0">No strong non-anatomic phenotypes identified based on current inputs.</p>'
-              }
-            </div>
-    
-            <div class="col-lg-6">
-              <h6 class="fw-semibold">Ranked plan (with rationale)</h6>
-              <ol class="mb-0">${planLis}</ol>
+      <section class="handout clinician-sheet" id="clinicianSheet">
+        <div class="brand-row">
+          <div>
+            <div class="clinician-title">Clinician Summary</div>
+            <div class="clinician-meta">
+              ${m.ptName ? `<strong>${m.ptName}</strong>` : 'Patient'}
+              ${m.ptDob ? ` • DOB: ${new Date(m.ptDob).toLocaleDateString()}` : ''}
+              ${m.studyDate ? ` • Study: ${displayStudyDate}` : ''}
+              ${m.studyType ? ` • ${m.studyType}` : ''}
             </div>
           </div>
-    
+          <img class="handout-logo d-none d-sm-block" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
         </div>
-      </div>`;
+    
+        ${snapshot}
+        ${adequacyHtml}
+    
+        ${tagChips ? `<div class="mb-3">${tagChips}</div>` : ''}
+    
+        <div class="row">
+          <div class="col-lg-6 mb-3">
+            <h6 class="fw-semibold">Phenotype summary</h6>
+            ${phen.length
+              ? `<div class="table-responsive">
+                   <table class="table table-sm align-middle mb-0">
+                     <thead>
+                       <tr><th>Phenotype</th><th>Confidence</th><th>Key drivers</th></tr>
+                     </thead>
+                     <tbody>${rows}</tbody>
+                   </table>
+                 </div>`
+              : '<p class="text-muted small mb-0">No strong non-anatomic phenotypes identified based on current inputs.</p>'}
+          </div>
+    
+          <div class="col-lg-6">
+            <h6 class="fw-semibold">Ranked plan (with rationale)</h6>
+            <ol class="mb-0">${planLis}</ol>
+          </div>
+        </div>
+      </section>`;
 
     const txMap = [
       {
