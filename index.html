@@ -303,7 +303,7 @@
     if (isMildMod) {
       push('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.');
     }
-    push('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).');
+    push('If anatomic contributor is high: discuss surgical options (nasal and soft tissue surgery; HNS only if criteria are met).');
 
     if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow-up test.');
     if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
@@ -682,7 +682,7 @@
       },
       {
         key: 'HNS',
-        match: /hypoglossal nerve stimulation|HNS/i,
+        match: /hypoglossal nerve stimulation/i,
         title: 'Hypoglossal Nerve Stimulation (Inspire)',
         desc: 'A small implanted device gently moves the tongue forward during sleep. Candidates typically have AHI 15–65, BMI ≤32, and minimal central apnea. It is activated nightly with a remote and titrated over several months.'
       },
@@ -702,7 +702,11 @@
     const used = new Set();
     const detailLis = rec.map(r=>{
       const hit = txMap.find(t=>t.match.test(r));
-      if(!hit || used.has(hit.key)) return '';
+      if (!hit || used.has(hit.key)) return '';
+    
+      // Do NOT show HNS details in mild OSA
+      if (hit.key === 'HNS' && ahiOverall < 15) return '';
+    
       used.add(hit.key);
       return `<li><strong>${hit.title}</strong><br><span class="muted">${hit.desc}</span></li>`;
     }).join('');
