@@ -300,16 +300,11 @@
       addWhy('High Hypoxic Burden', bits.join('; '));
       add('High Hypoxic Burden');
     }
-      const highNOSE = (m.nose || 0) >= 30;
-      if (nasalIssues.length || highNOSE) {
-        const bits = [];
-        if (nasalIssues.length) bits.push(nasalIssues.join(', '));
-        if (exists(m.nose)) bits.push(`NOSE ${m.nose}/100`);
-        addWhy('Nasal-Resistance Contributor', bits.join('; '));
-        add('Nasal-Resistance Contributor');
-      };
+
+    const highNOSE = (m.nose || 0) >= 30;
+    if (nasalIssues.length || highNOSE) {
       const bits = [];
-      if (m.nasal && m.nasal !== 'None') bits.push(nasalMap[m.nasal] || m.nasal);
+      if (nasalIssues.length) bits.push(nasalIssues.join(', '));
       if (exists(m.nose)) bits.push(`NOSE ${m.nose}/100`);
       addWhy('Nasal-Resistance Contributor', bits.join('; '));
       add('Nasal-Resistance Contributor');
@@ -330,7 +325,7 @@
     if (isMildMod) {
       push('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.');
     }
-    push('If anatomic contributor is high: discuss surgical options (nasal and soft tissue surgery; HNS only if criteria are met).');
+    push('If anatomic contributor is high: discuss surgical options (nasal and soft tissue surgery).');
 
     if(phen.some(p=>p.tag==='Positional OSA')) push('Begin positional therapy for 2–4 weeks; verify on follow-up test.');
     if(phen.some(p=>p.tag==='High Loop Gain')) push('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.');
@@ -474,8 +469,8 @@
                'Start or continue CPAP: a bedside machine that gently blows air through a mask to keep your airway open all night. It works best when used regularly and correctly fitted.')
       .replace('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.',
                'Consider a custom oral appliance (mandibular advancement device): a dentist-made mouthpiece that moves the lower jaw slightly forward to keep the airway open. It’s best for mild to moderate OSA and for people who cannot tolerate CPAP or would prefer not to use it.')
-      .replace('If anatomic contributor is high: discuss surgical options (nasal/soft tissue/HNS).',
-               'If anatomy is a major factor, we will discuss surgical options tailored to your exam and sleep study (nose, soft palate/tonsils, or nerve-stimulation treatments).')
+      .replace('If anatomic contributor is high: discuss surgical options (nasal and soft tissue surgery).',
+               'If anatomy is a major factor, we will discuss surgical options tailored to your exam and sleep study (for example, procedures on the nose or soft palate/tonsils).')
       .replace('Begin positional therapy for 2–4 weeks; verify on follow-up test.',
                'Try side-sleeping (positional therapy) for 2–4 weeks; we’ll recheck to see if your numbers improve.')
       .replace('If TECSA persists: consider O₂ or acetazolamide; ASV only if LVEF >45%.',
