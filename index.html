@@ -929,6 +929,26 @@
     }).join('');
     document.querySelector('#treatDetails').innerHTML = detailLis || '<li><span class="muted">No specific treatments were recommended based on the current inputs.</span></li>';
 
+    // Quick sanity flags (non-blocking)
+    const flags = [];
+
+    if (exists(m.ahi) && m.ahi < 5 && ((m.hbPH || 0) >= 30 || (m.odi || 0) >= 15)) {
+      flags.push('Check AHI vs hypoxic metrics – AHI is in the non-OSA range but hypoxic burden/ODI look elevated.');
+    }
+    if (exists(m.sup) && exists(m.nons) && phen.some(p => p.tag === 'Positional OSA') && m.sup < m.nons) {
+      flags.push('Positional pattern flagged but supine AHI < non-supine – confirm body-position labels on the report.');
+    }
+
+    if (flags.length) {
+      const warnHtml = `
+        <div class="alert alert-warning mt-3 mb-0 py-2 small">
+          <strong>Sanity check:</strong>
+          <ul class="mb-0">${flags.map(f=>`<li>${f}</li>`).join('')}</ul>
+        </div>`;
+      document.getElementById('clinician').querySelector('.card-body')
+        .insertAdjacentHTML('beforeend', warnHtml);
+    }
+    
     window.scrollTo({top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth'});
   }
 
