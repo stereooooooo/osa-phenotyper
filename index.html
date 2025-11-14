@@ -1129,17 +1129,36 @@
           <strong>Sanity check:</strong>
           <ul class="mb-0">${flags.map(f=>`<li>${f}</li>`).join('')}</ul>
         </div>`;
-      document.getElementById('clinician').querySelector('.card-body')
-        .insertAdjacentHTML('beforeend', warnHtml);
+    if (flags.length) {
+      const warnHtml = `
+        <div class="alert alert-warning mt-3 mb-0 py-2 small">
+          <strong>Sanity check:</strong>
+          <ul class="mb-0">${flags.map(f=>`<li>${f}</li>`).join('')}</ul>
+        </div>`;
+      
+      const clinicianSheetEl = document.getElementById('clinicianSheet');
+      if (clinicianSheetEl) {
+        clinicianSheetEl.insertAdjacentHTML('beforeend', warnHtml);
+      }
     }
+    
     
     window.scrollTo({top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth'});
   }
 
   document.getElementById('form').addEventListener('submit', onSubmit);
 
-  // Dual print buttons
-  const printWithMode = (mode)=>{ document.body.classList.add(mode); window.print(); setTimeout(()=>{ document.body.classList.remove(mode); }, 100); };
+  // Dual print buttons (ensure print styles are applied before printing)
+  const printWithMode = (mode) => {
+    document.body.classList.add(mode);
+    setTimeout(() => {
+      window.print();
+      // Give the print dialog a tick, then clean up
+      setTimeout(() => {
+        document.body.classList.remove(mode);
+      }, 0);
+    }, 0);
+  };
   document.getElementById('btnPrintPatient').addEventListener('click', ()=>printWithMode('print-patient'));
   document.getElementById('btnPrintClinician').addEventListener('click', ()=>printWithMode('print-clinician'));
 
