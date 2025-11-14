@@ -98,7 +98,25 @@
             <div class="col-6"><label class="form-label">Neck (in)</label><input type="number" step="0.1" class="form-control" name="neck" /></div>
             <div class="col-4"><label class="form-label">Tonsils</label><select class="form-select" name="tonsils"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
             <div class="col-4"><label class="form-label">FTP</label><select class="form-select" name="ftp"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
-            <div class="col-4"><label class="form-label">Nasal Obs.</label><select class="form-select" name="nasal"><option>None</option><option>Septum</option><option>Turbinates</option><option>Rhinitis</option><option>≥2 issues</option></select></div>
+            <div class="col-12">
+              <label class="form-label d-block">Nasal Obs.</label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="nasal" id="nasalSeptum" value="Deviated septum">
+                <label class="form-check-label" for="nasalSeptum">Deviated septum</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="nasal" id="nasalTurbinates" value="Enlarged turbinates">
+                <label class="form-check-label" for="nasalTurbinates">Enlarged turbinates</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="nasal" id="nasalRhinitis" value="Rhinitis">
+                <label class="form-check-label" for="nasalRhinitis">Rhinitis</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="nasal" id="nasalSinusitis" value="Sinusitis">
+                <label class="form-check-label" for="nasalSinusitis">Sinusitis</label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -140,6 +158,9 @@
   const n = v => (v===null||v===undefined||v===''?null:+v);
   const exists = v => v!==null && v!==undefined && v!=='';
 
+  const getNasalIssues = v =>
+  Array.isArray(v) ? v : (v ? [v] : []);
+
   function conf(tag, m){
     switch(tag){
       case 'High Anatomical Contribution':{
@@ -174,11 +195,13 @@
         if(hb>=30 || hb90>=1.5 || (nadir<85 && nadir>=80) || (odi>=30 && odi<50)) return 'Moderate';
         return 'Low';
       }
-      case 'Nasal-Resistance Contributor':{
-        const f = m.nasal;
+      case 'Nasal-Resistance Contributor': {
+        const issues = getNasalIssues(m.nasal);
         const nose = m.nose || 0;
-        if (f === '≥2 issues' || nose >= 60) return 'High';
-        if (['Septum','Turbinates','Rhinitis'].includes(f) || nose >= 30) return 'Moderate';
+        const count = issues.length;
+      
+        if (count >= 2 || nose >= 60) return 'High';
+        if (count === 1 || nose >= 30) return 'Moderate';
         return 'Low';
       }
       default: return 'Low';
@@ -197,14 +220,18 @@
 
     const m = {
       ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd')==='on',
-      bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'), nasal: f.get('nasal'),
-      ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup'))||1, rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
+      bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'),
+      nasal: f.getAll('nasal'),
+      ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup'))||1,
+      rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
       odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
       arInd: n(f.get('arInd')),
       nose: n(f.get('nose'))
     };
 
+    const nasalIssues = getNasalIssues(m.nasal);
+    
     // Surgical candidacy helpers
     const tonsilGrade = +m.tons || 0;
     const friedman = m.ftp;
@@ -273,13 +300,13 @@
       addWhy('High Hypoxic Burden', bits.join('; '));
       add('High Hypoxic Burden');
     }
-    const highNOSE = (m.nose || 0) >= 30;
-    if ((m.nasal && m.nasal !== 'None') || highNOSE) {
-      const nasalMap = {
-        'Septum':'Deviated septum',
-        'Turbinates':'Inferior turbinate hypertrophy',
-        'Rhinitis':'Rhinitis',
-        '≥2 issues':'Multiple nasal issues'
+      const highNOSE = (m.nose || 0) >= 30;
+      if (nasalIssues.length || highNOSE) {
+        const bits = [];
+        if (nasalIssues.length) bits.push(nasalIssues.join(', '));
+        if (exists(m.nose)) bits.push(`NOSE ${m.nose}/100`);
+        addWhy('Nasal-Resistance Contributor', bits.join('; '));
+        add('Nasal-Resistance Contributor');
       };
       const bits = [];
       if (m.nasal && m.nasal !== 'None') bits.push(nasalMap[m.nasal] || m.nasal);
@@ -504,6 +531,8 @@
         'No meaningful pattern of central breathing pauses was seen. Your breathing interruptions are primarily obstructive, meaning they are caused by airway narrowing or collapse rather than the brain forgetting to breathe.';
     }
 
+    const nasalText = nasalIssues.length ? nasalIssues.join(', ') : 'none noted';
+  
     const resultsTable = `
       <table class="kpi-table"><tbody>
         <tr>
@@ -604,7 +633,7 @@
           <td>
             Tonsils: <strong>${exists(m.tons)?m.tons:'—'}</strong>;
             Friedman palate/tongue position: <strong>${exists(m.ftp)?m.ftp:'—'}</strong>;
-            Nasal finding: <strong>${exists(m.nasal)?m.nasal:'—'}</strong>.
+            Nasal findings: <strong>${nasalText}</strong>.
             These anatomic features help explain how much of your sleep apnea is due to crowding in the nose and throat,
             and whether procedures on the tonsils, soft palate, or nose might meaningfully support CPAP or, in some
             cases, serve as additional treatment.
@@ -734,21 +763,24 @@
   const demoCases = {
     modHighHB: {
       ess: 8, isi: 6, nose: 55, cvd: false,
-      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II', nasal: 'Rhinitis',
+      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
+      nasal: ['Rhinitis'],   // <-- array
       ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
       odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
       csr: 0.0, pahic3: 2.0, pahic4: 1.0
     },
     mildLowHB: {
       ess: 6, isi: 7, nose: 15, cvd: false,
-      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II', nasal: 'None',
+      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
+      nasal: [],              // no nasal issues
       ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
       odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
       csr: 0.0, pahic3: 1.0, pahic4: 0.5
     },
     severeHNS: {
       ess: 10, isi: 10, nose: 40, cvd: false,
-      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II', nasal: 'Septum',
+      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
+      nasal: ['Deviated septum'],   // matches checkbox value
       ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
       odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
       csr: 0.0, pahic3: 2.0, pahic4: 1.0
@@ -756,10 +788,26 @@
   };
 
   function setVal(name, value) {
-    const el = document.querySelector(`[name="${name}"]`);
-    if (!el) return;
-    if (el.type === 'checkbox') el.checked = !!value;
-    else el.value = value;
+    const els = document.querySelectorAll(`[name="${name}"]`);
+    if (!els.length) return;
+  
+    // Single checkbox (e.g., cvd)
+    if (els[0].type === 'checkbox' && els.length === 1) {
+      els[0].checked = !!value;
+      return;
+    }
+  
+    // Multiple checkboxes (e.g., nasal)
+    if (els[0].type === 'checkbox') {
+      const vals = Array.isArray(value) ? value : (value ? [value] : []);
+      els.forEach(el => {
+        el.checked = vals.includes(el.value);
+      });
+      return;
+    }
+  
+    // Everything else (inputs/selects)
+    els[0].value = value;
   }
   function fillDemo(caseKey) {
     document.getElementById('form').reset();
