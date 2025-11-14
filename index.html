@@ -121,6 +121,10 @@
               <label class="form-label">Insomnia Severity (ISI)</label>
               <input type="number" class="form-control" name="isi" min="0" max="28" />
             </div>
+            <div class="col-6">
+              <label class="form-label">STOP-BANG score (0–8)</label>
+              <input type="number" class="form-control" name="stopBang" min="0" max="8" />
+            </div>
             <div class="col-12">
               <label class="form-label">NOSE score (0–100)</label>
               <input type="number" class="form-control" name="nose" min="0" max="100" />
@@ -318,6 +322,13 @@
   }
   return 'Context-dependent; tailor to the patient’s comorbidities, prior therapies, and preferences.';
 };
+
+  function stopBangRisk(score) {
+  if (score == null) return '—';
+  if (score >= 5) return 'High';
+  if (score >= 3) return 'Intermediate';
+  return 'Low';
+}
   
   function onSubmit(e){
     e.preventDefault();
@@ -335,7 +346,8 @@
       ptName: f.get('ptName') || '',
       ptDob: f.get('ptDob') || '',
       studyDate: f.get('studyDate') || '',
-      studyType: f.get('studyType') || ''
+      studyType: f.get('studyType') || '',    // ← comma was missing here
+      stopBang: n(f.get('stopBang'))          // ← now valid
     };
 
     const nasalIssues = getNasalIssues(m.nasal);
@@ -407,7 +419,14 @@
       addWhy('High Hypoxic Burden', bits.join('; '));
       add('High Hypoxic Burden');
     }
-
+    if ((m.ahi || 0) < 5 && (m.stopBang || 0) >= 5) {
+      addWhy(
+        'High OSA risk despite normal AHI',
+        `STOP-BANG ${m.stopBang} (${stopBangRisk(m.stopBang)} risk) with AHI < 5.`
+      );
+      add('High OSA risk despite normal AHI');
+    }
+  
     const highNOSE = (m.nose || 0) >= 30;
     if (nasalIssues.length || highNOSE) {
       const bits = [];
@@ -454,6 +473,38 @@
 
     const today = new Date().toLocaleDateString();
 
+    // ---- Study Adequacy Scoring ----
+    function assessStudyAdequacy(m) {
+      const flags = [];
+    
+      // Very short total sleep time (WatchPAT usually < 300 min = caution)
+      if ((m.tst || 0) > 0 && m.tst < 240) {
+        flags.push('Short total sleep time (< 4 hours).');
+      }
+    
+      // Almost no supine sleep → positional OSA may be missed
+      if (exists(m.sup) && exists(m.nons) && (m.sup < 3)) {
+        flags.push('Very little supine sleep – may miss positional OSA.');
+      }
+    
+      // Very little REM → may mask REM-OSA
+      if (exists(m.rem) && m.rem < 5) {
+        flags.push('Very little REM sleep – may miss REM-predominant OSA.');
+      }
+    
+      // STOP-BANG high but AHI normal
+      if ((m.ahi || 0) < 5 && (m.stopBang || 0) >= 5) {
+        flags.push('High STOP-BANG + normal AHI – risk of false-negative HST.');
+      }
+    
+      const suggestRepeat = flags.length > 0;
+      const level = suggestRepeat ? 'Borderline' : 'Adequate';
+    
+      return { level, suggestRepeat, flags };
+    }
+    
+    const studyAdequacy = assessStudyAdequacy(m);
+    
     // Build patient-facing "Your main findings" summary for ALL patients
     const patientFindings = [];
 
@@ -569,6 +620,13 @@
       );
     }
 
+    // 8) Possible false-negative study / repeat recommended
+    if ((m.ahi || 0) < 5 && studyAdequacy && studyAdequacy.suggestRepeat) {
+      patientFindings.push(
+        'Your test did not show obstructive sleep apnea based on the main index, but parts of the study and your risk factors suggest this night may not fully represent your usual sleep. Your clinician may recommend repeating the test or doing an in-lab sleep study for a more complete picture.'
+      );
+    }
+  
     const findingsUl = patientFindings.map(t => `<li>${t}</li>`).join('');
 
     const toPatient = s => s
@@ -795,6 +853,22 @@
         <span class="snapshot-pill">ODI4: <strong>${exists(m.odi)?m.odi:'—'}</strong>/hr</span>
         <span class="snapshot-pill">ESS: <strong>${exists(m.ess)?m.ess:'—'}</strong></span>
         <span class="snapshot-pill">ISI: <strong>${exists(m.isi)?m.isi:'—'}</strong></span>
+        <span class="snapshot-pill">STOP-BANG: <strong>${exists(m.stopBang)?m.stopBang:'—'}</strong>
+          (${stopBangRisk(m.stopBang)})</span>
+      </div>`;
+
+      const adequacyHtml = `
+      <div class="mt-1 mb-2 small">
+        <strong>Study adequacy:</strong> ${studyAdequacy.level}
+        ${studyAdequacy.suggestRepeat
+          ? '<span class="text-danger ms-1">Consider repeat HST or in-lab PSG.</span>'
+          : ''
+        }
+        ${
+          studyAdequacy.flags.length
+            ? `<div class="mt-1 text-muted">${studyAdequacy.flags.map(f => `<div>• ${f}</div>`).join('')}</div>`
+            : ''
+        }
       </div>`;
     
     const tagChips = [
@@ -838,7 +912,8 @@
     
           <h2 class="h6 section-title mb-2">Clinician Guidance</h2>
     
-          ${snapshot} 
+          ${snapshot}
+          ${adequacyHtml}
     
           ${tagChips ? `<div class="mb-3">${tagChips}</div>` : ''}
     
