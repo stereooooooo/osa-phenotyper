@@ -180,6 +180,7 @@
             <div class="col-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control" /></div>
             <div class="col-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">Total sleep time (min)</label><input type="number" step="1" name="tst" class="form-control" /></div>
             <div class="col-4"><label class="form-label">HB / hr</label><input type="number" step="0.1" name="hbPH" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Area &lt; 90% / hr</label><input type="number" step="0.1" name="hb90PH" class="form-control" /></div>
             <div class="col-4"><label class="form-label">% CSR</label><input type="number" step="0.1" name="csr" class="form-control" /></div>
@@ -342,6 +343,7 @@
       rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
       odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
+      tst: n(f.get('tst')),
       nose: n(f.get('nose')),
       ptName: f.get('ptName') || '',
       ptDob: f.get('ptDob') || '',
