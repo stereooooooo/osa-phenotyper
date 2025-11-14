@@ -65,6 +65,36 @@
     <p class="text-muted">Minimal inputs → fast phenotype + top-3 treatment guidance. You can expand later.</p>
 
     <form id="form" class="row g-4">
+      <div class="col-12">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header bg-secondary text-white">
+            <i class="bi bi-person-badge"></i> Patient & Study Info
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Patient name</label>
+              <input type="text" class="form-control" name="ptName" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">DOB</label>
+              <input type="date" class="form-control" name="ptDob" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Study date</label>
+              <input type="date" class="form-control" name="studyDate" />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Study type</label>
+              <select class="form-select" name="studyType">
+                <option value="">—</option>
+                <option>Home sleep test (WatchPAT)</option>
+                <option>Home sleep test (other)</option>
+                <option>In-lab PSG</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- LEFT: Questionnaires + Exam -->
       <div class="col-lg-5">
         <div class="card shadow-sm">
@@ -281,15 +311,19 @@
     const f = new FormData(e.target);
 
     const m = {
-      ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd')==='on',
+      ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd') === 'on',
       bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'),
       nasal: f.getAll('nasal'),
-      ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup'))||1,
+      ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup')) || 1,
       rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
       odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
       arInd: n(f.get('arInd')),
-      nose: n(f.get('nose'))
+      nose: n(f.get('nose')),
+      ptName: f.get('ptName') || '',
+      ptDob: f.get('ptDob') || '',
+      studyDate: f.get('studyDate') || '',
+      studyType: f.get('studyType') || ''
     };
 
     const nasalIssues = getNasalIssues(m.nasal);
@@ -698,13 +732,21 @@
         </tr>
       </tbody></table>`;
 
+    const displayStudyDate = m.studyDate ? new Date(m.studyDate).toLocaleDateString() : today;
+    
     const handoutHTML = `
       <section class="handout" id="handout">
         <div class="brand-row">
           <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
           <div>
             <h1>Your Personalized Sleep Report</h1>
-            <div class="muted">Date: ${today}</div>
+            <div class="muted">
+              Date printed: ${today}<br>
+              ${m.ptName ? `Patient: <strong>${m.ptName}</strong><br>` : ''}
+              ${m.ptDob ? `DOB: ${new Date(m.ptDob).toLocaleDateString()}<br>` : ''}
+              ${m.studyDate ? `Study date: ${displayStudyDate}<br>` : ''}
+              ${m.studyType ? `Study type: ${m.studyType}` : ''}
+            </div>
           </div>
         </div>
         <h2>Overview</h2>
@@ -712,7 +754,7 @@
         <h2>Your main findings</h2>
         <ul>${findingsUl}</ul>
         <h2>What this means for you</h2>
-        <ol>${patientRecs.map(r=>`<li>${r}</li>`).join('')}</ol>
+        <ol>${patientRecs.map(r => `<li>${r}</li>`).join('')}</ol>
         <h2>Your Sleep Test Results</h2>
         <p class="muted">These are the main numbers from your test with a short note about what they mean. Normal ranges are listed where helpful.</p>
         ${resultsTable}
