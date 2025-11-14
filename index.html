@@ -909,11 +909,20 @@
       return `<li><strong>${r}</strong><br><span class="text-muted small">${expl}</span></li>`;
     }).join('');
 
+    const dobDisplay = m.ptDob ? new Date(m.ptDob).toLocaleDateString() : '';
+    const studyDateDisplay = m.studyDate ? new Date(m.studyDate).toLocaleDateString() : '';
+
     document.getElementById('clinician').innerHTML = `
       <div class="card shadow-sm mt-3">
         <div class="card-body">
     
-          <h2 class="h6 section-title mb-2">Clinician Guidance</h2>
+          <h2 class="h6 section-title mb-1">Clinician Guidance</h2>
+          <div class="small text-muted mb-2">
+            ${m.ptName ? `<strong>${m.ptName}</strong>` : '<em>No patient name</em>'}
+            ${dobDisplay ? ` • DOB: ${dobDisplay}` : ''}
+            ${studyDateDisplay ? ` • Study: ${studyDateDisplay}` : ''}
+            ${m.studyType ? ` • ${m.studyType}` : ''}
+          </div>
     
           ${snapshot}
           ${adequacyHtml}
@@ -923,16 +932,18 @@
           <div class="row">
             <div class="col-lg-6 mb-3">
               <h6 class="fw-semibold">Phenotype summary</h6>
-              ${phen.length
-                ? `<div class="table-responsive">
-                     <table class="table table-sm align-middle mb-0">
-                       <thead>
-                         <tr><th>Phenotype</th><th>Confidence</th><th>Key drivers</th></tr>
-                       </thead>
-                       <tbody>${rows}</tbody>
-                     </table>
-                   </div>`
-                : '<p class="text-muted small mb-0">No strong non-anatomic phenotypes identified based on current inputs.</p>'}
+              ${
+                phen.length
+                  ? `<div class="table-responsive">
+                       <table class="table table-sm align-middle mb-0">
+                         <thead>
+                           <tr><th>Phenotype</th><th>Confidence</th><th>Key drivers</th></tr>
+                         </thead>
+                         <tbody>${rows}</tbody>
+                       </table>
+                     </div>`
+                  : '<p class="text-muted small mb-0">No strong non-anatomic phenotypes identified based on current inputs.</p>'
+              }
             </div>
     
             <div class="col-lg-6">
