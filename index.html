@@ -213,6 +213,68 @@
     : ahi < 15 ? 'Mild'
     : ahi < 30 ? 'Moderate'
     : 'Severe';
+
+  const explainRec = (r, ctx) => {
+  const {
+    hbConf,
+    hasPositional,
+    hasRemPred,
+    hasInsomnia,
+    highLoop,
+    anatHigh,
+    considerSoftTissue,
+    considerHNS
+  } = ctx;
+
+  if (r.startsWith('⚠ Prioritize therapy initiation')) {
+    return 'Flag that this case is urgent: very high hypoxic burden is tied to cardiovascular risk, so avoid delays in starting effective therapy.';
+  }
+  if (r.startsWith('Start or continue CPAP/APAP')) {
+    return 'Gold-standard first-line therapy for almost all severities unless there is a strong reason to use an alternative.';
+  }
+  if (r.startsWith('Custom oral appliance (MAD)')) {
+    return 'Evidence-based alternative for mild–moderate OSA or CPAP-intolerant patients; plan a follow-up study to confirm response.';
+  }
+  if (r.startsWith('If anatomic contributor is high: discuss surgical options')) {
+    return anatHigh
+      ? 'Anatomy is a major driver here; nasal and palatal surgery can support PAP or, in selected patients, provide partial definitive treatment.'
+      : 'Use this mainly when the phenotyping suggests a strong anatomic contribution or the patient is highly surgery-leaning.';
+  }
+  if (r.startsWith('Begin positional therapy')) {
+    return hasPositional
+      ? 'Supine AHI >> non-supine; a structured positional trial with follow-up testing is reasonable.'
+      : 'Reserve for clearly positional patterns (supine AHI ≥2–3× non-supine and non-supine AHI < ~15).';
+  }
+  if (r.startsWith('If TECSA persists')) {
+    return highLoop
+      ? 'Loop-gain/central features present – consider this if central apneas persist on PAP and EF is acceptable.'
+      : 'Only relevant if a central/complex pattern is documented; ignore otherwise.';
+  }
+  if (r.startsWith('Add CBT-I and optimize CPAP comfort')) {
+    return hasInsomnia
+      ? 'COMISA pattern – treating insomnia and PAP comfort in parallel improves adherence and daytime function.'
+      : 'Use if patient reports fragmented sleep or PAP intolerance even with lower ISI scores.';
+  }
+  if (r.startsWith('Prioritize timely therapy to reduce desaturation burden')) {
+    return hbConf === 'High'
+      ? 'High desaturation burden – emphasize CV and neurocognitive risk reduction when counseling.'
+      : 'Useful when ODI/HB are disproportionally high relative to AHI.';
+  }
+  if (r.startsWith('Treat anatomic nasal obstruction')) {
+    return 'NOSE ≥30 and/or structural findings – stepwise nasal management to improve symptoms and PAP tolerance.';
+  }
+  if (r.startsWith('Anatomy favorable for soft tissue surgery')) {
+    return considerSoftTissue
+      ? 'Large tonsils + favorable Friedman; reasonable to discuss tonsillectomy ± ESP as anatomic debulking.'
+      : 'Only applies when tonsils are 3–4 and Friedman I–II.';
+  }
+  if (r.startsWith('Evaluate for hypoglossal nerve stimulation')) {
+    return considerHNS
+      ? 'Meets standard criteria (AHI 15–65, BMI ≤32, minimal centrals); flag for HNS discussion or referral.'
+      : 'Will only appear when the usual inclusion criteria are met.';
+  }
+  return 'Context-dependent; tailor to the patient’s comorbidities, prior therapies, and preferences.';
+};
   
   function onSubmit(e){
     e.preventDefault();
@@ -661,15 +723,76 @@
       </section>`;
     document.getElementById('patientSummary').innerHTML = handoutHTML;
 
-    const allRecs = rec.map(x=>`<li>${x}</li>`).join('');
-    const rows = phen.map(p=>`<tr><td>${p.tag}</td><td>${p.conf}</td><td>${p.why || ''}</td></tr>`).join('');
+    // --- Clinician guidance ---
+
+    const sevLabel = sev(m.ahi);
+    const hbConfClin = hbConf;
+    const nasalConfClin = nasalConf;
+    const hasPositional = phen.some(p => p.tag === 'Positional OSA');
+    const hasRemPred = phen.some(p => p.tag === 'REM-Predominant OSA');
+    const hasInsomnia = phen.some(p => p.tag === 'Insomnia / COMISA pattern');
+    const highLoop = phen.some(p => p.tag === 'High Loop Gain');
+    const anatHigh = phen.some(p => p.tag === 'High Anatomical Contribution');
+
+    const tagChips = [
+      sevLabel !== '—' ? `${sevLabel} OSA` : null,
+      subtype ? `${subtype} subtype` : null,
+      hbConfClin === 'High' ? 'High hypoxic burden'
+        : hbConfClin === 'Moderate' ? 'Moderate hypoxic burden' : null,
+      hasPositional ? 'Positional pattern' : null,
+      hasRemPred ? 'REM-predominant' : null,
+      nasalConfClin === 'High' ? 'Significant nasal obstruction'
+        : nasalConfClin === 'Moderate' ? 'Some nasal obstruction' : null,
+      considerSoftTissue ? 'Soft-tissue surgery candidate' : null,
+      considerHNS ? 'Meets HNS criteria' : null
+    ]
+      .filter(Boolean)
+      .map(t => `<span class="badge rounded-pill bg-light text-dark border me-1 mb-1">${t}</span>`)
+      .join('');
+
+    const rows = phen.map(p =>
+      `<tr><td>${p.tag}</td><td>${p.conf}</td><td>${p.why || ''}</td></tr>`
+    ).join('');
+
+    const planLis = rec.map(r => {
+      const ctx = {
+        hbConf: hbConfClin,
+        hasPositional,
+        hasRemPred,
+        hasInsomnia,
+        highLoop,
+        anatHigh,
+        considerSoftTissue,
+        considerHNS
+      };
+      const expl = explainRec(r, ctx);
+      return `<li><strong>${r}</strong><br><span class="text-muted small">${expl}</span></li>`;
+    }).join('');
+
     document.getElementById('clinician').innerHTML = `
       <div class="card shadow-sm mt-3">
         <div class="card-body">
-          <h2 class="h6 section-title">Clinician Guidance</h2>
-          ${phen.length?`<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Phenotype</th><th>Confidence</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
-          <h6>Ranked plan</h6>
-          <ol>${allRecs}</ol>
+          <h2 class="h6 section-title mb-2">Clinician Guidance</h2>
+          ${tagChips ? `<div class="mb-3">${tagChips}</div>` : ''}
+          <div class="row">
+            <div class="col-lg-6 mb-3">
+              <h6 class="fw-semibold">Phenotype summary</h6>
+              ${phen.length
+                ? `<div class="table-responsive">
+                     <table class="table table-sm align-middle mb-0">
+                       <thead>
+                         <tr><th>Phenotype</th><th>Confidence</th><th>Key drivers</th></tr>
+                       </thead>
+                       <tbody>${rows}</tbody>
+                     </table>
+                   </div>`
+                : '<p class="text-muted small mb-0">No strong non-anatomic phenotypes identified based on current inputs.</p>'}
+            </div>
+            <div class="col-lg-6">
+              <h6 class="fw-semibold">Ranked plan (with rationale)</h6>
+              <ol class="mb-0">${planLis}</ol>
+            </div>
+          </div>
         </div>
       </div>`;
 
