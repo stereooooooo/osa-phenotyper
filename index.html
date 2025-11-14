@@ -197,10 +197,10 @@
         const strong = ((m.bmi||0)>=30) + ((m.neck||0)>=17) + ((m.tons||0)>=3) + (['III','IV'].includes(m.ftp)?1:0) + ((m.ahi||0)>=30);
         return strong>=4?'High':strong>=2?'Moderate':'Low';
       }
-      case 'Low Arousal Threshold':{
-        const ar = (m.isi||0);
-        const arRatio = (m.arInd && m.ahi)?(m.arInd/m.ahi):0;
-        if(ar>=15 || arRatio>1.3) return (ar>=22||arRatio>=1.8)?'High':'Moderate';
+      case 'Low Arousal Threshold': {
+        const isi = m.isi || 0;
+        if (isi >= 22) return 'High';
+        if (isi >= 15) return 'Moderate';
         return 'Low';
       }
       case 'High Loop Gain':{
@@ -318,7 +318,6 @@
       rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
       odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
-      arInd: n(f.get('arInd')),
       nose: n(f.get('nose')),
       ptName: f.get('ptName') || '',
       ptDob: f.get('ptDob') || '',
@@ -358,10 +357,9 @@
       addWhy('High Anatomical Contribution', bits.join('; '));
       add('High Anatomical Contribution');
     }
-    if((m.isi||0)>=15 || ((m.arInd&&m.ahi)&& (m.arInd/m.ahi)>1.3)){
-      const bits=[];
-      if ((m.isi||0) >= 15) bits.push(`ISI ${m.isi}`);
-      if ((m.arInd&&m.ahi) && (m.arInd/m.ahi)>1.3) bits.push(`Arousal index/AHI ${(m.arInd/m.ahi).toFixed(1)}`);
+    if ((m.isi || 0) >= 15) {
+      const bits = [];
+      bits.push(`ISI ${m.isi}`);
       addWhy('Low Arousal Threshold', bits.join('; '));
       add('Low Arousal Threshold');
     }
