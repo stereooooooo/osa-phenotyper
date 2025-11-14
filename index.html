@@ -29,9 +29,52 @@
   
   /* Patient handout */
   .handout { background:#fff; padding: 1.25rem; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-  .handout .brand-row { display:flex; align-items:center; gap:1rem; margin-bottom: .75rem; }
+  .handout .brand-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+   .handout-header-main {
+   flex: 1;
+  }
+  
   .handout-logo { width: 220px; height: auto; }
-  .handout h1 { font-size: 1.5rem; margin: 0; color:#1b3a57; font-weight:700; }
+
+  .handout h1 {
+   font-size: 1.5rem;
+   margin: 0 0 0.25rem 0;
+   color: #1b3a57;
+   font-weight: 700;
+  }
+  
+  .handout-meta {
+    font-size: 0.9rem;
+    color: #6b7280;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+  }
+
+   .handout-meta-item {
+     display: flex;
+     align-items: baseline;
+   }
+
+    .handout-meta-label {
+      font-weight: 600;
+      color: #4b5563;
+      margin-right: 0.25rem;
+    }
+    
+    .handout-logo {
+      width: 220px;
+      height: auto;
+      flex-shrink: 0;
+    }
+  
   .handout h2 { font-size: 1.125rem; color:#1b3a57; margin-top:1rem; font-weight:700; }
   .handout p, .handout li { font-size: 0.98rem; line-height: 1.55; color:#374151; }
   .kpi-table { width:100%; border-collapse: collapse; font-size:.95rem; }
@@ -809,17 +852,36 @@
     const handoutHTML = `
       <section class="handout" id="handout">
         <div class="brand-row">
-          <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
-          <div>
+          <div class="handout-header-main">
             <h1>Your Personalized Sleep Report</h1>
-            <div class="muted">
-              Date printed: ${today}<br>
-              ${m.ptName ? `Patient: <strong>${m.ptName}</strong><br>` : ''}
-              ${m.ptDob ? `DOB: ${new Date(m.ptDob).toLocaleDateString()}<br>` : ''}
-              ${m.studyDate ? `Study date: ${displayStudyDate}<br>` : ''}
-              ${m.studyType ? `Study type: ${m.studyType}` : ''}
+            <div class="handout-meta">
+              <div class="handout-meta-item">
+                <span class="handout-meta-label">Date printed:</span>
+                <span>${today}</span>
+              </div>
+              ${m.ptName ? `
+              <div class="handout-meta-item">
+                <span class="handout-meta-label">Patient:</span>
+                <span>${m.ptName}</span>
+              </div>` : ''}
+              ${m.ptDob ? `
+              <div class="handout-meta-item">
+                <span class="handout-meta-label">DOB:</span>
+                <span>${new Date(m.ptDob).toLocaleDateString()}</span>
+              </div>` : ''}
+              ${m.studyDate ? `
+              <div class="handout-meta-item">
+                <span class="handout-meta-label">Study date:</span>
+                <span>${displayStudyDate}</span>
+              </div>` : ''}
+              ${m.studyType ? `
+              <div class="handout-meta-item">
+                <span class="handout-meta-label">Study type:</span>
+                <span>${m.studyType}</span>
+              </div>` : ''}
             </div>
           </div>
+          <img class="handout-logo" alt="Capital ENT & Sinus Center" src="Horizontal Color.svg" />
         </div>
         <h2>Overview</h2>
         <p><strong>Obstructive sleep apnea (OSA)</strong> happens when the airway partly or fully closes during sleep. This leads to pauses in breathing and drops in oxygen, which can fragment sleep and, over years, raise risks for high blood pressure, heart disease, stroke, and problems with memory and focus. Your results below are personalized from your sleep test and exam.</p>
