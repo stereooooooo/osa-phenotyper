@@ -185,6 +185,12 @@
     }
   }
 
+  const sev = ahi => ahi == null ? '—'
+    : ahi < 5  ? 'None'
+    : ahi < 15 ? 'Mild'
+    : ahi < 30 ? 'Moderate'
+    : 'Severe';
+  
   function onSubmit(e){
     e.preventDefault();
     const f = new FormData(e.target);
@@ -206,7 +212,12 @@
     const ahiOverall = +m.ahi || 0;
     const favorableSoftTissue = (tonsilGrade >= 3) && (friedman === 'I' || friedman === 'II');
     const considerSoftTissue = favorableSoftTissue && (ahiOverall >= 5);
-    const considerHNS = (ahiOverall >= 15 && ahiOverall <= 65) && (bmi <= 32) && !((m.csr || 0) >= 10) && !((m.pahic4 || 0) >= 5);
+    const considerHNS =
+      sev(ahiOverall) !== 'Mild' &&      // extra guard against mild OSA
+      ahiOverall >= 15 && ahiOverall <= 65 &&
+      bmi <= 32 &&
+      !((m.csr || 0) >= 10) &&
+      !((m.pahic4 || 0) >= 5);
 
     // Phenotypes + reasons
     const phen = [];
@@ -311,12 +322,6 @@
     if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
 
     const top3 = rec.slice(0,3);
-
-    const sev = ahi => ahi == null ? '—'
-      : ahi < 5  ? 'None'
-      : ahi < 15 ? 'Mild'
-      : ahi < 30 ? 'Moderate'
-      : 'Severe';
 
     const today = new Date().toLocaleDateString();
 
