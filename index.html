@@ -14,6 +14,19 @@
   .kv { font-variant-numeric: tabular-nums; }
   .header-controls > * { margin-left: .5rem; }
 
+  .snapshot-pill {
+  display:inline-block;
+  padding:.15rem .55rem;
+  border-radius:999px;
+  font-size:.78rem;
+  border:1px solid #e5e7eb;
+  margin:0 .25rem .25rem 0;
+  background:#f9fafb;
+  }
+  .snapshot-pill strong {
+    font-variant-numeric: tabular-nums;
+  }
+  
   /* Patient handout */
   .handout { background:#fff; padding: 1.25rem; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
   .handout .brand-row { display:flex; align-items:center; gap:1rem; margin-bottom: .75rem; }
@@ -774,6 +787,16 @@
     const highLoop = phen.some(p => p.tag === 'High Loop Gain');
     const anatHigh = phen.some(p => p.tag === 'High Anatomical Contribution');
 
+    const snapshot = `
+      <div class="mb-2 small">
+        <span class="snapshot-pill">AHI: <strong>${exists(m.ahi)?m.ahi:'—'}</strong> (${sevLabel})</span>
+        <span class="snapshot-pill">HB: <strong>${exists(m.hbPH)?m.hbPH:'—'}</strong> %·min/hr (${hbConfClin})</span>
+        <span class="snapshot-pill">Nadir SpO₂: <strong>${exists(m.nadir)?m.nadir+'%':'—'}</strong></span>
+        <span class="snapshot-pill">ODI4: <strong>${exists(m.odi)?m.odi:'—'}</strong>/hr</span>
+        <span class="snapshot-pill">ESS: <strong>${exists(m.ess)?m.ess:'—'}</strong></span>
+        <span class="snapshot-pill">ISI: <strong>${exists(m.isi)?m.isi:'—'}</strong></span>
+      </div>`;
+    
     const tagChips = [
       sevLabel !== '—' ? `${sevLabel} OSA` : null,
       subtype ? `${subtype} subtype` : null,
@@ -812,8 +835,13 @@
     document.getElementById('clinician').innerHTML = `
       <div class="card shadow-sm mt-3">
         <div class="card-body">
+    
           <h2 class="h6 section-title mb-2">Clinician Guidance</h2>
+    
+          ${snapshot} 
+    
           ${tagChips ? `<div class="mb-3">${tagChips}</div>` : ''}
+    
           <div class="row">
             <div class="col-lg-6 mb-3">
               <h6 class="fw-semibold">Phenotype summary</h6>
@@ -828,11 +856,13 @@
                    </div>`
                 : '<p class="text-muted small mb-0">No strong non-anatomic phenotypes identified based on current inputs.</p>'}
             </div>
+    
             <div class="col-lg-6">
               <h6 class="fw-semibold">Ranked plan (with rationale)</h6>
               <ol class="mb-0">${planLis}</ol>
             </div>
           </div>
+    
         </div>
       </div>`;
 
