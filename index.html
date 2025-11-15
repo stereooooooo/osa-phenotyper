@@ -99,6 +99,10 @@
   }
   
 @media print {
+  @page {
+    margin: 0.5in;
+  }
+
   /* Basic page setup */
   body {
     margin: 0;
@@ -107,7 +111,7 @@
     print-color-adjust: exact;
   }
 
-  /* Hide interactive / navigation UI in print */
+  /* Hide interactive / navigation UI in print only */
   header,
   form,
   hr,
@@ -120,14 +124,21 @@
     padding: 0;
   }
 
-  /* Normalize cards/handouts for print */
+  /* Strip card chrome from the print output */
   #patientSummary,
   #clinician {
     box-shadow: none !important;
     border-radius: 0 !important;
     margin: 0;
-    padding: 0.5in;
-    page-break-inside: avoid;
+    padding: 0;
+  }
+
+  /* Handout fills the printable area with sane padding */
+  .handout {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0;
+    padding: 0.25in 0.5in;
   }
 
   /* PATIENT-ONLY PRINT */
@@ -138,13 +149,12 @@
     display: none !important;
   }
 
-  /* PATIENT + CLINICIAN PRINT */
+  /* CLINICIAN-ONLY PRINT */
   body.print-clinician #patientSummary {
-    display: block !important;
-    page-break-after: always; /* clinician handout on page 1 */
+    display: none !important;
   }
   body.print-clinician #clinician {
-    display: block !important; /* clinician summary starts on page 2 */
+    display: block !important;
   }
 }
 </style>
