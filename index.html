@@ -97,12 +97,13 @@
     font-size: 0.85rem;
     color: #6b7280;
   }
-  
-@media print {
-  @page {
-    margin: 0.5in;
-  }
 
+@page {
+  /* tighter physical page margins */
+  margin: 0.3in 0.2in;
+}
+
+@media print {
   /* Basic page setup */
   body {
     margin: 0;
@@ -111,7 +112,7 @@
     print-color-adjust: exact;
   }
 
-  /* Hide interactive / navigation UI in print only */
+  /* Hide interactive / navigation UI in print */
   header,
   form,
   hr,
@@ -119,26 +120,46 @@
     display: none !important;
   }
 
-  main {
-    margin: 0;
-    padding: 0;
+  /* Kill Bootstrap container padding / max-width on print */
+  main,
+  .container {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
   }
 
-  /* Strip card chrome from the print output */
+  /* Wrapper blocks: no extra chrome or padding */
   #patientSummary,
   #clinician {
-    box-shadow: none !important;
-    border-radius: 0 !important;
     margin: 0;
     padding: 0;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    page-break-inside: avoid;
   }
 
-  /* Handout fills the printable area with sane padding */
+  /* The actual printed card */
   .handout {
     box-shadow: none !important;
     border-radius: 0 !important;
-    margin: 0;
-    padding: 0.25in 0.5in;
+    padding: 0.25in 0.2in 0.3in !important; /* main “page margin” inside */
+  }
+
+  /* Tighten typography a bit for print */
+  .handout h1 {
+    font-size: 1.3rem;
+    margin-bottom: 0.2rem;
+  }
+  .handout h2 {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.2rem;
+  }
+  .handout p,
+  .handout li {
+    font-size: 0.9rem;
+    line-height: 1.4;
   }
 
   /* PATIENT-ONLY PRINT */
@@ -149,14 +170,28 @@
     display: none !important;
   }
 
-  /* CLINICIAN-ONLY PRINT */
+  /* PATIENT + CLINICIAN PRINT */
   body.print-clinician #patientSummary {
-    display: none !important;
+    display: block !important;
+    page-break-after: always; /* clinician sheet starts on a new page */
   }
   body.print-clinician #clinician {
     display: block !important;
   }
+
+  /* Slightly compress clinician sheet to help fit on one page */
+  .clinician-sheet {
+    font-size: 0.9rem;
+  }
+  .clinician-sheet .table {
+    font-size: 0.8rem;
+  }
+  .snapshot-pill {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+  }
 }
+
 </style>
 </head>
 <body>
@@ -178,7 +213,6 @@
   </header>
 
   <main class="container my-4">
-    <p class="text-muted">Minimal inputs → fast phenotype + top-3 treatment guidance. You can expand later.</p>
 
     <form id="form" class="row g-4">
       <div class="col-12">
