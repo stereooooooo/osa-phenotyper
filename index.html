@@ -15,13 +15,13 @@
   .header-controls > * { margin-left: .5rem; }
 
   .snapshot-pill {
-  display:inline-block;
-  padding:.15rem .55rem;
-  border-radius:999px;
-  font-size:.78rem;
-  border:1px solid #e5e7eb;
-  margin:0 .25rem .25rem 0;
-  background:#f9fafb;
+    display:inline-block;
+    padding:.15rem .55rem;
+    border-radius:999px;
+    font-size:.78rem;
+    border:1px solid #e5e7eb;
+    margin:0 .25rem .25rem 0;
+    background:#f9fafb;
   }
   .snapshot-pill strong {
     font-variant-numeric: tabular-nums;
@@ -37,17 +37,17 @@
     margin-bottom: 0.75rem;
   }
   
-   .handout-header-main {
-   flex: 1;
+  .handout-header-main {
+    flex: 1;
   }
   
   .handout-logo { width: 220px; height: auto; }
 
   .handout h1 {
-   font-size: 1.5rem;
-   margin: 0 0 0.25rem 0;
-   color: #1b3a57;
-   font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem 0;
+    color: #1b3a57;
+    font-weight: 700;
   }
   
   .handout-meta {
@@ -58,22 +58,22 @@
     gap: 0.25rem 1.25rem;
   }
 
-   .handout-meta-item {
-     display: flex;
-     align-items: baseline;
-   }
+  .handout-meta-item {
+    display: flex;
+    align-items: baseline;
+  }
 
-    .handout-meta-label {
-      font-weight: 600;
-      color: #4b5563;
-      margin-right: 0.25rem;
-    }
+  .handout-meta-label {
+    font-weight: 600;
+    color: #4b5563;
+    margin-right: 0.25rem;
+  }
     
-    .handout-logo {
-      width: 220px;
-      height: auto;
-      flex-shrink: 0;
-    }
+  .handout-logo {
+    width: 220px;
+    height: auto;
+    flex-shrink: 0;
+  }
   
   .handout h2 { font-size: 1.125rem; color:#1b3a57; margin-top:1rem; font-weight:700; }
   .handout p, .handout li { font-size: 0.98rem; line-height: 1.55; color:#374151; }
@@ -98,99 +98,99 @@
     color: #6b7280;
   }
 
-@page {
-  /* tighter physical page margins */
-  margin: 0.3in 0.2in;
-}
-
-@media print {
-  /* Basic page setup */
-  body {
-    margin: 0;
-    background: #ffffff !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  @page {
+    /* tighter physical page margins */
+    margin: 0.3in 0.2in;
   }
 
-  /* Hide interactive / navigation UI in print */
-  header,
-  form,
-  hr,
-  .no-print {
-    display: none !important;
-  }
+  @media print {
+    /* Basic page setup */
+    body {
+      margin: 0;
+      background: #ffffff !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-  /* Kill Bootstrap container padding / max-width on print */
-  main,
-  .container {
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-  }
+    /* Hide interactive / navigation UI in print */
+    header,
+    form,
+    hr,
+    .no-print {
+      display: none !important;
+    }
 
-  /* Wrapper blocks: no extra chrome or padding */
-  #patientSummary,
-  #clinician {
-    margin: 0;
-    padding: 0;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    page-break-inside: avoid;
-  }
+    /* Kill Bootstrap container padding / max-width on print */
+    main,
+    .container {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: none !important;
+      width: 100% !important;
+    }
 
-  /* The actual printed card */
-  .handout {
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0.25in 0.2in 0.3in !important; /* main “page margin” inside */
-  }
+    /* Wrapper blocks: no extra chrome or padding */
+    #patientSummary,
+    #clinician {
+      margin: 0;
+      padding: 0;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      page-break-inside: avoid;
+    }
 
-  /* Tighten typography a bit for print */
-  .handout h1 {
-    font-size: 1.3rem;
-    margin-bottom: 0.2rem;
-  }
-  .handout h2 {
-    font-size: 1rem;
-    margin-top: 0.5rem;
-    margin-bottom: 0.2rem;
-  }
-  .handout p,
-  .handout li {
-    font-size: 0.9rem;
-    line-height: 1.4;
-  }
+    /* The actual printed card */
+    .handout {
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0.25in 0.2in 0.3in !important; /* main “page margin” inside */
+    }
 
-  /* PATIENT-ONLY PRINT */
-  body.print-patient #patientSummary {
-    display: block !important;
-  }
-  body.print-patient #clinician {
-    display: none !important;
-  }
+    /* Tighten typography a bit for print */
+    .handout h1 {
+      font-size: 1.3rem;
+      margin-bottom: 0.2rem;
+    }
+    .handout h2 {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      margin-bottom: 0.2rem;
+    }
+    .handout p,
+    .handout li {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
 
-  /* PATIENT + CLINICIAN PRINT */
-  body.print-clinician #patientSummary {
-    display: block !important;
-    page-break-after: always; /* clinician sheet starts on a new page */
-  }
-  body.print-clinician #clinician {
-    display: block !important;
-  }
+    /* PATIENT-ONLY PRINT */
+    body.print-patient #patientSummary {
+      display: block !important;
+    }
+    body.print-patient #clinician {
+      display: none !important;
+    }
 
-  /* Slightly compress clinician sheet to help fit on one page */
-  .clinician-sheet {
-    font-size: 0.9rem;
+    /* PATIENT + CLINICIAN PRINT */
+    body.print-clinician #patientSummary {
+      display: block !important;
+      page-break-after: always; /* clinician sheet starts on a new page */
+    }
+    body.print-clinician #clinician {
+      display: block !important;
+    }
+
+    /* Slightly compress clinician sheet to help fit on one page */
+    .clinician-sheet {
+      font-size: 0.9rem;
+    }
+    .clinician-sheet .table {
+      font-size: 0.8rem;
+    }
+    .snapshot-pill {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+    }
   }
-  .clinician-sheet .table {
-    font-size: 0.8rem;
-  }
-  .snapshot-pill {
-    font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-  }
-}
 
 </style>
 </head>
@@ -273,6 +273,22 @@
                 <label class="form-check-label" for="cvd">Cardiovascular disease (HTN/CAD/HF/AF)</label>
               </div>
             </div>
+            <!-- Key Medications -->
+            <div class="col-12">
+              <label class="form-label d-block">Key medications (check all that apply)</label>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="meds" id="medOpioid" value="Opioid">
+                <label class="form-check-label" for="medOpioid">Opioids (chronic)</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="meds" id="medBenzo" value="Benzodiazepine">
+                <label class="form-check-label" for="medBenzo">Benzodiazepines / Z-drugs</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="meds" id="medStim" value="Stimulant">
+                <label class="form-check-label" for="medStim">Stimulants</label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -317,13 +333,15 @@
             <div class="col-4"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control" /></div>
             <div class="col-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control" /></div>
             <div class="col-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control" /></div>
-            <div class="col-4"><label class="form-label">pRDI</label><input type="number" step="0.1" name="pRDI" class="form-control" /><small class="text-muted">Total respiratory events (if available)</small></div>
+            <div class="col-4">
+              <label class="form-label">pRDI</label>
+              <input type="number" step="0.1" name="pRDI" class="form-control" />
+              <small class="text-muted">Total respiratory events (if available)</small>
+            </div>
             <div class="col-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Total sleep time (min)</label><input type="number" step="1" name="tst" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Total recording time (min)</label><input type="number" step="1" name="trt" class="form-control" /></div>
-            <div class="col-4"><label class="form-label">Supine time (min)</label><input type="number" step="1" name="supineTime" class="form-control" /></div>
-            <div class="col-4"><label class="form-label">WASO (min)</label><input type="number" step="1" name="waso" class="form-control" /></div>
-            <div class="col-4"><label class="form-label"># awakenings</label><input type="number" step="1" name="numWakes" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">Supine sleep time (min)</label><input type="number" step="1" name="supineTime" class="form-control" /></div>
             <div class="col-4"><label class="form-label">HB / hr</label><input type="number" step="0.1" name="hbPH" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Area &lt; 90% / hr</label><input type="number" step="0.1" name="hb90PH" class="form-control" /></div>
             <div class="col-4"><label class="form-label">% CSR</label><input type="number" step="0.1" name="csr" class="form-control" /></div>
@@ -350,7 +368,10 @@
   const exists = v => v!==null && v!==undefined && v!=='';
 
   const getNasalIssues = v =>
-  Array.isArray(v) ? v : (v ? [v] : []);
+    Array.isArray(v) ? v : (v ? [v] : []);
+
+  const getMedList = v =>
+    Array.isArray(v) ? v : (v ? [v] : []);
 
   function conf(tag, m){
     switch(tag){
@@ -360,20 +381,8 @@
       }
       case 'Low Arousal Threshold': {
         const isi = m.isi || 0;
-        const rdiAhiRatio = (m.pRDI || 0) / (m.ahi || 1);
-        const waso = m.waso || 0;
-        const awakes = m.numWakes || 0;
-      
-        let score = 0;
-        if (isi >= 22) score += 2;
-        else if (isi >= 15) score += 1;
-      
-        if (rdiAhiRatio > 3) score += 1;
-        if (waso > 60 && (m.ahi || 0) < 30) score += 1;
-        if (awakes > 10) score += 1;
-      
-        if (score >= 3) return 'High';
-        if (score >= 1) return 'Moderate';
+        if (isi >= 22) return 'High';
+        if (isi >= 15) return 'Moderate';
         return 'Low';
       }
       case 'High Loop Gain':{
@@ -402,7 +411,6 @@
         const issues = getNasalIssues(m.nasal);
         const nose = m.nose || 0;
         const count = issues.length;
-      
         if (count >= 2 || nose >= 60) return 'High';
         if (count === 1 || nose >= 30) return 'Moderate';
         return 'Low';
@@ -418,83 +426,101 @@
     : 'Severe';
 
   const explainRec = (r, ctx) => {
-  const {
-    hbConf,
-    hasPositional,
-    hasRemPred,
-    hasInsomnia,
-    highLoop,
-    anatHigh,
-    considerSoftTissue,
-    considerHNS
-  } = ctx;
+    const {
+      hbConf,
+      hasPositional,
+      hasRemPred,
+      hasInsomnia,
+      highLoop,
+      anatHigh,
+      considerSoftTissue,
+      considerHNS
+    } = ctx;
 
-  if (r.startsWith('⚠ Prioritize therapy initiation')) {
-    return 'Flag that this case is urgent: very high hypoxic burden is tied to cardiovascular risk, so avoid delays in starting effective therapy.';
-  }
-  if (r.startsWith('Start or continue CPAP/APAP')) {
-    return 'Gold-standard first-line therapy for almost all severities unless there is a strong reason to use an alternative.';
-  }
-  if (r.startsWith('Custom oral appliance (MAD)')) {
-    return 'Evidence-based alternative for mild–moderate OSA or CPAP-intolerant patients; plan a follow-up study to confirm response.';
-  }
-  if (r.startsWith('If anatomic contributor is high: discuss surgical options')) {
-    return anatHigh
-      ? 'Anatomy is a major driver here; nasal and palatal surgery can support PAP or, in selected patients, provide partial definitive treatment.'
-      : 'Use this mainly when the phenotyping suggests a strong anatomic contribution or the patient is highly surgery-leaning.';
-  }
-  if (r.startsWith('Begin positional therapy')) {
-    return hasPositional
-      ? 'Supine AHI >> non-supine; a structured positional trial with follow-up testing is reasonable.'
-      : 'Reserve for clearly positional patterns (supine AHI ≥2–3× non-supine and non-supine AHI < ~15).';
-  }
-  if (r.startsWith('If TECSA persists')) {
-    return highLoop
-      ? 'Loop-gain/central features present – consider this if central apneas persist on PAP and EF is acceptable.'
-      : 'Only relevant if a central/complex pattern is documented; ignore otherwise.';
-  }
-  if (r.startsWith('Add CBT-I and optimize CPAP comfort')) {
-    return hasInsomnia
-      ? 'COMISA pattern – treating insomnia and PAP comfort in parallel improves adherence and daytime function.'
-      : 'Use if patient reports fragmented sleep or PAP intolerance even with lower ISI scores.';
-  }
-  if (r.startsWith('Prioritize timely therapy to reduce desaturation burden')) {
-    return hbConf === 'High'
-      ? 'High desaturation burden – emphasize CV and neurocognitive risk reduction when counseling.'
-      : 'Useful when ODI/HB are disproportionally high relative to AHI.';
-  }
-  if (r.startsWith('Treat anatomic nasal obstruction')) {
-    return 'NOSE ≥30 and/or structural findings – stepwise nasal management to improve symptoms and PAP tolerance.';
-  }
-  if (r.startsWith('Anatomy favorable for soft tissue surgery')) {
-    return considerSoftTissue
-      ? 'Large tonsils + favorable Friedman; reasonable to discuss tonsillectomy ± ESP as anatomic debulking.'
-      : 'Only applies when tonsils are 3–4 and Friedman I–II.';
-  }
-  if (r.startsWith('Evaluate for hypoglossal nerve stimulation')) {
-    return considerHNS
-      ? 'Meets standard criteria (AHI 15–65, BMI ≤32, minimal centrals); flag for HNS discussion or referral.'
-      : 'Will only appear when the usual inclusion criteria are met.';
-  }
-  return 'Context-dependent; tailor to the patient’s comorbidities, prior therapies, and preferences.';
-};
+    if (r.startsWith('⚠ Prioritize therapy initiation')) {
+      return 'Flag that this case is urgent: very high hypoxic burden is tied to cardiovascular risk, so avoid delays in starting effective therapy.';
+    }
+    if (r.startsWith('Start or continue CPAP/APAP')) {
+      return 'Gold-standard first-line therapy for almost all severities unless there is a strong reason to use an alternative.';
+    }
+    if (r.startsWith('Start CPAP at lower pressures')) {
+      return 'High RERA burden or sensitivity to flow limitation – starting with lower, more comfortable pressures may improve adherence while still treating events.';
+    }
+    if (r.startsWith('Custom oral appliance (MAD)')) {
+      return 'Evidence-based alternative for mild–moderate OSA or CPAP-intolerant patients; plan a follow-up study to confirm response.';
+    }
+    if (r.startsWith('If anatomic contributor is high: discuss surgical options')) {
+      return anatHigh
+        ? 'Anatomy is a major driver here; nasal and palatal surgery can support PAP or, in selected patients, provide partial definitive treatment.'
+        : 'Use this mainly when the phenotyping suggests a strong anatomic contribution or the patient is highly surgery-leaning.';
+    }
+    if (r.startsWith('Begin positional therapy')) {
+      return hasPositional
+        ? 'Supine AHI >> non-supine; a structured positional trial with follow-up testing is reasonable.'
+        : 'Reserve for clearly positional patterns (supine AHI ≥2–3× non-supine and non-supine AHI < ~15).';
+    }
+    if (r.startsWith('If TECSA persists')) {
+      return highLoop
+        ? 'Loop-gain/central features present – consider this if central apneas persist on PAP and EF is acceptable.'
+        : 'Only relevant if a central/complex pattern is documented; ignore otherwise.';
+    }
+    if (r.startsWith('Add CBT-I and optimize CPAP comfort')) {
+      return hasInsomnia
+        ? 'COMISA pattern – treating insomnia and PAP comfort in parallel improves adherence and daytime function.'
+        : 'Use if patient reports fragmented sleep or PAP intolerance even with lower ISI scores.';
+    }
+    if (r.startsWith('Prioritize timely therapy to reduce desaturation burden')) {
+      return hbConf === 'High'
+        ? 'High desaturation burden – emphasize CV and neurocognitive risk reduction when counseling.'
+        : 'Useful when ODI/HB are disproportionally high relative to AHI.';
+    }
+    if (r.startsWith('Treat anatomic nasal obstruction')) {
+      return 'NOSE ≥30 and/or structural findings – stepwise nasal management to improve symptoms and PAP tolerance.';
+    }
+    if (r.startsWith('Anatomy favorable for soft tissue surgery')) {
+      return considerSoftTissue
+        ? 'Large tonsils + favorable Friedman; reasonable to discuss tonsillectomy ± ESP as anatomic debulking.'
+        : 'Only applies when tonsils are 3–4 and Friedman I–II.';
+    }
+    if (r.startsWith('Evaluate for hypoglossal nerve stimulation')) {
+      return considerHNS
+        ? 'Meets standard criteria (AHI 15–65, BMI ≤32, minimal centrals); flag for HNS discussion or referral.'
+        : 'Will only appear when the usual inclusion criteria are met.';
+    }
+    if (r.startsWith('Treat sleep-disordered breathing proactively in the setting of chronic opioids')) {
+      return 'Chronic opioids increase risk of central apnea and hypoventilation; even “mild” OSA or modest hypoxic burden should be taken seriously.';
+    }
+    if (r.startsWith('Review chronic opioid therapy')) {
+      return 'Coordinate with the prescribing clinician to minimize opioid dose and avoid sedative stacking, especially when initiating PAP or other SDB therapy.';
+    }
+    if (r.startsWith('Prioritize CBT-I and non-benzodiazepine strategies')) {
+      return 'For patients on benzos/Z-drugs with insomnia and OSA, CBT-I plus a gradual taper is safer than indefinite sedative use.';
+    }
+    if (r.startsWith('Use benzodiazepines cautiously in OSA')) {
+      return 'Sedatives can deepen respiratory events and blunt arousals; avoid escalating doses or heavy late-night use in OSA.';
+    }
+    if (r.startsWith('Stimulant use may lower your ESS score')) {
+      return 'Stimulants can hide daytime sleepiness; rely on objective indices and functional impairment rather than ESS alone.';
+    }
+    return 'Context-dependent; tailor to the patient’s comorbidities, prior therapies, and preferences.';
+  };
 
   function stopBangRisk(score) {
-  if (score == null) return '—';
-  if (score >= 5) return 'High';
-  if (score >= 3) return 'Intermediate';
-  return 'Low';
-}
+    if (score == null) return '—';
+    if (score >= 5) return 'High';
+    if (score >= 3) return 'Intermediate';
+    return 'Low';
+  }
 
-function analyzeRDIPhenotype(m, add, addWhy, rec) {
-  const ahi = m.ahi || 0;
-  const pRDI = m.pRDI || 0;
+  function analyzeRDIPhenotype(m, add, addWhy, rec) {
+    const ahi = m.ahi || 0;
+    const pRDI = m.pRDI || 0;
 
-  // Need valid RDI and it should be ≥ AHI
-  if (!pRDI || pRDI <= ahi) return;
+    // Need valid RDI and it should be ≥ AHI
+    if (!pRDI || pRDI <= ahi) return;
 
-  const reraIndex = pRDI - ahi;              // RERAs/hr
-  const reraRatio = reraIndex / (ahi + 1);   // RERA / (AHI+1) to avoid /0
+    const reraIndex = pRDI - ahi;              // RERAs/hr
+    const reraRatio = reraIndex / (ahi + 1);   // RERA / (AHI+1) to avoid /0
 
     // High RERA burden = frequent arousals from minor flow limitation
     if (reraIndex > 10) {
@@ -503,19 +529,19 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         'High RERA Burden',
         `RERA index ~${reraIndex.toFixed(1)}/hr – significant flow limitation without desaturation`
       );
-  
+
       // This changes treatment nuance
       rec.push(
         'Consider CPAP at lower pressures (5–8 cm) with comfort features (EPR/Flex) – high RERA burden suggests sensitivity to flow limitation at sub-hypopnea levels.'
       );
-  
+
       if (ahi < 5) {
         rec.push(
           'Despite "normal" AHI, treat based on high RDI given symptom burden from RERAs.'
         );
       }
     }
-  
+
     // UARS pattern – symptomatic, normal AHI, high RDI
     if (ahi < 5 && pRDI >= 15 && ((m.ess || 0) >= 10 || (m.isi || 0) >= 10)) {
       add('UARS Pattern');
@@ -523,7 +549,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         'Consider UARS diagnosis – treat with CPAP despite normal AHI; consider starting at lower pressures (4–8 cm H₂O).'
       );
     }
-  
+
     // RERA-driven low arousal threshold (better than ISI alone)
     if (reraIndex > 5 && ahi < 30) {
       const arousalSensitivity = reraIndex / (ahi + 1);
@@ -535,7 +561,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         );
       }
     }
-  
+
     // Insurance angle: some carriers use RDI ≥ 15
     if (ahi < 5 && pRDI >= 15) {
       add('Insurance Consideration');
@@ -543,7 +569,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         'Document symptoms carefully – some insurers cover CPAP for RDI ≥15 even with AHI < 5.'
       );
     }
-  
+
     // Borderline OSA with high symptom burden
     if (ahi >= 5 && ahi < 10 && (((m.ess || 0) >= 10) || pRDI > 20)) {
       rec.push(
@@ -551,14 +577,14 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       );
     }
   }
-  
+
   function adjustRecsForRDI(m, rec, anatHigh) {
     const ahi = m.ahi || 0;
     const pRDI = m.pRDI || 0;
     const reraIndex = pRDI - ahi;
-  
+
     if (!pRDI || reraIndex <= 0) return;
-  
+
     // High RERA burden affects device selection
     if (reraIndex > 10) {
       // Tweak the existing CPAP line rather than adding a brand-new one
@@ -567,14 +593,14 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         rec[cpapIndex] =
           'Start CPAP at lower pressures (5–8 cm) with comfort features (EPR/Flex) – high RERA burden suggests sensitivity to flow limitation.';
       }
-  
+
       // Surgery considerations, if anatomy is a big driver
       if (reraIndex > 15 && anatHigh) {
         rec.push(
           'High RERA burden may respond well to anatomic improvements – consider nasal surgery to reduce flow resistance.'
         );
       }
-  
+
       // Oral appliance expectations
       if (rec.some(r => r.toLowerCase().includes('oral appliance'))) {
         rec.push(
@@ -583,35 +609,47 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       }
     }
   }
-  
+
   function onSubmit(e){
     e.preventDefault();
     const f = new FormData(e.target);
 
     const m = {
-      ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd') === 'on',
-      bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'),
+      ess: n(f.get('ess')),
+      isi: n(f.get('isi')),
+      cvd: f.get('cvd') === 'on',
+      bmi: n(f.get('bmi')),
+      neck: n(f.get('neck')),
+      tons: n(f.get('tonsils')),
+      ftp: f.get('ftp'),
       nasal: f.getAll('nasal'),
-      ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup')) || 1,
-      rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
+      meds: f.getAll('meds'),
+      ahi: n(f.get('ahi')),
+      sup: n(f.get('ahiSup')),
+      nons: n(f.get('ahiNonSup')) || 1,
+      rem: n(f.get('ahiREM')),
+      nrem: n(f.get('ahiNREM')),
       odi: n(f.get('odi')),
-      pRDI: n(f.get('pRDI')),            
-      nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
-      csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
+      pRDI: n(f.get('pRDI')),
+      nadir: n(f.get('nadir')),
+      hbPH: n(f.get('hbPH')),
+      hb90PH: n(f.get('hb90PH')),
+      csr: n(f.get('csr')),
+      pahic3: n(f.get('pahic3')),
+      pahic4: n(f.get('pahic4')),
       tst: n(f.get('tst')),
       trt: n(f.get('trt')),
       supineTime: n(f.get('supineTime')),
-      waso: n(f.get('waso')),
-      numWakes: n(f.get('numWakes')),
       nose: n(f.get('nose')),
       ptName: f.get('ptName') || '',
       ptDob: f.get('ptDob') || '',
       studyDate: f.get('studyDate') || '',
-      studyType: f.get('studyType') || '',   
-      stopBang: n(f.get('stopBang'))          
+      studyType: f.get('studyType') || '',
+      stopBang: n(f.get('stopBang'))
     };
 
     const nasalIssues = getNasalIssues(m.nasal);
+    const meds = getMedList(m.meds);
     
     // Surgical candidacy helpers
     const tonsilGrade = +m.tons || 0;
@@ -643,50 +681,25 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       addWhy('High Anatomical Contribution', bits.join('; '));
       add('High Anatomical Contribution');
     }
-    if ((m.isi || 0) >= 15) {
+
+    // Low arousal threshold: ISI and/or benzo use
+    if ((m.isi || 0) >= 15 || meds.includes('Benzodiazepine')) {
       const bits = [];
-      bits.push(`ISI ${m.isi}`);
+      if (exists(m.isi)) bits.push(`ISI ${m.isi}`);
+      if (meds.includes('Benzodiazepine')) bits.push('On benzodiazepine/Z-drug (may deepen events, blunt arousals)');
       addWhy('Low Arousal Threshold', bits.join('; '));
       add('Low Arousal Threshold');
     }
+
     if ((m.isi || 0) >= 15) {
-      addWhy('Insomnia / COMISA pattern', `ISI ${m.isi} (≥15 suggests clinically significant insomnia symptoms)`);
+      addWhy(
+        'Insomnia / COMISA pattern',
+        `ISI ${m.isi} (≥15 suggests clinically significant insomnia symptoms)` +
+          (meds.includes('Benzodiazepine') ? '; currently on benzodiazepine/Z-drug' : '')
+      );
       add('Insomnia / COMISA pattern');
     }
-    // Alternative low arousal threshold markers (WatchPAT surrogates)
 
-    // 1) pRDI >> AHI (lots of RERAs / arousals without desats)
-    if (exists(m.pRDI) && exists(m.ahi)) {
-      const rdiAhiRatio = (m.pRDI || 0) / (m.ahi || 1); // avoid divide-by-zero
-      if (rdiAhiRatio > 3) {
-        add('Low Arousal Threshold');
-        addWhy(
-          'Low Arousal Threshold',
-          `pRDI/AHI ratio ${rdiAhiRatio.toFixed(1)} – many respiratory arousals without desaturations`
-        );
-      }
-    }
-    
-    // 2) High WASO with low–moderate AHI → fragmented sleep not fully explained by events
-    if ((m.waso || 0) > 60 && (m.ahi || 0) < 30) {
-      add('Low Arousal Threshold');
-      addWhy(
-        'Low Arousal Threshold',
-        `WASO ${m.waso} min with AHI ${m.ahi ?? '—'} – fragmented sleep pattern beyond event count`
-      );
-    }
-    
-    // 3) Many awakenings relative to AHI
-    if ((m.numWakes || 0) > 10) {
-      const awakesPerAHI = (m.numWakes || 0) / ((m.ahi || 1) + 1); // keep denominator ≥2
-      if (awakesPerAHI > 0.5) {
-        add('Low Arousal Threshold');
-        addWhy(
-          'Low Arousal Threshold',
-          `${m.numWakes} awakenings – frequent arousals beyond respiratory events (awakenings/AHI+1 = ${awakesPerAHI.toFixed(1)})`
-        );
-      }
-    }
     if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd){
       const bits=[];
       if ((m.csr||0) >= 10) bits.push(`CSR ${m.csr}%`);
@@ -730,6 +743,23 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       addWhy('Nasal-Resistance Contributor', bits.join('; '));
       add('Nasal-Resistance Contributor');
     }
+
+    // Medication-related respiratory risk phenotype
+    if (meds.length) {
+      const bits = [`Meds: ${meds.join(', ')}`];
+      if (meds.includes('Opioid') && ((m.csr || 0) > 0 || (m.pahic3 || 0) >= 5)) {
+        bits.push('Central pattern in the setting of chronic opioids – consider opioid-induced CSA');
+      }
+      if (meds.includes('Benzodiazepine') && (m.ahi || 0) >= 15) {
+        bits.push('Sedative use in moderate–severe OSA – risk of hypoventilation and blunted arousal');
+      }
+      if (meds.includes('Stimulant') && (m.ess || 0) < 10 && (m.ahi || 0) >= 15) {
+        bits.push('Stimulant may mask daytime sleepiness – ESS likely underestimates symptom burden');
+      }
+      addWhy('Medication-related respiratory risk', bits.join('; '));
+      add('Medication-related respiratory risk');
+    }
+
     phen.forEach(p=>p.why=(reasons[p.tag]||[]).join('; '));
 
     // NEW – reuse for RDI and later clinician summary
@@ -764,15 +794,41 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       push('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.');
     }
 
-    const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
-    if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
-    
     // NEW: RDI-driven phenotypes and plan tweaks
     analyzeRDIPhenotype(m, add, addWhy, rec);
     adjustRecsForRDI(m, rec, anatHigh);
-    
-    const top3 = rec.slice(0,3);
 
+    // Medication-driven plan adjustments
+    if (meds.includes('Opioid')) {
+      if ((ahiOverall || 0) >= 5 || (m.hbPH || 0) >= 30) {
+        rec.unshift(
+          'Treat sleep-disordered breathing proactively in the setting of chronic opioids (even if AHI is only mild), due to higher risk of central apnea and hypoventilation.'
+        );
+      }
+      rec.unshift(
+        'Review chronic opioid therapy with the prescribing clinician; minimize dose and avoid adding further sedatives when possible.'
+      );
+    }
+
+    if (meds.includes('Benzodiazepine')) {
+      if ((m.isi || 0) >= 15) {
+        rec.push(
+          'Prioritize CBT-I and non-benzodiazepine strategies for insomnia; consider a gradual benzodiazepine/Z-drug taper once OSA therapy is established.'
+        );
+      } else {
+        rec.push(
+          'Use benzodiazepines cautiously in OSA; avoid dose escalation and very late-night dosing due to risk of respiratory depression.'
+        );
+      }
+    }
+
+    if (meds.includes('Stimulant') && (ahiOverall || 0) >= 15) {
+      rec.push(
+        'Stimulant use may lower your ESS score; base treatment intensity on objective severity and functional complaints rather than ESS alone.'
+      );
+    }
+
+    const top3 = rec.slice(0,3);
     const today = new Date().toLocaleDateString();
 
     // ---- Study Adequacy Scoring ----
@@ -922,15 +978,15 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       );
     }
 
-      // 8) RDI / RERA burden – explains symptom–AHI mismatch
-  if (exists(m.pRDI) && exists(m.ahi)) {
-    const reraIndex = m.pRDI - m.ahi;
-    if (reraIndex > 5 && (m.ahi || 0) < 15 && (m.ess || 0) >= 10) {
-      patientFindings.push(
-        'Although your AHI is in the mild range, you have frequent breathing disruptions (RERAs) that do not cause oxygen drops but still fragment your sleep. This helps explain why you may feel more tired than the AHI number alone would suggest.'
-      );
+    // 8) RDI / RERA burden – explains symptom–AHI mismatch
+    if (exists(m.pRDI) && exists(m.ahi)) {
+      const reraIndex = m.pRDI - m.ahi;
+      if (reraIndex > 5 && (m.ahi || 0) < 15 && (m.ess || 0) >= 10) {
+        patientFindings.push(
+          'Although your AHI is in the mild range, you have frequent breathing disruptions (RERAs) that do not cause oxygen drops but still fragment your sleep. This helps explain why you may feel more tired than the AHI number alone would suggest.'
+        );
+      }
     }
-  }
 
     // 9) Possible false-negative study / repeat recommended
     if ((m.ahi || 0) < 5 && studyAdequacy && studyAdequacy.suggestRepeat) {
@@ -944,6 +1000,8 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     const toPatient = s => s
       .replace('Start or continue CPAP/APAP (gold-standard).',
                'Start or continue CPAP: a bedside machine that gently blows air through a mask to keep your airway open all night. It works best when used regularly and correctly fitted.')
+      .replace('Start CPAP at lower pressures (5–8 cm) with comfort features (EPR/Flex) – high RERA burden suggests sensitivity to flow limitation.',
+               'Start CPAP at lower, more comfortable pressures (about 5–8 cm) with comfort features turned on. This helps treat the breathing problem while making it easier to get used to the machine.')
       .replace('Custom oral appliance (MAD) — best for mild–moderate OSA and for people who cannot tolerate CPAP or prefer not to use it.',
                'Consider a custom oral appliance (mandibular advancement device): a dentist-made mouthpiece that moves the lower jaw slightly forward to keep the airway open. It’s best for mild to moderate OSA and for people who cannot tolerate CPAP or would prefer not to use it.')
       .replace('If anatomic contributor is high: discuss surgical options (nasal and soft tissue surgery).',
@@ -961,7 +1019,17 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       .replace('Anatomy favorable for soft tissue surgery: tonsillectomy ± expansion sphincter pharyngoplasty (tonsils 3–4, Friedman I–II).',
                'Your anatomy may suit soft-tissue surgery (for example, tonsillectomy or soft-palate procedures) to enlarge the airway.')
       .replace('Evaluate for hypoglossal nerve stimulation (HNS): AHI 15–65, BMI ≤32, minimal central apnea/CSR.',
-               'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that gently moves the tongue forward during sleep).');
+               'You may qualify for hypoglossal nerve stimulation (a pacemaker-like device that gently moves the tongue forward during sleep).')
+      .replace('Treat sleep-disordered breathing proactively in the setting of chronic opioids (even if AHI is only mild), due to higher risk of central apnea and hypoventilation.',
+               'Because you are on chronic opioid medication, we treat your sleep-breathing pattern more proactively, even if the main number (AHI) looks only mildly abnormal.')
+      .replace('Review chronic opioid therapy with the prescribing clinician; minimize dose and avoid adding further sedatives when possible.',
+               'We will also review your opioid medication with your other clinicians to see whether the dose or timing can be adjusted to make your breathing safer at night.')
+      .replace('Prioritize CBT-I and non-benzodiazepine strategies for insomnia; consider a gradual benzodiazepine/Z-drug taper once OSA therapy is established.',
+               'For insomnia, we focus on non-habit-forming approaches (like CBT-I) and may gradually reduce sedative sleep medicines once your sleep apnea treatment is in place.')
+      .replace('Use benzodiazepines cautiously in OSA; avoid dose escalation and very late-night dosing due to risk of respiratory depression.',
+               'If you take sedative medicines (such as benzodiazepines), we will be cautious with dose and timing, because they can make breathing slower and deeper during sleep.')
+      .replace('Stimulant use may lower your ESS score; base treatment intensity on objective severity and functional complaints rather than ESS alone.',
+               'Because you take a stimulant, your daytime sleepiness score may look better than you actually feel, so we also pay close attention to your test results and daily function.');
     const patientRecs = top3.map(toPatient);
 
     // Positional explanation
@@ -1073,7 +1141,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
             <em>Lower values, especially near 0, are better.</em>
           </td>
         </tr>
-                ${ (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 5) ? `
+        ${ (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 5) ? `
         <tr>
           <th>RERA events (RDI – AHI gap)</th>
           <td>
@@ -1124,6 +1192,17 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       </tbody></table>`;
 
     const displayStudyDate = m.studyDate ? new Date(m.studyDate).toLocaleDateString() : today;
+
+    let medsNote = '';
+    if (meds.includes('Opioid')) {
+      medsNote += ' Because you are on opioid medication, we will also look at whether those medicines are affecting your breathing during sleep.';
+    }
+    if (meds.includes('Benzodiazepine')) {
+      medsNote += ' Your sleep medicine may make your breathing more relaxed at night; we will review whether any adjustments would be helpful once treatment is in place.';
+    }
+    if (meds.includes('Stimulant')) {
+      medsNote += ' You also take a stimulant, which can sometimes hide how sleepy you really feel, so we will look at both your test results and how you function day to day.';
+    }
     
     const handoutHTML = `
       <section class="handout" id="handout">
@@ -1171,7 +1250,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         <h2>Treatment details (what each option means)</h2>
         <ul id="treatDetails"></ul>
         <h2>Next steps</h2>
-        <p>We will review these results together and decide on a plan that fits you best. Bring this report to your follow-up visit.</p>
+        <p>We will review these results together and decide on a plan that fits you best. Bring this report to your follow-up visit.${medsNote}</p>
       </section>`;
     document.getElementById('patientSummary').innerHTML = handoutHTML;
 
@@ -1185,6 +1264,10 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     const hasInsomnia = phen.some(p => p.tag === 'Insomnia / COMISA pattern');
     const highLoop = phen.some(p => p.tag === 'High Loop Gain');
 
+    const medsSnapshot = meds.length
+      ? `<span class="snapshot-pill">Meds: <strong>${meds.join(', ')}</strong></span>`
+      : '';
+
     const snapshot = `
       <div class="mb-2 small">
         <span class="snapshot-pill">AHI: <strong>${exists(m.ahi)?m.ahi:'—'}</strong> (${sevLabel})</span>
@@ -1195,9 +1278,10 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         <span class="snapshot-pill">ISI: <strong>${exists(m.isi)?m.isi:'—'}</strong></span>
         <span class="snapshot-pill">STOP-BANG: <strong>${exists(m.stopBang)?m.stopBang:'—'}</strong>
           (${stopBangRisk(m.stopBang)})</span>
+        ${medsSnapshot}
       </div>`;
 
-      const adequacyHtml = `
+    const adequacyHtml = `
       <div class="mt-1 mb-2 small">
         <strong>Study adequacy:</strong> ${studyAdequacy.level}
         ${studyAdequacy.suggestRepeat
@@ -1223,7 +1307,10 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       considerSoftTissue ? 'Soft-tissue surgery candidate' : null,
       considerHNS ? 'Meets HNS criteria' : null,
       (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 10) ? 'High RERA burden' : null,
-      (exists(m.pRDI) && m.ahi < 5 && m.pRDI >= 15) ? 'RDI-driven OSA/UARS' : null
+      (exists(m.pRDI) && m.ahi < 5 && m.pRDI >= 15) ? 'RDI-driven OSA/UARS' : null,
+      meds.includes('Opioid') ? 'On chronic opioids' : null,
+      meds.includes('Benzodiazepine') ? 'On benzo/Z-drug' : null,
+      meds.includes('Stimulant') ? 'On stimulant' : null
     ]
       .filter(Boolean)
       .map(t => `<span class="badge rounded-pill bg-light text-dark border me-1 mb-1">${t}</span>`)
@@ -1258,8 +1345,8 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
             <div class="clinician-title">Clinician Summary</div>
             <div class="clinician-meta">
               ${m.ptName ? `<strong>${m.ptName}</strong>` : 'Patient'}
-              ${m.ptDob ? ` • DOB: ${new Date(m.ptDob).toLocaleDateString()}` : ''}
-              ${m.studyDate ? ` • Study: ${displayStudyDate}` : ''}
+              ${m.ptDob ? ` • DOB: ${dobDisplay}` : ''}
+              ${m.studyDate ? ` • Study: ${studyDateDisplay}` : ''}
               ${m.studyType ? ` • ${m.studyType}` : ''}
             </div>
           </div>
@@ -1296,7 +1383,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     const txMap = [
       {
         key: 'CPAP',
-        match: /Start or continue CPAP|CPAP\/APAP/i,
+        match: /Start or continue CPAP|CPAP\/APAP|Start CPAP at lower pressures/i,
         title: 'CPAP (Continuous Positive Airway Pressure)',
         desc: 'A bedside machine gently sends air through a mask to keep your airway open all night. Masks come in different styles; comfort improves with proper fit, humidification, and ramp settings. When used regularly, CPAP lowers snoring, improves daytime alertness, and reduces oxygen stress.'
       },
@@ -1320,7 +1407,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       },
       {
         key: 'SoftTissue',
-        match: /soft tissue surgery|tonsillectomy/i,
+        match: /soft tissue surgery|tonsillectomy|expansion sphincter/i,
         title: 'Soft-Tissue Surgery',
         desc: 'When anatomy is favorable (e.g., large tonsils, Friedman I–II), surgery like tonsillectomy or soft-palate procedures can enlarge and stabilize the airway. Usually paired with follow-up testing to document improvement.'
       },
@@ -1341,6 +1428,12 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
         match: /oxygen|ASV|acetazolamide/i,
         title: 'Therapies for Central/Complex Apnea',
         desc: 'If central apneas persist after starting CPAP, your clinician may consider supplemental oxygen, medication (e.g., acetazolamide), or specialized devices (e.g., ASV) after confirming heart function. Not needed for most people with purely obstructive OSA.'
+      },
+      {
+        key: 'OpioidReview',
+        match: /Review chronic opioid therapy/i,
+        title: 'Opioid regimen review',
+        desc: 'Chronic opioid use can worsen central apnea and hypoventilation. Coordinating with the prescribing clinician to minimize dose, avoid sedative stacking, and consider alternatives is often part of a safer long-term plan.'
       }
     ];
     const used = new Set();
@@ -1356,64 +1449,71 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     }).join('');
     document.querySelector('#treatDetails').innerHTML = detailLis || '<li><span class="muted">No specific treatments were recommended based on the current inputs.</span></li>';
 
-    // Expanded sanity checks (non-blocking)
+    // Quick sanity flags (simple)
+    const flags = [];
+
+    if (exists(m.ahi) && m.ahi < 5 && ((m.hbPH || 0) >= 30 || (m.odi || 0) >= 15)) {
+      flags.push('Check AHI vs hypoxic metrics – AHI is in the non-OSA range but hypoxic burden/ODI look elevated.');
+    }
+    if (exists(m.sup) && exists(m.nons) && phen.some(p => p.tag === 'Positional OSA') && m.sup < m.nons) {
+      flags.push('Positional pattern flagged but supine AHI < non-supine – confirm body-position labels on the report.');
+    }
+
+    if (exists(m.pRDI) && exists(m.ahi) && m.pRDI < m.ahi) {
+      flags.push('pRDI is lower than AHI – double-check data entry or the report; RDI should usually be ≥ AHI.');
+    }
+
+    // Extended sanity checks
     const sanityChecks = [];
 
     // 1. ODI should rarely exceed AHI significantly
     if (exists(m.odi) && exists(m.ahi) && m.odi > m.ahi * 1.5) {
-      sanityChecks.push('ODI > 1.5× AHI – unusual unless using 3% ODI with 4% AHI scoring.');
+      sanityChecks.push('ODI > 1.5× AHI - unusual unless using 3% ODI with 4% AHI scoring');
     }
 
-    // 2. AHI component logic (supine / non-supine)
+    // 2. AHI component logic (positional)
     if (exists(m.sup) && exists(m.nons) && exists(m.ahi)) {
-      // Very rough weighted average assuming similar time in each position
       const estimatedAHI = (m.sup + m.nons) / 2;
-      if (estimatedAHI > 0 &&
-          Math.abs(m.ahi - estimatedAHI) > estimatedAHI * 0.5) {
-        sanityChecks.push('Overall AHI seems inconsistent with positional AHIs – check time in positions.');
+      if (estimatedAHI > 0 && Math.abs(m.ahi - estimatedAHI) > estimatedAHI * 0.5) {
+        sanityChecks.push('Overall AHI seems inconsistent with positional AHIs - check time in positions');
       }
     }
 
     // 3. REM/NREM logic
     if (exists(m.rem) && exists(m.nrem) && exists(m.ahi)) {
-      // Rough estimate with REM ~25% of sleep
       const weightedEstimate = (m.rem * 0.25) + (m.nrem * 0.75);
-      if (weightedEstimate > 0 &&
-          (m.ahi < weightedEstimate * 0.5 || m.ahi > weightedEstimate * 1.5)) {
-        sanityChecks.push('Overall AHI inconsistent with REM/NREM values – verify sleep stage distribution.');
+      if (weightedEstimate > 0 && (m.ahi < weightedEstimate * 0.5 || m.ahi > weightedEstimate * 1.5)) {
+        sanityChecks.push('Overall AHI inconsistent with REM/NREM values - verify sleep stage distribution');
       }
     }
 
-    // 4. Hypoxic burden vs ODI
+    // 4. Hypoxic burden inconsistencies
     if (exists(m.hbPH) && exists(m.odi)) {
-      // Very rough: HB/hr should usually be >= ODI because it captures depth + duration
       if (m.hbPH < m.odi * 0.5) {
-        sanityChecks.push('Hypoxic burden seems low relative to ODI – verify HB calculation or units.');
+        sanityChecks.push('Hypoxic burden seems low relative to ODI - verify HB calculation');
       }
     }
 
-    // 5. Nadir vs ODI
+    // 5. Nadir SpO2 vs other oxygen metrics
     if (exists(m.nadir) && exists(m.odi)) {
       if (m.nadir < 80 && m.odi < 15) {
-        sanityChecks.push('Very low nadir with modest ODI – check for prolonged desaturations, artifact, or comorbid hypoventilation.');
+        sanityChecks.push('Very low nadir with modest ODI - check for prolonged desaturations or artifact');
       }
       if (m.nadir > 88 && m.odi > 40) {
-        sanityChecks.push('High ODI with relatively preserved nadir – verify desaturation scoring criteria (3% vs 4%) and signal quality.');
+        sanityChecks.push('High ODI with relatively preserved nadir - verify scoring criteria');
       }
     }
 
     // 6. Central apnea pattern checks
-    if ((m.csr || 0) > 0 || (m.pahic3 || 0) > 5) {
-      if (!m.cvd) {
-        sanityChecks.push('Central/CSR pattern without known CVD – consider cardiac evaluation and echo if not already done.');
-      }
+    if ((m.csr > 0 || (m.pahic3 || 0) > 5) && !m.cvd) {
+      sanityChecks.push('Central pattern without known CVD - consider cardiac evaluation');
     }
 
-    // 7. BMI / neck circumference relationship (very rough)
+    // 7. BMI/neck circumference relationship
     if (exists(m.bmi) && exists(m.neck)) {
-      const expectedNeck = 14 + (m.bmi * 0.3); // crude estimate
+      const expectedNeck = 14 + (m.bmi * 0.3); // Very rough estimate
       if (Math.abs(m.neck - expectedNeck) > 3) {
-        sanityChecks.push('Neck circumference is unusual for BMI – verify neck measurement and units.');
+        sanityChecks.push('Neck circumference unusual for BMI - verify measurement');
       }
     }
 
@@ -1421,51 +1521,54 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     if (exists(m.tst) && exists(m.ahi)) {
       const totalEvents = (m.tst / 60) * m.ahi;
       if (totalEvents < 30 && m.ahi >= 5) {
-        sanityChecks.push(`Only ~${Math.round(totalEvents)} total events – AHI may be statistically unstable on this short study.`);
+        sanityChecks.push(`Only ~${Math.round(totalEvents)} total events - AHI may be unreliable`);
       }
     }
 
-    // 9. WatchPAT-specific: missing pAHI3/4
+    // 9. WatchPAT-specific checks
     if (m.studyType && m.studyType.includes('WatchPAT')) {
       if (!exists(m.pahic3) && !exists(m.pahic4)) {
-        sanityChecks.push('WatchPAT study missing pAHI values – verify report completeness or data entry.');
+        sanityChecks.push('WatchPAT study missing pAHI values - verify report completeness');
       }
     }
 
     // 10. Treatment threshold paradoxes
-    if (exists(m.ahi) && m.ahi < 5 && exists(m.hbPH) && m.hbPH >= 60) {
-      sanityChecks.push('Normal AHI but very high hypoxic burden – consider sleep-related hypoxemia, obesity hypoventilation, or COPD overlap.');
+    if (m.ahi < 5 && exists(m.hbPH) && m.hbPH >= 60) {
+      sanityChecks.push('Normal AHI but very high hypoxic burden - consider sleep-related hypoxemia or obesity hypoventilation');
     }
 
-    // 11. WatchPAT pRDI vs AHI consistency
+    // WatchPAT-specific RDI checks
     if (exists(m.pRDI) && exists(m.ahi)) {
       if (m.pRDI < m.ahi) {
-        sanityChecks.push('pRDI < AHI – RDI should usually be ≥ AHI (includes all AHI events plus RERAs); verify values.');
+        sanityChecks.push('pRDI < AHI - impossible since RDI includes all AHI events plus RERAs');
       }
       if (m.pRDI > m.ahi * 10) {
-        sanityChecks.push('pRDI >> AHI – verify scoring or consider prominent UARS pattern with many RERAs.');
+        sanityChecks.push('pRDI >> AHI - verify scoring or consider prominent UARS pattern');
       }
     }
 
-    // 12. Sleep efficiency (if total recording time available)
-    if (exists(m.tst) && exists(m.trt)) {
+    // Sleep efficiency check
+    if (exists(m.tst) && exists(m.trt) && m.trt > 0) {
       const efficiency = (m.tst / m.trt) * 100;
       if (efficiency < 70) {
-        sanityChecks.push(`Sleep efficiency ~${efficiency.toFixed(0)}% – poor sleep may limit reliability of AHI and phenotype calls.`);
+        sanityChecks.push(`Sleep efficiency ${efficiency.toFixed(0)}% - poor sleep may affect AHI reliability`);
       }
     }
 
-    // 13. Position time check (if supine time available)
-    if (exists(m.supineTime) && m.supineTime < 30 && exists(m.sup)) {
-      sanityChecks.push('< 30 minutes of supine sleep – supine AHI may be unreliable.');
+    // Position time check
+    if (exists(m.supineTime) && m.supineTime < 30 && exists(m.ahiSup)) {
+      sanityChecks.push('< 30 min supine sleep - supine AHI may be unreliable');
     }
 
-    if (sanityChecks.length) {
+    const allFlags = [...flags, ...sanityChecks];
+
+    if (allFlags.length) {
       const warnHtml = `
         <div class="alert alert-warning mt-3 mb-0 py-2 small">
-          <strong>Sanity checks:</strong>
-          <ul class="mb-0">${sanityChecks.map(f => `<li>${f}</li>`).join('')}</ul>
+          <strong>Sanity check:</strong>
+          <ul class="mb-0">${allFlags.map(f=>`<li>${f}</li>`).join('')}</ul>
         </div>`;
+
       const clinicianSheetEl = document.getElementById('clinicianSheet');
       if (clinicianSheetEl) {
         clinicianSheetEl.insertAdjacentHTML('beforeend', warnHtml);
@@ -1504,102 +1607,94 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
 
   // ---- Demo filler ----
   const demoCases = {
-  modHighHB: {
-    ess: 8, isi: 6, nose: 55, cvd: false,
-    bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
-    nasal: ['Rhinitis'],
-    ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
-    odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
-    csr: 0.0, pahic3: 2.0, pahic4: 1.0,
-    tst: 410,
-    trt: 450,
-    supineTime: 220,
-    stopBang: 3
-  },
+    modHighHB: {
+      ess: 8, isi: 6, nose: 55, cvd: false,
+      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
+      nasal: ['Rhinitis'],
+      ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+      odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
+      tst: 410,
+      stopBang: 3
+    },
 
-  mildLowHB: {
-    ess: 6, isi: 7, nose: 15, cvd: false,
-    bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
-    nasal: [],
-    ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
-    odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
-    csr: 0.0, pahic3: 1.0, pahic4: 0.5,
-    tst: 420,
-    trt: 460,
-    supineTime: 180,
-    stopBang: 2
-  },
+    mildLowHB: {
+      ess: 6, isi: 7, nose: 15, cvd: false,
+      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
+      nasal: [],
+      ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+      odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+      csr: 0.0, pahic3: 1.0, pahic4: 0.5,
+      tst: 420,
+      stopBang: 2
+    },
 
-  severeHNS: {
-    ess: 10, isi: 10, nose: 40, cvd: false,
-    bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
-    nasal: ['Deviated septum'],
-    ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
-    odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
-    csr: 0.0, pahic3: 2.0, pahic4: 1.0,
-    tst: 390,
-    trt: 430,
-    supineTime: 210,
-    stopBang: 4
-  },
+    severeHNS: {
+      ess: 10, isi: 10, nose: 40, cvd: false,
+      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
+      nasal: ['Deviated septum'],
+      ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+      odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
+      tst: 390,
+      stopBang: 4
+    },
 
-  borderlineHST: {
-    ess: 7,
-    isi: 10,
-    nose: 20,
-    cvd: false,
-    bmi: 27.0,
-    neck: 16.5,
-    tonsils: 1,
-    ftp: 'II',
-    nasal: [],
-    ahi: 3.8,
-    ahiSup: 1.5,
-    ahiNonSup: 4.5,
-    ahiREM: 2.0,
-    ahiNREM: 3.5,
-    odi: 6.0,
-    nadir: 92.0,
-    hbPH: 8.0,
-    hb90PH: 0.1,
-    csr: 0.0,
-    pahic3: 1.0,
-    pahic4: 0.3,
-    tst: 190,
-    trt: 430,          // long TRTime, short TST -> low efficiency
-    supineTime: 25,    // triggers "< 30 min supine" sanity check
-    stopBang: 5
-  },
+    // Borderline / possibly false-negative HST
+    borderlineHST: {
+      ess: 7,
+      isi: 10,
+      nose: 20,
+      cvd: false,
+      bmi: 27.0,
+      neck: 16.5,
+      tonsils: 1,
+      ftp: 'II',
+      nasal: [],
+      ahi: 3.8,
+      ahiSup: 1.5,
+      ahiNonSup: 4.5,
+      ahiREM: 2.0,
+      ahiNREM: 3.5,
+      odi: 6.0,
+      nadir: 92.0,
+      hbPH: 8.0,
+      hb90PH: 0.1,
+      csr: 0.0,
+      pahic3: 1.0,
+      pahic4: 0.3,
+      tst: 190,       // short
+      stopBang: 5     // high risk despite low AHI
+    },
 
-  uarsHighRDI: {
-    ess: 14,
-    isi: 12,
-    nose: 20,
-    cvd: false,
-    bmi: 23.5,
-    neck: 14.5,
-    tonsils: 1,
-    ftp: 'II',
-    nasal: [],
-    ahi: 3.2,
-    ahiSup: 2.0,
-    ahiNonSup: 4.0,
-    ahiREM: 1.0,
-    ahiNREM: 3.5,
-    odi: 12.0,
-    nadir: 92.0,
-    hbPH: 18.0,
-    hb90PH: 0.3,
-    csr: 0.0,
-    pahic3: 1.0,
-    pahic4: 0.3,
-    tst: 180,
-    trt: 420,
-    supineTime: 160,
-    stopBang: 6,
-    pRDI: 18.0
-  }
-};
+    // UARS / high RDI, normal AHI
+    uarsHighRDI: {
+      ess: 14,
+      isi: 12,
+      nose: 20,
+      cvd: false,
+      bmi: 23.5,
+      neck: 14.5,
+      tonsils: 1,
+      ftp: 'II',
+      nasal: [],
+      ahi: 3.2,
+      ahiSup: 2.0,
+      ahiNonSup: 4.0,
+      ahiREM: 1.0,
+      ahiNREM: 3.5,
+      odi: 12.0,
+      nadir: 92.0,
+      hbPH: 18.0,
+      hb90PH: 0.3,
+      csr: 0.0,
+      pahic3: 1.0,
+      pahic4: 0.3,
+      tst: 180,
+      stopBang: 6,
+      pRDI: 18.0
+    }
+  };
 
   function setVal(name, value) {
     const els = document.querySelectorAll(`[name="${name}"]`);
@@ -1611,7 +1706,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       return;
     }
   
-    // Multiple checkboxes (e.g., nasal)
+    // Multiple checkboxes (e.g., nasal, meds)
     if (els[0].type === 'checkbox') {
       const vals = Array.isArray(value) ? value : (value ? [value] : []);
       els.forEach(el => {
@@ -1619,10 +1714,13 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       });
       return;
     }
+
+    if (value === undefined || value === null) value = '';
   
     // Everything else (inputs/selects)
     els[0].value = value;
   }
+
   function fillDemo(caseKey) {
     document.getElementById('form').reset();
     const d = demoCases[caseKey] || demoCases.modHighHB;
@@ -1645,7 +1743,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     setVal('ahiNREM', d.ahiNREM);
   
     setVal('odi', d.odi);
-    setVal('pRDI', d.pRDI);      // ← NEW: wire RDI into the form
+    setVal('pRDI', d.pRDI);
     setVal('nadir', d.nadir);
     setVal('hbPH', d.hbPH);
     setVal('hb90PH', d.hb90PH);
@@ -1658,7 +1756,9 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     setVal('trt', d.trt);
     setVal('supineTime', d.supineTime);
     setVal('stopBang', d.stopBang);
+    setVal('meds', d.meds);
   }
+
   document.getElementById('btnFill').addEventListener('click', ()=>{
     const key = document.getElementById('demoSelect').value;
     fillDemo(key);
@@ -1669,6 +1769,6 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
   });
 </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
