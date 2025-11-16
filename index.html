@@ -206,6 +206,7 @@
           <option value="mildLowHB">Demo: Mild OSA + Low HB</option>
           <option value="severeHNS">Demo: Severe OSA (HNS screen)</option>
           <option value="borderlineHST">Demo: Borderline / possibly false-negative HST</option>
+          <option value="uarsHighRDI">Demo: UARS / high RDI, normal AHI</option>
         </select>
         <button class="btn btn-outline-light btn-sm" type="button" id="btnFill" title="Fill demo data">Fill demo</button>
       </div>
@@ -1167,7 +1168,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       nasalConfClin === 'High' ? 'Significant nasal obstruction'
         : nasalConfClin === 'Moderate' ? 'Some nasal obstruction' : null,
       considerSoftTissue ? 'Soft-tissue surgery candidate' : null,
-      considerHNS ? 'Meets HNS criteria' : null
+      considerHNS ? 'Meets HNS criteria' : null,
       (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 10) ? 'High RERA burden' : null,
       (exists(m.pRDI) && m.ahi < 5 && m.pRDI >= 15) ? 'RDI-driven OSA/UARS' : null
     ]
@@ -1392,7 +1393,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       stopBang: 4
     },
   
-    // NEW: borderline / possibly false-negative HST
+    // Borderline / possibly false-negative HST
     borderlineHST: {
       ess: 7,
       isi: 10,
@@ -1400,6 +1401,18 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       cvd: false,
       bmi: 27.0,
       neck: 16.5,
+      tonsils: 1,
+      ftp: 'II',
+      nasal: [],
+
+       // UARS / high RDI, normal AHI
+    uarsHighRDI: {
+      ess: 14,             // sleepy
+      isi: 12,             // some insomnia / fragmented sleep
+      nose: 20,
+      cvd: false,
+      bmi: 23.5,
+      neck: 14.5,
       tonsils: 1,
       ftp: 'II',
       nasal: [],
@@ -1450,13 +1463,34 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
   function fillDemo(caseKey) {
     document.getElementById('form').reset();
     const d = demoCases[caseKey] || demoCases.modHighHB;
-    setVal('ess', d.ess); setVal('isi', d.isi); setVal('nose', d.nose); setVal('cvd', d.cvd);
-    setVal('bmi', d.bmi); setVal('neck', d.neck); setVal('tonsils', d.tonsils); setVal('ftp', d.ftp); setVal('nasal', d.nasal);
-    setVal('ahi', d.ahi); setVal('ahiSup', d.ahiSup); setVal('ahiNonSup', d.ahiNonSup); setVal('ahiREM', d.ahiREM); setVal('ahiNREM', d.ahiNREM);
-    setVal('odi', d.odi); setVal('nadir', d.nadir); setVal('hbPH', d.hbPH); setVal('hb90PH', d.hb90PH);
-    setVal('csr', d.csr); setVal('pahic3', d.pahic3); setVal('pahic4', d.pahic4);
   
-    // NEW
+    setVal('ess', d.ess);
+    setVal('isi', d.isi);
+    setVal('nose', d.nose);
+    setVal('cvd', d.cvd);
+  
+    setVal('bmi', d.bmi);
+    setVal('neck', d.neck);
+    setVal('tonsils', d.tonsils);
+    setVal('ftp', d.ftp);
+    setVal('nasal', d.nasal);
+  
+    setVal('ahi', d.ahi);
+    setVal('ahiSup', d.ahiSup);
+    setVal('ahiNonSup', d.ahiNonSup);
+    setVal('ahiREM', d.ahiREM);
+    setVal('ahiNREM', d.ahiNREM);
+  
+    setVal('odi', d.odi);
+    setVal('pRDI', d.pRDI);      // ← NEW: wire RDI into the form
+    setVal('nadir', d.nadir);
+    setVal('hbPH', d.hbPH);
+    setVal('hb90PH', d.hb90PH);
+  
+    setVal('csr', d.csr);
+    setVal('pahic3', d.pahic3);
+    setVal('pahic4', d.pahic4);
+  
     setVal('tst', d.tst);
     setVal('stopBang', d.stopBang);
   }
