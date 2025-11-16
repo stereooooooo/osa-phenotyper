@@ -280,7 +280,6 @@
           <div class="card-header bg-secondary text-white"><i class="bi bi-clipboard-pulse"></i> Physical Exam</div>
           <div class="card-body row g-3">
             <div class="col-6"><label class="form-label">BMI</label><input type="number" step="0.1" class="form-control" name="bmi" /></div>
-            <div class="col-6"><label class="form-label">Neck (in)</label><input type="number" step="0.1" class="form-control" name="neck" /></div>
             <div class="col-4"><label class="form-label">Tonsils</label><select class="form-select" name="tonsils"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
             <div class="col-4"><label class="form-label">FTP</label><select class="form-select" name="ftp"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
             <div class="col-12">
@@ -354,9 +353,15 @@
 
   function conf(tag, m){
     switch(tag){
-      case 'High Anatomical Contribution':{
-        const strong = ((m.bmi||0)>=30) + ((m.neck||0)>=17) + ((m.tons||0)>=3) + (['III','IV'].includes(m.ftp)?1:0) + ((m.ahi||0)>=30);
-        return strong>=4?'High':strong>=2?'Moderate':'Low';
+      case 'High Anatomical Contribution': {
+        const strong =
+          ((m.bmi || 0) >= 30) +
+          ((m.tons || 0) >= 3) +
+          (['III', 'IV'].includes(m.ftp) ? 1 : 0) +
+          ((m.ahi || 0) >= 30) +
+          ((m.stopBang || 0) >= 5); // leverage STOP-BANG now
+      
+        return strong >= 3 ? 'High' : strong >= 2 ? 'Moderate' : 'Low';
       }
       case 'Low Arousal Threshold': {
         const isi = m.isi || 0;
@@ -590,7 +595,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
 
     const m = {
       ess: n(f.get('ess')), isi: n(f.get('isi')), cvd: f.get('cvd') === 'on',
-      bmi: n(f.get('bmi')), neck: n(f.get('neck')), tons: n(f.get('tonsils')), ftp: f.get('ftp'),
+      bmi: n(f.get('bmi')), tons: n(f.get('tonsils')), ftp: f.get('ftp'),
       nasal: f.getAll('nasal'),
       ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup')) || 1,
       rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
@@ -633,13 +638,19 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     const add=(tag)=>{ if(!phen.find(p=>p.tag===tag)) phen.push({tag, conf:conf(tag,m)}); };
     const addWhy=(tag,txt)=>{ if(!reasons[tag]) reasons[tag]=[]; reasons[tag].push(txt); };
 
-    if([ (m.bmi||0)>=30, (m.neck||0)>=17, (m.tons||0)>=3, ['III','IV'].includes(m.ftp), (m.ahi||0)>=30 ].filter(Boolean).length>=3){
-      const bits=[];
-      if ((m.bmi||0) >= 30) bits.push(`BMI ${m.bmi}`);
-      if ((m.neck||0) >= 17) bits.push(`Neck ${m.neck} in`);
-      if ((m.tons||0) >= 3) bits.push(`Tonsils ${m.tons}`);
-      if (['III','IV'].includes(m.ftp)) bits.push(`Friedman ${m.ftp}`);
-      if ((m.ahi||0) >= 30) bits.push(`AHI ${m.ahi}`);
+    if ([
+      (m.bmi || 0) >= 30,
+      (m.tons || 0) >= 3,
+      ['III', 'IV'].includes(m.ftp),
+      (m.ahi || 0) >= 30,
+      (m.stopBang || 0) >= 5
+    ].filter(Boolean).length >= 3) {
+      const bits = [];
+      if ((m.bmi || 0) >= 30) bits.push(`BMI ${m.bmi}`);
+      if ((m.tons || 0) >= 3) bits.push(`Tonsils ${m.tons}`);
+      if (['III', 'IV'].includes(m.ftp)) bits.push(`Friedman ${m.ftp}`);
+      if ((m.ahi || 0) >= 30) bits.push(`AHI ${m.ahi}`);
+      if ((m.stopBang || 0) >= 5) bits.push(`STOP-BANG ${m.stopBang}`);
       addWhy('High Anatomical Contribution', bits.join('; '));
       add('High Anatomical Contribution');
     }
@@ -1101,15 +1112,14 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
           </td>
         </tr>
         <tr>
-          <th>BMI / Neck size</th>
-          <td>
-            Your body mass index (BMI) was
-            <strong>${exists(m.bmi)?m.bmi:'—'}</strong> and your neck size was
-            <strong>${exists(m.neck)?m.neck+' inches':'—'}</strong>.
-            Extra tissue around the neck and upper airway can narrow the breathing space.
-            In many studies, a neck size above about 17 inches in men (and 16 inches in women) is associated with higher risk of OSA.
-          </td>
-        </tr>
+        <th>Body mass index (BMI)</th>
+        <td>
+          Your body mass index (BMI) was
+          <strong>${exists(m.bmi) ? m.bmi : '—'}</strong>.
+          Higher BMI is one of several factors that can narrow the upper airway.
+          Your STOP-BANG score (which includes neck size and snoring history) gives an overall sense of anatomic and risk burden.
+        </td>
+      </tr>
         <tr>
           <th>Throat and nose exam</th>
           <td>
@@ -1409,15 +1419,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       }
     }
 
-    // 7. BMI / neck circumference relationship (very rough)
-    if (exists(m.bmi) && exists(m.neck)) {
-      const expectedNeck = 14 + (m.bmi * 0.3); // crude estimate
-      if (Math.abs(m.neck - expectedNeck) > 3) {
-        sanityChecks.push('Neck circumference is unusual for BMI – verify neck measurement and units.');
-      }
-    }
-
-    // 8. TST vs AHI reliability
+    // 7. TST vs AHI reliability
     if (exists(m.tst) && exists(m.ahi)) {
       const totalEvents = (m.tst / 60) * m.ahi;
       if (totalEvents < 30 && m.ahi >= 5) {
@@ -1425,19 +1427,19 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       }
     }
 
-    // 9. WatchPAT-specific: missing pAHI3/4
+    // 8. WatchPAT-specific: missing pAHI3/4
     if (m.studyType && m.studyType.includes('WatchPAT')) {
       if (!exists(m.pahic3) && !exists(m.pahic4)) {
         sanityChecks.push('WatchPAT study missing pAHI values – verify report completeness or data entry.');
       }
     }
 
-    // 10. Treatment threshold paradoxes
+    // 9. Treatment threshold paradoxes
     if (exists(m.ahi) && m.ahi < 5 && exists(m.hbPH) && m.hbPH >= 60) {
       sanityChecks.push('Normal AHI but very high hypoxic burden – consider sleep-related hypoxemia, obesity hypoventilation, or COPD overlap.');
     }
 
-    // 11. WatchPAT pRDI vs AHI consistency
+    // 10. WatchPAT pRDI vs AHI consistency
     if (exists(m.pRDI) && exists(m.ahi)) {
       if (m.pRDI < m.ahi) {
         sanityChecks.push('pRDI < AHI – RDI should usually be ≥ AHI (includes all AHI events plus RERAs); verify values.');
@@ -1447,7 +1449,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       }
     }
 
-    // 12. Sleep efficiency (if total recording time available)
+    // 11. Sleep efficiency (if total recording time available)
     if (exists(m.tst) && exists(m.trt)) {
       const efficiency = (m.tst / m.trt) * 100;
       if (efficiency < 70) {
@@ -1455,7 +1457,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       }
     }
 
-    // 13. Position time check (if supine time available)
+    // 12. Position time check (if supine time available)
     if (exists(m.supineTime) && m.supineTime < 30 && exists(m.sup)) {
       sanityChecks.push('< 30 minutes of supine sleep – supine AHI may be unreliable.');
     }
@@ -1506,7 +1508,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
   const demoCases = {
   modHighHB: {
     ess: 8, isi: 6, nose: 55, cvd: false,
-    bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
+    bmi: 27.8, tonsils: 2, ftp: 'II',
     nasal: ['Rhinitis'],
     ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
     odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
@@ -1519,7 +1521,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
 
   mildLowHB: {
     ess: 6, isi: 7, nose: 15, cvd: false,
-    bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
+    bmi: 24.5, tonsils: 1, ftp: 'II',
     nasal: [],
     ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
     odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
@@ -1532,7 +1534,7 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
 
   severeHNS: {
     ess: 10, isi: 10, nose: 40, cvd: false,
-    bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
+    bmi: 29.5, tonsils: 0, ftp: 'II',
     nasal: ['Deviated septum'],
     ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
     odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
@@ -1549,7 +1551,6 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     nose: 20,
     cvd: false,
     bmi: 27.0,
-    neck: 16.5,
     tonsils: 1,
     ftp: 'II',
     nasal: [],
@@ -1577,7 +1578,6 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     nose: 20,
     cvd: false,
     bmi: 23.5,
-    neck: 14.5,
     tonsils: 1,
     ftp: 'II',
     nasal: [],
