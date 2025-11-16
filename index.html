@@ -1361,101 +1361,82 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
 
   // ---- Demo filler ----
   const demoCases = {
-  modHighHB: {
-    ess: 8, isi: 6, nose: 55, cvd: false,
-    bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
-    nasal: ['Rhinitis'],
-    ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
-    odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
-    csr: 0.0, pahic3: 2.0, pahic4: 1.0,
-    tst: 410,
-    stopBang: 3
-  },
+    modHighHB: {
+      ess: 8, isi: 6, nose: 55, cvd: false,
+      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
+      nasal: ['Rhinitis'],
+      ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+      odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
+      tst: 410,
+      stopBang: 3
+    },
 
-  mildLowHB: {
-    ess: 6, isi: 7, nose: 15, cvd: false,
-    bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
-    nasal: [],
-    ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
-    odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
-    csr: 0.0, pahic3: 1.0, pahic4: 0.5,
-    tst: 420,
-    stopBang: 2
-  },
+    mildLowHB: {
+      ess: 6, isi: 7, nose: 15, cvd: false,
+      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
+      nasal: [],
+      ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+      odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+      csr: 0.0, pahic3: 1.0, pahic4: 0.5,
+      tst: 420,
+      stopBang: 2
+    },
 
-  severeHNS: {
-    ess: 10, isi: 10, nose: 40, cvd: false,
-    bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
-    nasal: ['Deviated septum'],
-    ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
-    odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
-    csr: 0.0, pahic3: 2.0, pahic4: 1.0,
-    tst: 390,
-    stopBang: 4
-  },
+    severeHNS: {
+      ess: 10, isi: 10, nose: 40, cvd: false,
+      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
+      nasal: ['Deviated septum'],
+      ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+      odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
+      tst: 390,
+      stopBang: 4
+    },
 
-  // Borderline / possibly false-negative HST
-  borderlineHST: {
-    ess: 7,
-    isi: 10,
-    nose: 20,
-    cvd: false,
-    bmi: 27.0,
-    neck: 16.5,
-    tonsils: 1,
-    ftp: 'II',
-    nasal: [],
-    ahi: 3.8,
-    ahiSup: 1.5,
-    ahiNonSup: 4.5,
-    ahiREM: 2.0,
-    ahiNREM: 3.5,
-    odi: 6.0,
-    nadir: 92.0,
-    hbPH: 8.0,
-    hb90PH: 0.1,
-    csr: 0.0,
-    pahic3: 1.0,
-    pahic4: 0.3,
-    tst: 190,       // short
-    stopBang: 5     // high risk despite low AHI
-  },
-
-  // UARS / high RDI, normal AHI
-  uarsHighRDI: {
-    ess: 14,
-    isi: 12,
-    nose: 20,
-    cvd: false,
-    bmi: 23.5,
-    neck: 14.5,
-    tonsils: 1,
-    ftp: 'II',
-    nasal: [],
-    ahi: 3.2,
-    ahiSup: 2.0,
-    ahiNonSup: 4.0,
-    ahiREM: 1.0,
-    ahiNREM: 3.5,
-    odi: 12.0,
-    nadir: 92.0,
-    hbPH: 18.0,
-    hb90PH: 0.3,
-    csr: 0.0,
-    pahic3: 1.0,
-    pahic4: 0.3,
-    tst: 180,
-    stopBang: 6
-  }
-};
-  
-      // “Normal” AHI but suspicious context
-      ahi: 3.2,
-      ahiSup: 2.0,      // < 3 → triggers "very little supine sleep" in your adequacy logic
-      ahiNonSup: 4.0,
-      ahiREM: 1.0,      // < 5 → triggers "very little REM sleep"
+    // Borderline / possibly false-negative HST
+    borderlineHST: {
+      ess: 7,
+      isi: 10,
+      nose: 20,
+      cvd: false,
+      bmi: 27.0,
+      neck: 16.5,
+      tonsils: 1,
+      ftp: 'II',
+      nasal: [],
+      ahi: 3.8,
+      ahiSup: 1.5,
+      ahiNonSup: 4.5,
+      ahiREM: 2.0,
       ahiNREM: 3.5,
-  
+      odi: 6.0,
+      nadir: 92.0,
+      hbPH: 8.0,
+      hb90PH: 0.1,
+      csr: 0.0,
+      pahic3: 1.0,
+      pahic4: 0.3,
+      tst: 190,       // short
+      stopBang: 5     // high risk despite low AHI
+    },
+
+    // UARS / high RDI, normal AHI
+    uarsHighRDI: {
+      ess: 14,
+      isi: 12,
+      nose: 20,
+      cvd: false,
+      bmi: 23.5,
+      neck: 14.5,
+      tonsils: 1,
+      ftp: 'II',
+      nasal: [],
+      ahi: 3.2,
+      ahiSup: 2.0,
+      ahiNonSup: 4.0,
+      ahiREM: 1.0,
+      ahiNREM: 3.5,
       odi: 12.0,
       nadir: 92.0,
       hbPH: 18.0,
@@ -1463,10 +1444,8 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       csr: 0.0,
       pahic3: 1.0,
       pahic4: 0.3,
-  
-      // Key bits that drive the “borderline / maybe false-negative” flags
-      tst: 180,         // 3 hours → “Short total sleep time (< 4 hours).”
-      stopBang: 6       // High risk despite AHI < 5
+      tst: 180,
+      stopBang: 6
     }
   };
 
