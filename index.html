@@ -320,6 +320,8 @@
             <div class="col-4"><label class="form-label">pRDI</label><input type="number" step="0.1" name="pRDI" class="form-control" /><small class="text-muted">Total respiratory events (if available)</small></div>
             <div class="col-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Total sleep time (min)</label><input type="number" step="1" name="tst" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">Total recording time (min)</label><input type="number" step="1" name="trt" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">Supine time (min)</label><input type="number" step="1" name="supineTime" class="form-control" /></div>
             <div class="col-4"><label class="form-label">WASO (min)</label><input type="number" step="1" name="waso" class="form-control" /></div>
             <div class="col-4"><label class="form-label"># awakenings</label><input type="number" step="1" name="numWakes" class="form-control" /></div>
             <div class="col-4"><label class="form-label">HB / hr</label><input type="number" step="0.1" name="hbPH" class="form-control" /></div>
@@ -597,6 +599,8 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
       tst: n(f.get('tst')),
+      trt: n(f.get('trt')),
+      supineTime: n(f.get('supineTime')),
       waso: n(f.get('waso')),
       numWakes: n(f.get('numWakes')),
       nose: n(f.get('nose')),
@@ -1500,94 +1504,102 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
 
   // ---- Demo filler ----
   const demoCases = {
-    modHighHB: {
-      ess: 8, isi: 6, nose: 55, cvd: false,
-      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
-      nasal: ['Rhinitis'],
-      ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
-      odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
-      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
-      tst: 410,
-      stopBang: 3
-    },
+  modHighHB: {
+    ess: 8, isi: 6, nose: 55, cvd: false,
+    bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
+    nasal: ['Rhinitis'],
+    ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+    odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+    csr: 0.0, pahic3: 2.0, pahic4: 1.0,
+    tst: 410,
+    trt: 450,
+    supineTime: 220,
+    stopBang: 3
+  },
 
-    mildLowHB: {
-      ess: 6, isi: 7, nose: 15, cvd: false,
-      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
-      nasal: [],
-      ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
-      odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
-      csr: 0.0, pahic3: 1.0, pahic4: 0.5,
-      tst: 420,
-      stopBang: 2
-    },
+  mildLowHB: {
+    ess: 6, isi: 7, nose: 15, cvd: false,
+    bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
+    nasal: [],
+    ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+    odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+    csr: 0.0, pahic3: 1.0, pahic4: 0.5,
+    tst: 420,
+    trt: 460,
+    supineTime: 180,
+    stopBang: 2
+  },
 
-    severeHNS: {
-      ess: 10, isi: 10, nose: 40, cvd: false,
-      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
-      nasal: ['Deviated septum'],
-      ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
-      odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
-      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
-      tst: 390,
-      stopBang: 4
-    },
+  severeHNS: {
+    ess: 10, isi: 10, nose: 40, cvd: false,
+    bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
+    nasal: ['Deviated septum'],
+    ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+    odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+    csr: 0.0, pahic3: 2.0, pahic4: 1.0,
+    tst: 390,
+    trt: 430,
+    supineTime: 210,
+    stopBang: 4
+  },
 
-    // Borderline / possibly false-negative HST
-    borderlineHST: {
-      ess: 7,
-      isi: 10,
-      nose: 20,
-      cvd: false,
-      bmi: 27.0,
-      neck: 16.5,
-      tonsils: 1,
-      ftp: 'II',
-      nasal: [],
-      ahi: 3.8,
-      ahiSup: 1.5,
-      ahiNonSup: 4.5,
-      ahiREM: 2.0,
-      ahiNREM: 3.5,
-      odi: 6.0,
-      nadir: 92.0,
-      hbPH: 8.0,
-      hb90PH: 0.1,
-      csr: 0.0,
-      pahic3: 1.0,
-      pahic4: 0.3,
-      tst: 190,       // short
-      stopBang: 5     // high risk despite low AHI
-    },
+  borderlineHST: {
+    ess: 7,
+    isi: 10,
+    nose: 20,
+    cvd: false,
+    bmi: 27.0,
+    neck: 16.5,
+    tonsils: 1,
+    ftp: 'II',
+    nasal: [],
+    ahi: 3.8,
+    ahiSup: 1.5,
+    ahiNonSup: 4.5,
+    ahiREM: 2.0,
+    ahiNREM: 3.5,
+    odi: 6.0,
+    nadir: 92.0,
+    hbPH: 8.0,
+    hb90PH: 0.1,
+    csr: 0.0,
+    pahic3: 1.0,
+    pahic4: 0.3,
+    tst: 190,
+    trt: 430,          // long TRTime, short TST -> low efficiency
+    supineTime: 25,    // triggers "< 30 min supine" sanity check
+    stopBang: 5
+  },
 
-    // UARS / high RDI, normal AHI
-    uarsHighRDI: {
-      ess: 14,
-      isi: 12,
-      nose: 20,
-      cvd: false,
-      bmi: 23.5,
-      neck: 14.5,
-      tonsils: 1,
-      ftp: 'II',
-      nasal: [],
-      ahi: 3.2,
-      ahiSup: 2.0,
-      ahiNonSup: 4.0,
-      ahiREM: 1.0,
-      ahiNREM: 3.5,
-      odi: 12.0,
-      nadir: 92.0,
-      hbPH: 18.0,
-      hb90PH: 0.3,
-      csr: 0.0,
-      pahic3: 1.0,
-      pahic4: 0.3,
-      tst: 180,
-      stopBang: 6,
-      pRDI: 18.0
-    }
-  };
+  uarsHighRDI: {
+    ess: 14,
+    isi: 12,
+    nose: 20,
+    cvd: false,
+    bmi: 23.5,
+    neck: 14.5,
+    tonsils: 1,
+    ftp: 'II',
+    nasal: [],
+    ahi: 3.2,
+    ahiSup: 2.0,
+    ahiNonSup: 4.0,
+    ahiREM: 1.0,
+    ahiNREM: 3.5,
+    odi: 12.0,
+    nadir: 92.0,
+    hbPH: 18.0,
+    hb90PH: 0.3,
+    csr: 0.0,
+    pahic3: 1.0,
+    pahic4: 0.3,
+    tst: 180,
+    trt: 420,
+    supineTime: 160,
+    stopBang: 6,
+    pRDI: 18.0
+  }
+};
 
   function setVal(name, value) {
     const els = document.querySelectorAll(`[name="${name}"]`);
@@ -1643,6 +1655,8 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     setVal('pahic4', d.pahic4);
   
     setVal('tst', d.tst);
+    setVal('trt', d.trt);
+    setVal('supineTime', d.supineTime);
     setVal('stopBang', d.stopBang);
   }
   document.getElementById('btnFill').addEventListener('click', ()=>{
