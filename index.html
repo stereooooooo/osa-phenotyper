@@ -1352,27 +1352,116 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     }).join('');
     document.querySelector('#treatDetails').innerHTML = detailLis || '<li><span class="muted">No specific treatments were recommended based on the current inputs.</span></li>';
 
-       // Quick sanity flags (non-blocking)
-    const flags = [];
+    // Expanded sanity checks (non-blocking)
+    const sanityChecks = [];
 
-    if (exists(m.ahi) && m.ahi < 5 && ((m.hbPH || 0) >= 30 || (m.odi || 0) >= 15)) {
-      flags.push('Check AHI vs hypoxic metrics – AHI is in the non-OSA range but hypoxic burden/ODI look elevated.');
-    }
-    if (exists(m.sup) && exists(m.nons) && phen.some(p => p.tag === 'Positional OSA') && m.sup < m.nons) {
-      flags.push('Positional pattern flagged but supine AHI < non-supine – confirm body-position labels on the report.');
+    // 1. ODI should rarely exceed AHI significantly
+    if (exists(m.odi) && exists(m.ahi) && m.odi > m.ahi * 1.5) {
+      sanityChecks.push('ODI > 1.5× AHI – unusual unless using 3% ODI with 4% AHI scoring.');
     }
 
-    if (exists(m.pRDI) && exists(m.ahi) && m.pRDI < m.ahi) {
-      flags.push('pRDI is lower than AHI – double-check data entry or the report; RDI should usually be ≥ AHI.');
+    // 2. AHI component logic (supine / non-supine)
+    if (exists(m.sup) && exists(m.nons) && exists(m.ahi)) {
+      // Very rough weighted average assuming similar time in each position
+      const estimatedAHI = (m.sup + m.nons) / 2;
+      if (estimatedAHI > 0 &&
+          Math.abs(m.ahi - estimatedAHI) > estimatedAHI * 0.5) {
+        sanityChecks.push('Overall AHI seems inconsistent with positional AHIs – check time in positions.');
+      }
     }
 
-    if (flags.length) {
+    // 3. REM/NREM logic
+    if (exists(m.rem) && exists(m.nrem) && exists(m.ahi)) {
+      // Rough estimate with REM ~25% of sleep
+      const weightedEstimate = (m.rem * 0.25) + (m.nrem * 0.75);
+      if (weightedEstimate > 0 &&
+          (m.ahi < weightedEstimate * 0.5 || m.ahi > weightedEstimate * 1.5)) {
+        sanityChecks.push('Overall AHI inconsistent with REM/NREM values – verify sleep stage distribution.');
+      }
+    }
+
+    // 4. Hypoxic burden vs ODI
+    if (exists(m.hbPH) && exists(m.odi)) {
+      // Very rough: HB/hr should usually be >= ODI because it captures depth + duration
+      if (m.hbPH < m.odi * 0.5) {
+        sanityChecks.push('Hypoxic burden seems low relative to ODI – verify HB calculation or units.');
+      }
+    }
+
+    // 5. Nadir vs ODI
+    if (exists(m.nadir) && exists(m.odi)) {
+      if (m.nadir < 80 && m.odi < 15) {
+        sanityChecks.push('Very low nadir with modest ODI – check for prolonged desaturations, artifact, or comorbid hypoventilation.');
+      }
+      if (m.nadir > 88 && m.odi > 40) {
+        sanityChecks.push('High ODI with relatively preserved nadir – verify desaturation scoring criteria (3% vs 4%) and signal quality.');
+      }
+    }
+
+    // 6. Central apnea pattern checks
+    if ((m.csr || 0) > 0 || (m.pahic3 || 0) > 5) {
+      if (!m.cvd) {
+        sanityChecks.push('Central/CSR pattern without known CVD – consider cardiac evaluation and echo if not already done.');
+      }
+    }
+
+    // 7. BMI / neck circumference relationship (very rough)
+    if (exists(m.bmi) && exists(m.neck)) {
+      const expectedNeck = 14 + (m.bmi * 0.3); // crude estimate
+      if (Math.abs(m.neck - expectedNeck) > 3) {
+        sanityChecks.push('Neck circumference is unusual for BMI – verify neck measurement and units.');
+      }
+    }
+
+    // 8. TST vs AHI reliability
+    if (exists(m.tst) && exists(m.ahi)) {
+      const totalEvents = (m.tst / 60) * m.ahi;
+      if (totalEvents < 30 && m.ahi >= 5) {
+        sanityChecks.push(`Only ~${Math.round(totalEvents)} total events – AHI may be statistically unstable on this short study.`);
+      }
+    }
+
+    // 9. WatchPAT-specific: missing pAHI3/4
+    if (m.studyType && m.studyType.includes('WatchPAT')) {
+      if (!exists(m.pahic3) && !exists(m.pahic4)) {
+        sanityChecks.push('WatchPAT study missing pAHI values – verify report completeness or data entry.');
+      }
+    }
+
+    // 10. Treatment threshold paradoxes
+    if (exists(m.ahi) && m.ahi < 5 && exists(m.hbPH) && m.hbPH >= 60) {
+      sanityChecks.push('Normal AHI but very high hypoxic burden – consider sleep-related hypoxemia, obesity hypoventilation, or COPD overlap.');
+    }
+
+    // 11. WatchPAT pRDI vs AHI consistency
+    if (exists(m.pRDI) && exists(m.ahi)) {
+      if (m.pRDI < m.ahi) {
+        sanityChecks.push('pRDI < AHI – RDI should usually be ≥ AHI (includes all AHI events plus RERAs); verify values.');
+      }
+      if (m.pRDI > m.ahi * 10) {
+        sanityChecks.push('pRDI >> AHI – verify scoring or consider prominent UARS pattern with many RERAs.');
+      }
+    }
+
+    // 12. Sleep efficiency (if total recording time available)
+    if (exists(m.tst) && exists(m.trt)) {
+      const efficiency = (m.tst / m.trt) * 100;
+      if (efficiency < 70) {
+        sanityChecks.push(`Sleep efficiency ~${efficiency.toFixed(0)}% – poor sleep may limit reliability of AHI and phenotype calls.`);
+      }
+    }
+
+    // 13. Position time check (if supine time available)
+    if (exists(m.supineTime) && m.supineTime < 30 && exists(m.sup)) {
+      sanityChecks.push('< 30 minutes of supine sleep – supine AHI may be unreliable.');
+    }
+
+    if (sanityChecks.length) {
       const warnHtml = `
         <div class="alert alert-warning mt-3 mb-0 py-2 small">
-          <strong>Sanity check:</strong>
-          <ul class="mb-0">${flags.map(f=>`<li>${f}</li>`).join('')}</ul>
+          <strong>Sanity checks:</strong>
+          <ul class="mb-0">${sanityChecks.map(f => `<li>${f}</li>`).join('')}</ul>
         </div>`;
-
       const clinicianSheetEl = document.getElementById('clinicianSheet');
       if (clinicianSheetEl) {
         clinicianSheetEl.insertAdjacentHTML('beforeend', warnHtml);
