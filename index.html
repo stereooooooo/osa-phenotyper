@@ -316,6 +316,7 @@
             <div class="col-4"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control" /></div>
             <div class="col-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control" /></div>
             <div class="col-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">pRDI</label><input type="number" step="0.1" name="pRDI" class="form-control" /><small class="text-muted">Total respiratory events (if available)</small></div>
             <div class="col-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Total sleep time (min)</label><input type="number" step="1" name="tst" class="form-control" /></div>
             <div class="col-4"><label class="form-label">HB / hr</label><input type="number" step="0.1" name="hbPH" class="form-control" /></div>
@@ -467,6 +468,104 @@
   if (score >= 3) return 'Intermediate';
   return 'Low';
 }
+
+function analyzeRDIPhenotype(m, add, addWhy, rec) {
+  const ahi = m.ahi || 0;
+  const pRDI = m.pRDI || 0;
+
+  // Need valid RDI and it should be ≥ AHI
+  if (!pRDI || pRDI <= ahi) return;
+
+  const reraIndex = pRDI - ahi;              // RERAs/hr
+  const reraRatio = reraIndex / (ahi + 1);   // RERA / (AHI+1) to avoid /0
+
+    // High RERA burden = frequent arousals from minor flow limitation
+    if (reraIndex > 10) {
+      add('High RERA Burden');
+      addWhy(
+        'High RERA Burden',
+        `RERA index ~${reraIndex.toFixed(1)}/hr – significant flow limitation without desaturation`
+      );
+  
+      // This changes treatment nuance
+      rec.push(
+        'Consider CPAP at lower pressures (5–8 cm) with comfort features (EPR/Flex) – high RERA burden suggests sensitivity to flow limitation at sub-hypopnea levels.'
+      );
+  
+      if (ahi < 5) {
+        rec.push(
+          'Despite "normal" AHI, treat based on high RDI given symptom burden from RERAs.'
+        );
+      }
+    }
+  
+    // UARS pattern – symptomatic, normal AHI, high RDI
+    if (ahi < 5 && pRDI >= 15 && ((m.ess || 0) >= 10 || (m.isi || 0) >= 10)) {
+      add('UARS Pattern');
+      rec.push(
+        'Consider UARS diagnosis – treat with CPAP despite normal AHI; consider starting at lower pressures (4–8 cm H₂O).'
+      );
+    }
+  
+    // RERA-driven low arousal threshold (better than ISI alone)
+    if (reraIndex > 5 && ahi < 30) {
+      const arousalSensitivity = reraIndex / (ahi + 1);
+      if (arousalSensitivity > 0.5) {
+        add('Low Arousal Threshold');
+        addWhy(
+          'Low Arousal Threshold',
+          `High RERA/AHI ratio (${arousalSensitivity.toFixed(1)}) – waking easily from minor obstruction.`
+        );
+      }
+    }
+  
+    // Insurance angle: some carriers use RDI ≥ 15
+    if (ahi < 5 && pRDI >= 15) {
+      add('Insurance Consideration');
+      rec.push(
+        'Document symptoms carefully – some insurers cover CPAP for RDI ≥15 even with AHI < 5.'
+      );
+    }
+  
+    // Borderline OSA with high symptom burden
+    if (ahi >= 5 && ahi < 10 && (((m.ess || 0) >= 10) || pRDI > 20)) {
+      rec.push(
+        'Consider treatment trial despite mild AHI given symptom burden and/or high RDI.'
+      );
+    }
+  }
+  
+  function adjustRecsForRDI(m, rec, anatHigh) {
+    const ahi = m.ahi || 0;
+    const pRDI = m.pRDI || 0;
+    const reraIndex = pRDI - ahi;
+  
+    if (!pRDI || reraIndex <= 0) return;
+  
+    // High RERA burden affects device selection
+    if (reraIndex > 10) {
+      // Tweak the existing CPAP line rather than adding a brand-new one
+      const cpapIndex = rec.findIndex(r => r.includes('CPAP'));
+      if (cpapIndex !== -1) {
+        rec[cpapIndex] =
+          'Start CPAP at lower pressures (5–8 cm) with comfort features (EPR/Flex) – high RERA burden suggests sensitivity to flow limitation.';
+      }
+  
+      // Surgery considerations, if anatomy is a big driver
+      if (reraIndex > 15 && anatHigh) {
+        rec.push(
+          'High RERA burden may respond well to anatomic improvements – consider nasal surgery to reduce flow resistance.'
+        );
+      }
+  
+      // Oral appliance expectations
+      if (rec.some(r => r.toLowerCase().includes('oral appliance'))) {
+        rec.push(
+          'Note: Oral appliance may help RERAs by improving airway patency; follow-up testing is essential.'
+        );
+      }
+    }
+  }
   
   function onSubmit(e){
     e.preventDefault();
@@ -478,7 +577,9 @@
       nasal: f.getAll('nasal'),
       ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup')) || 1,
       rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
-      odi: n(f.get('odi')), nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
+      odi: n(f.get('odi')),
+      pRDI: n(f.get('pRDI')),              // NEW
+      nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
       tst: n(f.get('tst')),
       nose: n(f.get('nose')),
@@ -576,6 +677,9 @@
     }
     phen.forEach(p=>p.why=(reasons[p.tag]||[]).join('; '));
 
+    // NEW – reuse for RDI and later clinician summary
+    const anatHigh = phen.some(p => p.tag === 'High Anatomical Contribution');
+
     // Symptom subtype
     let subtype='Minimally-symptomatic';
     if((m.ess||0)>=15) subtype='Sleepy'; else if((m.isi||0)>=15) subtype='Disturbed-sleep';
@@ -607,7 +711,11 @@
 
     const highHBAlert = ((m.hbPH||0) >= 100) || ((m.hb90PH||0) >= 5) || ((m.nadir??100) < 80);
     if(highHBAlert) rec.unshift('⚠ Prioritize therapy initiation — very high hypoxic burden linked to cardiovascular risk.');
-
+    
+    // NEW: RDI-driven phenotypes and plan tweaks
+    analyzeRDIPhenotype(m, add, addWhy, rec);
+    adjustRecsForRDI(m, rec, anatHigh);
+    
     const top3 = rec.slice(0,3);
 
     const today = new Date().toLocaleDateString();
@@ -759,7 +867,17 @@
       );
     }
 
-    // 8) Possible false-negative study / repeat recommended
+      // 8) RDI / RERA burden – explains symptom–AHI mismatch
+  if (exists(m.pRDI) && exists(m.ahi)) {
+    const reraIndex = m.pRDI - m.ahi;
+    if (reraIndex > 5 && (m.ahi || 0) < 15 && (m.ess || 0) >= 10) {
+      patientFindings.push(
+        'Although your AHI is in the mild range, you have frequent breathing disruptions (RERAs) that do not cause oxygen drops but still fragment your sleep. This helps explain why you may feel more tired than the AHI number alone would suggest.'
+      );
+    }
+  }
+
+    // 9) Possible false-negative study / repeat recommended
     if ((m.ahi || 0) < 5 && studyAdequacy && studyAdequacy.suggestRepeat) {
       patientFindings.push(
         'Your test did not show obstructive sleep apnea based on the main index, but parts of the study and your risk factors suggest this night may not fully represent your usual sleep. Your clinician may recommend repeating the test or doing an in-lab sleep study for a more complete picture.'
@@ -900,6 +1018,16 @@
             <em>Lower values, especially near 0, are better.</em>
           </td>
         </tr>
+                ${ (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 5) ? `
+        <tr>
+          <th>RERA events (RDI – AHI gap)</th>
+          <td>
+            You had approximately <strong>${(m.pRDI - m.ahi).toFixed(1)}</strong> respiratory
+            effort–related arousals (RERAs) per hour. These are subtle breathing disruptions
+            that briefly wake your brain without causing big oxygen drops. They can still
+            leave you feeling unrefreshed even when the main AHI number looks mild.
+          </td>
+        </tr>` : '' }
         <tr>
           <th>Periodic/central patterns</th>
           <td>
@@ -1040,6 +1168,8 @@
         : nasalConfClin === 'Moderate' ? 'Some nasal obstruction' : null,
       considerSoftTissue ? 'Soft-tissue surgery candidate' : null,
       considerHNS ? 'Meets HNS criteria' : null
+      (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 10) ? 'High RERA burden' : null,
+      (exists(m.pRDI) && m.ahi < 5 && m.pRDI >= 15) ? 'RDI-driven OSA/UARS' : null
     ]
       .filter(Boolean)
       .map(t => `<span class="badge rounded-pill bg-light text-dark border me-1 mb-1">${t}</span>`)
@@ -1180,6 +1310,10 @@
     }
     if (exists(m.sup) && exists(m.nons) && phen.some(p => p.tag === 'Positional OSA') && m.sup < m.nons) {
       flags.push('Positional pattern flagged but supine AHI < non-supine – confirm body-position labels on the report.');
+    }
+
+    if (exists(m.pRDI) && exists(m.ahi) && m.pRDI < m.ahi) {
+      flags.push('pRDI is lower than AHI – double-check data entry or the report; RDI should usually be ≥ AHI.');
     }
 
     if (flags.length) {
