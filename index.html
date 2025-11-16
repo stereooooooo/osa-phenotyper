@@ -320,6 +320,8 @@
             <div class="col-4"><label class="form-label">pRDI</label><input type="number" step="0.1" name="pRDI" class="form-control" /><small class="text-muted">Total respiratory events (if available)</small></div>
             <div class="col-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Total sleep time (min)</label><input type="number" step="1" name="tst" class="form-control" /></div>
+            <div class="col-4"><label class="form-label">WASO (min)</label><input type="number" step="1" name="waso" class="form-control" /></div>
+            <div class="col-4"><label class="form-label"># awakenings</label><input type="number" step="1" name="numWakes" class="form-control" /></div>
             <div class="col-4"><label class="form-label">HB / hr</label><input type="number" step="0.1" name="hbPH" class="form-control" /></div>
             <div class="col-4"><label class="form-label">Area &lt; 90% / hr</label><input type="number" step="0.1" name="hb90PH" class="form-control" /></div>
             <div class="col-4"><label class="form-label">% CSR</label><input type="number" step="0.1" name="csr" class="form-control" /></div>
@@ -356,8 +358,20 @@
       }
       case 'Low Arousal Threshold': {
         const isi = m.isi || 0;
-        if (isi >= 22) return 'High';
-        if (isi >= 15) return 'Moderate';
+        const rdiAhiRatio = (m.pRDI || 0) / (m.ahi || 1);
+        const waso = m.waso || 0;
+        const awakes = m.numWakes || 0;
+      
+        let score = 0;
+        if (isi >= 22) score += 2;
+        else if (isi >= 15) score += 1;
+      
+        if (rdiAhiRatio > 3) score += 1;
+        if (waso > 60 && (m.ahi || 0) < 30) score += 1;
+        if (awakes > 10) score += 1;
+      
+        if (score >= 3) return 'High';
+        if (score >= 1) return 'Moderate';
         return 'Low';
       }
       case 'High Loop Gain':{
@@ -579,16 +593,18 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
       ahi: n(f.get('ahi')), sup: n(f.get('ahiSup')), nons: n(f.get('ahiNonSup')) || 1,
       rem: n(f.get('ahiREM')), nrem: n(f.get('ahiNREM')),
       odi: n(f.get('odi')),
-      pRDI: n(f.get('pRDI')),              // NEW
+      pRDI: n(f.get('pRDI')),            
       nadir: n(f.get('nadir')), hbPH: n(f.get('hbPH')), hb90PH: n(f.get('hb90PH')),
       csr: n(f.get('csr')), pahic3: n(f.get('pahic3')), pahic4: n(f.get('pahic4')),
       tst: n(f.get('tst')),
+      waso: n(f.get('waso')),
+      numWakes: n(f.get('numWakes')),
       nose: n(f.get('nose')),
       ptName: f.get('ptName') || '',
       ptDob: f.get('ptDob') || '',
       studyDate: f.get('studyDate') || '',
-      studyType: f.get('studyType') || '',    // ← comma was missing here
-      stopBang: n(f.get('stopBang'))          // ← now valid
+      studyType: f.get('studyType') || '',   
+      stopBang: n(f.get('stopBang'))          
     };
 
     const nasalIssues = getNasalIssues(m.nasal);
@@ -632,6 +648,40 @@ function analyzeRDIPhenotype(m, add, addWhy, rec) {
     if ((m.isi || 0) >= 15) {
       addWhy('Insomnia / COMISA pattern', `ISI ${m.isi} (≥15 suggests clinically significant insomnia symptoms)`);
       add('Insomnia / COMISA pattern');
+    }
+    // Alternative low arousal threshold markers (WatchPAT surrogates)
+
+    // 1) pRDI >> AHI (lots of RERAs / arousals without desats)
+    if (exists(m.pRDI) && exists(m.ahi)) {
+      const rdiAhiRatio = (m.pRDI || 0) / (m.ahi || 1); // avoid divide-by-zero
+      if (rdiAhiRatio > 3) {
+        add('Low Arousal Threshold');
+        addWhy(
+          'Low Arousal Threshold',
+          `pRDI/AHI ratio ${rdiAhiRatio.toFixed(1)} – many respiratory arousals without desaturations`
+        );
+      }
+    }
+    
+    // 2) High WASO with low–moderate AHI → fragmented sleep not fully explained by events
+    if ((m.waso || 0) > 60 && (m.ahi || 0) < 30) {
+      add('Low Arousal Threshold');
+      addWhy(
+        'Low Arousal Threshold',
+        `WASO ${m.waso} min with AHI ${m.ahi ?? '—'} – fragmented sleep pattern beyond event count`
+      );
+    }
+    
+    // 3) Many awakenings relative to AHI
+    if ((m.numWakes || 0) > 10) {
+      const awakesPerAHI = (m.numWakes || 0) / ((m.ahi || 1) + 1); // keep denominator ≥2
+      if (awakesPerAHI > 0.5) {
+        add('Low Arousal Threshold');
+        addWhy(
+          'Low Arousal Threshold',
+          `${m.numWakes} awakenings – frequent arousals beyond respiratory events (awakenings/AHI+1 = ${awakesPerAHI.toFixed(1)})`
+        );
+      }
     }
     if(((m.csr||0)>=10) || ((m.pahic3||0)>=10) || ((m.pahic4||0)>=5) || m.cvd){
       const bits=[];
