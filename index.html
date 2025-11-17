@@ -1413,6 +1413,26 @@
       flags.push('pRDI is lower than AHI – double-check data entry or the report; RDI should usually be ≥ AHI.');
     }
 
+        // OHS screen: high BMI + hypoxemia disproportionate to AHI
+    if (exists(m.bmi) && exists(m.ahi)) {
+      const bmiVal   = m.bmi || 0;
+      const ahiVal   = m.ahi || 0;
+      const hbVal    = m.hbPH || 0;
+      const hb90Val  = m.hb90PH || 0;
+      const nadirVal = (m.nadir ?? 100);
+
+      const hypoxemiaDisproportionate =
+        (hbVal >= 60 || hb90Val >= 5 || nadirVal < 80);
+
+      // Classic pattern: obese, lots of desat burden, only mild–mod AHI
+      if (bmiVal >= 35 && hypoxemiaDisproportionate && ahiVal < 15) {
+        flags.push(
+          'High BMI + significant nocturnal hypoxemia with only mild AHI – consider Obesity Hypoventilation Syndrome (OHS). ' +
+          'Recommend checking daytime ABG and/or serum bicarbonate and evaluating for sleep-related hypoventilation.'
+        );
+      }
+    }
+
     const sanityChecks = [];
 
     if (exists(m.odi) && exists(m.ahi) && m.odi > m.ahi * 1.5) {
