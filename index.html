@@ -312,6 +312,38 @@
             </div>
           </div>
         </div>
+
+        <div class="card shadow-sm mt-4">
+          <div class="card-header bg-secondary text-white">
+            <i class="bi bi-cpu"></i> Prior CPAP History
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-12">
+              <label class="form-label d-block">Has the patient tried CPAP or BiPAP?</label>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="cpapTried" id="cpapTriedYes" value="Yes">
+                <label class="form-check-label" for="cpapTriedYes">Yes</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="cpapTried" id="cpapTriedNo" value="No">
+                <label class="form-check-label" for="cpapTriedNo">No</label>
+              </div>
+            </div>
+        
+            <div class="col-12">
+              <label class="form-label d-block">If tried CPAP, was adherence generally good?</label>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="cpapGoodAdherence" id="cpapGoodYes" value="Yes">
+                <label class="form-check-label" for="cpapGoodYes">Yes</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="cpapGoodAdherence" id="cpapGoodNo" value="No">
+                <label class="form-check-label" for="cpapGoodNo">No / Intolerant</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
       </div>
 
       <!-- RIGHT: Sleep Study -->
@@ -626,7 +658,9 @@
       ptDob: f.get('ptDob') || '',
       studyDate: f.get('studyDate') || '',
       studyType: f.get('studyType') || '',
-      stopBang: n(f.get('stopBang'))
+      stopBang: n(f.get('stopBang')),
+      cpapTried: f.get('cpapTried') || '',
+      cpapGoodAdherence: f.get('cpapGoodAdherence') || ''
     };
 
     const nasalIssues = getNasalIssues(m.nasal);
@@ -800,6 +834,22 @@
       );
     }
 
+        // Simple CPAP-history adjustment (does not remove CPAP from the plan)
+    (function adjustForSimpleCPAPHistory() {
+      const tried = m.cpapTried;
+      const good = m.cpapGoodAdherence;
+
+      if (tried !== 'Yes') return;
+
+      if (good === 'Yes') {
+        // Used CPAP and could actually stick with it → emphasize optimization
+        push('Good prior CPAP adherence documented; focus on optimizing CPAP/APAP (pressure, mask type, leaks, residual AHI) rather than abandoning therapy.');
+      } else if (good === 'No') {
+        // Tried and could NOT adhere → flag alt therapies
+        push('History of poor CPAP adherence; when counseling, prioritize viable non-CPAP options (custom MAD, weight-loss strategies, or soft-tissue/HNS pathways according to phenotype).');
+      }
+    })();
+    
     const top3 = rec.slice(0,3);
     const today = new Date().toLocaleDateString();
 
@@ -1261,6 +1311,8 @@
       considerHNS ? 'Meets HNS criteria' : null,
       (exists(m.pRDI) && exists(m.ahi) && (m.pRDI - m.ahi) > 10) ? 'High RERA burden' : null,
       (exists(m.pRDI) && m.ahi < 5 && m.pRDI >= 15) ? 'RDI-driven OSA/UARS' : null,
+      (m.cpapTried === 'Yes' && m.cpapGoodAdherence === 'Yes') ? 'Good CPAP adherence' : null,
+      (m.cpapTried === 'Yes' && m.cpapGoodAdherence === 'No') ? 'CPAP intolerance/poor adherence' : null,
       meds.includes('Opioid') ? 'On chronic opioids' : null,
       meds.includes('Benzodiazepine') ? 'On benzo/Z-drug' : null,
       meds.includes('Stimulant') ? 'On stimulant' : null
