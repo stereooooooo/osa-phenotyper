@@ -197,8 +197,8 @@
           <option value="severeHNS">Demo: Severe OSA (HNS screen)</option>
           <option value="borderlineHST">Demo: Borderline / possibly false-negative HST</option>
           <option value="uarsHighRDI">Demo: UARS / high RDI, normal AHI</option>
-          <option value="medsCase">Demo: Chronic opioids / sedatives</option>
-          <option value="ohsPattern">Demo: Suspected OHS / hypoventilation</option>
+          <option value="medsHeavy">Demo: Chronic opioids / sedatives</option>
+          <option value="ohsSuspect">Demo: Suspected OHS / hypoventilation</option>
         </select>
         <button class="btn btn-outline-light btn-sm" type="button" id="btnFill" title="Fill demo data">Fill demo</button>
       </div>
@@ -1611,101 +1611,57 @@
     window.scrollTo({top:0, behavior:'smooth'});
   });
 
-  // ---- Demo filler ----
-  const demoCases = {
-    // Positional + high hypoxic burden
+    // ---- Demo filler ----
+    const demoCases = {
     modHighHB: {
-      ess: 8,
-      isi: 6,
-      nose: 55,
-      cvd: false,
-      bmi: 27.8,
-      neck: 16.8,
-      tonsils: 2,
-      ftp: 'II',
+      ess: 8, isi: 6, nose: 55, cvd: false,
+      bmi: 27.8, neck: 16.8, tonsils: 2, ftp: 'II',
       nasal: ['Rhinitis'],
-      ahi: 21.0,
-      ahiSup: 45.0,
-      ahiNonSup: 7.0,
-      ahiREM: 14.0,
-      ahiNREM: 9.0,
-      odi: 55.0,
-      pRDI: 24.0,
-      nadir: 78.0,
-      hbPH: 68.0,
-      hb90PH: 3.8,
-      csr: 0.0,
-      pahic3: 2.0,
-      pahic4: 1.0,
+      ahi: 21.0, ahiSup: 45.0, ahiNonSup: 7.0, ahiREM: 14.0, ahiNREM: 9.0,
+      odi: 55.0, nadir: 78.0, hbPH: 68.0, hb90PH: 3.8,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
       tst: 410,
-      trt: 460,
-      supineTime: 200,
+      trt: 440,
+      supineTime: 150,
       stopBang: 3,
-      meds: []
+      pRDI: 24.0,              // modest RDI > AHI
+      cpapTried: 'No',
+      cpapGoodAdherence: ''    // unused when "No"
     },
-
-    // Mild OSA, low HB, “reassure but treat symptoms if needed”
+  
     mildLowHB: {
-      ess: 6,
-      isi: 7,
-      nose: 15,
-      cvd: false,
-      bmi: 24.5,
-      neck: 15.5,
-      tonsils: 1,
-      ftp: 'II',
+      ess: 6, isi: 7, nose: 15, cvd: false,
+      bmi: 24.5, neck: 15.5, tonsils: 1, ftp: 'II',
       nasal: [],
-      ahi: 11.9,
-      ahiSup: 14.0,
-      ahiNonSup: 12.0,
-      ahiREM: 13.0,
-      ahiNREM: 11.0,
-      odi: 12.0,
-      pRDI: 13.5,
-      nadir: 90.0,
-      hbPH: 12.0,
-      hb90PH: 0.5,
-      csr: 0.0,
-      pahic3: 1.0,
-      pahic4: 0.5,
+      ahi: 11.9, ahiSup: 14.0, ahiNonSup: 12.0, ahiREM: 13.0, ahiNREM: 11.0,
+      odi: 12.0, nadir: 90.0, hbPH: 12.0, hb90PH: 0.5,
+      csr: 0.0, pahic3: 1.0, pahic4: 0.5,
       tst: 420,
       trt: 450,
-      supineTime: 150,
+      supineTime: 160,
       stopBang: 2,
-      meds: []
+      pRDI: 13.0,
+      cpapTried: 'No',
+      cpapGoodAdherence: ''
     },
-
-    // Severe OSA, good HNS candidate
+  
     severeHNS: {
-      ess: 10,
-      isi: 10,
-      nose: 40,
-      cvd: false,
-      bmi: 29.5,
-      neck: 17.2,
-      tonsils: 0,
-      ftp: 'II',
+      ess: 10, isi: 10, nose: 40, cvd: false,
+      bmi: 29.5, neck: 17.2, tonsils: 0, ftp: 'II',
       nasal: ['Deviated septum'],
-      ahi: 34.0,
-      ahiSup: 42.0,
-      ahiNonSup: 18.0,
-      ahiREM: 28.0,
-      ahiNREM: 24.0,
-      odi: 42.0,
-      pRDI: 38.0,
-      nadir: 83.0,
-      hbPH: 40.0,
-      hb90PH: 2.2,
-      csr: 0.0,
-      pahic3: 2.0,
-      pahic4: 1.0,
+      ahi: 34.0, ahiSup: 42.0, ahiNonSup: 18.0, ahiREM: 28.0, ahiNREM: 24.0,
+      odi: 42.0, nadir: 83.0, hbPH: 40.0, hb90PH: 2.2,
+      csr: 0.0, pahic3: 2.0, pahic4: 1.0,
       tst: 390,
-      trt: 430,
-      supineTime: 210,
+      trt: 420,
+      supineTime: 170,
       stopBang: 4,
-      meds: []
+      pRDI: 38.0,
+      // Classic HNS candidate: prior CPAP, poor adherence
+      cpapTried: 'Yes',
+      cpapGoodAdherence: 'No'
     },
-
+  
     // Borderline / possibly false-negative HST
     borderlineHST: {
       ess: 7,
@@ -1723,20 +1679,21 @@
       ahiREM: 2.0,
       ahiNREM: 3.5,
       odi: 6.0,
-      pRDI: 4.5,
       nadir: 92.0,
       hbPH: 8.0,
       hb90PH: 0.1,
       csr: 0.0,
       pahic3: 1.0,
       pahic4: 0.3,
-      tst: 190,
-      trt: 230,
-      supineTime: 20,
-      stopBang: 5,
-      meds: []
+      tst: 190,       // short
+      trt: 420,       // low efficiency
+      supineTime: 20, // very little supine
+      stopBang: 5,    // high risk despite low AHI
+      pRDI: 5.0,
+      cpapTried: 'No',
+      cpapGoodAdherence: ''
     },
-
+  
     // UARS / high RDI, normal AHI
     uarsHighRDI: {
       ess: 14,
@@ -1754,7 +1711,6 @@
       ahiREM: 1.0,
       ahiNREM: 3.5,
       odi: 12.0,
-      pRDI: 18.0,
       nadir: 92.0,
       hbPH: 18.0,
       hb90PH: 0.3,
@@ -1762,88 +1718,78 @@
       pahic3: 1.0,
       pahic4: 0.3,
       tst: 180,
-      trt: 220,
+      trt: 420,
       supineTime: 60,
       stopBang: 6,
-      meds: []
+      pRDI: 18.0,     // drives the UARS/RERA logic
+      cpapTried: 'No',
+      cpapGoodAdherence: ''
     },
-
-        // Suspected OHS / hypoventilation pattern:
-    // High BMI, relatively mild AHI, but ugly nocturnal hypoxemia.
-    ohsPattern: {
-      ess: 10,
-      isi: 8,
+  
+    // Med-heavy case (uses meds + CPAP history)
+    medsHeavy: {
+      ess: 16,
+      isi: 18,
       nose: 25,
-      cvd: false,              // no known CVD → triggers central/OHS sanity nudges in context of pattern
-      bmi: 42.0,
-      neck: 18.5,
-      tonsils: 1,
+      cvd: true,
+      bmi: 31.0,
+      neck: 17.8,
+      tonsils: 2,
       ftp: 'III',
+      nasal: ['Rhinitis'],
+      ahi: 19.0,
+      ahiSup: 24.0,
+      ahiNonSup: 12.0,
+      ahiREM: 22.0,
+      ahiNREM: 17.0,
+      odi: 28.0,
+      nadir: 86.0,
+      hbPH: 32.0,
+      hb90PH: 1.8,
+      csr: 0.0,
+      pahic3: 3.0,
+      pahic4: 1.0,
+      tst: 360,
+      trt: 400,
+      supineTime: 140,
+      stopBang: 4,
+      pRDI: 26.0,
+      meds: ['opioids', 'benzodiazepines'], // whatever values you used in the meds card
+      cpapTried: 'Yes',
+      cpapGoodAdherence: 'No'
+    },
+  
+    // OHS-suspect demo
+    ohsSuspect: {
+      ess: 12,
+      isi: 8,
+      nose: 30,
+      cvd: true,
+      bmi: 42.0,
+      neck: 19.0,
+      tonsils: 1,
+      ftp: 'II',
       nasal: [],
-
-      // AHI profile: mild–moderate, not “severe enough” to explain the desats
-      ahi: 8.4,
+      ahi: 8.0,           // relatively low
       ahiSup: 10.0,
       ahiNonSup: 7.0,
       ahiREM: 9.0,
       ahiNREM: 8.0,
-
-      // Oxygen metrics: disproportionate to AHI → should trip your OHS sanity check
-      odi: 18.0,
-      nadir: 76.0,
-      hbPH: 82.0,     // high hypoxic burden
-      hb90PH: 6.2,    // plenty of time < 90%
-
-      // Central metrics low → pattern is more hypoventilation than central apnea
+      odi: 35.0,
+      nadir: 76.0,        // very low
+      hbPH: 70.0,         // high HB out of proportion to AHI
+      hb90PH: 4.5,
       csr: 0.0,
-      pahic3: 1.0,
-      pahic4: 0.3,
-
-      // Sleep duration + efficiency context for other sanity checks
-      tst: 320,       // min of sleep
-      trt: 430,       // min in bed → ~74% efficiency
-      supineTime: 210, // min supine → decent positional sampling
-
-      // RDI close to AHI here (not a huge RERA story, just hypoventilation + desats)
+      pahic3: 2.0,
+      pahic4: 1.0,
+      tst: 360,
+      trt: 410,
+      supineTime: 200,
+      stopBang: 7,
       pRDI: 10.0,
-
-      // Risk screen
-      stopBang: 6,
-
-      // Medications: opioids on board → hits the meds logic
-      // Adjust med field names if you used a different pattern.
-      meds: ['Opioids']
-    },
-
-    // New: Med-heavy case showing meds logic (opioids + benzos, central-ish pattern)
-    medsCase: {
-      ess: 9,
-      isi: 16,
-      nose: 25,
-      cvd: false,
-      bmi: 31.0,
-      neck: 17.5,
-      tonsils: 1,
-      ftp: 'III',
-      nasal: [],
-      ahi: 10.5,
-      ahiSup: 18.0,
-      ahiNonSup: 6.0,
-      ahiREM: 12.0,
-      ahiNREM: 9.0,
-      odi: 18.0,
-      pRDI: 22.0,
-      nadir: 86.0,
-      hbPH: 28.0,
-      hb90PH: 1.2,
-      csr: 0.0,
-      pahic3: 6.0,   // enough to trigger central-ish + opioid comments
-      pahic4: 3.0,
-      tst: 380,
-      trt: 420,
-      supineTime: 140,
-      stopBang: 5,
-      meds: ['Opioid', 'Benzodiazepine']
+      studyType: 'Home sleep test (WatchPAT)',
+      cpapTried: 'Yes',
+      cpapGoodAdherence: 'No'
     }
   };
 
@@ -1851,69 +1797,94 @@
     const els = document.querySelectorAll(`[name="${name}"]`);
     if (!els.length) return;
   
-    if (els[0].type === 'checkbox' && els.length === 1) {
+    const type = els[0].type;
+  
+    // Single checkbox (e.g., cvd)
+    if (type === 'checkbox' && els.length === 1) {
       els[0].checked = !!value;
       return;
     }
   
-    if (els[0].type === 'checkbox') {
+    // Multiple checkboxes (e.g., nasal, meds)
+    if (type === 'checkbox' && els.length > 1) {
       const vals = Array.isArray(value) ? value : (value ? [value] : []);
       els.forEach(el => {
         el.checked = vals.includes(el.value);
       });
       return;
     }
-
-    if (value === undefined || value === null) value = '';
+  
+    // Radio groups
+    if (type === 'radio') {
+      els.forEach(el => {
+        el.checked = (el.value === String(value));
+      });
+      return;
+    }
+  
+    // Everything else (inputs/selects)
     els[0].value = value;
   }
 
-  function fillDemo(caseKey) {
-    document.getElementById('form').reset();
-    const d = demoCases[caseKey] || demoCases.modHighHB;
-  
-    setVal('ess', d.ess);
-    setVal('isi', d.isi);
-    setVal('nose', d.nose);
-    setVal('cvd', d.cvd);
-  
-    setVal('bmi', d.bmi);
-    setVal('neck', d.neck);
-    setVal('tonsils', d.tonsils);
-    setVal('ftp', d.ftp);
-    setVal('nasal', d.nasal);
-  
-    setVal('ahi', d.ahi);
-    setVal('ahiSup', d.ahiSup);
-    setVal('ahiNonSup', d.ahiNonSup);
-    setVal('ahiREM', d.ahiREM);
-    setVal('ahiNREM', d.ahiNREM);
-  
-    setVal('odi', d.odi);
-    setVal('pRDI', d.pRDI);
-    setVal('nadir', d.nadir);
-    setVal('hbPH', d.hbPH);
-    setVal('hb90PH', d.hb90PH);
-  
-    setVal('csr', d.csr);
-    setVal('pahic3', d.pahic3);
-    setVal('pahic4', d.pahic4);
-  
-    setVal('tst', d.tst);
-    setVal('trt', d.trt);
-    setVal('supineTime', d.supineTime);
-    setVal('stopBang', d.stopBang);
-    setVal('meds', d.meds);
-  }
+function fillDemo(caseKey) {
+  document.getElementById('form').reset();
+  const d = demoCases[caseKey] || demoCases.modHighHB;
 
-  document.getElementById('btnFill').addEventListener('click', ()=>{
-    const key = document.getElementById('demoSelect').value;
-    fillDemo(key);
-    const form = document.getElementById('form');
-    if (form.requestSubmit) form.requestSubmit();
-    else form.dispatchEvent(new Event('submit', { cancelable: true }));
-    window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior: 'smooth' });
+  setVal('ess', d.ess);
+  setVal('isi', d.isi);
+  setVal('nose', d.nose);
+  setVal('cvd', d.cvd);
+
+  setVal('bmi', d.bmi);
+  setVal('neck', d.neck);
+  setVal('tonsils', d.tonsils);
+  setVal('ftp', d.ftp);
+  setVal('nasal', d.nasal);
+
+  setVal('ahi', d.ahi);
+  setVal('ahiSup', d.ahiSup);
+  setVal('ahiNonSup', d.ahiNonSup);
+  setVal('ahiREM', d.ahiREM);
+  setVal('ahiNREM', d.ahiNREM);
+
+  setVal('odi', d.odi);
+  setVal('pRDI', d.pRDI);
+  setVal('nadir', d.nadir);
+  setVal('hbPH', d.hbPH);
+  setVal('hb90PH', d.hb90PH);
+
+  setVal('csr', d.csr);
+  setVal('pahic3', d.pahic3);
+  setVal('pahic4', d.pahic4);
+
+  setVal('tst', d.tst);
+  setVal('trt', d.trt);
+  setVal('supineTime', d.supineTime);
+  setVal('stopBang', d.stopBang);
+
+  // CPAP history
+  setVal('cpapTried', d.cpapTried);
+  setVal('cpapGoodAdherence', d.cpapGoodAdherence);
+
+  // Meds demo
+  if (d.meds) setVal('meds', d.meds);
+
+  // Study type (for OHS demo etc.)
+  if (d.studyType) setVal('studyType', d.studyType);
+}
+
+// listener OUTSIDE the function
+document.getElementById('btnFill').addEventListener('click', () => {
+  const key = document.getElementById('demoSelect').value;
+  fillDemo(key);
+  const form = document.getElementById('form');
+  if (form.requestSubmit) form.requestSubmit();
+  else form.dispatchEvent(new Event('submit', { cancelable: true }));
+  window.scrollTo({
+    top: document.getElementById('patientSummary').offsetTop - 80,
+    behavior: 'smooth'
   });
+});
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
