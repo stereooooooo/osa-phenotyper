@@ -1077,6 +1077,51 @@
     }
 
     const nasalText = nasalIssues.length ? nasalIssues.join(', ') : 'none noted';
+
+        const hasPositionalPattern = phen.some(p => p.tag === 'Positional OSA');
+
+    // Short label for the “main recommendation” based on the top-ranked item
+    let mainRecLabel = 'CPAP therapy';
+    if (rec[0]) {
+      const first = rec[0];
+      if (/oral appliance/i.test(first)) {
+        mainRecLabel = 'Custom oral appliance';
+      } else if (/hypoglossal nerve stimulation/i.test(first)) {
+        mainRecLabel = 'Hypoglossal nerve stimulation';
+      } else if (/positional therapy/i.test(first)) {
+        mainRecLabel = 'Positional (side-sleeping) therapy';
+      } else if (/weight loss|weight-loss|weight management/i.test(first)) {
+        mainRecLabel = 'Weight loss / lifestyle focus';
+      } else if (/CBT-I|insomnia/i.test(first)) {
+        mainRecLabel = 'Insomnia treatment + CPAP optimization';
+      }
+      // default stays “CPAP therapy”
+    }
+
+    const keyTakeawaysBox = `
+      <div style="background-color:#f6f7fb; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+        <h3 style="margin-top:0; font-size:1.05rem; color:#1b3a57;">Your Key Takeaways</h3>
+        <ul style="font-size:0.95rem; margin-bottom:0;">
+          <li>Overall severity: <strong>${sev(m.ahi)}</strong></li>
+          <li>Oxygen levels during sleep:
+            <strong>${
+              hbConf === 'High'
+                ? 'Frequent or deep drops'
+                : hbConf === 'Moderate'
+                ? 'Moderate drops'
+                : 'Relatively stable'
+            }</strong>
+          </li>
+          <li>Sleep position:
+            <strong>${
+              hasPositionalPattern
+                ? 'Significantly worse on your back'
+                : 'Body position matters less in your case'
+            }</strong>
+          </li>
+          <li>Main treatment focus: <strong>${mainRecLabel}</strong></li>
+        </ul>
+      </div>`;
   
     const resultsTable = `
       <table class="kpi-table"><tbody>
@@ -1251,6 +1296,7 @@
         <ol>${patientRecs.map(r => `<li>${r}</li>`).join('')}</ol>
         <h2>Your Sleep Test Results</h2>
         <p class="muted">These are the main numbers from your test with a short note about what they mean. Normal ranges are listed where helpful.</p>
+        ${keyTakeawaysBox}
         ${resultsTable}
         <h2>Treatment details (what each option means)</h2>
         <ul id="treatDetails"></ul>
