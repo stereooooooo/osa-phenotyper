@@ -198,6 +198,7 @@
           <option value="borderlineHST">Demo: Borderline / possibly false-negative HST</option>
           <option value="uarsHighRDI">Demo: UARS / high RDI, normal AHI</option>
           <option value="medsCase">Demo: Chronic opioids / sedatives</option>
+          <option value="ohsPattern">Demo: Suspected OHS / hypoventilation</option>
         </select>
         <button class="btn btn-outline-light btn-sm" type="button" id="btnFill" title="Fill demo data">Fill demo</button>
       </div>
@@ -1713,6 +1714,53 @@
       supineTime: 60,
       stopBang: 6,
       meds: []
+    },
+
+        // Suspected OHS / hypoventilation pattern:
+    // High BMI, relatively mild AHI, but ugly nocturnal hypoxemia.
+    ohsPattern: {
+      ess: 10,
+      isi: 8,
+      nose: 25,
+      cvd: false,              // no known CVD → triggers central/OHS sanity nudges in context of pattern
+      bmi: 42.0,
+      neck: 18.5,
+      tonsils: 1,
+      ftp: 'III',
+      nasal: [],
+
+      // AHI profile: mild–moderate, not “severe enough” to explain the desats
+      ahi: 8.4,
+      ahiSup: 10.0,
+      ahiNonSup: 7.0,
+      ahiREM: 9.0,
+      ahiNREM: 8.0,
+
+      // Oxygen metrics: disproportionate to AHI → should trip your OHS sanity check
+      odi: 18.0,
+      nadir: 76.0,
+      hbPH: 82.0,     // high hypoxic burden
+      hb90PH: 6.2,    // plenty of time < 90%
+
+      // Central metrics low → pattern is more hypoventilation than central apnea
+      csr: 0.0,
+      pahic3: 1.0,
+      pahic4: 0.3,
+
+      // Sleep duration + efficiency context for other sanity checks
+      tst: 320,       // min of sleep
+      trt: 430,       // min in bed → ~74% efficiency
+      supineTime: 210, // min supine → decent positional sampling
+
+      // RDI close to AHI here (not a huge RERA story, just hypoventilation + desats)
+      pRDI: 10.0,
+
+      // Risk screen
+      stopBang: 6,
+
+      // Medications: opioids on board → hits the meds logic
+      // Adjust med field names if you used a different pattern.
+      meds: ['Opioids']
     },
 
     // New: Med-heavy case showing meds logic (opioids + benzos, central-ish pattern)
