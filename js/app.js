@@ -778,7 +778,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const groupInfo = {
     'Sleepy': 'You feel very sleepy during the day. Treating OSA usually improves alertness, mood, and driving safety within weeks.',
     'Disturbed-sleep': hasCOMISA
-      ? 'Your sleep is broken or restless \u2014 you have both insomnia and sleep apnea (a combination called COMISA). Treating both conditions together is essential for the best results.'
+      ? 'Your sleep is broken or restless \u2014 you have both insomnia and obstructive sleep apnea, a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Treating both conditions together is essential for the best results.'
       : 'Your sleep is broken or restless even if you are not very sleepy in the day. Treating the breathing problem and insomnia together works best.',
     'Minimally-symptomatic': 'You may not notice many symptoms, but repeated breathing pauses can strain the heart and brain over time.'
   };
@@ -810,7 +810,7 @@ document.getElementById('form').addEventListener('submit', e => {
       case 'Low Arousal Threshold': {
         let s = 'Your brain wakes you up very easily during sleep \u2014 even a small change in breathing can pull you out of deeper sleep stages. This means your sleep is fragmented, and you may feel unrefreshed in the morning even if you slept a full night.';
         if (ctx.isi >= 15) {
-          s += ' Your questionnaire also shows significant insomnia symptoms. When insomnia occurs together with sleep apnea, it is called COMISA (co-morbid insomnia and sleep apnea). This is very common and important to treat \u2014 insomnia makes it harder to use CPAP and can keep you from getting the full benefit of any sleep apnea treatment. Treating the insomnia with a program called CBT-I (cognitive behavioral therapy for insomnia) at the same time as treating your sleep apnea leads to the best results.';
+          s += ' Your questionnaire also shows significant insomnia symptoms. When insomnia occurs together with obstructive sleep apnea, it is called COMISA (comorbid insomnia and obstructive sleep apnea). This is very common and important to treat \u2014 insomnia makes it harder to use CPAP and can keep you from getting the full benefit of any sleep apnea treatment. Treating the insomnia with a program called CBT-I (cognitive behavioral therapy for insomnia) at the same time as treating your sleep apnea leads to the best results.';
         } else {
           s += ' Cognitive behavioral therapy for insomnia (CBT-I) and careful CPAP pressure settings can help you stay asleep longer and get more restorative rest.';
         }
@@ -914,7 +914,7 @@ document.getElementById('form').addEventListener('submit', e => {
     readinessDetail = 'Nasal blockage can make CPAP feel stuffy or uncomfortable. Before starting, a daily saline rinse and nasal steroid spray can open up airflow. Your doctor may also recommend an ENT evaluation to check whether the blockage needs further treatment. Clearing the nose first makes CPAP much more comfortable and effective.';
   } else if(hasCOMISA){
     readiness = 'Address insomnia first';
-    readinessDetail = 'You have both insomnia and sleep apnea (COMISA). Starting CPAP without addressing insomnia often leads to frustration and poor adherence. Your doctor will likely recommend starting a cognitive behavioral therapy for insomnia (CBT-I) program right away, and beginning CPAP after a few weeks of insomnia treatment \u2014 or at the same time with a gradual, comfort-focused approach.';
+    readinessDetail = 'You have both insomnia and obstructive sleep apnea \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Starting CPAP without addressing insomnia often leads to frustration and poor adherence. Your doctor will likely recommend starting a cognitive behavioral therapy for insomnia (CBT-I) program right away, and beginning CPAP after a few weeks of insomnia treatment \u2014 or at the same time with a gradual, comfort-focused approach.';
   } else if(hasLowAr){
     readiness = 'Optimize comfort first';
     readinessDetail = 'Because your brain wakes easily during sleep, jumping straight into CPAP at full pressure can feel uncomfortable at first. A gradual approach works best: start by wearing the mask during the day while reading or watching TV, then slowly increase nighttime use. Your doctor may also use a lower starting pressure and ramp it up over time.';
@@ -1020,7 +1020,7 @@ document.getElementById('form').addEventListener('submit', e => {
     if(/^Nasal optimization/i.test(t))
       return 'Improving nasal airflow is an important first step. Daily saline rinses, nasal steroid sprays (like Flonase), and an evaluation by an ENT specialist can reduce nasal blockage. Better nasal breathing makes CPAP and oral appliances work more comfortably.';
     if(/CBT-I|COMISA|insomnia.*concurrent/i.test(t))
-      return 'You have both sleep apnea and insomnia — a combination called COMISA that affects about 1 in 3 people with sleep apnea. This is important because insomnia can make it much harder to get used to CPAP or other treatments. The good news is that a program called CBT-I (cognitive behavioral therapy for insomnia) can help retrain your brain to sleep more deeply. Research shows that treating insomnia at the same time as sleep apnea leads to better results for both conditions. Your doctor may recommend working with a sleep psychologist or an online CBT-I program.';
+      return 'You have both obstructive sleep apnea and insomnia \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea) that affects about 1 in 3 people with sleep apnea. This is important because insomnia can make it much harder to get used to CPAP or other treatments. The good news is that a program called CBT-I (cognitive behavioral therapy for insomnia) can help retrain your brain to sleep more deeply. Research shows that treating insomnia at the same time as sleep apnea leads to better results for both conditions. Your doctor may recommend working with a sleep psychologist or an online CBT-I program.';
     if(/Inspire/i.test(t))
       return 'Inspire therapy is an implanted device that stimulates the nerve controlling your tongue, keeping the airway open during sleep. Your doctor will evaluate whether you are a candidate based on specific criteria including your AHI, BMI, and airway anatomy.';
     if(/Surgical correction/i.test(t))
