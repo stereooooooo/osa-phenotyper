@@ -1,3 +1,637 @@
-:root{--bs-primary:#354A5F;--bs-secondary:#00A5E0;}
-body{font-family:'Segoe UI',system-ui,sans-serif;}
-.card-header{font-weight:600;}
+/* ── OSA Phenotyper – Capital ENT Design System ──────────────── */
+
+/* ── Design Tokens ───────────────────────────────────────────── */
+:root {
+  --osa-navy:         #1F3A5C;
+  --osa-navy-light:   #2A4D73;
+  --osa-crimson:      #C41E3A;
+  --osa-crimson-dark: #A31830;
+  --osa-orange:       #E86B47;
+  --osa-gold:         #F4C430;
+  --osa-gray-body:    #6B7280;
+  --osa-gray-light:   #F5F5F5;
+  --osa-gray-border:  #E5E7EB;
+  --osa-white:        #FFFFFF;
+  --bs-primary:       #1F3A5C;
+  --bs-primary-rgb:   31,58,92;
+  --bs-secondary:     #6B7280;
+  --bs-body-color:    #374151;
+  --bs-body-bg:       #F5F5F5;
+}
+
+/* ── Typography ──────────────────────────────────────────────── */
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--osa-gray-body);
+  background: var(--osa-gray-light);
+}
+h1, h2, h3, h4, h5, h6,
+.card-header, .modal-title {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--osa-navy);
+}
+.form-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--osa-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.2rem;
+}
+
+/* ── Required field indicator ────────────────────────────────── */
+.form-label.required::after {
+  content: ' *';
+  color: var(--osa-crimson);
+  font-weight: 700;
+}
+
+/* ── Cards (no left border) ──────────────────────────────────── */
+.card {
+  background: var(--osa-white);
+  border: 1px solid var(--osa-gray-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+.card-header {
+  background: var(--osa-white);
+  border-bottom: 1px solid var(--osa-gray-border);
+  color: var(--osa-navy);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.5rem 1rem;
+  position: relative;
+}
+.card-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 1rem;
+  width: 36px;
+  height: 3px;
+  background: var(--osa-crimson);
+  border-radius: 2px;
+}
+.card-header i.bi {
+  color: var(--osa-crimson);
+  margin-right: 0.2rem;
+}
+.card-body {
+  padding: 0.75rem 1rem;
+}
+
+/* ── Collapsible card headers ────────────────────────────────── */
+.osa-collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+.osa-collapsible:hover {
+  background: rgba(31,58,92,0.03);
+}
+.osa-collapse-icon {
+  transition: transform 0.3s;
+  color: var(--osa-gray-body);
+  font-size: 0.75rem;
+}
+[aria-expanded="false"] .osa-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+/* ── Form controls (compact) ─────────────────────────────────── */
+.form-control, .form-select {
+  border: 1px solid var(--osa-gray-border);
+  border-radius: 5px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.88rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: var(--osa-white);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--osa-navy);
+  box-shadow: 0 0 0 2px rgba(31,58,92,0.1);
+}
+.form-check-input:checked {
+  background-color: var(--osa-crimson);
+  border-color: var(--osa-crimson);
+}
+.form-switch .form-check-input:checked {
+  background-color: var(--osa-crimson);
+  border-color: var(--osa-crimson);
+}
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.25rem rgba(196,30,58,0.15);
+  border-color: var(--osa-crimson);
+}
+.form-check-label {
+  font-size: 0.88rem;
+}
+
+/* ── Fieldset legends (sub-section headers) ──────────────────── */
+fieldset { border: none; padding: 0; margin: 0; }
+fieldset legend {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--osa-crimson);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--osa-gray-border);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn-primary {
+  background-color: var(--osa-crimson) !important;
+  border-color: var(--osa-crimson) !important;
+  color: #fff !important;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+.btn-primary:hover, .btn-primary:active, .btn-primary:focus {
+  background-color: var(--osa-crimson-dark) !important;
+  border-color: var(--osa-crimson-dark) !important;
+  box-shadow: 0 0 0 3px rgba(196,30,58,0.2);
+}
+.btn-secondary {
+  background-color: var(--osa-navy) !important;
+  border-color: var(--osa-navy) !important;
+}
+.btn-secondary:hover {
+  background-color: var(--osa-navy-light) !important;
+  border-color: var(--osa-navy-light) !important;
+}
+.btn-outline-secondary {
+  color: var(--osa-navy);
+  border-color: var(--osa-navy);
+  border-radius: 6px;
+}
+.btn-outline-secondary:hover {
+  background-color: var(--osa-navy);
+  border-color: var(--osa-navy);
+  color: #fff;
+}
+.btn-outline-primary {
+  color: var(--osa-navy);
+  border-color: var(--osa-navy);
+  border-radius: 6px;
+}
+.btn-outline-primary:hover {
+  background-color: var(--osa-navy);
+  border-color: var(--osa-navy);
+  color: #fff;
+}
+.btn-outline-success { border-radius: 6px; }
+.btn-lg {
+  padding: 0.65rem 2.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(196,30,58,0.25);
+}
+.btn-lg:hover {
+  box-shadow: 0 4px 16px rgba(196,30,58,0.35);
+  transform: translateY(-1px);
+}
+
+/* ── Navbar ───────────────────────────────────────────────────── */
+.osa-navbar {
+  background: var(--osa-navy);
+  box-shadow: 0 2px 8px rgba(31,58,92,0.15);
+  padding: 0.4rem 1rem;
+}
+.osa-navbar .navbar-brand img {
+  filter: brightness(0) invert(1);
+}
+.osa-nav-title {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: rgba(255,255,255,0.9);
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.osa-btn-outline-light {
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.osa-btn-outline-light:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: #fff;
+  color: #fff;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.osa-footer {
+  background: var(--osa-navy);
+  color: rgba(255,255,255,0.8);
+  padding: 1rem 0;
+  margin-top: 2rem;
+  font-size: 0.8rem;
+}
+.osa-footer .osa-footer-muted {
+  color: rgba(255,255,255,0.5);
+}
+
+/* ── PDF Drop Zone (compact) ─────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--osa-gray-border);
+  border-radius: 8px;
+  background: var(--osa-gray-light);
+  padding: 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.drop-zone:hover {
+  border-color: var(--osa-navy);
+  background: rgba(31,58,92,0.03);
+}
+.drop-zone.drag-over,
+.drop-zone.border-primary {
+  border-color: var(--osa-crimson);
+  background: rgba(196,30,58,0.04);
+  box-shadow: 0 0 0 3px rgba(196,30,58,0.1);
+}
+.drop-zone i.bi {
+  color: var(--osa-orange);
+  font-size: 1.5rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  display: inline;
+}
+.drop-zone p {
+  color: var(--osa-gray-body);
+  margin-bottom: 0;
+  display: inline;
+}
+.drop-zone label[role="button"] {
+  color: var(--osa-crimson);
+  font-weight: 600;
+  text-decoration: none !important;
+  border-bottom: 1px solid var(--osa-crimson);
+}
+
+/* ── PDF Import cards (top of form) ────────────────────────── */
+.osa-import-card {
+  border: 1px solid var(--osa-gray-border);
+  border-radius: 8px;
+  background: var(--osa-white);
+}
+.osa-import-card .card-body { padding: 0.5rem 0.75rem; }
+.osa-import-card .card-header::after { display: none; }
+.drop-zone-inline {
+  border: 2px dashed var(--osa-gray-border);
+  border-radius: 6px;
+  background: var(--osa-gray-light);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.drop-zone-inline:hover {
+  border-color: var(--osa-navy);
+  background: rgba(31,58,92,0.03);
+}
+.drop-zone-inline.drag-over,
+.drop-zone-inline.border-primary {
+  border-color: var(--osa-crimson);
+  background: rgba(196,30,58,0.04);
+  box-shadow: 0 0 0 3px rgba(196,30,58,0.1);
+}
+.drop-zone-inline i.bi {
+  color: var(--osa-orange);
+  font-size: 1.3rem;
+}
+.drop-zone-inline label[role="button"] {
+  color: var(--osa-crimson);
+  font-weight: 600;
+  border-bottom: 1px solid var(--osa-crimson);
+  text-decoration: none;
+}
+
+/* Green flash animation for PDF-imported fields */
+@keyframes pdf-import-flash {
+  0%   { background-color: rgba(25, 135, 84, 0.2); }
+  100% { background-color: transparent; }
+}
+.pdf-filled {
+  animation: pdf-import-flash 1.5s ease-out;
+}
+
+/* ── Validation states ───────────────────────────────────────── */
+.is-warning {
+  border-color: #ffc107 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='%23ffc107'%3e%3ccircle cx='6' cy='6' r='6'/%3e%3ctext x='6' y='9' text-anchor='middle' fill='white' font-size='9' font-weight='bold'%3e!%3c/text%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+  padding-right: calc(1.5em + 0.75rem);
+}
+.is-warning:focus {
+  border-color: #ffc107;
+  box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+}
+.warning-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #997404;
+}
+
+/* ── Modals ───────────────────────────────────────────────────── */
+.modal-content {
+  border-radius: 10px;
+  overflow: hidden;
+  border: none;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+.modal-header {
+  background: var(--osa-navy);
+  color: #fff;
+  border-bottom: none;
+}
+.modal-header .modal-title { color: #fff; }
+.modal-header .btn-close { filter: brightness(0) invert(1); }
+
+/* ── Alerts ──────────────────────────────────────────────────── */
+.alert-danger { border-left: 4px solid var(--osa-crimson); border-radius: 6px; }
+.alert-warning { border-left: 4px solid var(--osa-gold); border-radius: 6px; }
+.alert-info { border-left: 4px solid var(--osa-navy); border-radius: 6px; }
+
+/* ── Progress Track ──────────────────────────────────────────── */
+.osa-progress-track {
+  display: flex;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  background: var(--osa-white);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.osa-progress-step {
+  flex: 1;
+  text-align: center;
+  padding: 0.45rem 0.2rem;
+  font-size: 0.65rem;
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--osa-gray-body);
+  border-bottom: 3px solid var(--osa-gray-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.osa-progress-step:hover {
+  color: var(--osa-navy);
+  background: rgba(31,58,92,0.02);
+}
+.osa-progress-step.active {
+  color: var(--osa-navy);
+  border-bottom-color: var(--osa-crimson);
+  font-weight: 600;
+}
+.osa-progress-step.completed {
+  color: var(--osa-navy);
+  border-bottom-color: var(--osa-orange);
+}
+
+/* ── Report Output ───────────────────────────────────────────── */
+.osa-section-title {
+  color: var(--osa-navy);
+  padding-bottom: 0.4rem;
+  border-bottom: 3px solid var(--osa-crimson);
+  display: inline-block;
+  margin-bottom: 0.75rem !important;
+}
+.osa-phenotype-item {
+  list-style: none;
+  padding: 0.6rem 0.75rem;
+  background: var(--osa-white);
+  border-left: 3px solid var(--osa-crimson);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  margin-bottom: 0.5rem;
+}
+.osa-phenotype-item:last-child { margin-bottom: 0; }
+
+/* ── Key Numbers Cards (equal sizing) ──────────────────────── */
+.osa-key-card {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  border-radius: 8px;
+  min-height: 85px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.osa-key-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.osa-key-value--text { font-size: 1.1rem; }
+.osa-key-label {
+  font-size: 0.78rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+/* ── Phenotype prose styling ───────────────────────────────── */
+.osa-phenotype-prose {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--bs-body-color, #212529);
+  margin-top: 0.35rem;
+}
+
+/* ── Recommendation items ──────────────────────────────────── */
+.osa-rec-item {
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.6rem;
+  background: #fff;
+  border-left: 3px solid var(--osa-navy);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.osa-rec-item:last-child { margin-bottom: 0; }
+.osa-rec-item p { margin-bottom: 0; }
+
+.osa-dise-th {
+  background: transparent !important;
+  color: var(--osa-navy);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 500;
+  border-bottom: 1px solid #dee2e6 !important;
+}
+#cardImaging .table td {
+  background: transparent !important;
+  color: var(--osa-navy);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+}
+.osa-report-table thead th {
+  background: var(--osa-navy);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+
+/* ── Study Type Selector ─────────────────────────────────────── */
+.osa-study-selector { background: var(--osa-white); }
+.osa-study-selector .card-body { padding: 0.5rem 1rem; }
+.osa-study-selector .card-header::after { display: none; }
+
+/* ── WatchPAT horizontal layout ──────────────────────────────── */
+.osa-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem 1rem;
+}
+.osa-metrics-grid .osa-field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Tighter row gaps ────────────────────────────────────────── */
+.g-2 { --bs-gutter-y: 0.4rem; --bs-gutter-x: 0.5rem; }
+
+/* ── Responsive touch targets for tablet ─────────────────────── */
+@media (max-width: 992px) {
+  .form-control, .form-select {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+  .btn { min-height: 44px; }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .osa-progress-step {
+    padding: 0.4rem 0.1rem;
+    font-size: 0.55rem;
+  }
+  .card { border-radius: 6px; }
+  .card-body { padding: 0.6rem 0.75rem; }
+  .btn-lg { width: 100%; padding: 0.65rem; }
+  .osa-metrics-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Clinician Report: Key Metrics Row ──────────────────────── */
+.osa-clin-metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.osa-clin-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  min-width: 85px;
+  flex: 1 1 85px;
+  max-width: 130px;
+}
+.osa-clin-metric-val {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-family: 'Inter', sans-serif;
+}
+.osa-clin-metric-lbl {
+  font-size: 0.68rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 0.15rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Clinician Report: Ranked Treatment Plan ───────────────── */
+.osa-clin-rec {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.35rem;
+  border-radius: 5px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  background: #f8f9fa;
+  border-left: 3px solid #dee2e6;
+}
+.osa-clin-rec.osa-rec-priority {
+  background: #f0f2f6; /* ~6% navy mix with white */
+  border-left-color: var(--osa-navy);
+}
+.osa-clin-rec-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--osa-navy);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── HGNS table: prevent text cutoff & page breaks ─────────── */
+#hgnsAssessment .table {
+  table-layout: fixed;
+  width: 100%;
+}
+#hgnsAssessment .table td:first-child {
+  width: 180px;
+  white-space: normal;
+  word-wrap: break-word;
+  vertical-align: top;
+}
+#hgnsAssessment .table td:last-child {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  vertical-align: top;
+}
+#hgnsAssessment .card {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+#hgnsAssessment .table tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* ── Print styles ────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  .osa-progress-track { display: none !important; }
+  .card { box-shadow: none; break-inside: avoid; }
+  .osa-footer { background: #fff; color: #333; }
+  .osa-footer .osa-footer-muted { color: #666; }
+}

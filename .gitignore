@@ -1,1 +1,15 @@
-# macOS\n.DS_Store\n)
+# macOS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Claude config
+.claude/
+
+# Test PDFs and sample files
+Test Data/
+*.pdf
+
+# npm
+package-lock.json

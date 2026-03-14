@@ -3,109 +3,304 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSA Phenotyper • Capital&nbsp;ENT</title>
+<title>OSA Phenotyper &bull; Capital&nbsp;ENT</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="css/styles.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
-<header class="navbar navbar-expand-lg sticky-top shadow-sm" style="background:#354A5F;">
+<header class="navbar navbar-expand-lg sticky-top osa-navbar">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#"><img src="capentlogo.svg" alt="Capital ENT logo" style="height:45px;"></a>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+      <img src="capentlogo.svg" alt="Capital ENT logo" style="height:40px;">
+      <span class="osa-nav-title d-none d-md-inline">OSA Phenotyper</span>
+    </a>
+    <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New Patient</button>
   </div>
 </header>
 
 <main class="container my-4">
-<form id="form">
-<!-- ===== Demographics & PE ===== -->
-<div class="row g-4">
+<form id="form" novalidate>
+
+<!-- ===== Progress Track ===== -->
+<div class="osa-progress-track no-print" id="progressTrack">
+  <div class="osa-progress-step" data-section="demographics" data-target="#cardDemographics">Demographics</div>
+  <div class="osa-progress-step" data-section="treatment" data-target="#cardTreatment">Treatment Hx</div>
+  <div class="osa-progress-step" data-section="exam" data-target="#cardPhysicalExam">Exam</div>
+  <div class="osa-progress-step" data-section="imaging" data-target="#cardImaging">DISE</div>
+  <div class="osa-progress-step" data-section="questionnaires" data-target="#cardQuestionnaires">Questionnaires</div>
+  <div class="osa-progress-step" data-section="sleep-study" data-target="#sleepStudyWatchpat">Sleep Study</div>
+</div>
+
+<!-- ===== PDF Import (top of form for fast workflow) ===== -->
+<div class="row g-3 mb-3" id="pdfImportSection">
   <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-person-badge"></i> Demographics</div>
-      <div class="card-body row g-3">
-        <div class="col-6"><label class="form-label">Age</label><input type="number" name="age" class="form-control"></div>
-        <div class="col-6"><label class="form-label">Sex</label><select name="sex" class="form-select"><option>M</option><option>F</option></select></div>
-        <div class="col-6"><label class="form-label">BMI</label><input type="number" step="0.1" name="bmi" class="form-control"></div>
-        <div class="col-6"><label class="form-label">Neck Circ (in)</label><input type="number" step="0.1" name="neck" class="form-control"></div>
+    <div class="card osa-import-card">
+      <div class="card-body d-flex align-items-center gap-2 py-2 px-3">
+        <div class="flex-grow-1">
+          <div id="pdfDropZone" class="drop-zone drop-zone-inline">
+            <i class="bi bi-file-earmark-pdf"></i>
+            <span class="small">Drop <strong>WatchPAT PDF</strong> here or <label for="pdfFileInput" class="text-primary" role="button" style="cursor:pointer;">browse</label></span>
+            <input type="file" id="pdfFileInput" accept=".pdf" class="d-none">
+          </div>
+          <div id="pdfStatus" class="small mt-1"></div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-activity"></i> Medical / History</div>
-      <div class="card-body">
-        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="cvd" id="cvd"><label class="form-check-label" for="cvd">Cardiovascular disease (HTN / CAD / HF / AF)</label></div>
+    <div class="card osa-import-card">
+      <div class="card-body d-flex align-items-center gap-2 py-2 px-3">
+        <div class="flex-grow-1">
+          <div id="questionnaireDropZone" class="drop-zone drop-zone-inline">
+            <i class="bi bi-clipboard-check"></i>
+            <span class="small">Drop <strong>Questionnaire PDF</strong> here or <label for="questionnaireFileInput" class="text-primary" role="button" style="cursor:pointer;">browse</label></span>
+            <input type="file" id="questionnaireFileInput" accept=".pdf" class="d-none">
+          </div>
+          <div id="questionnaireStatus" class="small mt-1"></div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="card shadow-sm mt-4">
-  <div class="card-header bg-secondary text-white"><i class="bi bi-clipboard-pulse"></i> Physical Exam</div>
-  <div class="card-body row g-3">
-    <div class="col-md-2"><label class="form-label">Deviated Septum</label><select name="septum" class="form-select"><option>None</option><option>Yes</option></select></div>
-    <div class="col-md-2"><label class="form-label">Turbinates</label><select name="turbinates" class="form-select"><option>None</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></div>
-    <div class="col-md-2"><label class="form-label">Rhinitis</label><select name="rhinitis" class="form-select"><option>None</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></div>
-    <div class="col-md-2"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-    <div class="col-md-2"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+<!-- ===== Demographics & History ===== -->
+<div class="card" id="cardDemographics">
+  <div class="card-header"><i class="bi bi-person-badge"></i> Demographics &amp; History</div>
+  <div class="card-body row g-2 align-items-center">
+    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">Age</label><input type="number" name="age" class="form-control form-control-sm" min="1" max="120"></div>
+    <div class="col-auto" style="width:90px;"><label class="form-label required mb-1">Sex</label><select name="sex" class="form-select form-select-sm"><option value="M">M</option><option value="F">F</option></select></div>
+    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">BMI</label><input type="number" step="0.1" name="bmi" class="form-control form-control-sm" min="10" max="80"></div>
+    <div class="col-auto" style="width:110px;"><label class="form-label mb-1">Neck (in)</label><input type="number" step="0.1" name="neck" class="form-control form-control-sm" min="8" max="30"></div>
+    <div class="col d-flex align-items-center ps-3" style="margin-top:1.1rem;">
+      <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" name="cvd" id="cvd"><label class="form-check-label" for="cvd">Cardiovascular disease (HTN / CAD / HF / AF)</label></div>
+    </div>
   </div>
 </div>
 
-<!-- ===== Imaging & DISE ===== -->
-<div class="card shadow-sm mt-4">
-  <div class="card-header bg-secondary text-white"><i class="bi bi-images"></i> Imaging & Endoscopy</div>
-  <div class="card-body">
-    <div class="mb-2">CT Sinus (select all):</div>
-    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctDev" name="ctDev"><label class="form-check-label" for="ctDev">Deviated Septum</label></div>
-    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctTurbs" name="ctTurbs"><label class="form-check-label" for="ctTurbs">Turbinates Hypertrophy</label></div>
-    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ctSin" name="ctSin"><label class="form-check-label" for="ctSin">Sinusitis</label></div>
-    <hr>
-    <h6>DISE – VOTE Classification</h6>
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Site</th><th style="width:110px;">Degree</th><th style="width:150px;">Pattern</th></tr></thead><tbody>
-        <tr><td>Velum</td><td><select class="form-select form-select-sm" name="vDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="vPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Oropharynx</td><td><select class="form-select form-select-sm" name="oDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="oPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Tongue Base</td><td><select class="form-select form-select-sm" name="tDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="tPat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr><tr><td>Epiglottis</td><td><select class="form-select form-select-sm" name="eDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="ePat"><option>—</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
-        </tbody></table>
+<!-- ===== Treatment History ===== -->
+<div class="card mt-3" id="cardTreatment">
+  <div class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseTreatment" aria-expanded="true">
+    <i class="bi bi-capsule"></i> Treatment History &amp; Preferences
+    <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+  </div>
+  <div class="collapse show" id="collapseTreatment">
+  <div class="card-body py-2">
+    <div class="row g-2">
+      <!-- Prior CPAP -->
+      <div class="col-md-6">
+        <fieldset class="mb-1">
+          <legend>CPAP History</legend>
+          <div class="form-check form-switch mb-1">
+            <input class="form-check-input" type="checkbox" name="priorCpap" id="priorCpap">
+            <label class="form-check-label" for="priorCpap">Prior CPAP / BiPAP trial</label>
+          </div>
+          <div id="cpapDetails" class="ps-3 border-start" style="display:none;">
+            <div class="row g-2 mb-1">
+              <div class="col-auto">
+                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="cpapCurrent" id="cpapCurrent"><label class="form-check-label small" for="cpapCurrent">Currently using</label></div>
+              </div>
+              <div class="col-auto">
+                <label class="form-label mb-0">Helped?</label>
+                <select name="cpapHelped" class="form-select form-select-sm" style="width:auto;"><option value="">—</option><option>Yes</option><option>No</option><option>Unsure</option></select>
+              </div>
+              <div class="col-auto">
+                <label class="form-label mb-0">Retry?</label>
+                <select name="cpapRetry" class="form-select form-select-sm" style="width:auto;"><option value="">—</option><option>Yes</option><option>No</option><option>Maybe</option></select>
+              </div>
+              <div class="col-auto">
+                <label class="form-label mb-0">Rx Pressure <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Therapeutic CPAP/APAP pressure in cmH₂O. Used for HGNS candidacy assessment. Lower pressures (<8) predict better Inspire outcomes."></i></label>
+                <input type="number" step="0.5" name="cpapPressure" class="form-control form-control-sm" style="width:110px;" min="4" max="25" placeholder="cmH₂O">
+              </div>
+            </div>
+            <div class="mb-1"><span class="form-label">Reasons stopped</span></div>
+            <div class="d-flex flex-wrap gap-1 mb-1">
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapMask" id="cpapMask"><label class="form-check-label small" for="cpapMask">Mask discomfort</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapClaustro" id="cpapClaustro"><label class="form-check-label small" for="cpapClaustro">Claustrophobia</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapDry" id="cpapDry"><label class="form-check-label small" for="cpapDry">Dry mouth</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapLeaks" id="cpapLeaks"><label class="form-check-label small" for="cpapLeaks">Leaks / noise</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapSleep" id="cpapSleep"><label class="form-check-label small" for="cpapSleep">Trouble sleeping</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapSkin" id="cpapSkin"><label class="form-check-label small" for="cpapSkin">Skin irritation</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapNoImprove" id="cpapNoImprove"><label class="form-check-label small" for="cpapNoImprove">No improvement</label></div>
+              <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" name="cpapTravel" id="cpapTravel"><label class="form-check-label small" for="cpapTravel">Travel difficulty</label></div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+      <!-- Prior Surgeries & Preferences -->
+      <div class="col-md-3">
+        <fieldset class="mb-1">
+          <legend>Prior Treatments</legend>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorUPPP" id="priorUPPP"><label class="form-check-label small" for="priorUPPP">UPPP</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorNasal" id="priorNasal"><label class="form-check-label small" for="priorNasal">Nasal surgery</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorSinus" id="priorSinus"><label class="form-check-label small" for="priorSinus">Sinus surgery</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorJaw" id="priorJaw"><label class="form-check-label small" for="priorJaw">Jaw surgery</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorInspire" id="priorInspire"><label class="form-check-label small" for="priorInspire">Inspire</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorMAD" id="priorMAD"><label class="form-check-label small" for="priorMAD">Oral appliance (MAD)</label></div>
+        </fieldset>
+      </div>
+      <div class="col-md-3">
+        <fieldset class="mb-1">
+          <legend>Preferences</legend>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefAvoidCpap" id="prefAvoidCpap"><label class="form-check-label small" for="prefAvoidCpap">Avoid CPAP if possible</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefSurgery" id="prefSurgery"><label class="form-check-label small" for="prefSurgery">Open to surgery</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefInspire" id="prefInspire"><label class="form-check-label small" for="prefInspire">Interested in Inspire</label></div>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ===== Physical Exam & DISE (side by side) ===== -->
+<div class="row g-3 mt-2">
+  <div class="col-md-4">
+    <div class="card h-100" id="cardPhysicalExam">
+      <div class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapsePhysExam" aria-expanded="true">
+        <i class="bi bi-clipboard-pulse"></i> Physical Exam
+        <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+      </div>
+      <div class="collapse show" id="collapsePhysExam">
+        <div class="card-body row g-3">
+          <div class="col-6"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <div class="col-6"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card h-100" id="cardImaging">
+      <div class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseImaging" aria-expanded="true">
+        <i class="bi bi-images"></i> Drug-Induced Sleep Endoscopy
+        <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+      </div>
+      <div class="collapse show" id="collapseImaging">
+      <div class="card-body py-2">
+        <div class="table-responsive">
+          <table class="table table-sm table-borderless align-middle mb-0">
+            <thead><tr><th class="osa-dise-th">Site</th><th class="osa-dise-th" style="width:110px;">Degree</th><th class="osa-dise-th" style="width:150px;">Pattern</th></tr></thead><tbody>
+            <tr><td>Velum</td><td><select class="form-select form-select-sm" name="vDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="vPat"><option>&mdash;</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
+            <tr><td>Oropharynx</td><td><select class="form-select form-select-sm" name="oDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="oPat"><option>&mdash;</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
+            <tr><td>Tongue Base</td><td><select class="form-select form-select-sm" name="tDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="tPat"><option>&mdash;</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
+            <tr><td>Epiglottis</td><td><select class="form-select form-select-sm" name="eDeg"><option>0</option><option>1</option><option>2</option></select></td><td><select class="form-select form-select-sm" name="ePat"><option>&mdash;</option><option>AP</option><option>Lateral</option><option>Concentric</option></select></td></tr>
+            </tbody></table>
+        </div>
+      </div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- ===== Questionnaires ===== -->
-<div class="row g-4 mt-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-question-circle"></i> Questionnaires</div>
-      <div class="card-body row g-3">
-        <div class="col-6"><label class="form-label">ESS</label><input type="number" name="ess" class="form-control"></div>
-        <div class="col-6"><label class="form-label">ISI</label><input type="number" name="isi" class="form-control"></div>
+<div class="card mt-3" id="cardQuestionnaires">
+  <div class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseQuestionnaires" aria-expanded="true">
+    <i class="bi bi-question-circle"></i> Questionnaires
+    <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+  </div>
+  <div class="collapse show" id="collapseQuestionnaires">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-6 col-md-3"><label class="form-label">ESS <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Epworth Sleepiness Scale (0–24). Normal &le;10; 11–14 mild sleepiness; 15–17 moderate; &ge;18 severe."></i></label><input type="number" name="ess" class="form-control" min="0" max="24"></div>
+      <div class="col-6 col-md-3"><label class="form-label">ISI <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Insomnia Severity Index (0–28). 0–7 no insomnia; 8–14 subthreshold; 15–21 moderate; 22–28 severe."></i></label><input type="number" name="isi" class="form-control" min="0" max="28"></div>
+      <div class="col-6 col-md-3"><label class="form-label">NOSE Score <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Nasal Obstruction Symptom Evaluation (0–100). 5–25 mild; 30–50 moderate; 55–75 severe; 80–100 extreme. &ge;30 generally considered clinically significant."></i></label><input type="number" name="noseScore" class="form-control" min="0" max="100"></div>
+      <div class="col-6 col-md-3 d-flex align-items-end">
+        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="nasalObs" id="nasalObs"><label class="form-check-label" for="nasalObs">Nasal Obstruction</label></div>
       </div>
     </div>
+  </div>
   </div>
 </div>
-  
-<!-- ===== Sleep Studies ===== -->
-<div class="row g-4 mt-4">
-  <div class="col-12 col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-watch"></i> WatchPAT Metrics</div>
-      <div class="card-body row g-3">
-        <div class="col-6 col-md-4"><label class="form-label">pAHI (overall)</label><input type="number" step="0.1" name="pahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Supine pAHI</label><input type="number" step="0.1" name="supPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Non-Supine pAHI</label><input type="number" step="0.1" name="nonSupPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHI REM</label><input type="number" step="0.1" name="remPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHI NREM</label><input type="number" step="0.1" name="nremPahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">PAT RDI</label><input type="number" step="0.1" name="patRdi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">% CSR</label> <input type="number" step="0.1" name="csr" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHIc 3 %</label>  <input type="number" step="0.1" name="pahic" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">pAHIc 4 %</label><input type="number" step="0.1" name="pahic4" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Min SpO₂ (%)</label><input type="number" step="0.1" name="nadir" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">TST (hrs)</label><input type="number" step="0.1" name="tst" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Snoring Index</label><input type="number" step="0.1" name="snoreIdx" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Hypoxic Burden (per hr)</label><input type="number" step="0.1" name="hbAreaPH" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Area < 90% (per hr)</label><input type="number" step="0.1" name="hbUnder90PH" class="form-control"></div>
+
+<!-- ===== Study Type Selector ===== -->
+<div class="card mt-3 osa-study-selector">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-3">
+      <strong>Sleep Study Type:</strong>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="radio" name="studyType" id="stWatchpat" value="watchpat" checked>
+        <label class="form-check-label" for="stWatchpat">WatchPAT</label>
       </div>
-    </div>
-  </div>
-  <div class="col-12 col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-secondary text-white"><i class="bi bi-hospital"></i> Lab PSG Metrics</div>
-      <div class="card-body row g-3">
-        <div class="col-6 col-md-4"><label class="form-label">AHI (overall)</label><input type="number" step="0.1" name="ahi" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI Supine</label><input type="number" step="0.1" name="ahiSup" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI Non‑Supine</label><input type="number" step="0.1" name="ahiNonSup" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">CAI</label><input type="number" step="0.1" name="cai" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Arousal Index</label><input type="number" step="0.1" name="arInd" class="form-control"></div><div class="col-6 col-md-4"><label class="form-label">Nadir SpO₂ (%)</label><input type="number" step="0.1" name="nadirPsg" class="form-control"></div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="radio" name="studyType" id="stPSG" value="psg">
+        <label class="form-check-label" for="stPSG">Lab PSG</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="radio" name="studyType" id="stBoth" value="both">
+        <label class="form-check-label" for="stBoth">Both</label>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ===== WatchPAT Metrics (full-width horizontal) ===== -->
+<div class="mt-3" id="sleepStudyWatchpat">
+  <div class="card">
+    <div class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseWatchpat" aria-expanded="true">
+      <i class="bi bi-watch"></i> WatchPAT Metrics
+      <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+    </div>
+    <div class="collapse show" id="collapseWatchpat">
+    <div class="card-body">
+      <div class="osa-metrics-grid">
+        <!-- Severity -->
+        <div class="osa-field"><label class="form-label required">pAHI</label><input type="number" step="0.1" name="pahi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label required">ODI 4%</label><input type="number" step="0.1" name="odi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label required">Min SpO&#x2082;</label><input type="number" step="0.1" name="nadir" class="form-control" min="0" max="100"></div>
+        <!-- Positional -->
+        <div class="osa-field"><label class="form-label">Sup pAHI</label><input type="number" step="0.1" name="supPahi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">Non-Sup pAHI</label><input type="number" step="0.1" name="nonSupPahi" class="form-control" min="0" max="200"></div>
+        <!-- REM/NREM -->
+        <div class="osa-field"><label class="form-label">pAHI REM</label><input type="number" step="0.1" name="remPahi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">pAHI NREM</label><input type="number" step="0.1" name="nremPahi" class="form-control" min="0" max="200"></div>
+        <!-- Central / Loop Gain -->
+        <div class="osa-field"><label class="form-label">% CSR</label><input type="number" step="0.1" name="csr" class="form-control" min="0" max="100"></div>
+        <div class="osa-field"><label class="form-label">pAHIc 3%</label><input type="number" step="0.1" name="pahic" class="form-control" min="0" max="100"></div>
+        <div class="osa-field"><label class="form-label">pAHIc 4%</label><input type="number" step="0.1" name="pahic4" class="form-control" min="0" max="100"></div>
+        <!-- Hypoxic Burden -->
+        <div class="osa-field"><label class="form-label">HB/hr</label><input type="number" step="0.1" name="hbAreaPH" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">&lt;90%/hr</label><input type="number" step="0.1" name="hbUnder90PH" class="form-control" min="0" max="100"></div>
+        <!-- Other -->
+        <div class="osa-field"><label class="form-label">PAT RDI</label><input type="number" step="0.1" name="patRdi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">TST (hrs)</label><input type="number" step="0.1" name="tst" class="form-control" min="0" max="24"></div>
+        <div class="osa-field"><label class="form-label">Snore (dB)</label><input type="number" step="0.1" name="snoreIdx" class="form-control" min="0" max="500"></div>
+        <div class="osa-field"><label class="form-label">Delta HR <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Mean peak heart rate surge after respiratory events. Manual entry only."></i></label><input type="number" step="0.1" name="dhr" class="form-control" min="0" max="60"></div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lab PSG (full-width, below WatchPAT) ===== -->
+<div class="mt-3" id="sleepStudyPSG">
+  <div class="card">
+    <div class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapsePSG" aria-expanded="true">
+      <i class="bi bi-hospital"></i> Lab PSG Metrics
+      <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+    </div>
+    <div class="collapse show" id="collapsePSG">
+    <div class="card-body">
+      <div class="osa-metrics-grid">
+        <div class="osa-field"><label class="form-label">AHI</label><input type="number" step="0.1" name="ahi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">AHI Supine</label><input type="number" step="0.1" name="ahiSup" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">AHI Non-Sup</label><input type="number" step="0.1" name="ahiNonSup" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">AHI REM</label><input type="number" step="0.1" name="ahiREM" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">AHI NREM</label><input type="number" step="0.1" name="ahiNREM" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">CAI</label><input type="number" step="0.1" name="cai" class="form-control" min="0" max="100"></div>
+        <div class="osa-field"><label class="form-label">Arousal Index</label><input type="number" step="0.1" name="arInd" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">Nadir SpO&#x2082;</label><input type="number" step="0.1" name="nadirPsg" class="form-control" min="0" max="100"></div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Validation Alerts & Submit ===== -->
+<div id="validationAlerts" class="mt-3"></div>
+
 <div class="text-center mt-4">
-  <button type="submit" class="btn btn-primary px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
+  <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
 </div>
 
 </form>
@@ -115,8 +310,285 @@
 <div id="clinicianReport" class="mt-4"></div>
 </main>
 
-<footer class="py-3 text-center small bg-light">Capital ENT & Sinus Center © 2025</footer>
+<footer class="osa-footer">
+  <div class="container text-center">
+    <p class="mb-1">Capital ENT &amp; Sinus Center</p>
+    <p class="small osa-footer-muted mb-0">&copy; 2025 &bull; OSA Phenotyper is a clinical decision-support tool and does not replace professional judgment.</p>
+  </div>
+</footer>
+
+<!-- PDF Review Modal -->
+<div class="modal fade" id="pdfReviewModal" tabindex="-1" aria-labelledby="pdfReviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfReviewLabel"><i class="bi bi-file-earmark-check"></i> Review Extracted Values</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small">Uncheck any values you do not want to apply. Edit values if needed.</p>
+        <table class="table table-sm" id="pdfReviewTable">
+          <thead><tr><th></th><th>Field</th><th>Value</th><th>Confidence</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="pdfNotFound" class="text-muted small mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btnApplyPdf"><i class="bi bi-check-lg"></i> Apply Selected</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Questionnaire Review Modal -->
+<div class="modal fade" id="questionnaireReviewModal" tabindex="-1" aria-labelledby="questionnaireReviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="questionnaireReviewLabel"><i class="bi bi-clipboard-check"></i> Review Questionnaire Scores</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small">Uncheck any scores you do not want to apply. Edit values if needed.</p>
+        <table class="table table-sm" id="questionnaireReviewTable">
+          <thead><tr><th></th><th>Score</th><th>Value</th><th>Confidence</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="questionnaireNotFound" class="text-muted small mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btnApplyQuestionnaire"><i class="bi bi-check-lg"></i> Apply Selected</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
+<script src="js/config.js"></script>
+<script src="js/validate.js"></script>
+<script src="js/pdf-parser.js"></script>
+<script src="js/questionnaire-parser.js"></script>
+<script src="js/pdf-export.js"></script>
 <script src="js/app.js"></script>
+<script>
+/* ── Study-type toggle ────────────────────────────────────────── */
+document.querySelectorAll('input[name="studyType"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const v = radio.value;
+    document.getElementById('sleepStudyWatchpat').style.display = (v === 'psg') ? 'none' : '';
+    document.getElementById('sleepStudyPSG').style.display = (v === 'watchpat') ? 'none' : '';
+  });
+});
+// Apply initial state (WatchPAT selected by default → hide PSG)
+document.getElementById('sleepStudyPSG').style.display = 'none';
+
+/* ── Prior CPAP toggle ──────────────────────────────────────── */
+document.getElementById('priorCpap').addEventListener('change', function() {
+  document.getElementById('cpapDetails').style.display = this.checked ? '' : 'none';
+  if (!this.checked) {
+    // Clear CPAP detail fields when unchecked
+    document.getElementById('cpapCurrent').checked = false;
+    document.querySelector('[name="cpapHelped"]').value = '';
+    document.querySelector('[name="cpapRetry"]').value = '';
+    document.querySelectorAll('#cpapDetails input[type="checkbox"]').forEach(cb => cb.checked = false);
+  }
+});
+
+/* ── New Patient / Clear Form ─────────────────────────────────── */
+document.getElementById('btnClearForm').addEventListener('click', () => {
+  if(!confirm('Clear all fields and start a new patient?')) return;
+  document.getElementById('form').reset();
+  document.getElementById('patientSummary').innerHTML = '';
+  document.getElementById('clinicianReport').innerHTML = '';
+  const alerts = document.getElementById('validationAlerts');
+  if(alerts) alerts.innerHTML = '';
+  // Re-apply study type default
+  document.getElementById('sleepStudyPSG').style.display = 'none';
+  document.getElementById('sleepStudyWatchpat').style.display = '';
+  // Hide CPAP details
+  document.getElementById('cpapDetails').style.display = 'none';
+  // Reset progress track
+  document.querySelectorAll('.osa-progress-step').forEach(s => s.classList.remove('completed','active'));
+});
+
+/* ── Bootstrap tooltips ───────────────────────────────────────── */
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+  new bootstrap.Tooltip(el);
+});
+
+/* ── Questionnaire PDF Drop Zone ─────────────────────────────── */
+(function initQuestionnaireDropZone() {
+  const zone   = document.getElementById('questionnaireDropZone');
+  const input  = document.getElementById('questionnaireFileInput');
+  const status = document.getElementById('questionnaireStatus');
+  if (!zone || !input) return;
+
+  zone.addEventListener('click', (e) => { if (e.target.tagName !== 'LABEL') input.click(); });
+  input.addEventListener('change', () => { if (input.files[0]) handleQuestionnaireFile(input.files[0]); });
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('border-primary'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('border-primary'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('border-primary');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') handleQuestionnaireFile(file);
+    else status.innerHTML = '<span class="text-danger">Please drop a PDF file.</span>';
+  });
+
+  async function handleQuestionnaireFile(file) {
+    status.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split"></i> Parsing questionnaire…</span>';
+    try {
+      const result = await QuestionnaireParser.parse(file);
+      if (!result.fields.length) {
+        status.innerHTML = '<span class="text-warning">No scores could be extracted. ' + (result.notFound.join('; ') || '') + '</span>';
+        return;
+      }
+      showQuestionnaireReview(result);
+      status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Scores extracted — review and apply.</span>';
+    } catch (err) {
+      status.innerHTML = '<span class="text-danger">Error: ' + err.message + '</span>';
+    }
+  }
+
+  function showQuestionnaireReview(result) {
+    const tbody = document.querySelector('#questionnaireReviewTable tbody');
+    tbody.innerHTML = '';
+    const confBadge = (c) => c === 'high'
+      ? '<span class="badge bg-success">High</span>'
+      : '<span class="badge bg-warning text-dark">Medium</span>';
+
+    result.fields.forEach((f, i) => {
+      const tr = document.createElement('tr');
+      const type = f.type || 'number';
+      let valueCell;
+      if (type === 'checkbox') {
+        valueCell = `<span class="badge bg-info text-dark">${f.value ? '✓ Yes' : '✗ No'}</span>`;
+      } else if (type === 'select') {
+        valueCell = `<span class="badge bg-info text-dark">${f.value}</span>`;
+      } else {
+        valueCell = `<input type="number" class="form-control form-control-sm" style="width:80px;" value="${f.value}" data-name="${f.name}">`;
+      }
+      tr.innerHTML = `
+        <td><input type="checkbox" class="form-check-input" checked data-idx="${i}"></td>
+        <td>${f.label}</td>
+        <td>${valueCell}</td>
+        <td>${confBadge(f.confidence)}</td>`;
+      tr.dataset.fieldName = f.name;
+      tr.dataset.fieldType = type;
+      tr.dataset.fieldValue = type === 'checkbox' ? (f.value ? '1' : '0') : f.value;
+      tbody.appendChild(tr);
+    });
+
+    const notFoundDiv = document.getElementById('questionnaireNotFound');
+    notFoundDiv.innerHTML = result.notFound.length
+      ? '<strong>Not found:</strong> ' + result.notFound.join('; ')
+      : '';
+
+    const modal = new bootstrap.Modal(document.getElementById('questionnaireReviewModal'));
+    modal.show();
+  }
+
+  function flashGreen(el) {
+    el.style.transition = 'background 0.3s';
+    el.style.background = '#d4edda';
+    setTimeout(() => { el.style.background = ''; }, 1500);
+  }
+
+  document.getElementById('btnApplyQuestionnaire').addEventListener('click', () => {
+    const rows = document.querySelectorAll('#questionnaireReviewTable tbody tr');
+    rows.forEach(tr => {
+      const cb = tr.querySelector('input[type="checkbox"]');
+      if (!cb || !cb.checked) return;
+      const name = tr.dataset.fieldName;
+      const type = tr.dataset.fieldType;
+      const rawVal = tr.dataset.fieldValue;
+      const formField = document.querySelector(`[name="${name}"]`);
+      if (!formField) return;
+
+      if (type === 'checkbox') {
+        formField.checked = rawVal === '1';
+        flashGreen(formField.closest('.form-check') || formField);
+        formField.dispatchEvent(new Event('change', { bubbles: true }));
+      } else if (type === 'select') {
+        formField.value = rawVal;
+        flashGreen(formField);
+        formField.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+        // numeric — use editable input value
+        const numInput = tr.querySelector('input[type="number"]');
+        formField.value = numInput ? numInput.value : rawVal;
+        flashGreen(formField);
+        formField.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    bootstrap.Modal.getInstance(document.getElementById('questionnaireReviewModal')).hide();
+  });
+})();
+
+/* ── Progress Track ─────────────────────────────────────────── */
+(function initProgressTrack() {
+  const sectionFields = {
+    demographics: ['age','sex','bmi','neck','cvd'],
+    treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','cpapPressure'],
+    exam:         ['tonsils','ftp'],
+    imaging:      ['vDeg','oDeg','tDeg','eDeg'],
+    questionnaires:['ess','isi','noseScore','nasalObs'],
+    'sleep-study': ['pahi','odi','nadir','supPahi','nonSupPahi','remPahi','nremPahi','csr','pahic','pahic4','hbAreaPH','hbUnder90PH','patRdi','tst','snoreIdx','dhr','ahi','ahiSup','ahiNonSup','ahiREM','ahiNREM','cai','arInd','nadirPsg']
+  };
+  const steps = document.querySelectorAll('.osa-progress-step');
+  const form = document.getElementById('form');
+
+  function updateProgress() {
+    steps.forEach(step => {
+      const section = step.dataset.section;
+      const fields = sectionFields[section] || [];
+      const hasValue = fields.some(name => {
+        const el = form.querySelector(`[name="${name}"]`);
+        if (!el) return false;
+        if (el.type === 'checkbox') return el.checked;
+        if (el.tagName === 'SELECT') {
+          const val = el.value;
+          return val && val !== '0' && val !== 'I' && val !== 'M' && val !== '\u2014';
+        }
+        return el.value !== '';
+      });
+      step.classList.toggle('completed', hasValue);
+    });
+  }
+
+  form.addEventListener('input', updateProgress);
+  form.addEventListener('change', updateProgress);
+
+  // Click to scroll
+  steps.forEach(step => {
+    step.addEventListener('click', () => {
+      const target = document.querySelector(step.dataset.target);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Expand if collapsed
+        const collapse = target.querySelector('.collapse');
+        if (collapse && !collapse.classList.contains('show')) {
+          new bootstrap.Collapse(collapse, { toggle: true });
+        }
+      }
+    });
+  });
+
+  // Focus tracking
+  form.addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (!el.name) return;
+    steps.forEach(step => {
+      const fields = sectionFields[step.dataset.section] || [];
+      step.classList.toggle('active', fields.includes(el.name));
+    });
+  });
+})();
+</script>
 </body></html>
