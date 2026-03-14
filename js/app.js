@@ -672,7 +672,7 @@ document.getElementById('form').addEventListener('submit', e => {
         if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
           pushRec(recs,'Optimize CPAP comfort (humidification, auto-ramp, mask fit, desensitization).','CPAP-OPT');
         }
-        pushRec(recs,'Add CBT-I for insomnia; consider low-dose sedative under specialist supervision.','CBTI');
+        pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) concurrently with OSA treatment. COMISA patients have significantly lower CPAP adherence without insomnia management. Consider sleep psychology referral.','CBTI');
         break;
       case 'High Loop Gain':
         if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
@@ -763,6 +763,13 @@ document.getElementById('form').addEventListener('submit', e => {
   }
   pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
 
+  /* ─── COMISA (Co-Morbid Insomnia and Sleep Apnea) ─────── */
+  const hasCOMISA = exists(isi) && isi >= 15 && exists(ahi) && ahi >= 5;
+  if (hasCOMISA) {
+    // Ensure CBT-I rec is present even if Low Arousal Threshold wasn't detected
+    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): Initiate CBT-I concurrently with OSA treatment. Untreated insomnia is the strongest predictor of CPAP non-adherence. Consider sleep psychology referral before or at the same time as CPAP initiation.', 'CBTI');
+  }
+
   /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
   let subtype = 'Minimally-symptomatic';
   if(ess >= T.subtype.sleepyEss) subtype = 'Sleepy';
@@ -770,7 +777,9 @@ document.getElementById('form').addEventListener('submit', e => {
 
   const groupInfo = {
     'Sleepy': 'You feel very sleepy during the day. Treating OSA usually improves alertness, mood, and driving safety within weeks.',
-    'Disturbed-sleep': 'Your sleep is broken or restless even if you are not very sleepy in the day. Treating the breathing problem and insomnia together works best.',
+    'Disturbed-sleep': hasCOMISA
+      ? 'Your sleep is broken or restless \u2014 you have both insomnia and sleep apnea (a combination called COMISA). Treating both conditions together is essential for the best results.'
+      : 'Your sleep is broken or restless even if you are not very sleepy in the day. Treating the breathing problem and insomnia together works best.',
     'Minimally-symptomatic': 'You may not notice many symptoms, but repeated breathing pauses can strain the heart and brain over time.'
   };
 
@@ -798,8 +807,15 @@ document.getElementById('form').addEventListener('submit', e => {
         s += ' The good news is that weight loss, oral appliances, and certain surgeries can all help open the airway.';
         return s;
       }
-      case 'Low Arousal Threshold':
-        return 'Your brain wakes you up very easily during sleep — even a small change in breathing can pull you out of deeper sleep stages. This means your sleep is fragmented, and you may feel unrefreshed in the morning even if you slept a full night. Cognitive behavioral therapy for insomnia (CBT-I) and careful CPAP pressure settings can help you stay asleep longer and get more restorative rest.';
+      case 'Low Arousal Threshold': {
+        let s = 'Your brain wakes you up very easily during sleep \u2014 even a small change in breathing can pull you out of deeper sleep stages. This means your sleep is fragmented, and you may feel unrefreshed in the morning even if you slept a full night.';
+        if (ctx.isi >= 15) {
+          s += ' Your questionnaire also shows significant insomnia symptoms. When insomnia occurs together with sleep apnea, it is called COMISA (co-morbid insomnia and sleep apnea). This is very common and important to treat \u2014 insomnia makes it harder to use CPAP and can keep you from getting the full benefit of any sleep apnea treatment. Treating the insomnia with a program called CBT-I (cognitive behavioral therapy for insomnia) at the same time as treating your sleep apnea leads to the best results.';
+        } else {
+          s += ' Cognitive behavioral therapy for insomnia (CBT-I) and careful CPAP pressure settings can help you stay asleep longer and get more restorative rest.';
+        }
+        return s;
+      }
 
       case 'High Loop Gain':
         return 'Your brain\'s breathing control system is extra sensitive. When a pause in breathing ends, your body may "over-correct" by breathing too hard, which causes the airway to collapse again — creating a cycle of pauses. This is sometimes called an unstable breathing pattern. Treatments that stabilize breathing, like CPAP at the right pressure, are often very effective.';
@@ -896,6 +912,9 @@ document.getElementById('form').addEventListener('submit', e => {
   } else if(hasNasal){
     readiness = 'Optimize comfort first';
     readinessDetail = 'Nasal blockage can make CPAP feel stuffy or uncomfortable. Before starting, a daily saline rinse and nasal steroid spray can open up airflow. Your doctor may also recommend an ENT evaluation to check whether the blockage needs further treatment. Clearing the nose first makes CPAP much more comfortable and effective.';
+  } else if(hasCOMISA){
+    readiness = 'Address insomnia first';
+    readinessDetail = 'You have both insomnia and sleep apnea (COMISA). Starting CPAP without addressing insomnia often leads to frustration and poor adherence. Your doctor will likely recommend starting a cognitive behavioral therapy for insomnia (CBT-I) program right away, and beginning CPAP after a few weeks of insomnia treatment \u2014 or at the same time with a gradual, comfort-focused approach.';
   } else if(hasLowAr){
     readiness = 'Optimize comfort first';
     readinessDetail = 'Because your brain wakes easily during sleep, jumping straight into CPAP at full pressure can feel uncomfortable at first. A gradual approach works best: start by wearing the mask during the day while reading or watching TV, then slowly increase nighttime use. Your doctor may also use a lower starting pressure and ramp it up over time.';
@@ -906,9 +925,13 @@ document.getElementById('form').addEventListener('submit', e => {
   if(hasNasal){
     checklist.push('Start a daily saline nasal rinse (like NeilMed or a neti pot) each morning and evening. Ask your doctor about adding a nasal steroid spray such as Flonase. If blockage persists, schedule an ENT evaluation to see if further treatment is needed.');
   }
-  if(hasLowAr){
-    checklist.push('Talk to your doctor about cognitive behavioral therapy for insomnia (CBT-I), which teaches your brain to sleep more deeply. Keep a consistent bedtime and wake time — even on weekends — to strengthen your sleep drive.');
-    checklist.push('Practice wearing your CPAP mask while awake — for example, while reading or watching TV for 15 to 30 minutes each day. This helps your brain get comfortable with the device before you use it overnight.');
+  if(hasCOMISA){
+    checklist.push('Ask your doctor about starting a CBT-I (cognitive behavioral therapy for insomnia) program \u2014 this can be in-person with a sleep psychologist or through an evidence-based online program. CBT-I is the most effective long-term treatment for insomnia and significantly improves CPAP success when you have both conditions.');
+    checklist.push('Start a consistent sleep schedule now: go to bed and wake up at the same time every day, including weekends. Avoid napping during the day. This helps reset your body\'s sleep drive and makes falling asleep at night easier.');
+    checklist.push('When starting CPAP, use it for short periods first while relaxed (watching TV, reading), then gradually increase to overnight use. A slow, comfortable start is key when you have insomnia \u2014 rushing it can trigger frustration and avoidance.');
+  } else if(hasLowAr){
+    checklist.push('Talk to your doctor about cognitive behavioral therapy for insomnia (CBT-I), which teaches your brain to sleep more deeply. Keep a consistent bedtime and wake time \u2014 even on weekends \u2014 to strengthen your sleep drive.');
+    checklist.push('Practice wearing your CPAP mask while awake \u2014 for example, while reading or watching TV for 15 to 30 minutes each day. This helps your brain get comfortable with the device before you use it overnight.');
   }
   if(out.phen.includes('Positional OSA')){
     checklist.push('Try a positional therapy device (a wearable that gently vibrates when you roll onto your back) or use a body pillow to stay on your side. Use it every night for 2 to 4 weeks, then check in with your doctor about results.');
@@ -996,6 +1019,8 @@ document.getElementById('form').addEventListener('submit', e => {
       return 'A structured weight-management program can significantly reduce sleep apnea severity. Even a 10% weight loss can meaningfully decrease the number of breathing pauses per hour and improve your overall health. Your doctor can help connect you with resources to get started.';
     if(/^Nasal optimization/i.test(t))
       return 'Improving nasal airflow is an important first step. Daily saline rinses, nasal steroid sprays (like Flonase), and an evaluation by an ENT specialist can reduce nasal blockage. Better nasal breathing makes CPAP and oral appliances work more comfortably.';
+    if(/CBT-I|COMISA|insomnia.*concurrent/i.test(t))
+      return 'You have both sleep apnea and insomnia — a combination called COMISA that affects about 1 in 3 people with sleep apnea. This is important because insomnia can make it much harder to get used to CPAP or other treatments. The good news is that a program called CBT-I (cognitive behavioral therapy for insomnia) can help retrain your brain to sleep more deeply. Research shows that treating insomnia at the same time as sleep apnea leads to better results for both conditions. Your doctor may recommend working with a sleep psychologist or an online CBT-I program.';
     if(/Inspire/i.test(t))
       return 'Inspire therapy is an implanted device that stimulates the nerve controlling your tongue, keeping the airway open during sleep. Your doctor will evaluate whether you are a candidate based on specific criteria including your AHI, BMI, and airway anatomy.';
     if(/Surgical correction/i.test(t))
@@ -1145,6 +1170,10 @@ document.getElementById('form').addEventListener('submit', e => {
   if(out.phen.includes('Elevated Delta Heart Rate') && cvd){
     guardrails.push('Elevated \u0394HR with existing CVD \u2014 consider cardiology monitoring and aggressive PAP adherence targets.');
   }
+  if(hasCOMISA){
+    const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
+    guardrails.push(`COMISA: ${comisaSeverity} (ISI ${isi}) co-morbid with OSA. Untreated insomnia is the single strongest predictor of CPAP non-adherence. Initiate CBT-I before or concurrent with CPAP. Avoid sedative-hypnotics as monotherapy (may worsen OSA). If using a sedative bridge, ensure concurrent PAP.`);
+  }
 
   const surgTargets = [];
   if(ctSeptum || ctTurbs) surgTargets.push('Nasal: septum/turbinates');
@@ -1200,7 +1229,8 @@ document.getElementById('form').addEventListener('submit', e => {
   const noteCards   = `Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: If High Loop Gain persists with TECSA, consider O\u2082/acetazolamide; ASV only if LVEF > 45%.`;
 
   const followUps = [];
-  if(hasLowAr) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
+  if(hasCOMISA) followUps.push('COMISA follow-up: reassess ISI at 4\u20136 weeks. If insomnia persists despite CBT-I, consider sleep psychology referral. Monitor CPAP adherence closely \u2014 insomnia is the top predictor of CPAP abandonment.');
+  if(hasLowAr && !hasCOMISA) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');
