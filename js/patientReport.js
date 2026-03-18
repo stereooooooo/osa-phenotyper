@@ -5,7 +5,7 @@
    Depends on: Bootstrap 5.3.3, Bootstrap Icons, Inter font
    ─────────────────────────────────────────────────────────────────────────*/
 
-const PatientReport = (() => {
+var PatientReport = (() => {
 
   /* ── Logo pre-loading ─────────────────────────────────────────────────── */
   let logoDataURI = '';
