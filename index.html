@@ -8,8 +8,65 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="css/styles.css" rel="stylesheet">
+<link href="css/patientReport.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+
+<!-- ===== Login Screen ===== -->
+<div id="loginScreen" class="d-flex align-items-center justify-content-center min-vh-100">
+  <div class="card shadow" style="width:380px;">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <img src="capentlogo.svg" alt="Capital ENT logo" style="height:50px;" class="mb-2">
+        <h5 class="mb-0">OSA Phenotyper</h5>
+        <small class="text-muted">Sign in to continue</small>
+      </div>
+      <div id="loginError" class="alert alert-danger d-none small"></div>
+
+      <!-- Standard login -->
+      <div id="loginForm">
+        <div class="mb-3">
+          <label class="form-label small">Email</label>
+          <input type="email" id="loginEmail" class="form-control" autocomplete="username" autofocus>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Password</label>
+          <input type="password" id="loginPassword" class="form-control" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary w-100" id="btnLogin">
+          <span id="loginSpinner" class="spinner-border spinner-border-sm d-none me-1"></span>
+          Sign In
+        </button>
+      </div>
+
+      <!-- New password challenge -->
+      <div id="newPasswordForm" class="d-none">
+        <p class="small text-muted">You must set a new password to continue.</p>
+        <div class="mb-3">
+          <label class="form-label small">New Password</label>
+          <input type="password" id="newPassword" class="form-control" autocomplete="new-password">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Confirm Password</label>
+          <input type="password" id="newPasswordConfirm" class="form-control" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary w-100" id="btnSetNewPassword">Set Password</button>
+      </div>
+
+      <!-- MFA challenge -->
+      <div id="mfaForm" class="d-none">
+        <p class="small text-muted">Enter the code from your authenticator app.</p>
+        <div class="mb-3">
+          <input type="text" id="mfaCode" class="form-control text-center" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+        </div>
+        <button class="btn btn-primary w-100" id="btnVerifyMfa">Verify</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Main App (hidden until authenticated) ===== -->
+<div id="appContainer" class="d-none">
 
 <header class="navbar navbar-expand-lg sticky-top osa-navbar">
   <div class="container-fluid">
@@ -17,9 +74,55 @@
       <img src="capentlogo.svg" alt="Capital ENT logo" style="height:40px;">
       <span class="osa-nav-title d-none d-md-inline">OSA Phenotyper</span>
     </a>
-    <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New Patient</button>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-people"></i> Patients</button>
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New Patient</button>
+      <span class="text-light small d-none d-md-inline ms-2" id="userEmail"></span>
+      <button class="btn btn-sm btn-outline-light no-print" id="btnSignOut" title="Sign out"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
   </div>
 </header>
+
+<!-- ===== Patient List Modal ===== -->
+<div class="modal fade" id="patientListModal" tabindex="-1" aria-labelledby="patientListLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="patientListLabel"><i class="bi bi-people"></i> Patient List</h5>
+        <div class="ms-auto me-3" style="width:250px;">
+          <input type="text" id="patientSearch" class="form-control form-control-sm" placeholder="Search by name or MRN...">
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div id="patientListLoading" class="text-center py-4">
+          <div class="spinner-border text-primary"></div>
+          <p class="small text-muted mt-2">Loading patients...</p>
+        </div>
+        <div id="patientListEmpty" class="text-center py-4 d-none">
+          <i class="bi bi-inbox text-muted" style="font-size:2rem;"></i>
+          <p class="text-muted mt-2">No patients yet. Click <strong>New Patient</strong> to add one.</p>
+        </div>
+        <table class="table table-hover table-sm mb-0 mt-2" id="patientListTable">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>DOB</th>
+              <th>MRN</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="patientListBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <main class="container my-4">
 <form id="form" novalidate>
@@ -62,6 +165,53 @@
           <div id="questionnaireStatus" class="small mt-1"></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Patient Identifier Bar ===== -->
+<div class="card mb-3 border-primary" id="patientIdBar" style="display:none;">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-3">
+      <span class="badge bg-primary" id="patientStatusBadge">New Patient</span>
+      <strong id="patientNameDisplay"></strong>
+      <span class="text-muted small" id="patientDobDisplay"></span>
+      <span class="text-muted small" id="patientMrnDisplay"></span>
+      <span class="ms-auto text-muted small" id="patientLastSaved"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Patient Name / DOB / MRN (for new or editing) ===== -->
+<div class="card mb-3" id="cardPatientInfo">
+  <div class="card-header"><i class="bi bi-person-vcard"></i> Patient Information</div>
+  <div class="card-body row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label required mb-1">Patient Name</label>
+      <input type="text" id="patientName" class="form-control form-control-sm" placeholder="Last, First">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label required mb-1">Date of Birth</label>
+      <input type="date" id="patientDob" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label mb-1">MRN</label>
+      <input type="text" id="patientMrn" class="form-control form-control-sm" placeholder="Medical Record Number">
+    </div>
+  </div>
+  <div class="mt-3 px-3 pb-2">
+    <label class="form-label mb-1 small fw-semibold text-muted">Completed Steps</label>
+    <div id="patientMilestones" class="d-flex flex-wrap" style="gap:0.15rem 1rem;">
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-initial-eval" value="Initial Eval"><label class="form-check-label small" for="ms-initial-eval">Initial Eval</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-hst-ordered" value="HST Ordered"><label class="form-check-label small" for="ms-hst-ordered">HST Ordered</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-hst-reviewed" value="HST Reviewed"><label class="form-check-label small" for="ms-hst-reviewed">HST Reviewed</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-cpap-trial" value="CPAP Trial"><label class="form-check-label small" for="ms-cpap-trial">CPAP Trial</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-cpap-followup" value="CPAP Follow-up"><label class="form-check-label small" for="ms-cpap-followup">CPAP Follow-up</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-dise-scheduled" value="DISE Scheduled"><label class="form-check-label small" for="ms-dise-scheduled">DISE Scheduled</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-dise-completed" value="DISE Completed"><label class="form-check-label small" for="ms-dise-completed">DISE Completed</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-treatment-plan" value="Treatment Plan"><label class="form-check-label small" for="ms-treatment-plan">Treatment Plan</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-surgery-scheduled" value="Surgery Scheduled"><label class="form-check-label small" for="ms-surgery-scheduled">Surgery Scheduled</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-post-op" value="Post-Op"><label class="form-check-label small" for="ms-post-op">Post-Op</label></div>
     </div>
   </div>
 </div>
@@ -299,7 +449,8 @@
 <!-- ===== Validation Alerts & Submit ===== -->
 <div id="validationAlerts" class="mt-3"></div>
 
-<div class="text-center mt-4">
+<div class="text-center mt-4 d-flex justify-content-center gap-3">
+  <button type="button" class="btn btn-success btn-lg px-4" id="btnSavePatient"><i class="bi bi-cloud-upload"></i> Save Patient</button>
   <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
 </div>
 
@@ -309,6 +460,8 @@
 <div id="patientSummary"></div>
 <div id="clinicianReport" class="mt-4"></div>
 </main>
+
+</div><!-- /appContainer -->
 
 <footer class="osa-footer">
   <div class="container text-center">
@@ -369,9 +522,13 @@
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
+<script src="js/aws-config.js"></script>
 <script src="js/config.js"></script>
 <script src="js/validate.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
 <script src="js/pdf-parser.js"></script>
 <script src="js/questionnaire-parser.js"></script>
 <script src="js/pdf-export.js"></script>
@@ -589,6 +746,358 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       step.classList.toggle('active', fields.includes(el.name));
     });
   });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   Authentication & Patient Database Orchestration
+   ══════════════════════════════════════════════════════════════ */
+(function initAuthAndDb() {
+  const loginScreen = document.getElementById('loginScreen');
+  const appContainer = document.getElementById('appContainer');
+  const loginError = document.getElementById('loginError');
+  const isConfigured = AWS_CONFIG.userPoolId && AWS_CONFIG.userPoolClientId;
+
+  // ── If AWS is not configured, skip auth and show app directly ──
+  if (!isConfigured) {
+    loginScreen.classList.add('d-none');
+    appContainer.classList.remove('d-none');
+    // Hide DB-dependent buttons
+    document.getElementById('btnSavePatient').style.display = 'none';
+    document.getElementById('btnPatientList').style.display = 'none';
+    document.getElementById('btnSignOut').style.display = 'none';
+    document.getElementById('cardPatientInfo').style.display = 'none';
+    return;
+  }
+
+  // ── Initialize auth & db ────────────────────────────────────
+  OSAAuth.init(AWS_CONFIG);
+  OSADatabase.init(AWS_CONFIG);
+
+  let currentPatientId = null;
+  let pendingCognitoUser = null;
+
+  function showError(msg) {
+    loginError.textContent = msg;
+    loginError.classList.remove('d-none');
+  }
+  function clearError() {
+    loginError.classList.add('d-none');
+  }
+
+  function showApp() {
+    loginScreen.classList.add('d-none');
+    appContainer.classList.remove('d-none');
+    OSAAuth.getUserEmail().then(email => {
+      document.getElementById('userEmail').textContent = email || '';
+    });
+    OSAAuth.startIdleWatch(() => {
+      alert('Session expired due to inactivity. Please sign in again.');
+      showLogin();
+    });
+  }
+
+  function showLogin() {
+    OSAAuth.stopIdleWatch();
+    appContainer.classList.add('d-none');
+    loginScreen.classList.remove('d-none');
+    document.getElementById('loginForm').classList.remove('d-none');
+    document.getElementById('newPasswordForm').classList.add('d-none');
+    document.getElementById('mfaForm').classList.add('d-none');
+    clearError();
+    currentPatientId = null;
+  }
+
+  // ── Check existing session on load ──────────────────────────
+  OSAAuth.isAuthenticated().then(authed => {
+    if (authed) showApp();
+    // else stays on login screen
+  });
+
+  // ── Login button ────────────────────────────────────────────
+  document.getElementById('btnLogin').addEventListener('click', async () => {
+    clearError();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) return showError('Enter email and password.');
+
+    document.getElementById('loginSpinner').classList.remove('d-none');
+    try {
+      const result = await OSAAuth.signIn(email, password);
+      if (result.challenge === 'NEW_PASSWORD_REQUIRED') {
+        pendingCognitoUser = result.cognitoUser;
+        document.getElementById('loginForm').classList.add('d-none');
+        document.getElementById('newPasswordForm').classList.remove('d-none');
+      } else if (result.challenge === 'MFA_REQUIRED') {
+        pendingCognitoUser = result.cognitoUser;
+        document.getElementById('loginForm').classList.add('d-none');
+        document.getElementById('mfaForm').classList.remove('d-none');
+      } else {
+        showApp();
+      }
+    } catch (err) {
+      showError(err.message || 'Sign in failed.');
+    } finally {
+      document.getElementById('loginSpinner').classList.add('d-none');
+    }
+  });
+
+  // Enter key on password field
+  document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btnLogin').click();
+  });
+
+  // ── New password challenge ──────────────────────────────────
+  document.getElementById('btnSetNewPassword').addEventListener('click', async () => {
+    clearError();
+    const pw = document.getElementById('newPassword').value;
+    const pw2 = document.getElementById('newPasswordConfirm').value;
+    if (pw.length < 12) return showError('Password must be at least 12 characters.');
+    if (pw !== pw2) return showError('Passwords do not match.');
+    try {
+      await OSAAuth.completeNewPassword(pendingCognitoUser, pw);
+      showApp();
+    } catch (err) {
+      showError(err.message || 'Failed to set password.');
+    }
+  });
+
+  // ── MFA challenge ───────────────────────────────────────────
+  document.getElementById('btnVerifyMfa').addEventListener('click', async () => {
+    clearError();
+    const code = document.getElementById('mfaCode').value.trim();
+    if (code.length !== 6) return showError('Enter 6-digit code.');
+    try {
+      await OSAAuth.completeMfa(pendingCognitoUser, code);
+      showApp();
+    } catch (err) {
+      showError(err.message || 'Invalid code.');
+    }
+  });
+
+  // ── Sign out ────────────────────────────────────────────────
+  document.getElementById('btnSignOut').addEventListener('click', () => {
+    OSAAuth.signOut();
+    showLogin();
+  });
+
+  // ── Patient list ────────────────────────────────────────────
+  const patientListModal = new bootstrap.Modal(document.getElementById('patientListModal'));
+  let patientListDebounce = null;
+
+  document.getElementById('btnPatientList').addEventListener('click', async () => {
+    patientListModal.show();
+    await loadPatientList();
+  });
+
+  async function loadPatientList(query) {
+    const loading = document.getElementById('patientListLoading');
+    const empty = document.getElementById('patientListEmpty');
+    const tbody = document.getElementById('patientListBody');
+    const table = document.getElementById('patientListTable');
+
+    loading.classList.remove('d-none');
+    empty.classList.add('d-none');
+    table.classList.add('d-none');
+    tbody.innerHTML = '';
+
+    try {
+      const patients = query
+        ? await OSADatabase.searchPatients(query)
+        : await OSADatabase.listPatients();
+
+      loading.classList.add('d-none');
+
+      if (!patients.length) {
+        empty.classList.remove('d-none');
+        return;
+      }
+
+      table.classList.remove('d-none');
+      patients.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        const statusColors = {
+          'Initial Eval': 'secondary',
+          'HST Ordered': 'info',
+          'HST Reviewed': 'primary',
+          'CPAP Trial': 'warning',
+          'CPAP Follow-up': 'warning',
+          'DISE Scheduled': 'info',
+          'DISE Completed': 'primary',
+          'Treatment Plan': 'success',
+          'Surgery Scheduled': 'danger',
+          'Post-Op': 'dark',
+        };
+        // milestones is an array; status is legacy string — show latest milestone
+        const milestones = Array.isArray(p.milestones) ? p.milestones : (p.status ? [p.status] : []);
+        const latestMs = milestones.length ? milestones[milestones.length - 1] : 'New';
+        const color = statusColors[latestMs] || 'secondary';
+        const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : '';
+        tr.innerHTML = `
+          <td><strong>${escHtml(p.name || '')}</strong></td>
+          <td>${escHtml(p.dob || '')}</td>
+          <td><code>${escHtml(p.mrn || '—')}</code></td>
+          <td><span class="badge bg-${color}">${escHtml(latestMs)}</span></td>
+          <td class="text-muted small">${updated}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>`;
+
+        // Click row to load patient (but not if clicking delete)
+        tr.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-delete-patient')) return;
+          loadPatient(p.patientId);
+          patientListModal.hide();
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      // Delete buttons
+      tbody.querySelectorAll('.btn-delete-patient').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          if (!confirm('Delete this patient? This cannot be undone.')) return;
+          try {
+            await OSADatabase.deletePatient(id);
+            if (currentPatientId === id) clearCurrentPatient();
+            await loadPatientList(document.getElementById('patientSearch').value.trim());
+          } catch (err) {
+            alert('Failed to delete: ' + err.message);
+          }
+        });
+      });
+    } catch (err) {
+      loading.classList.add('d-none');
+      empty.classList.remove('d-none');
+      empty.querySelector('p').textContent = 'Error loading patients: ' + err.message;
+    }
+  }
+
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // Search with debounce
+  document.getElementById('patientSearch').addEventListener('input', (e) => {
+    clearTimeout(patientListDebounce);
+    patientListDebounce = setTimeout(() => {
+      const q = e.target.value.trim();
+      loadPatientList(q || undefined);
+    }, 300);
+  });
+
+  // ── Load patient into form ──────────────────────────────────
+  async function loadPatient(id) {
+    try {
+      const patient = await OSADatabase.getPatient(id);
+      currentPatientId = patient.patientId;
+
+      // Fill patient info fields
+      document.getElementById('patientName').value = patient.name || '';
+      document.getElementById('patientDob').value = patient.dob || '';
+      document.getElementById('patientMrn').value = patient.mrn || '';
+      // Load milestones (checkboxes)
+      const milestones = Array.isArray(patient.milestones) ? patient.milestones : (patient.status ? [patient.status] : []);
+      document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => {
+        cb.checked = milestones.includes(cb.value);
+      });
+
+      // Fill clinical form
+      const form = document.getElementById('form');
+      form.reset();
+      if (patient.formData) {
+        OSADatabase.populateForm(form, patient.formData);
+      }
+
+      // Update identifier bar
+      updatePatientBar(patient);
+
+      // Clear reports
+      document.getElementById('patientSummary').innerHTML = '';
+      document.getElementById('clinicianReport').innerHTML = '';
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      alert('Error loading patient: ' + err.message);
+    }
+  }
+
+  function updatePatientBar(patient) {
+    const bar = document.getElementById('patientIdBar');
+    bar.style.display = '';
+    const ms = Array.isArray(patient.milestones) ? patient.milestones : (patient.status ? [patient.status] : []);
+    document.getElementById('patientStatusBadge').textContent = ms.length ? ms[ms.length - 1] : 'New';
+    document.getElementById('patientNameDisplay').textContent = patient.name || '';
+    document.getElementById('patientDobDisplay').textContent = patient.dob ? 'DOB: ' + patient.dob : '';
+    document.getElementById('patientMrnDisplay').textContent = patient.mrn ? 'MRN: ' + patient.mrn : '';
+    document.getElementById('patientLastSaved').textContent = patient.updatedAt
+      ? 'Last saved: ' + new Date(patient.updatedAt).toLocaleString()
+      : '';
+  }
+
+  function clearCurrentPatient() {
+    currentPatientId = null;
+    document.getElementById('patientIdBar').style.display = 'none';
+    document.getElementById('patientName').value = '';
+    document.getElementById('patientDob').value = '';
+    document.getElementById('patientMrn').value = '';
+    document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => cb.checked = false);
+  }
+
+  // ── Save patient ────────────────────────────────────────────
+  document.getElementById('btnSavePatient').addEventListener('click', async () => {
+    const name = document.getElementById('patientName').value.trim();
+    const dob = document.getElementById('patientDob').value;
+    const mrn = document.getElementById('patientMrn').value.trim();
+    const milestones = [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value);
+    const status = milestones.length ? milestones[milestones.length - 1] : 'Initial Eval';
+
+    if (!name) { alert('Patient name is required.'); return; }
+    if (!dob) { alert('Date of birth is required.'); return; }
+
+    const form = document.getElementById('form');
+    const formData = OSADatabase.serializeForm(form);
+    const btn = document.getElementById('btnSavePatient');
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+    try {
+      let patient;
+      if (currentPatientId) {
+        patient = await OSADatabase.updatePatient(currentPatientId, {
+          name, dob, mrn, status, milestones, formData,
+          visitAction: 'Data updated',
+        });
+      } else {
+        patient = await OSADatabase.createPatient({
+          name, dob, mrn, status, milestones, formData,
+        });
+        currentPatientId = patient.patientId;
+      }
+      updatePatientBar(patient);
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
+      setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000);
+    } catch (err) {
+      alert('Save failed: ' + err.message);
+      btn.innerHTML = origText;
+      btn.disabled = false;
+    }
+  });
+
+  // ── Override New Patient to also clear DB state ─────────────
+  const origClear = document.getElementById('btnClearForm');
+  origClear.addEventListener('click', () => {
+    clearCurrentPatient();
+  }, true); // capture phase to run before existing handler
+
 })();
 </script>
 </body></html>

@@ -1,0 +1,202 @@
+/* ── Overlay ── */
+.report-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background: #f5f5f5;
+  overflow-y: auto;
+}
+.report-overlay.active {
+  display: block;
+}
+body.report-preview-open {
+  overflow: hidden;
+}
+
+/* ── Overlay Toolbar ── */
+.report-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1061;
+  background: #fff;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* ── Report Container ── */
+.patient-report {
+  max-width: 750px;
+  margin: 2rem auto;
+  background: #fff;
+  padding: 2.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: #374151;
+}
+
+/* ── Header ── */
+.patient-report .report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #1F3A5C;
+}
+.patient-report .report-logo {
+  height: 48px;
+  width: auto;
+}
+.patient-report .report-meta {
+  text-align: right;
+  font-size: 0.85rem;
+  color: #6B7280;
+}
+.patient-report .report-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1F3A5C;
+  margin-bottom: 0.25rem;
+}
+
+/* ── Section Headings ── */
+.patient-report h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1F3A5C;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+/* ── AHI Severity Scale ── */
+.ahi-scale {
+  margin: 1.25rem 0;
+}
+.ahi-scale-bar {
+  display: flex;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.ahi-scale-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #fff;
+}
+.ahi-scale-zone.normal  { background: #22c55e; flex: 5; }
+.ahi-scale-zone.mild    { background: #eab308; flex: 10; color: #374151; }
+.ahi-scale-zone.moderate{ background: #f97316; flex: 15; }
+.ahi-scale-zone.severe  { background: #ef4444; flex: 30; }
+
+.ahi-scale-marker-row {
+  position: relative;
+  height: 24px;
+  margin-top: 4px;
+}
+.ahi-scale-marker {
+  position: absolute;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1F3A5C;
+}
+.ahi-scale-marker::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  margin: 0 auto 2px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 8px solid #1F3A5C;
+  transform: rotate(180deg);
+}
+.ahi-scale-labels {
+  display: flex;
+  font-size: 0.65rem;
+  color: #6B7280;
+  margin-top: 2px;
+}
+.ahi-scale-labels span {
+  text-align: center;
+}
+.ahi-scale-labels span:nth-child(1) { flex: 5; }
+.ahi-scale-labels span:nth-child(2) { flex: 10; }
+.ahi-scale-labels span:nth-child(3) { flex: 15; }
+.ahi-scale-labels span:nth-child(4) { flex: 30; }
+
+/* ── Phenotype List ── */
+.patient-report .phenotype-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.patient-report .phenotype-icon {
+  font-size: 1.3rem;
+  color: #1F3A5C;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* ── Treatment Grouping ── */
+.patient-report .treatment-group-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6B7280;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.patient-report .rec-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── Checklist ── */
+.patient-report .checklist-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+.patient-report .checklist-box {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #9ca3af;
+  border-radius: 3px;
+  margin-top: 0.2rem;
+}
+
+/* ── What-If Scenarios ── */
+.patient-report .whatif-item {
+  background: #f0f9ff;
+  border-left: 3px solid #1F3A5C;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0 6px 6px 0;
+}
+
+/* ── Footer ── */
+.patient-report .report-footer {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #E5E7EB;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: center;
+}
