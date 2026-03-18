@@ -281,7 +281,7 @@ ${subtypeHtml}`;
      ══════════════════════════════════════════════════════════════════════════ */
   function renderSectionC(data) {
     const phen = data.phen || [];
-    if (phen.length === 0) return '';
+    if (phen.length === 0 || getReportStage(data) !== 'post-study') return '';
 
     const iconMap = {
       'High Anatomical Contribution':  'bi-body-text',

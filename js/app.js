@@ -117,8 +117,8 @@ function ahiSeverity(ahi) {
   style.textContent = `
     @media print {
       body * { visibility: hidden !important; }
-      #patientSummary, #patientSummary * { visibility: visible !important; }
-      #patientSummary { position: absolute; left: 0; top: 0; width: 100%; padding: 1rem; }
+      .patient-report, .patient-report * { visibility: visible !important; }
+      .patient-report { position: absolute; left: 0; top: 0; width: 100%; padding: 1rem; }
       .no-print { display: none !important; }
       h2, h3, h4, h5 { page-break-after: avoid; }
       ul, ol { page-break-inside: avoid; }
@@ -1150,5 +1150,11 @@ document.getElementById('btnCloseReport')?.addEventListener('click', () => {
 document.getElementById('btnDownloadReportPdf')?.addEventListener('click', () => {
   if (typeof OSAPdfExport !== 'undefined' && OSAPdfExport.exportPatientReportPDF) {
     OSAPdfExport.exportPatientReportPDF();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('reportOverlay')?.classList.contains('active')) {
+    document.getElementById('btnCloseReport')?.click();
   }
 });
