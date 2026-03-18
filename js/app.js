@@ -1105,7 +1105,7 @@ document.getElementById('form').addEventListener('submit', e => {
     subtype,
     severity: ahiSeverity(ahi) || 'normal',
     primaryAHI: ahi,
-    patientName: f.get('patientName') || '',
+    patientName: (document.getElementById('patientName')?.value || '').trim(),
     reportDate: new Date().toISOString().split('T')[0],
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
   };
