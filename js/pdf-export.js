@@ -96,6 +96,37 @@ const OSAPdfExport = (() => {
 
     /* Section title */
     .osa-section-title { color: #1F3A5C; font-weight: 700; border-bottom: 2px solid #C8102E; padding-bottom: 4px; display: inline-block; }
+
+    /* Patient report styles for PDF */
+    .patient-report { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.65; color: #374151; }
+    .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #1F3A5C; }
+    .patient-report .report-logo { height: 48px; width: auto; }
+    .patient-report .report-meta { text-align: right; font-size: 12px; color: #6B7280; }
+    .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
+    .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 24px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
+    .ahi-scale { margin: 16px 0; }
+    .ahi-scale-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; }
+    .ahi-scale-zone { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; }
+    .ahi-scale-zone.normal { background: #22c55e; flex: 5; }
+    .ahi-scale-zone.mild { background: #eab308; flex: 10; color: #374151; }
+    .ahi-scale-zone.moderate { background: #f97316; flex: 15; }
+    .ahi-scale-zone.severe { background: #ef4444; flex: 30; }
+    .ahi-scale-marker-row { position: relative; height: 24px; margin-top: 4px; }
+    .ahi-scale-marker { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11px; font-weight: 700; color: #1F3A5C; }
+    .ahi-scale-labels { display: flex; font-size: 9px; color: #6B7280; margin-top: 2px; }
+    .ahi-scale-labels span { text-align: center; }
+    .ahi-scale-labels span:nth-child(1) { flex: 5; }
+    .ahi-scale-labels span:nth-child(2) { flex: 10; }
+    .ahi-scale-labels span:nth-child(3) { flex: 15; }
+    .ahi-scale-labels span:nth-child(4) { flex: 30; }
+    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+    .phenotype-icon { font-size: 18px; color: #1F3A5C; flex-shrink: 0; margin-top: 2px; }
+    .treatment-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 6px; }
+    .rec-item { padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
+    .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
+    .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
+    .whatif-item { background: #f0f9ff; border-left: 3px solid #1F3A5C; padding: 10px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
+    .report-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #9ca3af; text-align: center; }
   `;
 
   /**
@@ -103,7 +134,7 @@ const OSAPdfExport = (() => {
    * @param {string} html - The HTML content to render
    * @param {string} filename - Download filename
    */
-  async function exportFromHTML(html, filename) {
+  async function exportFromHTML(html, filename, addFooter = false) {
     if (typeof jspdf === 'undefined' || typeof html2canvas === 'undefined') {
       alert('PDF export libraries not loaded. Please check your internet connection.');
       return;
@@ -165,6 +196,14 @@ const OSAPdfExport = (() => {
 
         const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
         pdf.addImage(pageImg, 'JPEG', margin, margin, usableWidth, destH);
+
+        // Per-page footer
+        if (addFooter) {
+          pdf.setFontSize(8);
+          pdf.setTextColor(156, 163, 175);
+          const footerText = 'Prepared by Capital ENT \u00B7 ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          pdf.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
+        }
 
         yOffset += usableHeight;
       }
@@ -250,5 +289,30 @@ const OSAPdfExport = (() => {
     return exportFromHTML(html, `OSA-Clinician-Report-${new Date().toISOString().slice(0,10)}.pdf`);
   }
 
-  return { exportPatientPDF, exportClinicianPDF };
+  /**
+   * Build and export the new patient report PDF from overlay content.
+   */
+  function exportPatientReportPDF() {
+    const el = document.getElementById('reportPreviewContent');
+    if (!el) return;
+
+    const reportEl = el.querySelector('.patient-report');
+    if (!reportEl) {
+      alert('Generate the patient report first.');
+      return;
+    }
+
+    const clone = reportEl.cloneNode(true);
+    // Remove any no-print elements from clone
+    clone.querySelectorAll('.no-print').forEach(n => n.remove());
+
+    const patientName = clone.querySelector('.report-meta strong')?.textContent || 'Patient';
+    const safeName = patientName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `Sleep_Report_${safeName}_${dateStr}.pdf`;
+
+    return exportFromHTML(clone.outerHTML, filename, true);
+  }
+
+  return { exportPatientPDF, exportClinicianPDF, exportPatientReportPDF };
 })();
