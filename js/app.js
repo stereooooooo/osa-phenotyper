@@ -791,94 +791,13 @@ document.getElementById('form').addEventListener('submit', e => {
     'Minimally-symptomatic': 'You may not notice many symptoms, but repeated breathing pauses can strain the heart and brain over time.'
   };
 
-  /* ─── Build Patient-Friendly Summary ─────────────────────── */
 
-  /**
-   * Return 3-5 sentence patient-friendly prose for a phenotype.
-   * Weaves trigger values from whyArray into natural language.
-   * @param {string} tag  - phenotype name
-   * @param {string[]} whyArray - trigger strings, e.g. ["BMI 31.2","Neck 17.5 in"]
-   * @param {object} ctx  - context flags (priorNasal, cpapFailed, etc.)
-   */
-  function phenotypeExplainProse(tag, whyArray, ctx) {
-    const why = (whyArray || []).filter(Boolean);
-    // Helper: extract a value from the why array by regex
-    const val = (rx) => { const m = why.join(', ').match(rx); return m ? m[1] : null; };
-
-    switch(tag) {
-      case 'High Anatomical Contribution': {
-        const b = val(/BMI\s+([\d.]+)/);
-        const nk = val(/Neck\s+([\d.]+)/);
-        let s = 'Your airway is narrower than average because of the shape and size of the structures around it.';
-        if(b) s += ` Your BMI is ${b}, which means extra tissue around the throat can press on the airway during sleep.`;
-        if(nk) s += ` A neck circumference of ${nk} inches also suggests more tissue around the airway.`;
-        s += ' The good news is that weight loss, oral appliances, and certain surgeries can all help open the airway.';
-        return s;
-      }
-      case 'Low Arousal Threshold': {
-        let s = 'Your brain wakes you up very easily during sleep \u2014 even a small change in breathing can pull you out of deeper sleep stages. This means your sleep is fragmented, and you may feel unrefreshed in the morning even if you slept a full night.';
-        if (ctx.isi >= 15) {
-          s += ' Your questionnaire also shows significant insomnia symptoms. When insomnia occurs together with obstructive sleep apnea, it is called COMISA (comorbid insomnia and obstructive sleep apnea). This is very common and important to treat \u2014 insomnia makes it harder to use CPAP and can keep you from getting the full benefit of any sleep apnea treatment. Treating the insomnia with a program called CBT-I (cognitive behavioral therapy for insomnia) at the same time as treating your sleep apnea leads to the best results.';
-        } else {
-          s += ' Cognitive behavioral therapy for insomnia (CBT-I) and careful CPAP pressure settings can help you stay asleep longer and get more restorative rest.';
-        }
-        return s;
-      }
-
-      case 'High Loop Gain':
-        return 'Your brain\'s breathing control system is extra sensitive. When a pause in breathing ends, your body may "over-correct" by breathing too hard, which causes the airway to collapse again — creating a cycle of pauses. This is sometimes called an unstable breathing pattern. Treatments that stabilize breathing, like CPAP at the right pressure, are often very effective.';
-
-      case 'Poor Muscle Responsiveness': {
-        const ratio = val(/REM\/NREM\s+([\d.]+)/);
-        let s = 'The muscles that normally hold your airway open don\'t respond strongly enough during sleep, especially during dream (REM) sleep.';
-        if(ratio) s += ` Your breathing pauses are about ${ratio} times worse in REM sleep compared to non-REM sleep.`;
-        s += ' This means your treatment may need to work well during all stages of sleep. CPAP, oral appliances, or Inspire therapy can help keep the airway open even when muscles relax.';
-        return s;
-      }
-      case 'Positional OSA': {
-        const r = val(/Sup\/Non-sup\s+([\d.]+)/);
-        let s = 'Your breathing problems are significantly worse when you sleep on your back (supine position).';
-        if(r) s += ` Your back-sleeping AHI is about ${r} times higher than your side-sleeping AHI.`;
-        s += ' Positional therapy — such as a wearable vibrating device or special pillow that keeps you off your back — can make a big difference. Many patients see meaningful improvement just by training themselves to sleep on their side.';
-        return s;
-      }
-      case 'REM-Predominant OSA':
-        return 'Your breathing pauses happen mostly during dream (REM) sleep, when your muscles are most relaxed. REM sleep is important for memory and mood, so disruptions during this stage can affect how you feel during the day. Your treatment may need higher pressure settings during REM sleep, or your doctor may consider options like an oral appliance or Inspire therapy that work well during all sleep stages.';
-
-      case 'High Hypoxic Burden': {
-        const od = val(/ODI4?\s+(\d+)/);
-        const nad = val(/Nadir\s+SpO2\s+(\d+)/);
-        let s = 'Your oxygen level drops frequently and stays low for extended periods during the night.';
-        if(nad) s += ` Your lowest oxygen reading was ${nad}%, which is well below the normal range of 90–100%.`;
-        if(od) s += ` Your oxygen dropped significantly about ${od} times per hour.`;
-        s += ' Low oxygen during sleep can put extra strain on your heart and blood vessels over time. Starting effective treatment promptly is important to protect your cardiovascular health.';
-        return s;
-      }
-      case 'Nasal-Resistance Contributor': {
-        const ns = val(/NOSE\s+score\s+(\d+)/);
-        let s = 'Blockage or narrowing in your nose increases the effort it takes to breathe during sleep, which can worsen snoring and sleep apnea.';
-        if(ns) s += ` Your NOSE score is ${ns} out of 100, suggesting noticeable nasal obstruction.`;
-        s += ' Treating nasal blockage — with saline rinses, nasal steroid sprays, or sometimes surgery — can improve breathing comfort and make CPAP or oral appliances work better.';
-        if(ctx.priorNasal) s += ' Since you\'ve had nasal surgery before, your doctor may want to check whether there is any remaining blockage or if a revision procedure could help.';
-        return s;
-      }
-      case 'Elevated Delta Heart Rate': {
-        const hr = val(/Delta\s+HR\s+(\d+)/);
-        let s = 'Each time your breathing pauses during sleep, your heart rate surges as your nervous system kicks in to reopen the airway.';
-        if(hr) s += ` Your heart rate jumps by about ${hr} beats per minute with each event.`;
-        s += ' These repeated surges can stress the cardiovascular system over time.';
-        if(ctx.cvd) s += ' Because you have existing heart or vascular concerns, managing these surges with effective sleep apnea treatment is especially important.';
-        s += ' The good news is that treatment usually calms this response significantly.';
-        return s;
-      }
-      default:
-        return '';
-    }
-  }
+  // Patient-facing report is now generated by PatientReport.generateReportHTML()
+  // via the "Generate Patient Report" overlay button.
 
   const sevLabel = ahiSeverity(ahi);
 
-  // Phenotype icons (Bootstrap Icons)
+  // Phenotype icons (Bootstrap Icons) — used by clinician confTable
   const phenIcons = {
     'High Anatomical Contribution': 'bi-body-text',
     'Low Arousal Threshold':        'bi-alarm',
@@ -891,215 +810,15 @@ document.getElementById('form').addEventListener('submit', e => {
     'Elevated Delta Heart Rate':    'bi-activity'
   };
 
-  // Confidence badge colors
+  // Confidence badge colors — used by clinician confTable
   const confBadge = (conf) => {
     if (conf === 'High')     return '<span class="badge bg-danger">High confidence</span>';
     if (conf === 'Moderate') return '<span class="badge bg-warning text-dark">Moderate confidence</span>';
     return '<span class="badge bg-secondary">Low confidence</span>';
   };
 
-  const proseCtx = { priorNasal, cpapFailed, cvd, prefAvoidCpap, cpapCurrent };
-
-  const phenList = out.phen.map(tag => {
-    const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
-    const icon = phenIcons[tag] || 'bi-circle';
-    const prose = phenotypeExplainProse(tag, out.why[tag], proseCtx);
-    return `<li class="osa-phenotype-item"><i class="bi ${icon} me-1"></i><strong>${tag}</strong> ${confBadge(conf)}<p class="osa-phenotype-prose">${prose}</p></li>`;
-  }).join('');
-
-  const borderlineNote = (subtype==='Minimally-symptomatic' && exists(ess) && ess>=12) ?
-    `<p class="text-muted">Your Epworth score (${ess}) is near the "sleepy" range; many people feel noticeably more alert after starting therapy.</p>` : '';
-
   const hasLowAr = out.phen.includes('Low Arousal Threshold');
-  const hasNasal = out.phen.includes('Nasal-Resistance Contributor');
-  let readiness = 'Ready to start now';
-  let readinessDetail = 'Based on your results, there are no major barriers to starting CPAP or another breathing device right away. Your care team will help you find the right mask and settings.';
-  if(hasLowAr && hasNasal){
-    readiness = 'Optimize comfort first';
-    readinessDetail = 'Before starting CPAP, it helps to address two things. First, nasal blockage can make CPAP feel uncomfortable — a saline rinse, nasal steroid spray, or an ENT evaluation can improve airflow. Second, because your brain wakes easily during sleep, a gradual introduction to CPAP (wearing the mask during the day while relaxing, then slowly increasing nighttime use) will help you get used to the device and stick with it.';
-  } else if(hasNasal){
-    readiness = 'Optimize comfort first';
-    readinessDetail = 'Nasal blockage can make CPAP feel stuffy or uncomfortable. Before starting, a daily saline rinse and nasal steroid spray can open up airflow. Your doctor may also recommend an ENT evaluation to check whether the blockage needs further treatment. Clearing the nose first makes CPAP much more comfortable and effective.';
-  } else if(hasCOMISA){
-    readiness = 'Address insomnia first';
-    readinessDetail = sleepyCOMISA
-      ? 'You have both insomnia and obstructive sleep apnea \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Because you also have significant daytime sleepiness, your doctor will use a careful, step-by-step approach. Research shows that treating insomnia first with CBT-I (cognitive behavioral therapy for insomnia) for about 4\u20136 weeks, then starting a breathing device, leads to the best long-term results. Your doctor will choose a modified version of CBT-I that focuses on building healthy sleep habits without limiting your time in bed too much, since you are already quite sleepy during the day.'
-      : 'You have both insomnia and obstructive sleep apnea \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Research shows that treating insomnia first with CBT-I (cognitive behavioral therapy for insomnia) for about 4\u20136 weeks before starting a breathing device leads to the best long-term results. When you do start the breathing device, your doctor will use an auto-adjusting model (APAP) set with comfort features like a pressure ramp and exhale pressure relief, so it feels as natural as possible.';
-  } else if(hasLowAr){
-    readiness = 'Optimize comfort first';
-    readinessDetail = 'Because your brain wakes easily during sleep, jumping straight into CPAP at full pressure can feel uncomfortable at first. A gradual approach works best: start by wearing the mask during the day while reading or watching TV, then slowly increase nighttime use. Your doctor may also use a lower starting pressure and ramp it up over time.';
-  }
-  const readinessBadge = `<span class="badge ${readiness==='Ready to start now'?'bg-success':'bg-warning text-dark'}">${readiness}</span>`;
 
-  const checklist = [];
-  if(hasNasal){
-    checklist.push('Start a daily saline nasal rinse (like NeilMed or a neti pot) each morning and evening. Ask your doctor about adding a nasal steroid spray such as Flonase. If blockage persists, schedule an ENT evaluation to see if further treatment is needed.');
-  }
-  if(hasCOMISA){
-    checklist.push('Ask your doctor about starting a CBT-I (cognitive behavioral therapy for insomnia) program before beginning CPAP. This can be in-person with a sleep psychologist or through an FDA-cleared digital program like Pear Somryst. Research shows that completing 4\u20136 weeks of CBT-I first leads to significantly better CPAP success. CBT-I retrains your brain to sleep more deeply and is the most effective long-term treatment for insomnia.');
-    checklist.push('Start a consistent sleep schedule now: go to bed and wake up at the same time every day, including weekends. Avoid screens and bright lights in the hour before bed. If you can\'t fall asleep within 20 minutes, get out of bed and do something quiet until you feel sleepy, then return to bed.');
-    if(sleepyCOMISA){
-      checklist.push('Important: Because you are also very sleepy during the day, do NOT try to limit your time in bed on your own. Your doctor will guide you through a modified, safer version of insomnia therapy that builds good habits without making daytime sleepiness worse.');
-    }
-    checklist.push('When your doctor starts CPAP, it will be an auto-adjusting model (APAP) with comfort features. Use it for short periods first while relaxed (watching TV, reading), then gradually increase to overnight use. A slow, comfortable start is key when you have insomnia \u2014 rushing it can trigger frustration and avoidance.');
-  } else if(hasLowAr){
-    checklist.push('Talk to your doctor about cognitive behavioral therapy for insomnia (CBT-I), which teaches your brain to sleep more deeply. Keep a consistent bedtime and wake time \u2014 even on weekends \u2014 to strengthen your sleep drive.');
-    checklist.push('Practice wearing your CPAP mask while awake \u2014 for example, while reading or watching TV for 15 to 30 minutes each day. This helps your brain get comfortable with the device before you use it overnight.');
-  }
-  if(out.phen.includes('Positional OSA')){
-    checklist.push('Try a positional therapy device (a wearable that gently vibrates when you roll onto your back) or use a body pillow to stay on your side. Use it every night for 2 to 4 weeks, then check in with your doctor about results.');
-  }
-  if(out.phen.includes('High Hypoxic Burden')){
-    checklist.push('Because your oxygen drops significantly during sleep, it\'s important to start treatment as soon as possible to protect your heart and blood vessels. Don\'t delay — early treatment makes a real difference.');
-  }
-  if(out.phen.includes('Elevated Delta Heart Rate')){
-    checklist.push('Use your CPAP or prescribed therapy every night to reduce the heart rate surges that happen with each breathing pause. Consistent use is key — even one night off allows the surges to return.');
-  }
-  if(bmi>=27){
-    checklist.push('Begin a weight-management plan with your doctor. Even losing about 10% of your body weight can meaningfully reduce the number of breathing pauses during sleep and may improve your energy and overall health.');
-  }
-  checklist.push('Avoid alcohol and sedating medications within 3 hours of bedtime, as they relax the throat muscles and make apnea worse. When possible, try to sleep on your side rather than your back.');
-  const checklistHTML = checklist.length ? `<ul>${checklist.map(i=>`<li>${i}</li>`).join('')}</ul>` : '';
-
-  /* Patient-specific "What if...?" */
-  const whatIfItems = [];
-  if(bmi>=27){
-    whatIfItems.push('<strong>What if I lose weight?</strong> Losing about 10% of your body weight can meaningfully reduce the number of breathing pauses per hour. Weight loss shrinks the fatty tissue around the airway, giving it more room to stay open. While it may not cure sleep apnea completely, many patients see their severity drop by one level — for example, from severe to moderate.');
-  }
-  if(out.phen.includes('Nasal-Resistance Contributor')){
-    whatIfItems.push('<strong>What if I fix my nasal blockage?</strong> Treating nasal obstruction — whether with sprays, rinses, or surgery — can reduce snoring, improve sleep quality, and make CPAP or oral appliances much more comfortable. On its own, nasal treatment rarely cures sleep apnea, but it makes other treatments work significantly better.');
-  }
-  if(out.phen.includes('Positional OSA')){
-    whatIfItems.push('<strong>What if I stop sleeping on my back?</strong> Since your breathing is much worse on your back, consistently sleeping on your side can reduce your AHI significantly. Some patients see their numbers cut in half or more. A follow-up sleep test can confirm the improvement.');
-  }
-  const whatIfHTML = whatIfItems.length ? `<ul>${whatIfItems.map(i=>`<li>${i}</li>`).join('')}</ul>` : '<p>No additional "what if" scenarios apply based on your current inputs.</p>';
-
-  const posPlan = out.phen.includes('Positional OSA') ? `
-    <div class="mt-2">
-      <strong>Positional plan:</strong>
-      <ul>
-        <li>Use a vibratory trainer or backpack/pillow method nightly for 2\u20134 weeks.</li>
-        <li>Recheck response with a home sleep test or device report focusing on non-supine vs supine.</li>
-      </ul>
-    </div>` : '';
-
-  const posNudge = (!nonSupProvided && exists(sup)) ? `
-    <div class="alert alert-info mt-2">Non-supine AHI was not entered. Enter a value for accurate positional analysis.</div>` : '';
-
-  // Severity color
-  const sevColor = sevLabel === 'Severe' ? '#dc3545' : sevLabel === 'Moderate' ? '#fd7e14' : sevLabel === 'Mild' ? '#ffc107' : '#6c757d';
-  const o2Status = nadir < 80 ? 'Very Low' : nadir < 85 ? 'Low' : nadir < 90 ? 'Borderline' : 'Normal';
-  const o2Color = nadir < 80 ? '#dc3545' : nadir < 85 ? '#fd7e14' : nadir < 90 ? '#ffc107' : '#198754';
-
-  const subtypeDisplay = subtype.replace(/-/g, ' ').replace(/\b\w/g, c => c.toLowerCase());
-  // Inline bg/border from hex (html2canvas-safe — no color-mix)
-  const cardBg = (hex) => `background:${hex}15; border:1px solid ${hex}40;`;
-  // Inline flex row + 33% columns so cards render side-by-side in PDF (no Bootstrap grid needed)
-  const colStyle = 'flex:0 0 33.33%; max-width:33.33%; padding:0 6px; box-sizing:border-box;';
-  const keyNumbersCard = (sevLabel || exists(nadir)) ? `
-    <div class="row g-3 mb-3" style="display:flex; flex-wrap:wrap; margin:0 -6px 1rem;">
-      ${sevLabel ? `<div class="col-4" style="${colStyle}"><div class="osa-key-card" style="${cardBg(sevColor)}">
-        <div class="osa-key-value" style="color:${sevColor};">${ahi}</div>
-        <div class="osa-key-label">AHI &mdash; ${sevLabel}</div>
-      </div></div>` : ''}
-      ${exists(nadir) && nadir < 99 ? `<div class="col-4" style="${colStyle}"><div class="osa-key-card" style="${cardBg(o2Color)}">
-        <div class="osa-key-value" style="color:${o2Color};">${nadir}%</div>
-        <div class="osa-key-label">Lowest O&#x2082; &mdash; ${o2Status}</div>
-      </div></div>` : ''}
-      <div class="col-4" style="${colStyle}"><div class="osa-key-card" style="${cardBg('#1F3A5C')}">
-        <div class="osa-key-value osa-key-value--text" style="color:#1F3A5C;">${subtypeDisplay}</div>
-        <div class="osa-key-label">Symptom Type</div>
-      </div></div>
-    </div>` : '';
-
-  /* ─── Patient-Friendly Recommendation Expansion ──────────── */
-  function patientFriendlyRec(text) {
-    const t = text.trim();
-    // Pattern-match terse recs → expanded prose
-    if(/^Start CPAP/i.test(t))
-      return 'Your doctor recommends starting CPAP (continuous positive airway pressure) therapy. CPAP is the most effective treatment for sleep apnea — it uses gentle air pressure through a mask to keep your airway open while you sleep. Most patients notice better sleep and more daytime energy within the first few weeks.';
-    if(/^Continue CPAP/i.test(t))
-      return 'Continue using your current CPAP or APAP device. Consistent nightly use is the best way to keep your airway open, maintain good oxygen levels, and feel rested during the day.';
-    if(/^Retry CPAP/i.test(t))
-      return 'Your doctor recommends giving CPAP another try with improved settings and comfort adjustments. Many people who had trouble with CPAP in the past find success with a different mask style, heated humidification, or lower starting pressures. A CPAP desensitization program can also help.';
-    if(/CPAP.*discuss with patient.*prefer/i.test(t))
-      return 'Although you\'d prefer to avoid CPAP, it is the most effective treatment for sleep apnea. Your doctor would like to discuss the options with you — newer CPAP devices are quieter and more comfortable than ever. There are also alternatives like oral appliances and Inspire therapy that may be right for you.';
-    if(/Alternative PAP/i.test(t))
-      return 'If standard CPAP was not comfortable, alternative devices like BiPAP (which uses different pressures for breathing in and out) or ASV (which adapts to your breathing pattern) may be more tolerable. Talk to your doctor about whether one of these might be a better fit.';
-    if(/^Custom oral appliance/i.test(t) || /^Reassess oral appliance/i.test(t))
-      return 'An oral appliance (also called a mandibular advancement device) is a custom-fitted mouthpiece worn during sleep. It gently moves your lower jaw forward to help keep the airway open. This is a good option if CPAP is not for you, or it can be used alongside other treatments.';
-    if(/weight.management/i.test(t))
-      return 'A structured weight-management program can significantly reduce sleep apnea severity. Even a 10% weight loss can meaningfully decrease the number of breathing pauses per hour and improve your overall health. Your doctor can help connect you with resources to get started.';
-    if(/^Nasal optimization/i.test(t))
-      return 'Improving nasal airflow is an important first step. Daily saline rinses, nasal steroid sprays (like Flonase), and an evaluation by an ENT specialist can reduce nasal blockage. Better nasal breathing makes CPAP and oral appliances work more comfortably.';
-    if(/Use APAP.*not fixed CPAP|EPR.*flex.*max|conservative pressure range/i.test(t))
-      return 'When you have both insomnia and sleep apnea, your doctor will prescribe an auto-adjusting breathing device (APAP) instead of a fixed-pressure one. APAP adjusts to the lowest effective pressure throughout the night, which means more comfort and less pressure than you would feel with a standard device. It will also be set with a slow pressure ramp and exhale relief so breathing out feels natural and easy.';
-    if(/sleep restriction.*unsafe|full sleep restriction|stimulus control.*cognitive restructuring/i.test(t))
-      return 'Because you have both significant daytime sleepiness and insomnia, your doctor will use a modified approach to insomnia treatment. The standard version involves temporarily limiting time in bed, but that can be unsafe when you are already very sleepy during the day. Instead, your treatment will focus first on building healthy sleep habits and changing thought patterns about sleep, then carefully and gradually adjusting your sleep schedule under close supervision.';
-    if(/CBT-I|COMISA|insomnia/i.test(t))
-      return 'You have both obstructive sleep apnea and insomnia \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea) that affects up to 1 in 3 people with sleep apnea. When both conditions are present, they feed off each other: insomnia makes it harder to tolerate CPAP, and untreated sleep apnea disrupts sleep further. The good news is that a proven program called CBT-I (cognitive behavioral therapy for insomnia) can retrain your brain to sleep more deeply. Research shows that starting CBT-I first \u2014 before beginning a breathing device \u2014 leads to significantly better results for both conditions. Your doctor may recommend working with a sleep psychologist or using an FDA-cleared digital CBT-I program like Pear Somryst.';
-    if(/Inspire/i.test(t))
-      return 'Inspire therapy is an implanted device that stimulates the nerve controlling your tongue, keeping the airway open during sleep. Your doctor will evaluate whether you are a candidate based on specific criteria including your AHI, BMI, and airway anatomy.';
-    if(/Surgical correction/i.test(t))
-      return 'If there is a specific area of blockage in your airway that can be corrected with surgery, your doctor may recommend a targeted procedure. The goal is to open up the airway so breathing is easier during sleep.';
-    if(/Positional therapy/i.test(t))
-      return 'Since your breathing is significantly worse when sleeping on your back, a positional therapy device can help. These devices gently remind you to stay on your side throughout the night, which can meaningfully reduce your breathing pauses.';
-    if(/tonsillectomy/i.test(t))
-      return 'Your tonsils may be contributing to airway narrowing. Removing or reducing them — sometimes combined with other throat procedures — can open up the airway and reduce apnea severity.';
-    if(/Prior nasal surgery/i.test(t))
-      return 'Since you have had nasal surgery in the past, your doctor will check whether there is any remaining blockage or whether a revision procedure could further improve your airflow.';
-    if(/Prior UPPP/i.test(t))
-      return 'Since you have had a prior throat surgery (UPPP), your doctor will evaluate your current airway and may recommend a revision or alternative approach based on updated findings.';
-    if(/cardiology/i.test(t))
-      return 'Given the combination of heart rate surges during sleep and your cardiovascular history, your doctor may recommend coordinating with a cardiologist to monitor your heart health alongside sleep apnea treatment.';
-    if(/CPAP desensitization/i.test(t))
-      return 'A CPAP desensitization program can help if you have had trouble with mask comfort or claustrophobia. It involves gradually getting used to the mask — starting by wearing it while awake, then using it for short periods at night, and slowly building up to full-night use. A mask refit can also make a big difference in comfort.';
-    if(/Heated humidification/i.test(t))
-      return 'Adding heated humidification to your CPAP can reduce dryness in your nose and throat, which is one of the most common reasons people stop using CPAP. A chin strap can also help by keeping your mouth closed so the moist air stays in your airway.';
-    if(/Start effective therapy promptly/i.test(t))
-      return 'Because your oxygen levels drop significantly during sleep, starting treatment as soon as possible is important. Effective therapy protects your heart and blood vessels from the strain caused by repeated low-oxygen episodes throughout the night.';
-    if(/Verify treatment efficacy.*REM/i.test(t))
-      return 'Since your breathing problems occur mainly during dream (REM) sleep, your doctor will want to make sure your treatment is working well during that specific sleep stage. CPAP pressure may need to be set higher during REM sleep for the best results.';
-    if(/Oral appliance.*reasonable alternative.*REM/i.test(t))
-      return 'An oral appliance (a custom mouthpiece) can work well for REM-predominant sleep apnea because it holds your jaw forward consistently throughout all sleep stages, including dream sleep.';
-    if(/Elevated autonomic reactivity/i.test(t))
-      return 'Your sleep study shows that your nervous system reacts strongly to each breathing pause, causing heart rate surges. Effective sleep apnea treatment typically calms this response. Your doctor will also want to monitor your blood pressure and other heart health markers.';
-    if(/Imaging confirms.*nasal/i.test(t))
-      return 'Imaging of your sinuses shows structural narrowing in your nose. Your doctor may recommend a procedure such as septoplasty (straightening the nasal septum) or turbinate reduction to open up the nasal passages and improve airflow.';
-    if(/Positional therapy alone may be insufficient/i.test(t))
-      return 'While sleeping on your side helps, your sleep apnea is severe enough that positional changes alone are unlikely to fully control it. Your doctor recommends combining side-sleeping with another treatment (like CPAP or an oral appliance) for the best results.';
-    // Fallback: return original text
-    return t;
-  }
-
-  const recsExpanded = recs.slice(0,8).map(r =>
-    `<div class="osa-rec-item"><p>${patientFriendlyRec(r)}</p></div>`
-  ).join('');
-
-  let pHTML = `
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h2 class="h4 osa-section-title">Personalized Sleep Report</h2>
-      <div class="no-print d-flex gap-2" id="patientReportButtons">
-        <button class="btn btn-outline-primary btn-sm" id="btnPrintHandout"><i class="bi bi-printer"></i> Print</button>
-        <button class="btn btn-outline-success btn-sm" id="btnDownloadPatientPdf"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
-      </div>
-    </div>
-    ${keyNumbersCard}
-    ${sevLabel ? `<p class="mb-1">Your sleep study shows <strong>${sevLabel.toLowerCase()}</strong> obstructive sleep apnea (AHI ${ahi}).</p>` : ''}
-    <p>Your symptoms follow a <strong>${subtypeDisplay}</strong> pattern. <em>${groupInfo[subtype]}</em></p>
-    ${borderlineNote}
-    <p><strong>CPAP readiness:</strong> ${readinessBadge}</p>
-    <p class="osa-phenotype-prose">${readinessDetail}</p>
-    ${out.phen.length ? `<h5 class="mt-3">Main contributing factors</h5><ul class="list-unstyled">${phenList}</ul>` : ''}
-    ${posPlan}
-    <h5 class="mt-3">Recommended next steps</h5>
-    ${recsExpanded}
-    <h5 class="mt-3">Your first 30 days</h5>
-    ${checklistHTML}
-    <h5 class="mt-3">What if\u2026?</h5>
-    ${whatIfHTML}
-    ${posNudge}
-  `;
 
   /* ─── HST Validity Assessment ────────────────────────────── */
   const hstFlags = [];
@@ -1396,21 +1115,14 @@ document.getElementById('form').addEventListener('submit', e => {
   if (triggerEl) triggerEl.style.display = '';
 
   /* Render */
-  document.getElementById('patientSummary').innerHTML = pHTML;
   document.getElementById('clinicianReport').innerHTML = cHTML;
 
-  /* Wire print & PDF download buttons */
-  const btnPrint = document.getElementById('btnPrintHandout');
-  if(btnPrint) btnPrint.addEventListener('click', ()=> window.print());
-
-  const btnPatPdf = document.getElementById('btnDownloadPatientPdf');
-  if(btnPatPdf) btnPatPdf.addEventListener('click', ()=> OSAPdfExport.exportPatientPDF());
-
+  /* Wire clinician PDF download button */
   const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
   if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
 
-  /* Smooth scroll to patient section */
-  window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth' });
+  /* Smooth scroll to clinician report */
+  window.scrollTo({ top: document.getElementById('clinicianReport').offsetTop - 80, behavior:'smooth' });
 });
 
 // ── Patient Report Overlay ──────────────────────────────────────
