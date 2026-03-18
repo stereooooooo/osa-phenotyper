@@ -1115,14 +1115,21 @@ document.getElementById('form').addEventListener('submit', e => {
   if (triggerEl) triggerEl.style.display = '';
 
   /* Render */
-  document.getElementById('clinicianReport').innerHTML = cHTML;
+  const isPreStudy = ahi == null;
+  const clinEl = document.getElementById('clinicianReport');
+  if (isPreStudy) {
+    // Pre-study patients: no sleep data → skip clinician report, show only patient report trigger
+    clinEl.innerHTML = '';
+  } else {
+    clinEl.innerHTML = cHTML;
+    /* Wire clinician PDF download button */
+    const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
+    if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
+  }
 
-  /* Wire clinician PDF download button */
-  const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
-  if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
-
-  /* Smooth scroll to clinician report */
-  window.scrollTo({ top: document.getElementById('clinicianReport').offsetTop - 80, behavior:'smooth' });
+  /* Smooth scroll to results area */
+  const scrollTarget = isPreStudy ? triggerEl : clinEl;
+  if (scrollTarget) window.scrollTo({ top: scrollTarget.offsetTop - 80, behavior:'smooth' });
 });
 
 // ── Patient Report Overlay ──────────────────────────────────────
