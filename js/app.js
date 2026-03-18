@@ -27,6 +27,7 @@ function pushRec(arr, text, tag){
 
 /* ── Shorthand for threshold access ───────────────────────────── */
 const T = OSA_CONFIG.thresholds;
+let lastAnalysisData = null;
 
 /* ── Confidence helper (uses config thresholds) ───────────────── */
 function confidenceFor(tag, ctx){
@@ -672,7 +673,7 @@ document.getElementById('form').addEventListener('submit', e => {
         if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
           pushRec(recs,'Optimize CPAP comfort (humidification, auto-ramp, mask fit, desensitization).','CPAP-OPT');
         }
-        pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) concurrently with OSA treatment. COMISA patients have significantly lower CPAP adherence without insomnia management. Consider sleep psychology referral.','CBTI');
+        pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Untreated insomnia is the strongest predictor of CPAP non-adherence (Sweetman 2019). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst).','CBTI');
         break;
       case 'High Loop Gain':
         if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
@@ -765,9 +766,16 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ─── COMISA (Co-Morbid Insomnia and Sleep Apnea) ─────── */
   const hasCOMISA = exists(isi) && isi >= 15 && exists(ahi) && ahi >= 5;
+  const sleepyCOMISA = hasCOMISA && exists(ess) && ess >= 15;   // high daytime sleepiness + insomnia
   if (hasCOMISA) {
-    // Ensure CBT-I rec is present even if Low Arousal Threshold wasn't detected
-    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): Initiate CBT-I concurrently with OSA treatment. Untreated insomnia is the strongest predictor of CPAP non-adherence. Consider sleep psychology referral before or at the same time as CPAP initiation.', 'CBTI');
+    // CBTi-FIRST sequencing per Sweetman 2019 RCT: sequential CBTi → CPAP yields higher acceptance/adherence
+    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): Initiate CBT-I BEFORE starting CPAP (Sweetman 2019 — sequential CBT-I then CPAP yields higher CPAP acceptance and adherence than concurrent start). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst). Target 4–6 sessions before CPAP initiation.', 'CBTI');
+    // APAP preferred over fixed CPAP for COMISA
+    pushRec(recs, 'Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).', 'COMISA-PAP');
+    // Sleep restriction safety caveat for sleepy COMISA
+    if (sleepyCOMISA) {
+      pushRec(recs, 'Caution: High ESS + high ISI — full sleep restriction therapy is unsafe due to excessive daytime sleepiness. Use modified CBT-I (stimulus control + cognitive restructuring first; introduce sleep compression gradually rather than restriction).', 'COMISA-SRT-CAUTION');
+    }
   }
 
   /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
@@ -778,7 +786,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const groupInfo = {
     'Sleepy': 'You feel very sleepy during the day. Treating OSA usually improves alertness, mood, and driving safety within weeks.',
     'Disturbed-sleep': hasCOMISA
-      ? 'Your sleep is broken or restless \u2014 you have both insomnia and obstructive sleep apnea, a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Treating both conditions together is essential for the best results.'
+      ? 'Your sleep is broken or restless \u2014 you have both insomnia and obstructive sleep apnea, a combination called COMISA (comorbid insomnia and obstructive sleep apnea). These two conditions feed off each other, so treating insomnia first with CBT-I and then adding a breathing device gives you the best chance at lasting improvement.'
       : 'Your sleep is broken or restless even if you are not very sleepy in the day. Treating the breathing problem and insomnia together works best.',
     'Minimally-symptomatic': 'You may not notice many symptoms, but repeated breathing pauses can strain the heart and brain over time.'
   };
@@ -914,7 +922,9 @@ document.getElementById('form').addEventListener('submit', e => {
     readinessDetail = 'Nasal blockage can make CPAP feel stuffy or uncomfortable. Before starting, a daily saline rinse and nasal steroid spray can open up airflow. Your doctor may also recommend an ENT evaluation to check whether the blockage needs further treatment. Clearing the nose first makes CPAP much more comfortable and effective.';
   } else if(hasCOMISA){
     readiness = 'Address insomnia first';
-    readinessDetail = 'You have both insomnia and obstructive sleep apnea \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Starting CPAP without addressing insomnia often leads to frustration and poor adherence. Your doctor will likely recommend starting a cognitive behavioral therapy for insomnia (CBT-I) program right away, and beginning CPAP after a few weeks of insomnia treatment \u2014 or at the same time with a gradual, comfort-focused approach.';
+    readinessDetail = sleepyCOMISA
+      ? 'You have both insomnia and obstructive sleep apnea \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Because you also have significant daytime sleepiness, your doctor will use a careful, step-by-step approach. Research shows that treating insomnia first with CBT-I (cognitive behavioral therapy for insomnia) for about 4\u20136 weeks, then starting a breathing device, leads to the best long-term results. Your doctor will choose a modified version of CBT-I that focuses on building healthy sleep habits without limiting your time in bed too much, since you are already quite sleepy during the day.'
+      : 'You have both insomnia and obstructive sleep apnea \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea). Research shows that treating insomnia first with CBT-I (cognitive behavioral therapy for insomnia) for about 4\u20136 weeks before starting a breathing device leads to the best long-term results. When you do start the breathing device, your doctor will use an auto-adjusting model (APAP) set with comfort features like a pressure ramp and exhale pressure relief, so it feels as natural as possible.';
   } else if(hasLowAr){
     readiness = 'Optimize comfort first';
     readinessDetail = 'Because your brain wakes easily during sleep, jumping straight into CPAP at full pressure can feel uncomfortable at first. A gradual approach works best: start by wearing the mask during the day while reading or watching TV, then slowly increase nighttime use. Your doctor may also use a lower starting pressure and ramp it up over time.';
@@ -926,9 +936,12 @@ document.getElementById('form').addEventListener('submit', e => {
     checklist.push('Start a daily saline nasal rinse (like NeilMed or a neti pot) each morning and evening. Ask your doctor about adding a nasal steroid spray such as Flonase. If blockage persists, schedule an ENT evaluation to see if further treatment is needed.');
   }
   if(hasCOMISA){
-    checklist.push('Ask your doctor about starting a CBT-I (cognitive behavioral therapy for insomnia) program \u2014 this can be in-person with a sleep psychologist or through an evidence-based online program. CBT-I is the most effective long-term treatment for insomnia and significantly improves CPAP success when you have both conditions.');
-    checklist.push('Start a consistent sleep schedule now: go to bed and wake up at the same time every day, including weekends. Avoid napping during the day. This helps reset your body\'s sleep drive and makes falling asleep at night easier.');
-    checklist.push('When starting CPAP, use it for short periods first while relaxed (watching TV, reading), then gradually increase to overnight use. A slow, comfortable start is key when you have insomnia \u2014 rushing it can trigger frustration and avoidance.');
+    checklist.push('Ask your doctor about starting a CBT-I (cognitive behavioral therapy for insomnia) program before beginning CPAP. This can be in-person with a sleep psychologist or through an FDA-cleared digital program like Pear Somryst. Research shows that completing 4\u20136 weeks of CBT-I first leads to significantly better CPAP success. CBT-I retrains your brain to sleep more deeply and is the most effective long-term treatment for insomnia.');
+    checklist.push('Start a consistent sleep schedule now: go to bed and wake up at the same time every day, including weekends. Avoid screens and bright lights in the hour before bed. If you can\'t fall asleep within 20 minutes, get out of bed and do something quiet until you feel sleepy, then return to bed.');
+    if(sleepyCOMISA){
+      checklist.push('Important: Because you are also very sleepy during the day, do NOT try to limit your time in bed on your own. Your doctor will guide you through a modified, safer version of insomnia therapy that builds good habits without making daytime sleepiness worse.');
+    }
+    checklist.push('When your doctor starts CPAP, it will be an auto-adjusting model (APAP) with comfort features. Use it for short periods first while relaxed (watching TV, reading), then gradually increase to overnight use. A slow, comfortable start is key when you have insomnia \u2014 rushing it can trigger frustration and avoidance.');
   } else if(hasLowAr){
     checklist.push('Talk to your doctor about cognitive behavioral therapy for insomnia (CBT-I), which teaches your brain to sleep more deeply. Keep a consistent bedtime and wake time \u2014 even on weekends \u2014 to strengthen your sleep drive.');
     checklist.push('Practice wearing your CPAP mask while awake \u2014 for example, while reading or watching TV for 15 to 30 minutes each day. This helps your brain get comfortable with the device before you use it overnight.');
@@ -1019,8 +1032,12 @@ document.getElementById('form').addEventListener('submit', e => {
       return 'A structured weight-management program can significantly reduce sleep apnea severity. Even a 10% weight loss can meaningfully decrease the number of breathing pauses per hour and improve your overall health. Your doctor can help connect you with resources to get started.';
     if(/^Nasal optimization/i.test(t))
       return 'Improving nasal airflow is an important first step. Daily saline rinses, nasal steroid sprays (like Flonase), and an evaluation by an ENT specialist can reduce nasal blockage. Better nasal breathing makes CPAP and oral appliances work more comfortably.';
-    if(/CBT-I|COMISA|insomnia.*concurrent/i.test(t))
-      return 'You have both obstructive sleep apnea and insomnia \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea) that affects about 1 in 3 people with sleep apnea. This is important because insomnia can make it much harder to get used to CPAP or other treatments. The good news is that a program called CBT-I (cognitive behavioral therapy for insomnia) can help retrain your brain to sleep more deeply. Research shows that treating insomnia at the same time as sleep apnea leads to better results for both conditions. Your doctor may recommend working with a sleep psychologist or an online CBT-I program.';
+    if(/Use APAP.*not fixed CPAP|EPR.*flex.*max|conservative pressure range/i.test(t))
+      return 'When you have both insomnia and sleep apnea, your doctor will prescribe an auto-adjusting breathing device (APAP) instead of a fixed-pressure one. APAP adjusts to the lowest effective pressure throughout the night, which means more comfort and less pressure than you would feel with a standard device. It will also be set with a slow pressure ramp and exhale relief so breathing out feels natural and easy.';
+    if(/sleep restriction.*unsafe|full sleep restriction|stimulus control.*cognitive restructuring/i.test(t))
+      return 'Because you have both significant daytime sleepiness and insomnia, your doctor will use a modified approach to insomnia treatment. The standard version involves temporarily limiting time in bed, but that can be unsafe when you are already very sleepy during the day. Instead, your treatment will focus first on building healthy sleep habits and changing thought patterns about sleep, then carefully and gradually adjusting your sleep schedule under close supervision.';
+    if(/CBT-I|COMISA|insomnia/i.test(t))
+      return 'You have both obstructive sleep apnea and insomnia \u2014 a combination called COMISA (comorbid insomnia and obstructive sleep apnea) that affects up to 1 in 3 people with sleep apnea. When both conditions are present, they feed off each other: insomnia makes it harder to tolerate CPAP, and untreated sleep apnea disrupts sleep further. The good news is that a proven program called CBT-I (cognitive behavioral therapy for insomnia) can retrain your brain to sleep more deeply. Research shows that starting CBT-I first \u2014 before beginning a breathing device \u2014 leads to significantly better results for both conditions. Your doctor may recommend working with a sleep psychologist or using an FDA-cleared digital CBT-I program like Pear Somryst.';
     if(/Inspire/i.test(t))
       return 'Inspire therapy is an implanted device that stimulates the nerve controlling your tongue, keeping the airway open during sleep. Your doctor will evaluate whether you are a candidate based on specific criteria including your AHI, BMI, and airway anatomy.';
     if(/Surgical correction/i.test(t))
@@ -1172,7 +1189,11 @@ document.getElementById('form').addEventListener('submit', e => {
   }
   if(hasCOMISA){
     const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
-    guardrails.push(`COMISA: ${comisaSeverity} (ISI ${isi}) co-morbid with OSA. Untreated insomnia is the single strongest predictor of CPAP non-adherence. Initiate CBT-I before or concurrent with CPAP. Avoid sedative-hypnotics as monotherapy (may worsen OSA). If using a sedative bridge, ensure concurrent PAP.`);
+    let comisaGuard = `COMISA (prevalence 29–67% in OSA treatment-seekers): ${comisaSeverity} (ISI ${isi}) co-morbid with OSA. Bidirectional antagonism — each condition perpetuates the other. Sequential CBT-I → CPAP is the strongest evidence-based approach (Sweetman 2019 RCT). Target 4–6 CBT-I sessions before CPAP initiation. Use APAP over fixed CPAP (lower mean delivered pressure); set EPR/flex to max, enable ramp, conservative range (min 4–5, max 15–16). Avoid sedative-hypnotics as monotherapy (worsen OSA). If brief hypnotic bridge needed for sleep-onset subtype, ensure concurrent PAP.`;
+    if(sleepyCOMISA){
+      comisaGuard += ` CAUTION: High ESS (${ess}) + high ISI — full sleep restriction therapy is contraindicated due to excessive daytime sleepiness risk. Use stimulus control + cognitive restructuring first; introduce sleep compression gradually.`;
+    }
+    guardrails.push(comisaGuard);
   }
 
   const surgTargets = [];
@@ -1229,7 +1250,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const noteCards   = `Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: If High Loop Gain persists with TECSA, consider O\u2082/acetazolamide; ASV only if LVEF > 45%.`;
 
   const followUps = [];
-  if(hasCOMISA) followUps.push('COMISA follow-up: reassess ISI at 4\u20136 weeks. If insomnia persists despite CBT-I, consider sleep psychology referral. Monitor CPAP adherence closely \u2014 insomnia is the top predictor of CPAP abandonment.');
+  if(hasCOMISA) followUps.push('COMISA follow-up: reassess ISI at 4\u20136 weeks post-CBT-I. Initiate APAP after CBT-I course (typically 4\u20136 sessions). If insomnia persists despite CBT-I, consider in-person sleep psychology. Monitor CPAP adherence closely at 1, 4, and 12 weeks \u2014 insomnia is the top predictor of CPAP abandonment. Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings.');
   if(hasLowAr && !hasCOMISA) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
@@ -1324,6 +1345,56 @@ document.getElementById('form').addEventListener('submit', e => {
     <ul>${followUps.map(x=>`<li>${x}</li>`).join('')}</ul>
   `;
 
+  // ── Populate analysis data for patient report ──
+  lastAnalysisData = {
+    phen: out.phen,
+    why: out.why,
+    recs,
+    sex, bmi, neck,
+    tonsils: tons,
+    ftp: Number(mall) || null,
+    nasalObs, ctSeptum, ctTurbs,
+    ess, isi, noseScore,
+    studyType: f.get('studyType') || null,
+    pahi: n(f.get('pahi')),
+    ahi,
+    odi,
+    nadir: n(f.get('nadir')),
+    nadirPsg: n(f.get('nadirPsg')),
+    supPahi: n(f.get('supPahi')),
+    nonSupPahi: n(f.get('nonSupPahi')),
+    remPahi: n(f.get('remPahi')),
+    nremPahi: n(f.get('nremPahi')),
+    ahiSup: n(f.get('ahiSup')),
+    ahiNonSup: n(f.get('ahiNonSup')),
+    ahiREM: n(f.get('ahiREM')),
+    ahiNREM: n(f.get('ahiNREM')),
+    cai: n(f.get('cai')),
+    csr,
+    hbAreaPH: hbPH,
+    hbUnder90PH: hb90PH,
+    snoreIdx: n(f.get('snoreIdx')),
+    tst: n(f.get('tst')),
+    arInd,
+    cpapCurrent,
+    cpapFailed,
+    cpapWillRetry,
+    priorMAD,
+    priorInspire,
+    priorUPPP,
+    hasCOMISA,
+    subtype,
+    severity: ahiSeverity(ahi) || 'normal',
+    primaryAHI: ahi,
+    patientName: f.get('patientName') || '',
+    reportDate: new Date().toISOString().split('T')[0],
+    snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
+  };
+
+  // Show the Generate Patient Report button
+  const triggerEl = document.getElementById('patientReportTrigger');
+  if (triggerEl) triggerEl.style.display = '';
+
   /* Render */
   document.getElementById('patientSummary').innerHTML = pHTML;
   document.getElementById('clinicianReport').innerHTML = cHTML;
@@ -1340,4 +1411,25 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* Smooth scroll to patient section */
   window.scrollTo({ top: document.getElementById('patientSummary').offsetTop - 80, behavior:'smooth' });
+});
+
+// ── Patient Report Overlay ──────────────────────────────────────
+document.getElementById('btnGenerateReport')?.addEventListener('click', () => {
+  if (!lastAnalysisData) return;
+  const html = PatientReport.generateReportHTML(lastAnalysisData);
+  document.getElementById('reportPreviewContent').innerHTML = html;
+  document.getElementById('reportOverlay').classList.add('active');
+  document.body.classList.add('report-preview-open');
+});
+
+document.getElementById('btnCloseReport')?.addEventListener('click', () => {
+  document.getElementById('reportOverlay').classList.remove('active');
+  document.body.classList.remove('report-preview-open');
+  document.getElementById('btnGenerateReport')?.focus();
+});
+
+document.getElementById('btnDownloadReportPdf')?.addEventListener('click', () => {
+  if (typeof OSAPdfExport !== 'undefined' && OSAPdfExport.exportPatientReportPDF) {
+    OSAPdfExport.exportPatientReportPDF();
+  }
 });
