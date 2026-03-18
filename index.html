@@ -458,6 +458,11 @@
 
 <hr class="my-5">
 <div id="patientSummary"></div>
+<div id="patientReportTrigger" class="text-center my-3" style="display:none;">
+  <button type="button" class="btn btn-outline-primary btn-lg" id="btnGenerateReport">
+    <i class="bi bi-file-earmark-text"></i> Generate Patient Report
+  </button>
+</div>
 <div id="clinicianReport" class="mt-4"></div>
 </main>
 
@@ -532,6 +537,7 @@
 <script src="js/pdf-parser.js"></script>
 <script src="js/questionnaire-parser.js"></script>
 <script src="js/pdf-export.js"></script>
+<script src="js/patientReport.js"></script>
 <script src="js/app.js"></script>
 <script>
 /* ── Study-type toggle ────────────────────────────────────────── */
@@ -1100,4 +1106,16 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 
 })();
 </script>
+<!-- Patient Report Preview Overlay -->
+<div class="report-overlay" id="reportOverlay">
+  <div class="report-toolbar">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCloseReport">
+      <i class="bi bi-x-lg"></i> Close Preview
+    </button>
+    <button type="button" class="btn btn-success btn-sm" id="btnDownloadReportPdf">
+      <i class="bi bi-file-earmark-pdf"></i> Download PDF
+    </button>
+  </div>
+  <div id="reportPreviewContent"></div>
+</div>
 </body></html>
