@@ -630,17 +630,24 @@ ${items.join('')}`;
       data.nadirPsg !== null && data.nadirPsg !== undefined ? +data.nadirPsg : 99
     );
     const hbArea    = (data.hbAreaPH !== null && data.hbAreaPH !== undefined) ? +data.hbAreaPH : null;
+    const odiVal    = (data.odi !== null && data.odi !== undefined) ? +data.odi : null;
+    const t90Val    = (data.t90 !== null && data.t90 !== undefined) ? +data.t90 : null;
 
-    const triggerSevere  = pAHI !== null && pAHI !== undefined && +pAHI >= 30;
-    const triggerHypoxia = nadirVal < 85;
-    const triggerHB      = hbArea !== null && hbArea >= 10;
+    /* Trigger on severe AHI OR any HB metric in severe range */
+    const triggerSevereAHI = pAHI !== null && pAHI !== undefined && +pAHI >= 30;
+    const triggerHB        = hbArea !== null && hbArea > 60;
+    const triggerODI       = odiVal !== null && odiVal > 50;
+    const triggerNadir     = nadirVal < 75;
+    const triggerT90       = t90Val !== null && t90Val > 20;
 
-    if (!triggerSevere && !triggerHypoxia && !triggerHB) return '';
+    if (!triggerSevereAHI && !triggerHB && !triggerODI && !triggerNadir && !triggerT90) return '';
 
     const findings = [];
-    if (triggerSevere)  findings.push(`a severe AHI of ${Math.round(+pAHI)} events per hour`);
-    if (triggerHypoxia) findings.push(`oxygen levels dropping to ${nadirVal}% during sleep (below the 85% threshold of concern)`);
-    if (triggerHB)      findings.push(`a high hypoxic burden score of ${hbArea.toFixed(1)} (indicating significant cumulative low-oxygen exposure)`);
+    if (triggerSevereAHI) findings.push(`a severe AHI of ${Math.round(+pAHI)} events per hour`);
+    if (triggerHB)        findings.push(`a high hypoxic burden of ${hbArea.toFixed(0)} %min/hr (indicating significant cumulative low-oxygen exposure throughout the night)`);
+    if (triggerODI)       findings.push(`an oxygen desaturation index (ODI) of ${odiVal} events per hour — meaning your oxygen dropped significantly ${odiVal} times every hour`);
+    if (triggerNadir)     findings.push(`oxygen levels dropping to ${nadirVal}% during sleep — well below normal`);
+    if (triggerT90)       findings.push(`${t90Val.toFixed(0)}% of your sleep time spent with oxygen below 90% — a level associated with increased cardiovascular strain`);
 
     const findingsList = findings.length === 1
       ? findings[0]

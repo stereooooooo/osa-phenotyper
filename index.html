@@ -416,6 +416,7 @@
         <!-- Hypoxic Burden -->
         <div class="osa-field"><label class="form-label">HB/hr</label><input type="number" step="0.1" name="hbAreaPH" class="form-control" min="0" max="200"></div>
         <div class="osa-field"><label class="form-label">&lt;90%/hr</label><input type="number" step="0.1" name="hbUnder90PH" class="form-control" min="0" max="100"></div>
+        <div class="osa-field"><label class="form-label">T90 (%)</label><input type="number" step="0.1" name="t90" class="form-control" min="0" max="100"></div>
         <!-- Other -->
         <div class="osa-field"><label class="form-label">PAT RDI</label><input type="number" step="0.1" name="patRdi" class="form-control" min="0" max="200"></div>
         <div class="osa-field"><label class="form-label">TST (hrs)</label><input type="number" step="0.1" name="tst" class="form-control" min="0" max="24"></div>
@@ -720,7 +721,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     exam:         ['tonsils','ftp'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
-    'sleep-study': ['pahi','odi','nadir','supPahi','nonSupPahi','remPahi','nremPahi','csr','pahic','pahic4','hbAreaPH','hbUnder90PH','patRdi','tst','snoreIdx','dhr','ahi','ahiSup','ahiNonSup','ahiREM','ahiNREM','cai','arInd','nadirPsg']
+    'sleep-study': ['pahi','odi','nadir','supPahi','nonSupPahi','remPahi','nremPahi','csr','pahic','pahic4','hbAreaPH','hbUnder90PH','t90','patRdi','tst','snoreIdx','dhr','ahi','ahiSup','ahiNonSup','ahiREM','ahiNREM','cai','arInd','nadirPsg']
   };
   const steps = document.querySelectorAll('.osa-progress-step');
   const form = document.getElementById('form');

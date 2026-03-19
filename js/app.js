@@ -80,9 +80,11 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'High Hypoxic Burden': {
-      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100;
-      if(hb >= T.hypoxicBurden.hbPerHourHigh || hb90 > T.hypoxicBurden.areaUnder90High || nad < T.hypoxicBurden.nadirHigh || odi >= T.hypoxicBurden.odiHigh) return 'High';
-      if(hb >= T.hypoxicBurden.hbPerHour || hb90 > T.hypoxicBurden.areaUnder90 || nad < T.hypoxicBurden.nadir || odi >= T.hypoxicBurden.odi) return 'Moderate';
+      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
+      /* Severe tier: any single metric in severe range → High confidence */
+      if(hb > T.hypoxicBurden.hbPerHourSevere || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
+      /* Moderate tier: any single metric in moderate range (nadir excluded — only triggers at severe) */
+      if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
       return 'Low';
     }
     case 'Nasal-Resistance Contributor': {
@@ -533,6 +535,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   const hbPH     = n(f.get('hbAreaPH'));
   const hb90PH   = n(f.get('hbUnder90PH'));
+  const t90      = n(f.get('t90'));    // % time below 90% SpO₂
 
   const dhr      = n(f.get('dhr')); // Delta Heart Rate (manual entry)
 
@@ -546,7 +549,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const ctxBase = {
     sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
     remAhi, nremAhi, sup, nons, odi, nadir,
-    hbPH, hb90PH, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, dhr
+    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, dhr
   };
 
   /* Sex-specific neck threshold */
@@ -601,11 +604,20 @@ document.getElementById('form').addEventListener('submit', e => {
     add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
   }
 
-  if( (hbPH && hbPH >= T.hypoxicBurden.hbPerHour) || (hb90PH && hb90PH > T.hypoxicBurden.areaUnder90) || (exists(nadir) && nadir < T.hypoxicBurden.nadir) || (odi && odi >= T.hypoxicBurden.odi) ){
+  /* Composite HB: trigger if ANY metric is in moderate+ range.
+     Nadir only triggers at severe level (<75%) — weaker standalone predictor than
+     duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
+  const hbTrigger = (hbPH && hbPH >= T.hypoxicBurden.hbPerHour) ||
+                    (odi && odi >= T.hypoxicBurden.odi) ||
+                    (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) ||
+                    (t90 && t90 >= T.hypoxicBurden.t90) ||
+                    (hb90PH && hb90PH > T.hypoxicBurden.areaUnder90);
+  if(hbTrigger){
     add('High Hypoxic Burden',[
       exists(hbPH)?`HB/hr ${hbPH}`:'',
       exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
-      exists(odi)?`ODI4 ${odi}`:'',
+      exists(t90)?`T90 ${t90}%`:'',
+      exists(odi)?`ODI ${odi}`:'',
       exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
     ]);
   }
@@ -962,7 +974,8 @@ document.getElementById('form').addEventListener('submit', e => {
     `Sup/Non-sup: ${supRatio}`,
     `Nadir SpO\u2082: ${exists(nadir)?nadir+'%':'\u2014'}`,
     `HB/hr: ${exists(hbPH)?hbPH:'\u2014'}`,
-    `Area<90/hr: ${exists(hb90PH)?hb90PH:'\u2014'}`
+    `Area<90/hr: ${exists(hb90PH)?hb90PH:'\u2014'}`,
+    `T90: ${exists(t90)?t90+'%':'\u2014'}`
   ].join(' | ');
   const phenStr   = out.phen.join(', ') || '\u2014';
   const nasalStr  = out.phen.includes('Nasal-Resistance Contributor') ? `Nasal obstruction present${noseScore ? ` (NOSE ${noseScore}/100)` : ''}${ctSeptum ? ', CT: deviated septum' : ''}${ctTurbs ? ', CT: turbinate hypertrophy' : ''}.` : '\u2014';
@@ -1031,6 +1044,10 @@ document.getElementById('form').addEventListener('submit', e => {
     const a90Color = hb90PH >= 2 ? '#dc3545' : hb90PH >= 1 ? '#fd7e14' : '#6c757d';
     keyNumItems.push(`<div class="osa-clin-metric"><span class="osa-clin-metric-val" style="color:${a90Color}">${hb90PH}</span><span class="osa-clin-metric-lbl">Area &lt;90% / hr</span></div>`);
   }
+  if (exists(t90)) {
+    const t90Color = t90 > 20 ? '#dc3545' : t90 >= 5 ? '#fd7e14' : '#6c757d';
+    keyNumItems.push(`<div class="osa-clin-metric"><span class="osa-clin-metric-val" style="color:${t90Color}">${t90}%</span><span class="osa-clin-metric-lbl">T90</span></div>`);
+  }
 
   const keyNumsGrid = keyNumItems.length
     ? `<div class="osa-clin-metrics-row">${keyNumItems.join('')}</div>`
@@ -1096,6 +1113,7 @@ document.getElementById('form').addEventListener('submit', e => {
     csr,
     hbAreaPH: hbPH,
     hbUnder90PH: hb90PH,
+    t90,
     snoreIdx: n(f.get('snoreIdx')),
     tst: n(f.get('tst')),
     arInd,

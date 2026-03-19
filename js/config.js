@@ -57,21 +57,18 @@ const OSA_CONFIG = {
     },
 
     hypoxicBurden: {
-      hbPerHour:          5,    // %min/hr; Azarbarzin 2019 AJRCCM
-      hbPerHourHigh:      8,
-      areaUnder90:        0.5,  // %min/hr under 90% SpO₂
-      areaUnder90High:    2,
-      nadir:              85,   // SpO₂ %
-      nadirHigh:          80,
-      odi:                40,
-      odiHigh:            60,
-      // Composite risk tiers (scored 0-10+)
-      composite: {
-        veryHigh: 7,
-        high:     5,
-        moderate: 3,
-        mild:     1
-      }
+      // Composite tiering: worst metric determines tier
+      // Moderate = phenotype triggers; Severe = urgency framing + "Why This Matters"
+      hbPerHour:          30,   // %min/hr — moderate threshold (phenotype trigger)
+      hbPerHourSevere:    60,   // %min/hr — severe/high CV risk (Azarbarzin quintile data)
+      odi:                20,   // ODI — moderate threshold (strongest HB correlator, r=0.73)
+      odiSevere:          50,   // ODI — severe threshold
+      nadir:              75,   // SpO₂ % — only triggers at severe level (< 75%)
+      nadirSevere:        75,   // SpO₂ % — severe (weaker standalone predictor; Zinchuk 2020)
+      t90:                5,    // % time below 90% SpO₂ — moderate threshold
+      t90Severe:          20,   // % — severe (OR 2.70 mortality; OR 2.95 HTN)
+      areaUnder90:        0.5,  // %min/hr under 90% SpO₂ (kept for backward compat)
+      areaUnder90Severe:  2,
     },
 
     deltaHeartRate: {
@@ -145,6 +142,7 @@ const OSA_CONFIG = {
       snoreIdx:   { min: 0,   max: 500 },
       hbAreaPH:   { min: 0,   max: 200,  warnMax: 100 },
       hbUnder90PH:{ min: 0,   max: 100,  warnMax: 50  },
+      t90:        { min: 0,   max: 100,  warnMax: 50  },
       cpapPressure:{ min: 4,   max: 25,   warnMax: 20  },
       dhr:        { min: 0,   max: 60,   warnMax: 40  },
       noseScore:  { min: 0,   max: 100 }
