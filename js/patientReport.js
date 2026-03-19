@@ -321,7 +321,15 @@ ${subtypeHtml}`;
      ══════════════════════════════════════════════════════════════════════════ */
   function renderSectionC(data) {
     const phen = data.phen || [];
-    if (phen.length === 0 || getReportStage(data) !== 'post-study') return '';
+    if (getReportStage(data) !== 'post-study') return '';
+    if (data.primaryAHI < 5) return '';  // Normal AHI handled by Section B2
+
+    /* Zero phenotypes — provide context instead of blank gap */
+    if (phen.length === 0) {
+      return `
+<h2>About Your Sleep Apnea</h2>
+<p>Your sleep study confirmed obstructive sleep apnea, but your results did not show a strong pattern in the common contributing factors we test for (such as anatomical narrowing, positional dependence, or breathing instability). This is not unusual — many patients have sleep apnea caused by a combination of subtle factors rather than one dominant pattern. Your treatment plan is still tailored to your severity level and personal circumstances, and your doctor will work with you to find the most effective approach.</p>`;
+    }
 
     const iconMap = {
       'High Anatomical Contribution':  'bi-body-text',
@@ -420,6 +428,9 @@ ${items}`;
     'SOFT-TISSUE-GENERAL': null,
     'DHR-CARDS': null,  // Clinical detail
     'FRIEDMAN-III-ALT': null,  // Clinician-only surgical routing
+    'COMBI-PRIOR': null,  // Clinician-only: prior MAD + UPPP + CPAP combo
+    'SURG-PREF': null,  // Clinician-only: patient prefers surgery
+    'MILD-LIFESTYLE': `<strong>Lifestyle Modifications First</strong> — Your sleep apnea is in the mild range and does not show a strong pattern pointing to one specific cause. For many patients in this situation, starting with lifestyle changes can make a meaningful difference: maintaining a healthy weight, sleeping on your side, keeping your nasal passages clear, and avoiding alcohol before bed. Your doctor may recommend a repeat sleep study in 6 to 12 months to see how these changes have affected your results before starting device-based therapy.`,
   };
 
   /* Tags that are sub-items of CPAP — should not render as standalone recs */
@@ -608,6 +619,22 @@ ${items}`;
     /* UARS */
     if (tags.has('UARS-EVAL')) {
       checkItems.push('Ask your doctor about scheduling an in-lab overnight sleep study (polysomnography) to evaluate for upper airway resistance syndrome.');
+    }
+
+    /* Fix #5: Inspire optimization (prior implant) */
+    if (tags.has('INSPIRE-OPT') && data.priorInspire) {
+      checkItems.push('Schedule a follow-up with your Inspire specialist to verify device activation and optimize settings.');
+    }
+
+    /* Fix #5: Hypoxic burden urgency */
+    if (tags.has('HB-URG')) {
+      checkItems.push('Schedule your first treatment appointment as soon as possible — your oxygen levels during sleep need prompt attention for your heart health.');
+    }
+
+    /* Mild lifestyle-first */
+    if (tags.has('MILD-LIFESTYLE')) {
+      checkItems.push('Start with lifestyle changes: sleep on your side, maintain a healthy weight, keep your nose clear, and avoid alcohol before bed.');
+      checkItems.push('Schedule a repeat sleep study in 6–12 months to reassess after lifestyle modifications.');
     }
 
     /* CBT-I (non-COMISA — already handled above for COMISA) */

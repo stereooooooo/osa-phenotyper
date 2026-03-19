@@ -868,6 +868,12 @@ document.getElementById('form').addEventListener('submit', e => {
     }
   } else {
     /* AHI ≥ 5: Standard OSA core trio (treatment-history-aware) */
+
+    /* Fix #4: priorMAD + priorUPPP combination — limited remaining options */
+    if (priorMAD && priorUPPP && cpapFailed) {
+      pushRec(recs,'Prior MAD, UPPP, and CPAP trials documented. Further surgical revision has diminishing returns. Prioritize Inspire evaluation (if eligible), aggressive weight management, or advanced multilevel surgical planning based on DISE.','COMBI-PRIOR');
+    }
+
     if(cpapCurrent) {
       pushRec(recs,'Continue CPAP/APAP','CPAP');
     } else if(cpapRefused) {
@@ -877,8 +883,15 @@ document.getElementById('form').addEventListener('submit', e => {
     } else {
       pushRec(recs,'Start CPAP/APAP','CPAP');
     }
+    /* Fix #1: Wire prefSurgery — boost surgical recs if patient prefers surgery */
+    if (prefSurgery && !priorUPPP) {
+      pushRec(recs,'Patient open to surgical options \u2014 consider DISE-guided surgical planning.','SURG-PREF');
+    }
     if(priorMAD) {
       pushRec(recs,'Reassess oral appliance therapy (prior trial) \u2014 evaluate fit, efficacy, or consider alternative device','MAD');
+    } else if(priorJaw) {
+      /* Fix #1: Wire priorJaw — prior jaw surgery affects MAD candidacy */
+      pushRec(recs,'Prior jaw surgery noted \u2014 MAD candidacy requires careful dental evaluation of occlusal changes','MAD');
     } else if(madScore.tier === 'favorable') {
       pushRec(recs,'Oral appliance therapy (MAD) \u2014 favorable candidate based on profile','MAD-FAVORABLE');
     } else if(madScore.tier === 'poor') {
@@ -887,6 +900,11 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Custom oral appliance (MAD)','MAD');
     }
     pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
+
+    /* Fix #3: Mild AHI (5-14) with no phenotypes — lifestyle-first approach */
+    if (ahi >= 5 && ahi < 15 && out.phen.length === 0) {
+      pushRec(recs,'Very mild sleep apnea with no clear phenotype pattern. Consider initial lifestyle modifications (weight loss if overweight, positional changes, nasal care, alcohol avoidance) with repeat sleep study in 6\u201312 months before committing to device therapy.','MILD-LIFESTYLE');
+    }
   }
 
   /* ─── COMISA (Co-Morbid Insomnia and Sleep Apnea) ─────── */
@@ -1187,7 +1205,7 @@ document.getElementById('form').addEventListener('submit', e => {
     }
     ${friedmanStage ? `<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} mt-3 py-2 px-3"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>` : ''}
     ${hnsStage ? `<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} mt-2 py-2 px-3"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>` : ''}
-    ${madScore.tier !== 'standard' ? `<div class="alert alert-${madScore.tier === 'favorable' ? 'success' : 'secondary'} mt-2 py-2 px-3"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}${madScore.tier !== 'poor' ? '<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm</small>' : ''}</div>` : `<div class="alert alert-light mt-2 py-2 px-3"><strong>MAD Candidacy: Standard</strong> (score ${madScore.score}) — ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm</small></div>`}
+    <div class="alert alert-${madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} mt-2 py-2 px-3"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>
     <h5 class="mt-3 mb-2">Ranked Treatment Plan</h5>
     ${rankedPlan}
     ${guardrails.length?`<div class="alert alert-warning mt-3"><strong>Guardrails:</strong> <ul class="mb-0">${guardrails.map(g=>`<li>${g}</li>`).join('')}</ul></div>`:''}
@@ -1235,8 +1253,10 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapWillRetry,
     prefAvoidCpap,
     priorMAD,
+    priorJaw,
     priorInspire,
     priorUPPP,
+    prefSurgery,
     hasCOMISA,
     madScore,
     friedmanStage,
