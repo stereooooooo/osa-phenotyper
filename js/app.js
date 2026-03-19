@@ -491,6 +491,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const neck  = n(f.get('neck'));
   const tons  = n(f.get('tonsils'));
   const mall  = f.get('ftp'); // Friedman Tongue Position
+  const retrognathia = f.get('retrognathia') || '';  // '' | 'mild' | 'moderate'
 
   const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
   const arInd = n(f.get('arInd'));
@@ -742,19 +743,54 @@ document.getElementById('form').addEventListener('submit', e => {
     }
   });
 
+  /* ─── FRIEDMAN STAGE (auto-calculated) ────────────────────── */
+  /* Friedman 2004: FTP + tonsils + BMI → surgical candidacy tier */
+  const friedmanStage = (() => {
+    if (!exists(tons) || !mall) return null;
+    if (exists(bmi) && bmi >= 40) return 'IV';
+    const lowTongue = (mall === 'I' || mall === 'II');
+    const largeTonsils = (tons >= 3);
+    if (lowTongue && largeTonsils) return 'I';
+    if (lowTongue || largeTonsils) return 'II';
+    return 'III';
+  })();
+
+  /* ─── Ji 2026 HNS CLINICAL SEVERITY STAGING ─────────────── */
+  const hnsStage = (() => {
+    if (!exists(ahi) || ahi < 15) return null;
+    let unfavorable = 0;
+    const details = [];
+    const neckThreshHNS = (sex === 'F') ? 14 : 16;
+    if (exists(neck) && neck > neckThreshHNS) { unfavorable++; details.push(`neck >${neckThreshHNS}"`); }
+    if (exists(bmi) && bmi >= 30) { unfavorable++; details.push('BMI ≥30'); }
+    if (ahi > 30) { unfavorable++; details.push('AHI >30'); }
+    const stage = unfavorable === 0 ? 'I' : unfavorable === 1 ? 'II' : unfavorable === 2 ? 'III' : 'IV';
+    const responseRate = unfavorable === 0 ? 91 : unfavorable === 1 ? 68 : unfavorable === 2 ? 50 : 38;
+    return { stage, responseRate, unfavorable, details };
+  })();
+
+  /* ─── DISE concentric collapse check ────────────────────── */
+  const _vPat = f.get('vPat') || '';
+  const _vDeg = n(f.get('vDeg'));
+  const hasConcentricCollapse = _vPat.toLowerCase().includes('concentric') && _vDeg >= 2;
+
   /* Soft-tissue surgery: tonsillectomy +/- expansion pharyngoplasty (adult) */
   const ftpIorII = (mall==='I' || mall==='II');
   const highAnat = out.phen.includes('High Anatomical Contribution');
   if(exists(tons) && tons >= T.anatomical.tonsils){
     if(priorUPPP) {
       pushRec(recs,'Prior UPPP noted \u2014 consider revision pharyngoplasty or alternative surgical targets based on DISE findings.','SOFT-TISSUE-REVISION');
-    } else if((bmi||0) < T.anatomical.bmi && ftpIorII){
-      pushRec(recs,'Strongly consider tonsillectomy +/- expansion pharyngoplasty (favorable airway: large tonsils, low FTP, BMI < 30).','SOFT-TISSUE-STRONG');
-    } else if((bmi||0) >= T.anatomical.bmi && (bmi||0) < T.anatomical.bmiHigh && ftpIorII){
-      pushRec(recs,'Consider tonsillectomy +/- expansion pharyngoplasty as part of multilevel plan (large tonsils, low FTP, BMI 30\u201334.9).','SOFT-TISSUE-CONSIDER');
+    } else if(friedmanStage === 'I'){
+      pushRec(recs,`Strongly consider tonsillectomy +/- expansion pharyngoplasty (Friedman Stage I: FTP ${mall}, Tonsils ${tons}, BMI ${bmi?.toFixed(1)} — ~80% UPPP success rate).`,'SOFT-TISSUE-STRONG');
+    } else if(friedmanStage === 'II' && ftpIorII){
+      pushRec(recs,`Consider tonsillectomy +/- expansion pharyngoplasty as part of multilevel plan (Friedman Stage II — intermediate success rate ~37-74%).`,'SOFT-TISSUE-CONSIDER');
     } else if(highAnat && ftpIorII){
       pushRec(recs,'Consider tonsillectomy +/- expansion pharyngoplasty based on anatomic crowding and large tonsils.','SOFT-TISSUE-GENERAL');
     }
+  }
+  /* Friedman Stage III: recommend tongue base procedures / HNS / MMA instead of UPPP */
+  if(friedmanStage === 'III' && exists(ahi) && ahi >= 15){
+    pushRec(recs,'Friedman Stage III (high tongue position, small tonsils) — UPPP unlikely to succeed. Consider tongue base surgery, HNS (Inspire), or MMA depending on DISE findings and candidacy.','FRIEDMAN-III-ALT');
   }
 
   /* Prior treatment-aware Inspire recommendation */
@@ -789,6 +825,8 @@ document.getElementById('form').addEventListener('submit', e => {
     if (out.phen.includes('High Loop Gain')) { score -= 1; factors.push('high loop gain'); }
     /* High HB: lower T90 predicts better response */
     if (out.phen.includes('High Hypoxic Burden')) { score -= 1; factors.push('high hypoxic burden'); }
+    /* Retrognathia: mandibular retrusion independently predicts better MAD response (Hamza 2026) */
+    if (retrognathia) { score += 1; factors.push('retrognathia'); }
     /* tier: favorable (≥3), standard (0-2), poor (< 0) */
     const tier = score >= 3 ? 'favorable' : score < 0 ? 'poor' : 'standard';
     return { score, tier, factors };
@@ -1147,6 +1185,9 @@ document.getElementById('form').addEventListener('submit', e => {
         </table>
       </div>` : ''
     }
+    ${friedmanStage ? `<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} mt-3 py-2 px-3"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>` : ''}
+    ${hnsStage ? `<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} mt-2 py-2 px-3"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>` : ''}
+    ${madScore.tier !== 'standard' ? `<div class="alert alert-${madScore.tier === 'favorable' ? 'success' : 'secondary'} mt-2 py-2 px-3"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}${madScore.tier !== 'poor' ? '<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm</small>' : ''}</div>` : `<div class="alert alert-light mt-2 py-2 px-3"><strong>MAD Candidacy: Standard</strong> (score ${madScore.score}) — ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm</small></div>`}
     <h5 class="mt-3 mb-2">Ranked Treatment Plan</h5>
     ${rankedPlan}
     ${guardrails.length?`<div class="alert alert-warning mt-3"><strong>Guardrails:</strong> <ul class="mb-0">${guardrails.map(g=>`<li>${g}</li>`).join('')}</ul></div>`:''}
@@ -1198,6 +1239,10 @@ document.getElementById('form').addEventListener('submit', e => {
     priorUPPP,
     hasCOMISA,
     madScore,
+    friedmanStage,
+    hnsStage,
+    hasConcentricCollapse,
+    retrognathia,
     subtype,
     severity: ahiSeverity(ahi) || 'normal',
     primaryAHI: ahi,

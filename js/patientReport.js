@@ -419,6 +419,7 @@ ${items}`;
     'SOFT-TISSUE-CONSIDER': null,
     'SOFT-TISSUE-GENERAL': null,
     'DHR-CARDS': null,  // Clinical detail
+    'FRIEDMAN-III-ALT': null,  // Clinician-only surgical routing
   };
 
   /* Tags that are sub-items of CPAP — should not render as standalone recs */

@@ -314,8 +314,9 @@
       </div>
       <div class="collapse show" id="collapsePhysExam">
         <div class="card-body row g-3">
-          <div class="col-6"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-          <div class="col-6"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+          <div class="col-4"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <div class="col-4"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+          <div class="col-4"><label class="form-label">Retrognathia</label><select name="retrognathia" class="form-select"><option value="">None</option><option value="mild">Mild</option><option value="moderate">Moderate-Severe</option></select></div>
         </div>
       </div>
     </div>
@@ -718,7 +719,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
     treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','cpapPressure'],
-    exam:         ['tonsils','ftp'],
+    exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
     'sleep-study': ['pahi','odi','nadir','supPahi','nonSupPahi','remPahi','nremPahi','csr','pahic','pahic4','hbAreaPH','hbUnder90PH','t90','patRdi','tst','snoreIdx','dhr','ahi','ahiSup','ahiNonSup','ahiREM','ahiNREM','cai','arInd','nadirPsg']
