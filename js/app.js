@@ -1207,6 +1207,14 @@ document.getElementById('form').addEventListener('submit', e => {
     return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP Cardiovascular Benefit (Pinilla 2023):</strong> Patients with high HB who use CPAP have significantly reduced cardiovascular events (HR 0.57). Strongly prioritize effective PAP therapy for CV risk reduction in this patient.</div>';
   })();
 
+  /* ── Mild OSA + Low HB — Alternatives Equally Effective (Pinilla 2023) ── */
+  const mildLowHbNote = (() => {
+    const isMild = exists(ahi) && ahi >= 5 && ahi < 15;
+    const lowHB = !out.phen.includes('High Hypoxic Burden');
+    if (!isMild || !lowHB) return '';
+    return '<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden (Pinilla 2023):</strong> In patients with low HB, CPAP and non-CPAP treatments (MAD, positional therapy, weight management) show comparable outcomes. Treatment allocation does not significantly affect cardiovascular or symptomatic endpoints in this group. Patient preference should guide treatment selection — alternatives are a strong first-line option.</div>';
+  })();
+
   /* ── ATS 2025 Triage Note ──────────────────────────────── */
   const atsTriage = (() => {
     const hasAnat = out.phen.includes('High Anatomical Contribution');
@@ -1246,6 +1254,7 @@ document.getElementById('form').addEventListener('submit', e => {
     ${edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `<div class="alert alert-info mt-2 py-2 px-3"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables]</small>' : ''}</div>` : ''}
     ${hbTreatmentNote}
     ${atsTriage}
+    ${mildLowHbNote}
     <h5 class="mt-3 mb-2">Ranked Treatment Plan</h5>
     ${rankedPlan}
     ${guardrails.length?`<div class="alert alert-warning mt-3"><strong>Guardrails:</strong> <ul class="mb-0">${guardrails.map(g=>`<li>${g}</li>`).join('')}</ul></div>`:''}
@@ -1311,6 +1320,7 @@ document.getElementById('form').addEventListener('submit', e => {
     patientName: (document.getElementById('patientName')?.value || '').trim(),
     reportDate: new Date().toISOString().split('T')[0],
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
+    lowHypoxicBurden: !out.phen.includes('High Hypoxic Burden'),
   };
 
   // Show the Generate Patient Report button

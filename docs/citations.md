@@ -113,6 +113,7 @@
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | High HB identifies CPAP cardiovascular benefit (HR 0.57) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | Clinician report: "High HB — CPAP cardiovascular benefit" alert |
+| Low HB: comparable outcomes with CPAP vs alternatives | Same Pinilla 2023 | Mild OSA + low HB: clinician report note that treatment allocation doesn't significantly affect outcomes; patient report reorders alternatives before CPAP; "good options beyond CPAP" context box |
 | HB predicts major adverse CV events (HR 1.21) | Trzepizur W, et al. "Sleep Apnea-Specific Hypoxic Burden and Risk of CV Events." *Am J Respir Crit Care Med.* 2022;205(1):108-117. | HB severity tiering rationale |
 
 ## Symptom Clusters

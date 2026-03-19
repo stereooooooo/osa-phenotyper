@@ -450,6 +450,48 @@ ${items}`;
     if (tag === 'HNS' && data && data.bmi > 40) {
       return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. <strong>Important:</strong> Inspire currently requires a BMI of 40 or below (some insurance plans require an even lower BMI). Since your BMI is currently above this threshold, reaching a BMI under 40 through weight management would be the first step toward Inspire candidacy. This is a goal worth discussing with your care team.`;
     }
+
+    /* Mild + Low HB: de-emphasized CPAP description — alternatives are equally effective */
+    if (tag === 'CPAP' && data && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
+      return `<strong>CPAP Therapy</strong> — CPAP is an effective treatment for sleep apnea at all severity levels. However, for mild sleep apnea with your oxygen profile, research shows that other treatments — like an oral appliance or positional therapy — achieve comparable results. CPAP remains an option if you prefer it or if other treatments don't provide enough improvement. If you do try CPAP, modern machines with auto-adjusting pressure and heated humidifiers make it much more comfortable than older models.`;
+    }
+
+    /* Enhanced CPAP description for severe patients with limited alternatives */
+    if (tag === 'CPAP' && data && data.severity?.toLowerCase() === 'severe' && data.cpapFailed) {
+      const limitedAlts = (data.bmi > 40) || data.hasConcentricCollapse ||
+        (data.friedmanStage === 'III' || data.friedmanStage === 'IV');
+      if (limitedAlts) {
+        return `<strong>CPAP Therapy — Why It Matters Most for You</strong> — We know CPAP has been difficult for you, and we take that seriously. But for your level of sleep apnea, CPAP is still the most effective treatment we have — and some of the alternatives that work well for other patients are less likely to work in your case. That's why finding a way to make CPAP work for you is so important.`
+          + `<br><br>Here's why CPAP is so effective: it keeps your airway open continuously throughout the night — every breath, every sleep stage, every position. No other treatment can match that level of protection for severe sleep apnea.`
+          + `<br><br>Many people struggle with CPAP at first. The most common reasons include mask discomfort, air pressure feeling too high, dry mouth, or feeling claustrophobic. The good news is that today's CPAP machines are very different from older models. Strategies that can help:`
+          + `<ul style="margin:0.5rem 0;padding-left:1.5rem;">`
+          + `<li><strong>Mask fitting</strong> — There are dozens of mask styles (nasal pillows, nasal masks, full-face masks). A different style can make a dramatic difference in comfort.</li>`
+          + `<li><strong>Auto-adjusting pressure (APAP)</strong> — These machines start at a low pressure and only increase when needed, making it easier to fall asleep.</li>`
+          + `<li><strong>Heated humidification</strong> — Reduces dry mouth, nasal congestion, and throat irritation.</li>`
+          + `<li><strong>Ramp feature</strong> — Starts at very low pressure and gradually increases as you fall asleep.</li>`
+          + `<li><strong>Desensitization</strong> — Wearing the mask during relaxing activities (watching TV, reading) for short periods helps your brain get used to the sensation before sleep.</li>`
+          + `<li><strong>Treating nasal obstruction</strong> — If your nose is blocked, fixing that first makes CPAP much more tolerable.</li>`
+          + `</ul>`
+          + `We strongly encourage you to work with your sleep team on a structured CPAP retry plan. Even partial use (4+ hours per night) provides significant health protection for severe sleep apnea.`;
+      }
+    }
+
+    /* Airway surgery with honest candidacy language for poor surgical candidates */
+    if ((tag === 'SURGALT' || tag === 'SURG') && data) {
+      const poorSurgicalCandidate = (data.bmi > 40) ||
+        (data.friedmanStage === 'III' || data.friedmanStage === 'IV') ||
+        data.hasConcentricCollapse;
+      if (poorSurgicalCandidate) {
+        let reasons = [];
+        if (data.bmi > 40) reasons.push('a BMI above 40');
+        if (data.friedmanStage === 'III' || data.friedmanStage === 'IV') reasons.push('your airway anatomy (Friedman Stage ' + data.friedmanStage + ')');
+        if (data.hasConcentricCollapse) reasons.push('a circular (concentric) pattern of airway collapse seen on your sleep endoscopy');
+        const reasonText = reasons.length === 1 ? reasons[0]
+          : reasons.slice(0, -1).join(', ') + ' and ' + reasons[reasons.length - 1];
+        return `<strong>Airway Surgery</strong> — For some patients, surgical procedures can open the airway and reduce sleep apnea. However, we want to be straightforward with you: based on your evaluation — specifically ${reasonText} — soft tissue surgery on the throat (such as palate or tongue base procedures) is <strong>less likely to fully resolve</strong> your sleep apnea on its own. This doesn't mean surgery has no role in your care — it may still be discussed as part of a combined approach, or to address specific findings like nasal obstruction or enlarged tonsils. But for your overall sleep apnea, other treatments (particularly CPAP) are more likely to provide reliable results. Your ENT surgeon will review the full picture with you.`;
+      }
+    }
+
     if (recDescriptions[tag] !== undefined) return recDescriptions[tag];
 
     /* Fallback: keyword matching for unknown tags */
@@ -496,6 +538,16 @@ ${items}`;
 
     if (allRecs.length === 0) return '';
 
+    /* Mild + Low HB: move CPAP after alternatives so lifestyle/MAD/positional lead */
+    const isMildLowHB = data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden;
+    if (isMildLowHB) {
+      const cpapIdx = allRecs.findIndex(r => r.tag === 'CPAP');
+      if (cpapIdx >= 0 && cpapIdx < allRecs.length - 1) {
+        const [cpapRec] = allRecs.splice(cpapIdx, 1);
+        allRecs.push(cpapRec);  // move to end → falls into "Discuss" group
+      }
+    }
+
     /* ── Split into Start Now / Discuss With Your Doctor ── */
     const splitAt = Math.min(3, allRecs.length);
     const startNow = allRecs.slice(0, splitAt);
@@ -504,7 +556,14 @@ ${items}`;
     let output = `\n<h2>Your Treatment Plan</h2>`;
 
     /* ── CPAP context for non-compliant patients — BEFORE the rec list ── */
-    if (data.cpapFailed && !data.cpapWillRetry) {
+    const limitedAlternatives = (data.bmi > 40) || data.hasConcentricCollapse ||
+      (data.friedmanStage === 'III' || data.friedmanStage === 'IV');
+    if (data.cpapFailed && !data.cpapWillRetry && data.severity?.toLowerCase() === 'severe' && limitedAlternatives) {
+      output += `
+<div class="cpap-context-box">
+  <strong>An honest conversation about your options.</strong> We know CPAP has been difficult for you, and we take that seriously. For your level of sleep apnea, though, CPAP provides the most reliable protection — and some alternatives that work well for other patients may be less effective in your case. That's why we want to work with you on strategies to make CPAP more comfortable, while also exploring every other option available. Your treatment plan below includes both CPAP guidance and alternative approaches.
+</div>`;
+    } else if (data.cpapFailed && !data.cpapWillRetry) {
       output += `
 <div class="cpap-context-box">
   <strong>We hear you on CPAP.</strong> We know CPAP hasn't worked well for you in the past, and you're not alone — many people struggle with CPAP masks, pressure, or comfort. Your treatment plan below leads with non-CPAP options that may be a better fit for you. We've also included information about CPAP because it remains the most studied treatment, and CPAP technology has improved significantly in recent years. But our first goal is to find a treatment that works for your life.
@@ -523,6 +582,14 @@ ${items}`;
       output += `
 <div class="cpap-context-box">
   <strong>Building on your current CPAP therapy.</strong> You are already using CPAP, which is a great foundation. The recommendations below are designed to work alongside your CPAP and may help improve your results further. We'll discuss whether any adjustments to your current therapy are needed at your follow-up.
+</div>`;
+    }
+
+    /* ── Mild + Low HB: alternatives-first context ── */
+    if (isMildLowHB) {
+      output += `
+<div class="cpap-context-box" style="border-left-color: #198754;">
+  <strong>Why you have good options beyond CPAP.</strong> Your sleep apnea is in the mild range, and your overnight oxygen levels stayed in a safe zone. For patients with this profile, research shows that treatments like an oral appliance, positional therapy, and weight management work just as well as CPAP. That means you can choose the option that fits your life best — and expect good results. Your treatment plan below starts with these alternatives.
 </div>`;
     }
 
@@ -571,10 +638,20 @@ ${items}`;
     }
 
     /* CPAP — but different messaging for non-compliant/avoidant patients */
+    const limitedAlts = (data.bmi > 40) || data.hasConcentricCollapse ||
+      (data.friedmanStage === 'III' || data.friedmanStage === 'IV');
     if (hasCPAP) {
-      if ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed)) {
+      if (data.cpapFailed && !data.cpapWillRetry && data.severity?.toLowerCase() === 'severe' && limitedAlts) {
+        // Severe patients with limited alternatives — encourage CPAP retry
+        checkItems.push('Schedule a CPAP consultation to discuss a fresh start — ask about auto-adjusting (APAP) machines, nasal pillow masks, and heated humidification.');
+        checkItems.push('Practice wearing the mask for 20–30 minutes during relaxing activities (TV, reading) before trying overnight use.');
+        checkItems.push('If nasal congestion is an issue, talk to your doctor about treating it first — this can make CPAP significantly more comfortable.');
+      } else if ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed)) {
         // Don't lead with CPAP setup for patients who don't want it
         // Instead, add it further down as a "consider" item
+      } else if (data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
+        // Mild + low HB: don't lead with CPAP — alternatives are equally effective
+        // CPAP added further down as a fallback option
       } else if (data.cpapFailed && data.cpapWillRetry) {
         checkItems.push('Schedule a CPAP re-fitting appointment — ask about newer mask styles and auto-adjusting machines that may address your prior concerns.');
         checkItems.push('Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.');
@@ -641,6 +718,11 @@ ${items}`;
     /* CBT-I (non-COMISA — already handled above for COMISA) */
     if (!data.hasCOMISA && tags.has('CBTI')) {
       checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away.');
+    }
+
+    /* CPAP as lower-priority for mild + low HB patients */
+    if (hasCPAP && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
+      checkItems.push('CPAP is also an option if other treatments don\'t provide enough improvement. Ask your doctor about it at your follow-up if needed.');
     }
 
     /* CPAP as lower-priority for non-compliant/avoidant patients */
