@@ -271,6 +271,52 @@ ${subtypeHtml}`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
+     SECTION B2 — Normal AHI: What Your Study Found (snoring/UARS pathway)
+     ══════════════════════════════════════════════════════════════════════════ */
+  function renderSectionB2(data) {
+    if (getReportStage(data) !== 'post-study') return '';
+    if (data.primaryAHI === null || data.primaryAHI === undefined || data.primaryAHI >= 5) return '';
+
+    const parts = [];
+
+    parts.push(`<p>Your sleep study did not find obstructive sleep apnea. Your AHI (Apnea-Hypopnea Index) is <strong>${Math.round(data.primaryAHI)}</strong>, which falls in the <strong>normal range</strong> (fewer than 5 breathing interruptions per hour). This is reassuring news about your breathing during sleep.</p>`);
+
+    /* Highlight useful findings even in normal study */
+    const findings = [];
+    if (data.snoringReported || (data.snoreIdx && data.snoreIdx > 0)) {
+      findings.push(`Your study recorded an elevated snoring level (snore index: ${data.snoreIdx || 'detected'}). While snoring is not the same as sleep apnea, it indicates partial airway narrowing during sleep that can affect sleep quality for you and your bed partner.`);
+    }
+    if (data.odi && data.odi >= 5) {
+      findings.push(`Your oxygen desaturation index (ODI) was ${data.odi}, meaning your oxygen dropped ${data.odi} times per hour — slightly elevated even with a normal AHI. This is worth monitoring.`);
+    }
+    if (data.supPahi && data.nonSupPahi && data.supPahi > data.nonSupPahi * 2) {
+      findings.push(`Your breathing was noticeably worse when sleeping on your back (supine AHI ${Math.round(data.supPahi)}) compared to your side (${Math.round(data.nonSupPahi)}). This positional pattern can contribute to snoring.`);
+    }
+    if (findings.length > 0) {
+      parts.push('<h3 style="font-size:1rem;font-weight:700;color:#1F3A5C;margin-top:1.25rem;margin-bottom:0.5rem;">Notable Findings</h3>');
+      findings.forEach(f => parts.push(`<p>${f}</p>`));
+    }
+
+    /* UARS detection */
+    const rdi = data.patRdi;
+    const rdiElevated = rdi && data.primaryAHI != null && rdi > data.primaryAHI * 1.5 && rdi >= 10;
+    const symptomatic = (data.ess && data.ess >= 10) || (data.isi && data.isi >= 10);
+    const isUARS = symptomatic && (rdiElevated || (data.arInd && data.arInd >= 15));
+
+    if (isUARS) {
+      parts.push(`
+<div class="comisa-callout">
+  <strong>Possible Upper Airway Resistance Syndrome (UARS)</strong>
+  <p style="margin:0.4rem 0 0;">Although your AHI is normal, your symptoms and some patterns in your study suggest a possible condition called <strong>upper airway resistance syndrome (UARS)</strong>. In UARS, the airway narrows during sleep enough to disrupt sleep quality — causing daytime tiredness, difficulty concentrating, or poor sleep — without fully blocking airflow the way sleep apnea does. Home sleep tests can sometimes miss UARS because it requires more detailed monitoring to detect. Your doctor may recommend an in-lab sleep study for a more thorough evaluation.${rdiElevated ? ` Notably, your RDI (${Math.round(rdi)}) is significantly higher than your AHI (${Math.round(data.primaryAHI)}), which suggests your airway was causing partial breathing disruptions that did not meet the threshold for apnea.` : ''}</p>
+</div>`);
+    }
+
+    if (parts.length <= 1) return '';  // Just the "normal" paragraph — not enough to warrant a section
+
+    return `\n<h2>What Your Sleep Study Found</h2>\n${parts.join('')}`;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
      SECTION C — What's Contributing to Your Sleep Apnea
      ══════════════════════════════════════════════════════════════════════════ */
   function renderSectionC(data) {
@@ -346,7 +392,7 @@ ${items}`;
     'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
     'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
-    'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources including dietitians, structured programs, or medical weight loss options.`,
+    'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources including dietitians, structured programs, or medical weight loss medications such as GLP-1 agonists (e.g., Zepbound/tirzepatide), which have shown significant results for weight loss in sleep apnea patients.`,
     'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
     'NASAL-SURG': null,  // Merged into NASAL-OPT
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
@@ -359,6 +405,18 @@ ${items}`;
     'HB-URG': null,  // Urgency note — woven into Why This Matters
     'DHR-TX': null,  // Clinical detail
     'SLEEP-STUDY': `<strong>Sleep Study</strong> — A sleep study measures your breathing, oxygen levels, heart rate, and sleep stages to get a full picture of what's happening while you sleep. Depending on your situation, this may be a home sleep test (a small device you wear overnight at home) or an in-lab study (which captures more detailed data in a monitored sleep center). The results will guide your treatment decisions.`,
+    'UARS-EVAL': `<strong>Evaluation for Upper Airway Resistance Syndrome (UARS)</strong> — Your home sleep study did not show obstructive sleep apnea, but your symptoms and some patterns in your results suggest you may have a related condition called upper airway resistance syndrome (UARS). In UARS, the airway narrows enough to disrupt sleep without fully blocking airflow — which means a home test may not detect it. An in-lab sleep study with more detailed monitoring can identify this condition and guide treatment.`,
+    'SNORE-ALCOHOL': `<strong>Avoid Alcohol Before Bed</strong> — Alcohol relaxes the muscles in your throat, making snoring worse and increasing the chance of airway collapse during sleep. Avoiding alcohol within 3 hours of bedtime can noticeably reduce snoring and improve sleep quality.`,
+    'INSPIRE-EVAL': `<strong>Inspire Candidacy Evaluation</strong> — You have expressed interest in Inspire therapy. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. A candidacy evaluation involves a sleep endoscopy (DISE) to assess your airway anatomy. Your ENT surgeon will review whether Inspire is a good option for you.`,
+    'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
+    'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
+    'COMISA-SRT-CAUTION': null,  // Clinical detail
+    'SURG': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. Your ENT surgeon will discuss which approach, if any, is appropriate for your situation.`,
+    'SOFT-TISSUE-REVISION': null,  // Clinical detail
+    'SOFT-TISSUE-STRONG': null,  // Merged into tonsil/surgery recs
+    'SOFT-TISSUE-CONSIDER': null,
+    'SOFT-TISSUE-GENERAL': null,
+    'DHR-CARDS': null,  // Clinical detail
   };
 
   /* Tags that are sub-items of CPAP — should not render as standalone recs */
@@ -369,8 +427,14 @@ ${items}`;
   /**
    * Map a rec tag to its patient-friendly HTML, or return null if it should be suppressed.
    */
-  function patientFriendlyRec(tag, rawText) {
+  function patientFriendlyRec(tag, rawText, data) {
     if (cpapSubTags.has(tag) || nasalSubTags.has(tag) || suppressedTags.has(tag)) return null;
+    /* Suppress standard MAD rec if patient already tried MAD */
+    if (tag === 'MAD' && data && data.priorMAD) return null;
+    /* Inspire with BMI >40 context */
+    if (tag === 'HNS' && data && data.bmi > 40) {
+      return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. <strong>Important:</strong> Inspire currently requires a BMI of 40 or below (some insurance plans require an even lower BMI). Since your BMI is currently above this threshold, reaching a BMI under 40 through weight management would be the first step toward Inspire candidacy. This is a goal worth discussing with your care team.`;
+    }
     if (recDescriptions[tag] !== undefined) return recDescriptions[tag];
 
     /* Fallback: keyword matching for unknown tags */
@@ -402,14 +466,14 @@ ${items}`;
     if (data.hasCOMISA) {
       const cbtiEntry = recTags.find(r => r.tag === 'CBTI');
       if (cbtiEntry) {
-        const html = patientFriendlyRec('CBTI', cbtiEntry.text);
+        const html = patientFriendlyRec('CBTI', cbtiEntry.text, data);
         if (html) { allRecs.push({ html, tag: 'CBTI' }); seenDescriptions.add(html); }
       }
     }
 
     /* Process remaining recs in order */
     for (const { text, tag } of recTags) {
-      const html = patientFriendlyRec(tag, text);
+      const html = patientFriendlyRec(tag, text, data);
       if (!html || seenDescriptions.has(html)) continue;
       seenDescriptions.add(html);
       allRecs.push({ html, tag });
@@ -434,6 +498,11 @@ ${items}`;
       output += `
 <div class="cpap-context-box">
   <strong>Giving CPAP another try.</strong> We know CPAP was difficult for you before. Since you're open to trying again, we'll work to make this attempt different — with better mask fitting, optimized pressure settings, and strategies to address the specific issues you experienced. We've also included non-CPAP alternatives in case you decide CPAP still isn't right for you.
+</div>`;
+    } else if (data.prefAvoidCpap && !data.cpapFailed) {
+      output += `
+<div class="cpap-context-box">
+  <strong>We understand your preference on CPAP.</strong> We know CPAP is not your first choice, and that's okay. Your treatment plan leads with alternatives that may work well for you. We've included information about CPAP because it remains the most effective option for certain severity levels, but we'll focus on finding a treatment that fits your preferences and lifestyle.
 </div>`;
     } else if (data.cpapCurrent) {
       output += `
@@ -486,9 +555,9 @@ ${items}`;
       checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away. Starting CBT-I early can also make it easier to use CPAP or other treatments later.');
     }
 
-    /* CPAP — but different messaging for non-compliant patients */
+    /* CPAP — but different messaging for non-compliant/avoidant patients */
     if (hasCPAP) {
-      if (data.cpapFailed && !data.cpapWillRetry) {
+      if ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed)) {
         // Don't lead with CPAP setup for patients who don't want it
         // Instead, add it further down as a "consider" item
       } else if (data.cpapFailed && data.cpapWillRetry) {
@@ -525,8 +594,17 @@ ${items}`;
     }
 
     /* Inspire */
-    if (tags.has('HNS')) {
-      checkItems.push('Schedule a formal Inspire candidacy evaluation with your ENT surgeon to determine whether you qualify for the implant procedure.');
+    if (tags.has('HNS') || tags.has('INSPIRE-EVAL')) {
+      if (data.bmi && data.bmi > 40) {
+        checkItems.push('Discuss Inspire therapy with your ENT surgeon — you will need to reach a BMI of 40 or below before a formal candidacy evaluation. Ask about weight management resources to help reach this goal.');
+      } else {
+        checkItems.push('Schedule a formal Inspire candidacy evaluation with your ENT surgeon to determine whether you qualify for the implant procedure.');
+      }
+    }
+
+    /* UARS */
+    if (tags.has('UARS-EVAL')) {
+      checkItems.push('Ask your doctor about scheduling an in-lab overnight sleep study (polysomnography) to evaluate for upper airway resistance syndrome.');
     }
 
     /* CBT-I (non-COMISA — already handled above for COMISA) */
@@ -534,9 +612,9 @@ ${items}`;
       checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away.');
     }
 
-    /* CPAP as lower-priority for non-compliant patients */
-    if (hasCPAP && data.cpapFailed && !data.cpapWillRetry) {
-      checkItems.push('If you are open to trying CPAP again in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.');
+    /* CPAP as lower-priority for non-compliant/avoidant patients */
+    if (hasCPAP && ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed))) {
+      checkItems.push('If you are open to trying CPAP in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.');
     }
 
     /* Always add follow-up */
@@ -678,6 +756,7 @@ ${items.join('')}`;
       renderHeader(data),
       renderSectionA(data),
       renderSectionB(data),
+      renderSectionB2(data),
       renderSectionC(data),
       renderSectionD(data),
       renderSectionE(data),

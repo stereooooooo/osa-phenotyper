@@ -595,13 +595,15 @@ document.getElementById('form').addEventListener('submit', e => {
     add('Poor Muscle Responsiveness',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `AHI ${ahi}`]);
   }
 
-  /* ─── ADDITIONAL PHENOTYPES ───────────────────────────────── */
-  if( sup && nons && (sup/nons) > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
-    add('Positional OSA',[`Sup/Non-sup ${(sup/nons).toFixed(1)}`, `Non-sup AHI ${nons}`]);
-  }
+  /* ─── ADDITIONAL PHENOTYPES (only meaningful when AHI ≥ 5) ── */
+  if (exists(ahi) && ahi >= 5) {
+    if( sup && nons && (sup/nons) > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
+      add('Positional OSA',[`Sup/Non-sup ${(sup/nons).toFixed(1)}`, `Non-sup AHI ${nons}`]);
+    }
 
-  if( remAhi && nremAhi && (remAhi/nremAhi) > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
-    add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
+    if( remAhi && nremAhi && (remAhi/nremAhi) > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
+      add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
+    }
   }
 
   /* Composite HB: trigger if ANY metric is in moderate+ range.
@@ -762,22 +764,58 @@ document.getElementById('form').addEventListener('submit', e => {
     pushRec(recs,'Patient interested in Inspire\u00AE \u2014 evaluate candidacy (AHI 15\u2013100, BMI \u2264 40, no concentric palatal collapse).','INSPIRE-EVAL');
   }
 
-  /* Ensure the core trio is always present (treatment-history-aware, deduped by tag) */
-  if(cpapCurrent) {
-    pushRec(recs,'Continue CPAP/APAP','CPAP');
-  } else if(cpapRefused) {
-    pushRec(recs,'Alternative PAP (BiPAP, ASV) if willing to reconsider','CPAP');
-  } else if(prefAvoidCpap && !priorCpap) {
-    pushRec(recs,'CPAP/APAP (most effective option \u2014 discuss with patient given preference to avoid)','CPAP');
+  /* ─── STAGE-AWARE CORE RECOMMENDATIONS ───────────────────── */
+  if (ahi == null) {
+    /* PRE-STUDY: Only recommend sleep study + CBT-I if insomnia */
+    pushRec(recs,'Schedule a sleep study to evaluate for obstructive sleep apnea.','SLEEP-STUDY');
+    if (exists(isi) && isi >= 15) {
+      pushRec(recs,'Initiate CBT-I for insomnia symptoms while awaiting sleep study results.','CBTI');
+    }
+    if (nasalObs || ctSeptum || ctTurbs || (noseScore && noseScore >= T.nasal.noseMild)) {
+      pushRec(recs,'Nasal optimization (saline rinse, intranasal steroid, ENT evaluation) to improve nasal airflow.','NASAL-OPT');
+    }
+  } else if (ahi < 5) {
+    /* NORMAL AHI: Check for snoring pathway and UARS */
+    const hasSnoring = exists(n(f.get('snoreIdx'))) && n(f.get('snoreIdx')) > 0;
+    const rdi = n(f.get('patRdi'));
+    const rdiElevated = exists(rdi) && exists(ahi) && rdi > ahi * 1.5 && rdi >= 10;
+    const symptomatic = (exists(ess) && ess >= 10) || (exists(isi) && isi >= 10);
+    const isUARS = symptomatic && (rdiElevated || (exists(arInd) && arInd >= 15));
+
+    if (isUARS) {
+      pushRec(recs,'Possible UARS (upper airway resistance syndrome) — consider in-lab polysomnography with esophageal pressure monitoring for definitive evaluation.','UARS-EVAL');
+    }
+    if (hasSnoring || (exists(n(f.get('snoringReported'))) || yes(f,'snoringReported'))) {
+      /* Snoring-specific recommendations */
+      if (bmi >= 27) pushRec(recs,'Weight management can reduce snoring intensity and frequency.','WEIGHT');
+      if (nasalObs || ctSeptum || ctTurbs || (noseScore && noseScore >= T.nasal.noseMild)) {
+        pushRec(recs,'Nasal optimization to improve nasal airflow and reduce snoring.','NASAL-OPT');
+      }
+      pushRec(recs,'Positional therapy — snoring is often worse on your back.','POS');
+      pushRec(recs,'Custom oral appliance (MAD) can reduce snoring by repositioning the jaw.','MAD');
+      pushRec(recs,'Avoid alcohol within 3 hours of bedtime — alcohol relaxes throat muscles and worsens snoring.','SNORE-ALCOHOL');
+    }
+    if (exists(isi) && isi >= 15) {
+      pushRec(recs,'Initiate CBT-I for insomnia symptoms.','CBTI');
+    }
   } else {
-    pushRec(recs,'Start CPAP/APAP','CPAP');
+    /* AHI ≥ 5: Standard OSA core trio (treatment-history-aware) */
+    if(cpapCurrent) {
+      pushRec(recs,'Continue CPAP/APAP','CPAP');
+    } else if(cpapRefused) {
+      pushRec(recs,'Alternative PAP (BiPAP, ASV) if willing to reconsider','CPAP');
+    } else if(prefAvoidCpap && !priorCpap) {
+      pushRec(recs,'CPAP/APAP (most effective option \u2014 discuss with patient given preference to avoid)','CPAP');
+    } else {
+      pushRec(recs,'Start CPAP/APAP','CPAP');
+    }
+    if(priorMAD) {
+      pushRec(recs,'Reassess oral appliance therapy (prior trial) \u2014 evaluate fit, efficacy, or consider alternative device','MAD');
+    } else {
+      pushRec(recs,'Custom oral appliance (MAD)','MAD');
+    }
+    pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
   }
-  if(priorMAD) {
-    pushRec(recs,'Reassess oral appliance therapy (prior trial) \u2014 evaluate fit, efficacy, or consider alternative device','MAD');
-  } else {
-    pushRec(recs,'Custom oral appliance (MAD)','MAD');
-  }
-  pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
 
   /* ─── COMISA (Co-Morbid Insomnia and Sleep Apnea) ─────── */
   const hasCOMISA = exists(isi) && isi >= 15 && exists(ahi) && ahi >= 5;
@@ -1128,6 +1166,7 @@ document.getElementById('form').addEventListener('submit', e => {
     subtype,
     severity: ahiSeverity(ahi) || 'normal',
     primaryAHI: ahi,
+    patRdi: n(f.get('patRdi')),
     patientName: (document.getElementById('patientName')?.value || '').trim(),
     reportDate: new Date().toISOString().split('T')[0],
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
