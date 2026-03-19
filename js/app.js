@@ -733,6 +733,9 @@ document.getElementById('form').addEventListener('submit', e => {
         if(priorNasal) {
           pushRec(recs,'Prior nasal surgery noted \u2014 reassess for residual obstruction or consider revision.','NASAL-PRIOR');
         }
+        if(priorSinus) {
+          pushRec(recs,'Prior sinus surgery noted \u2014 evaluate for recurrent sinusitis or persistent inflammation contributing to nasal obstruction.','NASAL-SINUS-PRIOR');
+        }
         break;
       case 'Elevated Delta Heart Rate':
         pushRec(recs,'Elevated autonomic reactivity detected. Effective OSA therapy typically reduces heart rate surges. Monitor BP and CV risk factors.','DHR-TX');
@@ -1066,12 +1069,12 @@ document.getElementById('form').addEventListener('submit', e => {
   const hasDISEData = [vDeg, oDeg, tDeg, eDeg].some(d => d && d !== '0');
   if(hasDISEData){
     const voteSummary = [
-      `V:${vDeg}${vPat && vPat!=='\u2014' ? '/'+vPat : ''}`,
-      `O:${oDeg}${oPat && oPat!=='\u2014' ? '/'+oPat : ''}`,
-      `T:${tDeg}${tPat && tPat!=='\u2014' ? '/'+tPat : ''}`,
-      `E:${eDeg}${ePat && ePat!=='\u2014' ? '/'+ePat : ''}`
-    ].join(' ');
-    surgTargets.push(`DISE VOTE: ${voteSummary}`);
+      vDeg && vDeg!=='0' ? `V:${vDeg}${vPat && vPat!=='\u2014' ? '/'+vPat : ''}` : null,
+      oDeg && oDeg!=='0' ? `O:${oDeg}${oPat && oPat!=='\u2014' ? '/'+oPat : ''}` : null,
+      tDeg && tDeg!=='0' ? `T:${tDeg}${tPat && tPat!=='\u2014' ? '/'+tPat : ''}` : null,
+      eDeg && eDeg!=='0' ? `E:${eDeg}${ePat && ePat!=='\u2014' ? '/'+ePat : ''}` : null,
+    ].filter(Boolean).join(' ');
+    if(voteSummary) surgTargets.push(`DISE VOTE: ${voteSummary}`);
   }
   if(out.phen.includes('High Anatomical Contribution') && !surgTargets.length) surgTargets.push('Pharyngeal levels per exam/DISE as indicated');
 
@@ -1083,10 +1086,10 @@ document.getElementById('form').addEventListener('submit', e => {
       <table class="table table-sm table-bordered" style="max-width:400px;">
         <thead><tr><th>Site</th><th>Degree</th><th>Pattern</th></tr></thead>
         <tbody>
-          <tr><td>Velum</td><td>${vDeg||0}</td><td>${vPat && vPat!=='\u2014' ? vPat : '\u2014'}</td></tr>
-          <tr><td>Oropharynx</td><td>${oDeg||0}</td><td>${oPat && oPat!=='\u2014' ? oPat : '\u2014'}</td></tr>
-          <tr><td>Tongue Base</td><td>${tDeg||0}</td><td>${tPat && tPat!=='\u2014' ? tPat : '\u2014'}</td></tr>
-          <tr><td>Epiglottis</td><td>${eDeg||0}</td><td>${ePat && ePat!=='\u2014' ? ePat : '\u2014'}</td></tr>
+          ${vDeg && vDeg!=='0' ? `<tr><td>Velum</td><td>${vDeg}</td><td>${vPat && vPat!=='\u2014' ? vPat : '\u2014'}</td></tr>` : ''}
+          ${oDeg && oDeg!=='0' ? `<tr><td>Oropharynx</td><td>${oDeg}</td><td>${oPat && oPat!=='\u2014' ? oPat : '\u2014'}</td></tr>` : ''}
+          ${tDeg && tDeg!=='0' ? `<tr><td>Tongue Base</td><td>${tDeg}</td><td>${tPat && tPat!=='\u2014' ? tPat : '\u2014'}</td></tr>` : ''}
+          ${eDeg && eDeg!=='0' ? `<tr><td>Epiglottis</td><td>${eDeg}</td><td>${ePat && ePat!=='\u2014' ? ePat : '\u2014'}</td></tr>` : ''}
         </tbody>
       </table>
     </div>`;
@@ -1193,6 +1196,7 @@ document.getElementById('form').addEventListener('submit', e => {
       <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
     </div>
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
+    ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => ({cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'inefficacy',cpapTravel:'travel'}[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
     ${out.phen.length ? `
@@ -1251,6 +1255,7 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapCurrent,
     cpapFailed,
     cpapWillRetry,
+    cpapHelped,
     prefAvoidCpap,
     priorMAD,
     priorJaw,

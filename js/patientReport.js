@@ -427,6 +427,7 @@ ${items}`;
     'SOFT-TISSUE-CONSIDER': null,
     'SOFT-TISSUE-GENERAL': null,
     'DHR-CARDS': null,  // Clinical detail
+    'NASAL-SINUS-PRIOR': null,  // Clinician-only: prior sinus surgery
     'FRIEDMAN-III-ALT': null,  // Clinician-only surgical routing
     'COMBI-PRIOR': null,  // Clinician-only: prior MAD + UPPP + CPAP combo
     'SURG-PREF': null,  // Clinician-only: patient prefers surgery

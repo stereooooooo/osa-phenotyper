@@ -170,6 +170,25 @@ const OSA_CONFIG = {
           return (vals.remPahi < vals.pahi * 0.3 && vals.nremPahi < vals.pahi * 0.3);
         },
         message: 'Both REM and NREM pAHI are well below overall pAHI — please verify.'
+      },
+      {
+        id: 'sup_nonsup_vs_overall',
+        fields: ['supPahi', 'nonSupPahi', 'pahi'],
+        check: (vals) => {
+          if (!vals.pahi || !vals.supPahi || !vals.nonSupPahi) return false;
+          // If both positional values are much higher than overall, data may be swapped
+          return (vals.supPahi > vals.pahi * 2 && vals.nonSupPahi > vals.pahi * 2);
+        },
+        message: 'Both supine and non-supine pAHI exceed overall pAHI by >2x — possible data entry error.'
+      },
+      {
+        id: 'rem_nrem_vs_overall_psg',
+        fields: ['ahiREM', 'ahiNREM', 'ahi'],
+        check: (vals) => {
+          if (!vals.ahi) return false;
+          return (vals.ahiREM && vals.ahiNREM && vals.ahiREM < vals.ahi * 0.3 && vals.ahiNREM < vals.ahi * 0.3);
+        },
+        message: 'Both REM and NREM AHI are well below overall AHI (Lab PSG) — please verify.'
       }
     ]
   }
