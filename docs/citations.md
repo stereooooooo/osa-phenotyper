@@ -2,7 +2,7 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-03-19
+**Last updated:** 2026-03-20
 
 ---
 
@@ -85,6 +85,57 @@
 |---------|----------|----------|
 | UARS identification via RDI/AHI discrepancy | Guilleminault C, et al. "Upper Airway Resistance Syndrome." *Proc Am Thorac Soc.* 2008;5(2):274-82. | UARS detection: RDI > 1.5x AHI + symptoms |
 | In-lab PSG for UARS diagnosis | Same Guilleminault 2008 | Recommendation for in-lab study |
+
+## Endotyping Framework (PALM Scale)
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| PALM scale (Pcrit, ArTH, LG, UAMR) — 4 endotypes | Eckert DJ, et al. "Defining Phenotypic Causes of OSA." *Am J Respir Crit Care Med.* 2013;188(8):996-1004. | Core phenotyping framework |
+| ATS 2025 research statement — clinical translation roadmap | Tolbert TM, et al. "Research Priorities for Translating Endophenotyping." *Am J Respir Crit Care Med.* 2025;211(9):1562-1583. | ATS triage note: address collapsibility first before nonanatomic endotypes |
+| Collapsibility-first triage approach | Same Tolbert 2025 | Clinician report: "address anatomy first" when both anatomic + nonanatomic endotypes present |
+
+## Arousal Threshold
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| Edwards ArTH clinical score (AHI <30, nadir >82.5%, hypopnea fraction >58.3%) | Edwards BA, et al. "Clinical Predictors of the Respiratory Arousal Threshold." *Am J Respir Crit Care Med.* 2014;190(11):1293-300. | Edwards ArTH Score on clinician report (2/3 variables from WatchPAT) |
+| Automated ArTH quantification from PSG | Sands SA, et al. "Quantifying the Arousal Threshold Using Polysomnography." *Sleep.* 2018;41(1):zsx183. | Reference for PUP method |
+
+## Loop Gain
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| High loop gain predicts residual OSA on PAP (OR 2.17-3.31) | Eschbach E, et al. "Loop Gain Predicts Residual Sleep Apnoea Among People Using PAP." *Thorax.* 2026;:thorax-2025-223878. | Guardrail: monitor for treatment-emergent centrals on PAP |
+| Breath-holding to estimate loop gain | Messineo L, et al. "Breath-Holding as a Means to Estimate Loop Gain." *J Physiol.* 2018;596(17):4043-4056. | Reference for future loop gain assessment |
+
+## HB Treatment Allocation
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| High HB identifies CPAP cardiovascular benefit (HR 0.57) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | Clinician report: "High HB — CPAP cardiovascular benefit" alert |
+| HB predicts major adverse CV events (HR 1.21) | Trzepizur W, et al. "Sleep Apnea-Specific Hypoxic Burden and Risk of CV Events." *Am J Respir Crit Care Med.* 2022;205(1):108-117. | HB severity tiering rationale |
+
+## Symptom Clusters
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| 3 clinical phenotypes (disturbed sleep, minimally symptomatic, excessively sleepy) | Ye L, et al. "The Different Clinical Faces of OSA: A Cluster Analysis." *Eur Respir J.* 2014;44(6):1600-7. | Symptom subtype classification |
+| 5-cluster international validation (SAGIC consortium) | Keenan BT, et al. "Recognizable Clinical Subtypes of OSA Across International Sleep Centers." *Sleep.* 2018;41(3):zsx214. | Expanded subtype framework reference |
+| Phenotypic subtypes and precision medicine synthesis | Zinchuk A, Yaggi HK. "Phenotypic Subtypes of OSA." *Chest.* 2020;157(2):403-420. | Comprehensive phenotype review |
+
+## DISE Evidence
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| DISE-guided surgery outcomes — systematic review | Shah SJ, et al. "Association Between DISE Findings and Surgical Outcomes." *Otolaryngol Head Neck Surg.* 2025;:ohn.70018. | DISE-guided surgical routing validation |
+| DISE surgical failure predictors — meta-analysis | Qi Y, et al. "Surgical Failure Guided by DISE." *Eur Arch Otorhinolaryngol.* 2024;281(7):3333-3343. | Concentric collapse contraindication evidence |
+
+## Endotype-Treatment Matching
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| Clinical translation of endotypes | Edwards BA, et al. "Sleep Apnea Endotypes and Their Implications for Clinical Practice." *Sleep Med.* 2025;126:260-266. | Framework for endotype → treatment mapping |
+| CVD and sleep-disordered breathing review | Cowie MR, et al. "Sleep Disordered Breathing and Cardiovascular Disease: JACC Review." *J Am Coll Cardiol.* 2021;78(6):608-624. | Cardiovascular risk framing in Why This Matters section |
 
 ---
 

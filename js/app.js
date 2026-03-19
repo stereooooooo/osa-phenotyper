@@ -1184,6 +1184,39 @@ document.getElementById('form').addEventListener('submit', e => {
     ? `<div class="osa-clin-metrics-row">${keyNumItems.join('')}</div>`
     : '';
 
+  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
+  /* 3-variable clinical prediction of low arousal threshold:
+     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
+     Score ≥2 = likely low arousal threshold (84% accuracy) */
+  const edwardsArTH = (() => {
+    if (!exists(ahi)) return null;
+    let score = 0;
+    const details = [];
+    if (ahi < 30) { score++; details.push('AHI <30'); }
+    if (exists(nadir) && nadir > 82.5) { score++; details.push(`nadir ${nadir}% >82.5%`); }
+    // Hypopnea fraction not available from WatchPAT — note this
+    const hypFractionAvailable = false;
+    const prediction = score >= 2 ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
+    return { score, maxScore: hypFractionAvailable ? 3 : 2, prediction, details, partial: !hypFractionAvailable };
+  })();
+
+  /* ── HB Treatment Allocation (Pinilla 2023) ────────────── */
+  const hbTreatmentNote = (() => {
+    const hbSevere = (exists(hbPH) && hbPH > 60) || (exists(odi) && odi > 50) || (exists(t90) && t90 > 20) || (exists(nadir) && nadir < 75);
+    if (!hbSevere) return '';
+    return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP Cardiovascular Benefit (Pinilla 2023):</strong> Patients with high HB who use CPAP have significantly reduced cardiovascular events (HR 0.57). Strongly prioritize effective PAP therapy for CV risk reduction in this patient.</div>';
+  })();
+
+  /* ── ATS 2025 Triage Note ──────────────────────────────── */
+  const atsTriage = (() => {
+    const hasAnat = out.phen.includes('High Anatomical Contribution');
+    const hasNonanat = out.phen.includes('Low Arousal Threshold') || out.phen.includes('High Loop Gain') || out.phen.includes('Poor Muscle Responsiveness');
+    if (hasAnat && hasNonanat) {
+      return '<div class="alert alert-info mt-2 py-2 px-3"><small><strong>ATS 2025 Triage:</strong> Anatomical + nonanatomic endotypes detected. Per ATS Research Statement, address collapsibility (anatomy) first — nonanatomic therapies (ArTH, LG targeting) are unlikely to succeed if airway is highly collapsible.</small></div>';
+    }
+    return '';
+  })();
+
   /* ── Treatment plan with numbered badges ─────────────────── */
   const rankedPlan = recs.map((r, i) => {
     const priority = i === 0 ? ' osa-rec-priority' : '';
@@ -1210,6 +1243,9 @@ document.getElementById('form').addEventListener('submit', e => {
     ${friedmanStage ? `<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} mt-3 py-2 px-3"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>` : ''}
     ${hnsStage ? `<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} mt-2 py-2 px-3"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>` : ''}
     <div class="alert alert-${madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} mt-2 py-2 px-3"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>
+    ${edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `<div class="alert alert-info mt-2 py-2 px-3"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables]</small>' : ''}</div>` : ''}
+    ${hbTreatmentNote}
+    ${atsTriage}
     <h5 class="mt-3 mb-2">Ranked Treatment Plan</h5>
     ${rankedPlan}
     ${guardrails.length?`<div class="alert alert-warning mt-3"><strong>Guardrails:</strong> <ul class="mb-0">${guardrails.map(g=>`<li>${g}</li>`).join('')}</ul></div>`:''}
