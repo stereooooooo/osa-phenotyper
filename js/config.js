@@ -58,9 +58,11 @@ const OSA_CONFIG = {
 
     hypoxicBurden: {
       // Composite tiering: worst metric determines tier
-      // Moderate = phenotype triggers; Severe = urgency framing + "Why This Matters"
+      // Moderate = phenotype triggers; Severe = urgency + CV risk framing
+      // Updated 2025: ISAACC (Pinilla 2023), pooled multi-trial (Azarbarzin 2025), RICCADSA (Peker 2025)
       hbPerHour:          30,   // %min/hr — moderate threshold (phenotype trigger)
-      hbPerHourSevere:    60,   // %min/hr — severe/high CV risk (Azarbarzin quintile data)
+      hbPerHourHigh:      73,   // %min/hr — ISAACC: CPAP reduces CV events above this (HR 0.57)
+      hbPerHourSevere:    87,   // %min/hr — pooled 2025: high-risk OSA definition (Azarbarzin 2025)
       odi:                20,   // ODI — moderate threshold (strongest HB correlator, r=0.73)
       odiSevere:          50,   // ODI — severe threshold
       nadir:              75,   // SpO₂ % — only triggers at severe level (< 75%)

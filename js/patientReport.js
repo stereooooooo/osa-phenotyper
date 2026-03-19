@@ -824,9 +824,9 @@ ${items.join('')}`;
     const odiVal    = (data.odi !== null && data.odi !== undefined) ? +data.odi : null;
     const t90Val    = (data.t90 !== null && data.t90 !== undefined) ? +data.t90 : null;
 
-    /* Trigger on severe AHI OR any HB metric in severe range */
+    /* Trigger on severe AHI OR any HB metric in CV-risk range (updated thresholds per ISAACC/Azarbarzin 2025) */
     const triggerSevereAHI = pAHI !== null && pAHI !== undefined && +pAHI >= 30;
-    const triggerHB        = hbArea !== null && hbArea > 60;
+    const triggerHB        = hbArea !== null && hbArea >= 73;   // ISAACC: CPAP CV benefit threshold
     const triggerODI       = odiVal !== null && odiVal > 50;
     const triggerNadir     = nadirVal < 75;
     const triggerT90       = t90Val !== null && t90Val > 20;

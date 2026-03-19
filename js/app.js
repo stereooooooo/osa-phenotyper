@@ -81,8 +81,8 @@ function confidenceFor(tag, ctx){
     }
     case 'High Hypoxic Burden': {
       const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
-      /* Severe tier: any single metric in severe range → High confidence */
-      if(hb > T.hypoxicBurden.hbPerHourSevere || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
+      /* High confidence: HB area ≥73 (ISAACC CPAP benefit threshold) OR other metrics in severe range */
+      if(hb >= T.hypoxicBurden.hbPerHourHigh || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
       /* Moderate tier: any single metric in moderate range (nadir excluded — only triggers at severe) */
       if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
       return 'Low';
@@ -1200,19 +1200,59 @@ document.getElementById('form').addEventListener('submit', e => {
     return { score, maxScore: hypFractionAvailable ? 3 : 2, prediction, details, partial: !hypFractionAvailable };
   })();
 
-  /* ── HB Treatment Allocation (Pinilla 2023) ────────────── */
+  /* ── HB Treatment Allocation (Pinilla 2023, Azarbarzin 2025, Peker 2025) ── */
   const hbTreatmentNote = (() => {
-    const hbSevere = (exists(hbPH) && hbPH > 60) || (exists(odi) && odi > 50) || (exists(t90) && t90 > 20) || (exists(nadir) && nadir < 75);
-    if (!hbSevere) return '';
-    return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP Cardiovascular Benefit (Pinilla 2023):</strong> Patients with high HB who use CPAP have significantly reduced cardiovascular events (HR 0.57). Strongly prioritize effective PAP therapy for CV risk reduction in this patient.</div>';
+    // Three-tier HB CV risk using updated evidence:
+    // Very high (≥87 %min/h): pooled 2025 high-risk OSA — strongest CPAP indication
+    // High (≥73 %min/h): ISAACC — CPAP reduces CV events (HR 0.57)
+    // Moderate (30–73): phenotype detected but below CPAP CV benefit threshold
+    // Also check non-HB-area metrics that indicate severe hypoxemia
+    const veryHighHB = exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHourSevere;
+    const highHB = exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHourHigh;
+    const severeOther = (exists(odi) && odi > T.hypoxicBurden.odiSevere) || (exists(t90) && t90 > T.hypoxicBurden.t90Severe) || (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere);
+
+    // ΔHR + HB synergy (Azarbarzin 2021): high ΔHR + high HB = HR 3.50 for fatal CVD
+    const highDHR = exists(dhr) && dhr >= T.deltaHeartRate.dhr;
+    const synergy = (highHB || severeOther) && highDHR;
+
+    if (veryHighHB || (highHB && severeOther)) {
+      const triggers = [];
+      if (veryHighHB) triggers.push(`HB ${hbPH.toFixed(0)} %min/h (≥87 pooled threshold)`);
+      else if (highHB) triggers.push(`HB ${hbPH.toFixed(0)} %min/h (≥73 ISAACC threshold)`);
+      if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
+      if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
+      if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
+      return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication (Azarbarzin 2025):</strong> ' + triggers.join('; ') + '. High-risk OSA per pooled multi-trial analysis. CPAP significantly reduces cardiovascular events in this group. Strongly prioritize effective PAP therapy.'
+        + (synergy ? ' <strong>⚠ ΔHR + HB synergy:</strong> Combined high ΔHR and high HB confers HR 3.50 for fatal CVD (Azarbarzin 2021). Highest-risk phenotype — urgent treatment indicated.' : '')
+        + '</div>';
+    }
+    if (highHB || severeOther) {
+      const triggers = [];
+      if (highHB) triggers.push(`HB ${hbPH.toFixed(0)} %min/h (≥73 ISAACC threshold)`);
+      if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
+      if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
+      if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
+      return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP Cardiovascular Benefit (Pinilla 2023):</strong> ' + triggers.join('; ') + '. Above thresholds where CPAP reduces cardiovascular events (HR 0.57). RICCADSA confirms HB (not AHI alone) predicts MACCEs (HR 1.87). Prioritize effective PAP therapy for CV risk reduction.'
+        + (synergy ? ' <strong>⚠ ΔHR + HB synergy:</strong> Combined high ΔHR and high HB confers HR 3.50 for fatal CVD (Azarbarzin 2021).' : '')
+        + '</div>';
+    }
+    return '';
   })();
 
-  /* ── Mild OSA + Low HB — Alternatives Equally Effective (Pinilla 2023) ── */
+  /* ── Low HB — Alternatives Equally Effective / CPAP Caution (Pinilla 2023) ── */
   const mildLowHbNote = (() => {
-    const isMild = exists(ahi) && ahi >= 5 && ahi < 15;
     const lowHB = !out.phen.includes('High Hypoxic Burden');
-    if (!isMild || !lowHB) return '';
-    return '<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden (Pinilla 2023):</strong> In patients with low HB, CPAP and non-CPAP treatments (MAD, positional therapy, weight management) show comparable outcomes. Treatment allocation does not significantly affect cardiovascular or symptomatic endpoints in this group. Patient preference should guide treatment selection — alternatives are a strong first-line option.</div>';
+    if (!lowHB || !exists(ahi) || ahi < 5) return '';
+
+    const isMild = ahi < 15;
+    if (isMild) {
+      return '<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden (Pinilla 2023):</strong> In patients with low HB, CPAP and non-CPAP treatments (MAD, positional therapy, weight management) show comparable outcomes. Treatment allocation does not significantly affect cardiovascular or symptomatic endpoints in this group. Patient preference should guide treatment selection — alternatives are a strong first-line option.<br><small class="text-muted">Note: In the ISAACC trial, low-HB patients randomized to CPAP showed a trend toward increased CV events (HR 1.33, not statistically significant). While not definitive, this supports an alternatives-first approach when HB is low.</small></div>';
+    }
+    // Moderate OSA + low HB: still worth noting
+    if (ahi < 30) {
+      return '<div class="alert alert-info mt-2 py-2 px-3"><strong>Moderate OSA + Low Hypoxic Burden (Pinilla 2023, Peker 2025):</strong> HB below CV-risk threshold. RICCADSA data shows that high AHI with low HB is not associated with MACCEs — only high HB predicts cardiovascular events regardless of AHI. Non-CPAP alternatives are reasonable. Shared decision-making appropriate.</div>';
+    }
+    return '';
   })();
 
   /* ── ATS 2025 Triage Note ──────────────────────────────── */

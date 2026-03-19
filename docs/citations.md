@@ -112,9 +112,16 @@
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| High HB identifies CPAP cardiovascular benefit (HR 0.57) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | Clinician report: "High HB — CPAP cardiovascular benefit" alert |
-| Low HB: comparable outcomes with CPAP vs alternatives | Same Pinilla 2023 | Mild OSA + low HB: clinician report note that treatment allocation doesn't significantly affect outcomes; patient report reorders alternatives before CPAP; "good options beyond CPAP" context box |
+| HB ≥73.1 %min/h: CPAP reduces CV events (HR 0.57) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | Clinician report: "High HB — CPAP CV benefit" alert; HB area/hr high threshold (73) |
+| HB <73.1: CPAP trend toward harm (HR 1.33, NS) | Same Pinilla 2023 (ISAACC) | Low HB clinician caution note; mild OSA alternatives-first pathway |
+| Low HB: comparable outcomes with CPAP vs alternatives | Same Pinilla 2023 | Patient report: alternatives before CPAP; "good options beyond CPAP" context box |
+| HB ≥87.1 %min/h: high-risk OSA (pooled multi-trial) | Azarbarzin A, et al. "Cardiovascular Benefit of CPAP According to High-Risk OSA." *Eur Heart J.* 2025;:ehaf447. | HB area/hr very-high threshold (87); "Very High HB" clinician alert |
+| High AHI + low HB ≠ CV risk; only HB predicts MACCEs | Peker Y, et al. "Hypoxic Burden Is Associated With CV Events: RICCADSA Cohort." *Chest.* 2025;:S0012-3692(25)05023-8. | Moderate OSA + low HB clinician note; validates alternatives-first approach |
+| ΔHR + HB synergy: HR 3.50 for fatal CVD | Azarbarzin A, et al. "Sleep Apnea-Specific Pulse-Rate Response Predicts CV Morbidity and Mortality." *Am J Respir Crit Care Med.* 2021;203(12):1546-1555. | Composite ΔHR + HB CV risk flag in clinician report |
+| ΔHRoxi derivable from pulse oximetry | Blanchard M, et al. "Heart Rate Response and CV Risk During OSA." *Eur Respir J.* 2025;65(5):2401883. | Future: automated ΔHR from oximetry (not yet implemented) |
 | HB predicts major adverse CV events (HR 1.21) | Trzepizur W, et al. "Sleep Apnea-Specific Hypoxic Burden and Risk of CV Events." *Am J Respir Crit Care Med.* 2022;205(1):108-117. | HB severity tiering rationale |
+| ATS 2025: endotype triage framework | Tolbert TM, et al. "Translating Endophenotyping of Adult OSA to the Clinic." *Am J Respir Crit Care Med.* 2025;211(9):1562-1583. | ATS triage note; future: hierarchical endotype assessment |
+| Stepwise endotype-guided combination therapy (95% success) | Aishah A, et al. "Stepwise Targeted Combination Therapy for OSA." *Ann Am Thorac Soc.* 2023;20(9):1316-1325. | Reference only (proof-of-concept, not yet clinical standard) |
 
 ## Symptom Clusters
 
