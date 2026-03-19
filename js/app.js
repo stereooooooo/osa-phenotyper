@@ -18,11 +18,13 @@ function exists(v){ return v!==null && v!==undefined && v!==''; }
 
 /* ── Dedupe-able recommendations ──────────────────────────────── */
 const recSeen = new Set();
+const recTagMap = [];  // parallel array: [{text, tag}, ...]
 function pushRec(arr, text, tag){
   const key = (tag || text.trim().toLowerCase().slice(0,60));
   if(recSeen.has(key)) return;
   recSeen.add(key);
   arr.push(text);
+  recTagMap.push({ text, tag: tag || key });
 }
 
 /* ── Shorthand for threshold access ───────────────────────────── */
@@ -473,6 +475,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ── Proceed with phenotyping ───────────────────────────────── */
   recSeen.clear();
+  recTagMap.length = 0;
   const f = new FormData(e.target);
 
   const out = { phen:[], why:{}, recs:[] };
@@ -1069,6 +1072,7 @@ document.getElementById('form').addEventListener('submit', e => {
     phen: out.phen,
     why: out.why,
     recs,
+    recTags: recTagMap.map(r => ({ text: r.text, tag: r.tag })),
     sex, bmi, neck,
     tonsils: tons,
     ftp: Number(mall) || null,
@@ -1098,6 +1102,7 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapCurrent,
     cpapFailed,
     cpapWillRetry,
+    prefAvoidCpap,
     priorMAD,
     priorInspire,
     priorUPPP,

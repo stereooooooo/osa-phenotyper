@@ -81,18 +81,28 @@ body.report-preview-open {
 }
 .ahi-scale-bar {
   display: flex;
-  height: 28px;
+  height: 44px;
   border-radius: 6px;
   overflow: hidden;
   position: relative;
 }
 .ahi-scale-zone {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
   font-weight: 600;
   color: #fff;
+  gap: 1px;
+}
+.ahi-zone-label {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+.ahi-zone-range {
+  font-size: 0.6rem;
+  line-height: 1;
+  opacity: 0.85;
 }
 .ahi-scale-zone.normal  { background: #22c55e; flex: 5; }
 .ahi-scale-zone.mild    { background: #eab308; flex: 10; color: #374151; }
@@ -123,19 +133,6 @@ body.report-preview-open {
   border-bottom: 8px solid #1F3A5C;
   transform: rotate(180deg);
 }
-.ahi-scale-labels {
-  display: flex;
-  font-size: 0.65rem;
-  color: #6B7280;
-  margin-top: 2px;
-}
-.ahi-scale-labels span {
-  text-align: center;
-}
-.ahi-scale-labels span:nth-child(1) { flex: 5; }
-.ahi-scale-labels span:nth-child(2) { flex: 10; }
-.ahi-scale-labels span:nth-child(3) { flex: 15; }
-.ahi-scale-labels span:nth-child(4) { flex: 30; }
 
 /* ── Phenotype List ── */
 .patient-report .phenotype-item {
@@ -164,6 +161,26 @@ body.report-preview-open {
 .patient-report .rec-item {
   padding: 0.5rem 0;
   border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── CPAP Context Box ── */
+.patient-report .cpap-context-box {
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.9rem;
+}
+
+/* ── COMISA Callout ── */
+.patient-report .comisa-callout {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
 }
 
 /* ── Checklist ── */

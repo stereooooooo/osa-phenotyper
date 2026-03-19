@@ -236,19 +236,13 @@ ${severity === 'normal'
     const ahiScale   = `
 <div class="ahi-scale">
   <div class="ahi-scale-bar">
-    <div class="ahi-scale-zone normal">Normal</div>
-    <div class="ahi-scale-zone mild">Mild</div>
-    <div class="ahi-scale-zone moderate">Moderate</div>
-    <div class="ahi-scale-zone severe">Severe</div>
+    <div class="ahi-scale-zone normal"><span class="ahi-zone-label">Normal</span><span class="ahi-zone-range">&lt;5</span></div>
+    <div class="ahi-scale-zone mild"><span class="ahi-zone-label">Mild</span><span class="ahi-zone-range">5–14</span></div>
+    <div class="ahi-scale-zone moderate"><span class="ahi-zone-label">Moderate</span><span class="ahi-zone-range">15–29</span></div>
+    <div class="ahi-scale-zone severe"><span class="ahi-zone-label">Severe</span><span class="ahi-zone-range">≥30</span></div>
   </div>
   <div class="ahi-scale-marker-row">
     <div class="ahi-scale-marker" style="left:${markerPct}%;">${ahiRound}</div>
-  </div>
-  <div class="ahi-scale-labels">
-    <span>Normal&nbsp;&lt;5</span>
-    <span>Mild&nbsp;5–14</span>
-    <span>Moderate&nbsp;15–29</span>
-    <span>Severe&nbsp;≥30</span>
   </div>
 </div>`;
 
@@ -338,125 +332,211 @@ ${items}`;
      SECTION D — Your Treatment Plan
      ══════════════════════════════════════════════════════════════════════════ */
 
-  function patientFriendlyRec(rec) {
-    const r = rec.toLowerCase();
+  /* ── Patient-friendly descriptions keyed by recommendation tag ── */
+  const recDescriptions = {
+    'CPAP': `<strong>CPAP Therapy</strong> — CPAP (Continuous Positive Airway Pressure) is the most widely studied and effective treatment for obstructive sleep apnea. It uses a gentle stream of air delivered through a mask to keep your airway open while you sleep. Modern CPAP machines are quiet, compact, and have features like auto-adjusting pressure and heated humidifiers to improve comfort. Most people notice better energy and sleep quality within the first few weeks of consistent use.`,
+    'CPAP-ALT': null,  // Merged into CPAP context — not shown as standalone
+    'CPAP-PREF': null,  // Merged into CPAP context
+    'CPAP-OPT': null,  // Merged into CPAP context
+    'CPAP-DESENTIZE': null,  // Merged into CPAP context
+    'CPAP-HUMID': null,  // Merged into CPAP context
+    'CPAP-RETITRATE': null,  // Merged into CPAP context
+    'CPAP-FIXED': null,  // Merged into CPAP context
+    'MAD': `<strong>Oral Appliance Therapy</strong> — An oral appliance (also called a mandibular advancement device) is a custom-fitted mouthguard worn during sleep. It gently moves your lower jaw forward to keep the airway open. Oral appliances are a great option for people who find CPAP uncomfortable, have mild to moderate sleep apnea, or whose sleep apnea is strongly related to their jaw or throat anatomy. They are made by a sleep dentist and adjusted over several visits.`,
+    'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
+    'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
+    'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
+    'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources including dietitians, structured programs, or medical weight loss options.`,
+    'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
+    'NASAL-SURG': null,  // Merged into NASAL-OPT
+    'NASAL-PRIOR': null,  // Merged into NASAL-OPT
+    'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`,
+    'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the gold-standard, non-medication treatment for insomnia. It works by changing the thoughts and habits that interfere with sleep — things like irregular sleep schedules, spending too much time in bed, or anxiety about sleep. CBT-I is highly effective and its benefits last long-term, unlike sleep medications. It can be done with a therapist in-person or through a validated digital program.`,
+    'SURGALT': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. Your ENT surgeon will discuss which approach, if any, is appropriate for your situation.`,
+    'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you.`,
+    'REM-CHECK': null,  // Clinical detail — not shown as standalone
+    'REM-MAD': null,  // Merged into MAD if present
+    'HB-URG': null,  // Urgency note — woven into Why This Matters
+    'DHR-TX': null,  // Clinical detail
+    'SLEEP-STUDY': `<strong>Sleep Study</strong> — A sleep study measures your breathing, oxygen levels, heart rate, and sleep stages to get a full picture of what's happening while you sleep. Depending on your situation, this may be a home sleep test (a small device you wear overnight at home) or an in-lab study (which captures more detailed data in a monitored sleep center). The results will guide your treatment decisions.`,
+  };
 
-    if (r.includes('cpap') || r.includes('pap therapy') || r.includes('positive airway pressure')) {
-      return `<strong>CPAP Therapy</strong> — CPAP (Continuous Positive Airway Pressure) is the most widely studied and effective treatment for obstructive sleep apnea. It uses a gentle stream of air delivered through a mask to keep your airway open while you sleep. Modern CPAP machines are quiet, compact, and have features like auto-adjusting pressure and heated humidifiers to improve comfort. Most people notice better energy and sleep quality within the first few weeks of consistent use.`;
-    }
-    if (r.includes('oral appliance') || r.includes('mad') || r.includes('mandibular')) {
-      return `<strong>Oral Appliance Therapy</strong> — An oral appliance (also called a mandibular advancement device) is a custom-fitted mouthguard worn during sleep. It gently moves your lower jaw forward to keep the airway open. Oral appliances are a great option for people who find CPAP uncomfortable, have mild to moderate sleep apnea, or whose sleep apnea is strongly related to their jaw or throat anatomy. They are made by a sleep dentist and adjusted over several visits.`;
-    }
-    if (r.includes('positional')) {
-      return `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`;
-    }
-    if (r.includes('inspire') || r.includes('hypoglossal')) {
-      return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`;
-    }
-    if (r.includes('weight')) {
-      return `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources including dietitians, structured programs, or medical weight loss options.`;
-    }
-    if (r.includes('nasal') || r.includes('septoplasty') || r.includes('turbinate')) {
-      return `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`;
-    }
-    if (r.includes('tonsil')) {
-      return `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`;
-    }
-    if (r.includes('cbt') || r.includes('cognitive')) {
-      return `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the gold-standard, non-medication treatment for insomnia. It works by changing the thoughts and habits that interfere with sleep — things like irregular sleep schedules, spending too much time in bed, or anxiety about sleep. CBT-I is highly effective and its benefits last long-term, unlike sleep medications. It can be done with a therapist in-person or through a validated digital program.`;
-    }
-    if (r.includes('sleep study') || r.includes('polysomnography') || r.includes('psg')) {
-      return `<strong>Sleep Study</strong> — A sleep study measures your breathing, oxygen levels, heart rate, and sleep stages to get a full picture of what's happening while you sleep. Depending on your situation, this may be a home sleep test (a small device you wear overnight at home) or an in-lab polysomnography study (which captures more detailed data in a monitored sleep center). The results will guide your treatment decisions.`;
-    }
+  /* Tags that are sub-items of CPAP — should not render as standalone recs */
+  const cpapSubTags = new Set(['CPAP-ALT','CPAP-PREF','CPAP-OPT','CPAP-DESENTIZE','CPAP-HUMID','CPAP-RETITRATE','CPAP-FIXED']);
+  const nasalSubTags = new Set(['NASAL-SURG','NASAL-PRIOR']);
+  const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','HB-URG','DHR-TX']);
 
-    /* Fallback: return the original recommendation text as-is */
-    return esc(rec);
+  /**
+   * Map a rec tag to its patient-friendly HTML, or return null if it should be suppressed.
+   */
+  function patientFriendlyRec(tag, rawText) {
+    if (cpapSubTags.has(tag) || nasalSubTags.has(tag) || suppressedTags.has(tag)) return null;
+    if (recDescriptions[tag] !== undefined) return recDescriptions[tag];
+
+    /* Fallback: keyword matching for unknown tags */
+    const r = rawText.toLowerCase();
+    if (r.includes('oral appliance') || r.includes('mandibular')) return recDescriptions['MAD'];
+    if (r.includes('positional')) return recDescriptions['POS'];
+    if (r.includes('inspire') || r.includes('hypoglossal')) return recDescriptions['HNS'];
+    if (r.includes('weight')) return recDescriptions['WEIGHT'];
+    if (r.includes('nasal') || r.includes('septoplasty') || r.includes('turbinate')) return recDescriptions['NASAL-OPT'];
+    if (r.includes('tonsil')) return recDescriptions['TONSIL'];
+    if (r.includes('cbt') || r.includes('cognitive')) return recDescriptions['CBTI'];
+    if (r.includes('cpap') || r.includes('pap therapy')) return recDescriptions['CPAP'];
+    if (r.includes('sleep study') || r.includes('polysomnography')) return recDescriptions['SLEEP-STUDY'];
+    if (r.includes('bipap') || r.includes('asv') || r.includes('alternative pap')) return recDescriptions['HLG-ADV'];
+    if (r.includes('surg') || r.includes('site-directed')) return recDescriptions['SURGALT'];
+
+    return esc(rawText);
   }
 
   function renderSectionD(data) {
-    const recs = data.recs || [];
-    if (recs.length === 0) return '';
+    const recTags = data.recTags || [];
+    if (recTags.length === 0) return '';
 
-    const startNow = recs.slice(0, 3);
-    const discuss  = recs.length > 3 ? recs.slice(3) : [];
+    /* ── Build deduplicated, ordered rec list ── */
+    const seenDescriptions = new Set();
+    const allRecs = [];  // {html, tag}
 
-    let html = `\n<h2>Your Treatment Plan</h2>\n<p>Based on your evaluation, your care team has put together a plan tailored to your results. These recommendations are ordered by priority.</p>`;
+    /* For COMISA patients: ensure CBT-I appears first */
+    if (data.hasCOMISA) {
+      const cbtiEntry = recTags.find(r => r.tag === 'CBTI');
+      if (cbtiEntry) {
+        const html = patientFriendlyRec('CBTI', cbtiEntry.text);
+        if (html) { allRecs.push({ html, tag: 'CBTI' }); seenDescriptions.add(html); }
+      }
+    }
 
-    /* — Start Now group — */
-    html += `\n<div class="treatment-group-label">Start Now</div>`;
+    /* Process remaining recs in order */
+    for (const { text, tag } of recTags) {
+      const html = patientFriendlyRec(tag, text);
+      if (!html || seenDescriptions.has(html)) continue;
+      seenDescriptions.add(html);
+      allRecs.push({ html, tag });
+    }
+
+    if (allRecs.length === 0) return '';
+
+    /* ── Split into Start Now / Discuss With Your Doctor ── */
+    const splitAt = Math.min(3, allRecs.length);
+    const startNow = allRecs.slice(0, splitAt);
+    const discuss  = allRecs.slice(splitAt);
+
+    let output = `\n<h2>Your Treatment Plan</h2>`;
+
+    /* ── CPAP context for non-compliant patients — BEFORE the rec list ── */
+    if (data.cpapFailed && !data.cpapWillRetry) {
+      output += `
+<div class="cpap-context-box">
+  <strong>We hear you on CPAP.</strong> We know CPAP hasn't worked well for you in the past, and you're not alone — many people struggle with CPAP masks, pressure, or comfort. Your treatment plan below leads with non-CPAP options that may be a better fit for you. We've also included information about CPAP because it remains the most studied treatment, and CPAP technology has improved significantly in recent years. But our first goal is to find a treatment that works for your life.
+</div>`;
+    } else if (data.cpapFailed && data.cpapWillRetry) {
+      output += `
+<div class="cpap-context-box">
+  <strong>Giving CPAP another try.</strong> We know CPAP was difficult for you before. Since you're open to trying again, we'll work to make this attempt different — with better mask fitting, optimized pressure settings, and strategies to address the specific issues you experienced. We've also included non-CPAP alternatives in case you decide CPAP still isn't right for you.
+</div>`;
+    } else if (data.cpapCurrent) {
+      output += `
+<div class="cpap-context-box">
+  <strong>Building on your current CPAP therapy.</strong> You are already using CPAP, which is a great foundation. The recommendations below are designed to work alongside your CPAP and may help improve your results further. We'll discuss whether any adjustments to your current therapy are needed at your follow-up.
+</div>`;
+    }
+
+    output += `\n<p>Based on your evaluation, your care team has put together a plan tailored to your results. These recommendations are ordered by priority.</p>`;
+
+    /* ── COMISA callout ── */
+    if (data.hasCOMISA) {
+      output += `
+<div class="comisa-callout">
+  <strong>About your insomnia and sleep apnea (COMISA)</strong>
+  <p style="margin:0.4rem 0 0;">You have both insomnia and obstructive sleep apnea — a combination called COMISA (co-morbid insomnia and sleep apnea) that affects roughly 30–50% of people with OSA. These two conditions feed each other: insomnia makes it harder to fall asleep and stay asleep, and sleep apnea fragments whatever sleep you do get. Insomnia also makes it significantly harder to adjust to CPAP therapy. That's why your plan includes CBT-I (cognitive behavioral therapy for insomnia) as a priority — treating the insomnia alongside the sleep apnea leads to better outcomes for both.</p>
+</div>`;
+    }
+
+    /* ── Start Now group ── */
+    output += `\n<div class="treatment-group-label">Start Now</div>`;
     startNow.forEach(rec => {
-      html += `\n<div class="rec-item">${patientFriendlyRec(rec)}</div>`;
+      output += `\n<div class="rec-item">${rec.html}</div>`;
     });
 
-    /* — Discuss with doctor group — */
+    /* ── Discuss With Your Doctor group ── */
     if (discuss.length > 0) {
-      html += `\n<div class="treatment-group-label">Discuss With Your Doctor</div>`;
+      output += `\n<div class="treatment-group-label">Discuss With Your Doctor</div>`;
       discuss.forEach(rec => {
-        html += `\n<div class="rec-item">${patientFriendlyRec(rec)}</div>`;
+        output += `\n<div class="rec-item">${rec.html}</div>`;
       });
     }
 
-    /* — CPAP context paragraphs — */
-    if (data.cpapFailed) {
-      html += `
-<p style="margin-top:1rem;"><strong>Note about CPAP:</strong> We know CPAP hasn't worked well for you in the past. You're not alone — many people struggle with CPAP masks, pressure, or comfort. The good news is that CPAP technology has improved significantly in recent years, with quieter machines, better-fitting masks, and smarter auto-adjusting pressure settings. There are also excellent non-CPAP alternatives (listed above) that we want to explore with you. Our goal is to find a treatment that fits your life.</p>`;
-    }
-    if (data.cpapCurrent) {
-      html += `
-<p style="margin-top:1rem;"><strong>Note about your current CPAP:</strong> You are already using CPAP therapy, which is a great foundation. The recommendations above are designed to work alongside your CPAP and may help improve your results further. We'll discuss whether any adjustments to your current therapy are needed at your follow-up.</p>`;
-    }
-
-    return html;
+    return output;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
      SECTION E — Your First 30 Days
      ══════════════════════════════════════════════════════════════════════════ */
   function renderSectionE(data) {
-    const recs = data.recs || [];
-    if (recs.length === 0) return '';
+    const recTags = data.recTags || [];
+    if (recTags.length === 0) return '';
 
-    const recsLower = recs.map(r => r.toLowerCase()).join(' ');
+    const tags = new Set(recTags.map(r => r.tag));
+    const hasCPAP = tags.has('CPAP') || tags.has('CPAP-OPT') || tags.has('CPAP-FIXED');
     const checkItems = [];
 
-    /* CPAP */
-    if (recsLower.includes('cpap') || recsLower.includes('pap therapy') || recsLower.includes('positive airway pressure')) {
-      checkItems.push('Schedule your CPAP setup appointment with the equipment supplier.');
-      checkItems.push('Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.');
-      checkItems.push('Aim to use CPAP for at least 4 hours every night. Consistent use, even when imperfect, leads to better results over time.');
+    /* CBT-I first for COMISA patients */
+    if (data.hasCOMISA && tags.has('CBTI')) {
+      checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away. Starting CBT-I early can also make it easier to use CPAP or other treatments later.');
+    }
+
+    /* CPAP — but different messaging for non-compliant patients */
+    if (hasCPAP) {
+      if (data.cpapFailed && !data.cpapWillRetry) {
+        // Don't lead with CPAP setup for patients who don't want it
+        // Instead, add it further down as a "consider" item
+      } else if (data.cpapFailed && data.cpapWillRetry) {
+        checkItems.push('Schedule a CPAP re-fitting appointment — ask about newer mask styles and auto-adjusting machines that may address your prior concerns.');
+        checkItems.push('Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.');
+      } else if (!data.cpapFailed) {
+        checkItems.push('Schedule your CPAP setup appointment with the equipment supplier.');
+        checkItems.push('Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.');
+        checkItems.push('Aim to use CPAP for at least 4 hours every night. Consistent use, even when imperfect, leads to better results over time.');
+      }
     }
 
     /* Oral appliance */
-    if (recsLower.includes('oral appliance') || recsLower.includes('mad') || recsLower.includes('mandibular')) {
+    if (tags.has('MAD') || tags.has('SURGALT') || recTags.some(r => r.text.toLowerCase().includes('mandibular'))) {
       checkItems.push('Schedule a consultation with a sleep dentist to begin the process of fitting your custom oral appliance.');
     }
 
     /* Positional */
-    if (recsLower.includes('positional')) {
+    if (tags.has('POS')) {
       checkItems.push('Try a positional sleep device or body pillow to help you stay off your back during sleep.');
       checkItems.push('Keep a brief note of what position you wake up in for one week — this will help us see how well the positional therapy is working.');
     }
 
     /* Weight */
-    if (recsLower.includes('weight')) {
+    if (tags.has('WEIGHT')) {
       checkItems.push('Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.');
       checkItems.push('Ask your doctor about a referral to a registered dietitian or a structured weight management program.');
     }
 
     /* Nasal */
-    if (recsLower.includes('nasal') || recsLower.includes('septoplasty') || recsLower.includes('turbinate')) {
+    if (tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR')) {
       checkItems.push('Begin saline nasal rinses (such as a neti pot or squeeze bottle) once or twice daily to reduce nasal inflammation and improve airflow.');
       checkItems.push('Schedule a follow-up appointment to discuss your nasal anatomy and whether a procedure might help.');
     }
 
     /* Inspire */
-    if (recsLower.includes('inspire') || recsLower.includes('hypoglossal')) {
+    if (tags.has('HNS')) {
       checkItems.push('Schedule a formal Inspire candidacy evaluation with your ENT surgeon to determine whether you qualify for the implant procedure.');
     }
 
-    /* CBT-I */
-    if (recsLower.includes('cbt') || recsLower.includes('cognitive')) {
+    /* CBT-I (non-COMISA — already handled above for COMISA) */
+    if (!data.hasCOMISA && tags.has('CBTI')) {
       checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away.');
+    }
+
+    /* CPAP as lower-priority for non-compliant patients */
+    if (hasCPAP && data.cpapFailed && !data.cpapWillRetry) {
+      checkItems.push('If you are open to trying CPAP again in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.');
     }
 
     /* Always add follow-up */

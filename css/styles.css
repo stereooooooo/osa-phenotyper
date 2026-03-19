@@ -627,11 +627,16 @@ fieldset legend {
   break-inside: avoid;
 }
 
+/* ── Treatment Journey Diagram ───────────────────────────────── */
+.osa-journey-wrap { margin-bottom: 1rem; overflow-x: auto; }
+.osa-journey-wrap svg { max-width: 100%; height: auto; }
+
 /* ── Print styles ────────────────────────────────────────────── */
 @media print {
   .no-print { display: none !important; }
   .osa-progress-track { display: none !important; }
   .card { box-shadow: none; break-inside: avoid; }
+  .osa-journey-wrap { break-inside: avoid; }
   .osa-footer { background: #fff; color: #333; }
   .osa-footer .osa-footer-muted { color: #666; }
 }

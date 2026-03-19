@@ -105,20 +105,16 @@ const OSAPdfExport = (() => {
     .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
     .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 24px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
     .ahi-scale { margin: 16px 0; }
-    .ahi-scale-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; }
-    .ahi-scale-zone { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; }
+    .ahi-scale-bar { display: flex; height: 40px; border-radius: 6px; overflow: hidden; }
+    .ahi-scale-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 600; color: #fff; gap: 1px; }
+    .ahi-zone-label { font-size: 10px; line-height: 1; }
+    .ahi-zone-range { font-size: 8px; line-height: 1; opacity: 0.85; }
     .ahi-scale-zone.normal { background: #22c55e; flex: 5; }
     .ahi-scale-zone.mild { background: #eab308; flex: 10; color: #374151; }
     .ahi-scale-zone.moderate { background: #f97316; flex: 15; }
     .ahi-scale-zone.severe { background: #ef4444; flex: 30; }
     .ahi-scale-marker-row { position: relative; height: 24px; margin-top: 4px; }
     .ahi-scale-marker { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11px; font-weight: 700; color: #1F3A5C; }
-    .ahi-scale-labels { display: flex; font-size: 9px; color: #6B7280; margin-top: 2px; }
-    .ahi-scale-labels span { text-align: center; }
-    .ahi-scale-labels span:nth-child(1) { flex: 5; }
-    .ahi-scale-labels span:nth-child(2) { flex: 10; }
-    .ahi-scale-labels span:nth-child(3) { flex: 15; }
-    .ahi-scale-labels span:nth-child(4) { flex: 30; }
     .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
     .phenotype-icon { font-size: 18px; color: #1F3A5C; flex-shrink: 0; margin-top: 2px; }
     .treatment-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 6px; }
@@ -126,6 +122,8 @@ const OSAPdfExport = (() => {
     .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
     .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
     .whatif-item { background: #f0f9ff; border-left: 3px solid #1F3A5C; padding: 10px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
+    .cpap-context-box { background: #fef3c7; border-left: 3px solid #f59e0b; padding: 10px 12px; margin-bottom: 12px; border-radius: 0 6px 6px 0; font-size: 13px; }
+    .comisa-callout { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; font-size: 13px; }
     .report-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #9ca3af; text-align: center; }
   `;
 
@@ -134,6 +132,52 @@ const OSAPdfExport = (() => {
    * @param {string} html - The HTML content to render
    * @param {string} filename - Download filename
    */
+  /**
+   * Find safe page-break points by scanning DOM element boundaries.
+   * Returns an array of y-positions (in canvas pixels) where it's safe to cut.
+   * Prefers breaks between block-level elements (h2, p, div, etc.).
+   */
+  function findBreakPoints(container, canvasScale) {
+    // Collect bottom-edges of all block-level children and their nested blocks
+    const breakable = container.querySelectorAll(
+      'h2, h3, p, div.rec-item, div.phenotype-item, div.checklist-item, div.whatif-item, ' +
+      'div.cpap-context-box, div.comisa-callout, div.treatment-group-label, div.report-header, ' +
+      'div.ahi-scale, div.report-footer'
+    );
+    const containerTop = container.getBoundingClientRect().top;
+    const points = [];
+
+    breakable.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      // The bottom of this element (relative to container top) is a safe break point
+      const bottomY = (rect.bottom - containerTop) * canvasScale;
+      // The top of this element is also a candidate (break before the element)
+      const topY = (rect.top - containerTop) * canvasScale;
+      points.push(topY, bottomY);
+    });
+
+    // Deduplicate and sort
+    return [...new Set(points)].sort((a, b) => a - b);
+  }
+
+  /**
+   * Given a target cut position and a list of safe break points,
+   * find the best break point that doesn't exceed the target by too much.
+   * Prefers the largest break point that fits within the page.
+   */
+  function bestBreak(breakPoints, targetY, minY) {
+    // Find the largest break point that is <= targetY and > minY
+    let best = minY;
+    for (const bp of breakPoints) {
+      if (bp <= minY) continue;
+      if (bp <= targetY) best = bp;
+      else break;  // sorted, so no more candidates
+    }
+    // If no good break found (e.g., a single element taller than a page), fall back to target
+    if (best <= minY) return targetY;
+    return best;
+  }
+
   async function exportFromHTML(html, filename, addFooter = false) {
     if (typeof jspdf === 'undefined' || typeof html2canvas === 'undefined') {
       alert('PDF export libraries not loaded. Please check your internet connection.');
@@ -147,16 +191,18 @@ const OSAPdfExport = (() => {
     document.body.appendChild(container);
 
     try {
+      const canvasScale = 2;
+
+      // Collect break points from the DOM before html2canvas renders
+      const breakPoints = findBreakPoints(container, canvasScale);
+
       const canvas = await html2canvas(container, {
-        scale: 2,
+        scale: canvasScale,
         useCORS: true,
         logging: false,
         width: 800,
         windowWidth: 800,
         onclone: (clonedDoc) => {
-          // Remove external stylesheets that use modern CSS functions
-          // (color(), oklch, color-mix) which html2canvas cannot parse.
-          // Keep Google Fonts so font rendering works correctly.
           clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
             const href = link.href || '';
             if (href.includes('fonts.googleapis') || href.includes('fonts.gstatic')) return;
@@ -170,30 +216,46 @@ const OSAPdfExport = (() => {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
+      const footerMargin = addFooter ? 8 : 0;  // Reserve space for footer text
       const usableWidth = pageWidth - margin * 2;
+      const usableHeight = pageHeight - margin * 2 - footerMargin;
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const imgHeight = (canvas.height * usableWidth) / canvas.width;
+      // Scale factor: how many canvas pixels per mm of PDF
+      const pxPerMm = canvas.width / usableWidth;
+      const pageHeightPx = usableHeight * pxPerMm;
 
-      // Multi-page support
-      let yOffset = 0;
-      const usableHeight = pageHeight - margin * 2;
+      let srcY = 0;  // current position in canvas pixels
+      let pageNum = 0;
 
-      while (yOffset < imgHeight) {
-        if (yOffset > 0) pdf.addPage();
+      while (srcY < canvas.height) {
+        if (pageNum > 0) pdf.addPage();
 
-        // Calculate source crop for this page
-        const srcY = (yOffset / imgHeight) * canvas.height;
-        const srcH = Math.min((usableHeight / imgHeight) * canvas.height, canvas.height - srcY);
-        const destH = Math.min(usableHeight, imgHeight - yOffset);
+        // Find the ideal cut point for this page
+        const idealEnd = srcY + pageHeightPx;
+        let cutY;
+
+        if (idealEnd >= canvas.height) {
+          // Last page — take everything remaining
+          cutY = canvas.height;
+        } else {
+          // Find best break point near the ideal end
+          cutY = bestBreak(breakPoints, idealEnd, srcY);
+        }
+
+        const sliceH = cutY - srcY;
+        if (sliceH <= 0) break;  // safety
 
         // Create a cropped canvas for this page slice
         const pageCanvas = document.createElement('canvas');
         pageCanvas.width = canvas.width;
-        pageCanvas.height = srcH;
+        pageCanvas.height = sliceH;
         const ctx = pageCanvas.getContext('2d');
-        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+        // Fill white background to avoid JPEG compression artifacts on partial pages
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
 
+        const destH = sliceH / pxPerMm;  // height in mm
         const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
         pdf.addImage(pageImg, 'JPEG', margin, margin, usableWidth, destH);
 
@@ -205,7 +267,8 @@ const OSAPdfExport = (() => {
           pdf.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
         }
 
-        yOffset += usableHeight;
+        srcY = cutY;
+        pageNum++;
       }
 
       pdf.save(filename);
