@@ -764,6 +764,36 @@ document.getElementById('form').addEventListener('submit', e => {
     pushRec(recs,'Patient interested in Inspire\u00AE \u2014 evaluate candidacy (AHI 15\u2013100, BMI \u2264 40, no concentric palatal collapse).','INSPIRE-EVAL');
   }
 
+  /* ─── MAD CANDIDACY SCORING ─────────────────────────────── */
+  /* Evidence-based factors: Camañes-Gonzalvo 2022, Chen 2020, Edwards 2016, Marques 2019 */
+  const madScore = (() => {
+    let score = 0;
+    const factors = [];
+    /* OSA severity: mild-moderate favorable, severe unfavorable */
+    if (exists(ahi) && ahi >= 5 && ahi < 15) { score += 2; factors.push('mild OSA'); }
+    else if (exists(ahi) && ahi >= 15 && ahi < 30) { score += 1; factors.push('moderate OSA'); }
+    else if (exists(ahi) && ahi >= 30) { score -= 2; factors.push('severe OSA'); }
+    /* BMI: <28 favorable, ≥35 unfavorable */
+    if (exists(bmi) && bmi < 28) { score += 1; factors.push('lower BMI'); }
+    else if (exists(bmi) && bmi >= 35) { score -= 1; factors.push('higher BMI'); }
+    /* Female: better response rates */
+    if (sex === 'F') { score += 1; factors.push('female'); }
+    /* Smaller neck: responders avg 1-1.5cm smaller */
+    const neckThresh = sex === 'F' ? 14 : 16;
+    if (exists(neck) && neck < neckThresh) { score += 1; factors.push('smaller neck'); }
+    /* Positional OSA: 64% vs 36% response rate */
+    if (out.phen.includes('Positional OSA')) { score += 1; factors.push('positional OSA'); }
+    /* REM-predominant: NREM-OSA responds better */
+    if (out.phen.includes('REM-Predominant OSA')) { score -= 1; factors.push('REM-predominant'); }
+    /* High loop gain: lower collapsibility predicts better response */
+    if (out.phen.includes('High Loop Gain')) { score -= 1; factors.push('high loop gain'); }
+    /* High HB: lower T90 predicts better response */
+    if (out.phen.includes('High Hypoxic Burden')) { score -= 1; factors.push('high hypoxic burden'); }
+    /* tier: favorable (≥3), standard (0-2), poor (< 0) */
+    const tier = score >= 3 ? 'favorable' : score < 0 ? 'poor' : 'standard';
+    return { score, tier, factors };
+  })();
+
   /* ─── STAGE-AWARE CORE RECOMMENDATIONS ───────────────────── */
   if (ahi == null) {
     /* PRE-STUDY: Only recommend sleep study + CBT-I if insomnia */
@@ -811,6 +841,10 @@ document.getElementById('form').addEventListener('submit', e => {
     }
     if(priorMAD) {
       pushRec(recs,'Reassess oral appliance therapy (prior trial) \u2014 evaluate fit, efficacy, or consider alternative device','MAD');
+    } else if(madScore.tier === 'favorable') {
+      pushRec(recs,'Oral appliance therapy (MAD) \u2014 favorable candidate based on profile','MAD-FAVORABLE');
+    } else if(madScore.tier === 'poor') {
+      pushRec(recs,'Oral appliance therapy (MAD) \u2014 less likely to be sufficient as standalone treatment','MAD-POOR');
     } else {
       pushRec(recs,'Custom oral appliance (MAD)','MAD');
     }
@@ -1163,6 +1197,7 @@ document.getElementById('form').addEventListener('submit', e => {
     priorInspire,
     priorUPPP,
     hasCOMISA,
+    madScore,
     subtype,
     severity: ahiSeverity(ahi) || 'normal',
     primaryAHI: ahi,

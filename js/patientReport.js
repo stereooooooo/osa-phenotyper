@@ -388,7 +388,9 @@ ${items}`;
     'CPAP-HUMID': null,  // Merged into CPAP context
     'CPAP-RETITRATE': null,  // Merged into CPAP context
     'CPAP-FIXED': null,  // Merged into CPAP context
-    'MAD': `<strong>Oral Appliance Therapy</strong> — An oral appliance (also called a mandibular advancement device) is a custom-fitted mouthguard worn during sleep. It gently moves your lower jaw forward to keep the airway open. Oral appliances are a great option for people who find CPAP uncomfortable, have mild to moderate sleep apnea, or whose sleep apnea is strongly related to their jaw or throat anatomy. They are made by a sleep dentist and adjusted over several visits.`,
+    'MAD': `<strong>Oral Appliance Therapy</strong> — An oral appliance (also called a mandibular advancement device) is a custom-fitted mouthguard worn during sleep. It gently moves your lower jaw forward to keep the airway open. Oral appliances are a good option for many patients, especially those with mild to moderate sleep apnea, and research shows they achieve similar improvements in quality of life and blood pressure as CPAP due to better adherence. They are made by a sleep dentist and adjusted over several visits. A follow-up sleep study is recommended to confirm the appliance is working effectively.`,
+    'MAD-FAVORABLE': `<strong>Oral Appliance Therapy (Favorable Candidate)</strong> — An oral appliance is a custom-fitted mouthguard worn during sleep that gently repositions your lower jaw forward to keep the airway open. Based on your profile, you are a <strong>particularly good candidate</strong> for this treatment. Research shows that patients like you — with your combination of sleep apnea severity, body type, and sleep patterns — tend to respond very well to oral appliance therapy. In fact, studies show that oral appliances achieve similar improvements in quality of life, daytime energy, and blood pressure as CPAP, largely because patients find them easier to use consistently. Your sleep dentist will custom-fit the device and adjust it over several visits, followed by a sleep study to confirm it is working.`,
+    'MAD-POOR': `<strong>Oral Appliance Therapy</strong> — An oral appliance is a custom-fitted mouthguard worn during sleep that repositions the lower jaw forward to help keep the airway open. While oral appliances can help many patients, your profile suggests this treatment <strong>may not be sufficient on its own</strong> for your level of sleep apnea. Patients with more severe OSA, higher BMI, or certain breathing patterns tend to have a lower success rate with oral appliances alone. That said, an oral appliance can still play a role as part of a combined treatment approach — for example, alongside positional therapy or after weight loss. This is worth discussing with your doctor if other options are not tolerated.`,
     'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
     'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
@@ -429,8 +431,8 @@ ${items}`;
    */
   function patientFriendlyRec(tag, rawText, data) {
     if (cpapSubTags.has(tag) || nasalSubTags.has(tag) || suppressedTags.has(tag)) return null;
-    /* Suppress standard MAD rec if patient already tried MAD */
-    if (tag === 'MAD' && data && data.priorMAD) return null;
+    /* Suppress MAD recs if patient already tried MAD */
+    if ((tag === 'MAD' || tag === 'MAD-FAVORABLE' || tag === 'MAD-POOR') && data && data.priorMAD) return null;
     /* Inspire with BMI >40 context */
     if (tag === 'HNS' && data && data.bmi > 40) {
       return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. <strong>Important:</strong> Inspire currently requires a BMI of 40 or below (some insurance plans require an even lower BMI). Since your BMI is currently above this threshold, reaching a BMI under 40 through weight management would be the first step toward Inspire candidacy. This is a goal worth discussing with your care team.`;
@@ -570,8 +572,8 @@ ${items}`;
       }
     }
 
-    /* Oral appliance */
-    if (tags.has('MAD') || tags.has('SURGALT') || recTags.some(r => r.text.toLowerCase().includes('mandibular'))) {
+    /* Oral appliance — skip if patient already tried MAD */
+    if (!data.priorMAD && (tags.has('MAD') || tags.has('MAD-FAVORABLE') || tags.has('MAD-POOR') || tags.has('SURGALT') || recTags.some(r => r.text.toLowerCase().includes('mandibular')))) {
       checkItems.push('Schedule a consultation with a sleep dentist to begin the process of fitting your custom oral appliance.');
     }
 
