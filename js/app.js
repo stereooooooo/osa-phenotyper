@@ -531,14 +531,36 @@ document.getElementById('form').addEventListener('submit', e => {
   const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
   const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
 
-  const odi   = n(f.get('odi'));
+  const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
   const nadir = Math.min( n(f.get('nadir'))??99 , n(f.get('nadirPsg'))??99 );
 
-  const hbPH     = n(f.get('hbAreaPH'));
+  const hbPH     = n(f.get('hbAreaPH')) ?? n(f.get('hbAreaPHpsg'));
   const hb90PH   = n(f.get('hbUnder90PH'));
-  const t90      = n(f.get('t90'));    // % time below 90% SpO₂
+  const t90      = n(f.get('t90')) ?? n(f.get('t90Psg'));
 
-  const dhr      = n(f.get('dhr')); // Delta Heart Rate (manual entry)
+  const dhr      = n(f.get('dhr')) ?? n(f.get('dhrPsg')); // Delta Heart Rate (manual entry or from PSG)
+
+  /* ─── PSG-SPECIFIC: Apnea/Hypopnea breakdown ─────────────── */
+  const apneaIndex    = n(f.get('apneaIndex'));
+  const hypopneaIndex = n(f.get('hypopneaIndex'));
+  // F(hypopneas) = hypopneas / (apneas + hypopneas) — Vena 2022
+  const fHypopneas = (exists(apneaIndex) && exists(hypopneaIndex) && (apneaIndex + hypopneaIndex) > 0)
+    ? (hypopneaIndex / (apneaIndex + hypopneaIndex)) * 100
+    : null;
+
+  /* ── Collapsibility estimate from F(hypopneas) (Vena 2022) ── */
+  /* F_hyp <50% (more apneas) → high collapsibility → anatomy-directed therapy
+     F_hyp ≥50% (mostly hypopneas) → mild-moderate collapsibility → non-CPAP may work */
+  const collapsibility = exists(fHypopneas)
+    ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
+    : null;
+
+  /* ── Loop Gain point-of-care estimate (Schmickl 2022) ── */
+  /* LG1 = intercept + 0.0016 × AHI − 0.0019 × Hypopnea%  (r=0.48, AUC 0.73 for LG>0.7)
+     Intercept ~0.50 estimated from model calibration (typical LG range 0.2–0.8) */
+  const lgEstimate = (exists(ahi) && exists(fHypopneas))
+    ? Math.max(0, 0.50 + 0.0016 * ahi - 0.0019 * fHypopneas)
+    : null;
 
   /* nasal signals */
   const noseScore = n(f.get('noseScore'));
@@ -830,6 +852,13 @@ document.getElementById('form').addEventListener('submit', e => {
     if (out.phen.includes('High Hypoxic Burden')) { score -= 1; factors.push('high hypoxic burden'); }
     /* Retrognathia: mandibular retrusion independently predicts better MAD response (Hamza 2026) */
     if (retrognathia) { score += 1; factors.push('retrognathia'); }
+    /* Hypopnea-predominant: better MAD response than apnea-predominant (Camañes-Gonzalvo 2025) */
+    if (exists(fHypopneas) && fHypopneas > 70) { score += 1; factors.push('hypopnea-predominant'); }
+    else if (exists(fHypopneas) && fHypopneas < 50) { score -= 1; factors.push('apnea-predominant'); }
+    /* Age: younger patients respond better (3-4.5 yr mean difference, Camañes-Gonzalvo 2022, Chen 2020) */
+    const age = n(f.get('age'));
+    if (exists(age) && age < 50) { score += 1; factors.push('younger age'); }
+    else if (exists(age) && age >= 65) { score -= 1; factors.push('older age'); }
     /* tier: favorable (≥3), standard (0-2), poor (< 0) */
     const tier = score >= 3 ? 'favorable' : score < 0 ? 'poor' : 'standard';
     return { score, tier, factors };
@@ -1187,17 +1216,23 @@ document.getElementById('form').addEventListener('submit', e => {
   /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
   /* 3-variable clinical prediction of low arousal threshold:
      AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
-     Score ≥2 = likely low arousal threshold (84% accuracy) */
+     Score ≥2 = likely low arousal threshold (84% accuracy)
+     With PSG data: full 3/3 score available via apnea/hypopnea indices */
   const edwardsArTH = (() => {
     if (!exists(ahi)) return null;
     let score = 0;
     const details = [];
     if (ahi < 30) { score++; details.push('AHI <30'); }
     if (exists(nadir) && nadir > 82.5) { score++; details.push(`nadir ${nadir}% >82.5%`); }
-    // Hypopnea fraction not available from WatchPAT — note this
-    const hypFractionAvailable = false;
+    // Hypopnea fraction: available from PSG (apnea index + hypopnea index)
+    const hypFractionAvailable = exists(fHypopneas);
+    if (hypFractionAvailable) {
+      if (fHypopneas > 58.3) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >58.3%`); }
+      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤58.3%`); }
+    }
+    const maxScore = hypFractionAvailable ? 3 : 2;
     const prediction = score >= 2 ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
-    return { score, maxScore: hypFractionAvailable ? 3 : 2, prediction, details, partial: !hypFractionAvailable };
+    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
   })();
 
   /* ── HB Treatment Allocation (Pinilla 2023, Azarbarzin 2025, Peker 2025) ── */
@@ -1291,7 +1326,9 @@ document.getElementById('form').addEventListener('submit', e => {
     ${friedmanStage ? `<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} mt-3 py-2 px-3"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>` : ''}
     ${hnsStage ? `<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} mt-2 py-2 px-3"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>` : ''}
     <div class="alert alert-${madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} mt-2 py-2 px-3"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>
-    ${edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `<div class="alert alert-info mt-2 py-2 px-3"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables]</small>' : ''}</div>` : ''}
+    ${edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `<div class="alert alert-info mt-2 py-2 px-3"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables. Enter Apnea Index + Hypopnea Index in Lab PSG section for full score.]</small>' : ''}</div>` : ''}
+    ${exists(fHypopneas) ? `<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} mt-2 py-2 px-3"><strong>Collapsibility Estimate (Vena 2022):</strong> F(hypopneas) = ${fHypopneas.toFixed(0)}% → <strong>${collapsibility === 'high' ? 'High collapsibility' : collapsibility === 'moderate' ? 'Moderate collapsibility' : 'Low collapsibility'}</strong>${collapsibility === 'high' ? ' — more apneas than hypopneas indicates highly collapsible airway. Anatomy-directed therapy (CPAP, surgery, HNS) prioritized over nonanatomic approaches.' : collapsibility === 'low' ? ' — mostly hypopneas, suggesting mild collapsibility. Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed.' : ' — mixed pattern. Both anatomic and nonanatomic therapies may be effective.'}</div>` : ''}
+    ${exists(lgEstimate) ? `<div class="alert alert-${lgEstimate > 0.7 ? 'warning' : 'info'} mt-2 py-2 px-3"><strong>Loop Gain Estimate (Schmickl 2022):</strong> LG ≈ ${lgEstimate.toFixed(2)}${lgEstimate > 0.7 ? ' (>0.7 — suggests high loop gain, r=0.48, AUC 0.73). Consider oxygen therapy or acetazolamide. Monitor for treatment-emergent centrals on PAP.' : lgEstimate > 0.5 ? ' (0.5–0.7 — borderline). Monitor for residual events on therapy.' : ' (<0.5 — low loop gain).'} <small class="text-muted">Point-of-care model: 0.0016×AHI − 0.0019×Hypopnea%</small></div>` : ''}
     ${hbTreatmentNote}
     ${atsTriage}
     ${mildLowHbNote}
@@ -1361,6 +1398,12 @@ document.getElementById('form').addEventListener('submit', e => {
     reportDate: new Date().toISOString().split('T')[0],
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
     lowHypoxicBurden: !out.phen.includes('High Hypoxic Burden'),
+    apneaIndex,
+    hypopneaIndex,
+    fHypopneas,
+    collapsibility,
+    lgEstimate,
+    dhr,
   };
 
   // Show the Generate Patient Report button

@@ -73,6 +73,12 @@ const OSA_CONFIG = {
       areaUnder90Severe:  2,
     },
 
+    collapsibility: {
+      fHypHigh:       50,   // F(hypopneas) <50% → high collapsibility (Vena 2022)
+      fHypModerate:   70,   // F(hypopneas) 50-70% → moderate; >70% → low
+      lgHighThreshold: 0.7  // Loop gain >0.7 = high (Schmickl 2022, AUC 0.73)
+    },
+
     deltaHeartRate: {
       dhr:            10,       // bpm; Azarbarzin 2021 Eur Heart J
       dhrHigh:        15,
@@ -147,7 +153,13 @@ const OSA_CONFIG = {
       t90:        { min: 0,   max: 100,  warnMax: 50  },
       cpapPressure:{ min: 4,   max: 25,   warnMax: 20  },
       dhr:        { min: 0,   max: 60,   warnMax: 40  },
-      noseScore:  { min: 0,   max: 100 }
+      dhrPsg:     { min: 0,   max: 60,   warnMax: 40  },
+      noseScore:  { min: 0,   max: 100 },
+      apneaIndex: { min: 0,   max: 200,  warnMax: 120 },
+      hypopneaIndex: { min: 0, max: 200, warnMax: 120 },
+      odiPsg:     { min: 0,   max: 200,  warnMax: 120 },
+      hbAreaPHpsg:{ min: 0,   max: 200,  warnMax: 100 },
+      t90Psg:     { min: 0,   max: 100,  warnMax: 50  }
     },
 
     // Cross-field plausibility checks (run after individual field validation)
