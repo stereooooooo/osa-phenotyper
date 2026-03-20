@@ -63,7 +63,9 @@ function confidenceFor(tag, ctx){
     }
     case 'Poor Muscle Responsiveness': {
       const remNrem = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatioHigh) return 'High';
+      /* High confidence: AHI≥30 (original PALM severe) + strong ratio (Eckert 2013) */
+      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh) return 'High';
+      /* Moderate: AHI≥15 validated by Sands 2018, Bamagoos 2019 */
       if(remNrem > T.muscleResponse.remNremRatio) return 'Moderate';
       return 'Low';
     }
@@ -532,7 +534,9 @@ document.getElementById('form').addEventListener('submit', e => {
   const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
 
   const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
-  const nadir = Math.min( n(f.get('nadir'))??99 , n(f.get('nadirPsg'))??99 );
+  const nadirRaw = n(f.get('nadir'));
+  const nadirPsg = n(f.get('nadirPsg'));
+  const nadir = exists(nadirRaw) || exists(nadirPsg) ? Math.min( nadirRaw??99 , nadirPsg??99 ) : null;
 
   const hbPH     = n(f.get('hbAreaPH')) ?? n(f.get('hbAreaPHpsg'));
   const hb90PH   = n(f.get('hbUnder90PH'));
@@ -1383,7 +1387,7 @@ document.getElementById('form').addEventListener('submit', e => {
     txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
   if (hnsStage)
     txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
-  txCandidacyParts.push(`<div class="alert alert-${madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
+  txCandidacyParts.push(`<div class="alert alert-${priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMAD ? ' — <em>Prior MAD trial; score reflects profile suitability only</em>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
   if (surgHelper) txCandidacyParts.push(surgHelper);
   if (hgnsHTML) txCandidacyParts.push(`<div class="mt-2">${hgnsHTML}</div>`);
 
@@ -1397,7 +1401,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   const candidacyBadges = [
     friedmanStage ? `Friedman ${friedmanStage}` : null,
-    `MAD: ${madScore.tier}`,
+    priorMAD ? `MAD: ${madScore.tier} (prior trial)` : `MAD: ${madScore.tier}`,
     hnsStage ? `Inspire: ${hnsStage.responseRate}% response (Stage ${hnsStage.stage})` : null,
   ].filter(Boolean);
 

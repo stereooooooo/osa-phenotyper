@@ -37,7 +37,8 @@ const OSA_CONFIG = {
     },
 
     muscleResponse: {
-      ahiMin:             30,   // AHI must be ≥30 for this phenotype
+      ahiMin:             15,   // Lowered from 30; Eckert 2013 PALM IQR 19-56, Sands 2018 validated at AHI≥15
+      ahiHigh:            30,   // High confidence only at AHI≥30 (original PALM severe range)
       remNremRatio:       2.0,
       remNremRatioHigh:   2.5
     },

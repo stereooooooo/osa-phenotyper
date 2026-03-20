@@ -72,7 +72,10 @@
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| PALM phenotyping framework (Pcrit, arousal threshold, loop gain, muscle responsiveness) | Eckert DJ, et al. "Defining Phenotypic Causes of OSA." *Am J Respir Crit Care Med.* 2013;188(8):996-1004. | Core 4-phenotype framework |
+| PALM phenotyping framework (Pcrit, arousal threshold, loop gain, muscle responsiveness) | Eckert DJ, et al. "Defining Phenotypic Causes of OSA." *Am J Respir Crit Care Med.* 2013;188(8):996-1004. | Core 4-phenotype framework; PALM Scale 2 IQR 19-56 supports muscle responsiveness detection at moderate AHI |
+| Polysomnographic endotyping — muscle compensation validated at AHI ≥15 | Sands SA, et al. "Phenotyping Pharyngeal Pathophysiology using Polysomnography in Patients with OSA." *Am J Respir Crit Care Med.* 2018;197(9):1187-1197. | Supports lowering Poor Muscle Responsiveness threshold from AHI≥30 to AHI≥15 |
+| MAD response predicted by muscle compensation at moderate AHI | Bamagoos AA, et al. "Dose-dependent effects of mandibular advancement on upper airway collapsibility and muscle function in OSA." *Sleep.* 2019;42(6):zsz049. | Clinical relevance of muscle responsiveness at AHI≥20; weaker compensation → better MAD response |
+| Sleep-stage-dependent Pcrit and muscle activity | Carberry JC, et al. "Upper Airway Collapsibility and Pharyngeal Dilator Muscle Activity are Sleep Stage Dependent." *Sleep.* 2016;39(3):511-521. | Physiological basis for REM/NREM ratio as muscle responsiveness surrogate |
 | Low arousal threshold identification without invasive testing | Edwards BA, et al. "Clinical Predictors of the Oxygen Desaturation Index and AHI in OSA." *Eur Respir J.* 2016;48(1):142-150. | Arousal threshold phenotype detection |
 | Positional OSA definition (supine/non-supine ratio >2, non-supine AHI <15) | Cartwright RD. "Effect of Sleep Position on Sleep Apnea Severity." *Sleep.* 1984;7(2):110-4. | Positional OSA phenotype criteria |
 | REM-predominant OSA (REM/NREM ratio >2, NREM AHI <15) | Mokhlesi B, et al. "REM-Related OSA: Prevalence and Clinical Significance." *Sleep.* 2014;37(11):1883-1891. | REM-predominant phenotype criteria |
