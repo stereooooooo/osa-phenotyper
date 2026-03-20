@@ -699,7 +699,8 @@ document.getElementById('form').addEventListener('submit', e => {
     }
   }
 
-  out.phen.forEach(p => {
+  /* Phenotype-driven treatment recs only apply when OSA is confirmed (AHI ≥ 5) */
+  if (exists(ahi) && ahi >= 5) out.phen.forEach(p => {
     switch(p){
       case 'High Anatomical Contribution':
         cpapRec();
@@ -766,7 +767,7 @@ document.getElementById('form').addEventListener('submit', e => {
         }
         break;
     }
-  });
+  }); /* end phenotype treatment forEach */
 
   /* ─── FRIEDMAN STAGE (auto-calculated) ────────────────────── */
   /* Friedman 2004: FTP + tonsils + BMI → surgical candidacy tier */
@@ -821,7 +822,7 @@ document.getElementById('form').addEventListener('submit', e => {
   /* Prior treatment-aware Inspire recommendation */
   if(priorInspire) {
     pushRec(recs,'Inspire\u00AE already in place \u2014 verify activation and optimize settings.','INSPIRE-OPT');
-  } else if(prefInspire && !priorInspire) {
+  } else if(prefInspire && !priorInspire && !hasConcentricCollapse) {
     pushRec(recs,'Patient interested in Inspire\u00AE \u2014 evaluate candidacy (AHI 15\u2013100, BMI \u2264 40, no concentric palatal collapse).','INSPIRE-EVAL');
   }
 
@@ -910,6 +911,12 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Continue CPAP/APAP','CPAP');
     } else if(cpapRefused) {
       pushRec(recs,'Alternative PAP (BiPAP, ASV) if willing to reconsider','CPAP');
+    } else if(cpapWillRetry) {
+      const issues = cpapReasons.map(r => {
+        const map = {cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'prior inefficacy',cpapTravel:'travel'};
+        return map[r] || r;
+      }).join(', ');
+      pushRec(recs,`Retry CPAP with optimized settings (patient willing). Address prior issues${issues ? ': ' + issues : ''}.`,'CPAP');
     } else if(prefAvoidCpap && !priorCpap) {
       pushRec(recs,'CPAP/APAP (most effective option \u2014 discuss with patient given preference to avoid)','CPAP');
     } else {
@@ -920,7 +927,7 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Patient open to surgical options \u2014 consider DISE-guided surgical planning.','SURG-PREF');
     }
     if(priorMAD) {
-      pushRec(recs,'Reassess oral appliance therapy (prior trial) \u2014 evaluate fit, efficacy, or consider alternative device','MAD');
+      pushRec(recs,'Prior oral appliance trial not tolerated \u2014 consider alternative approaches (Inspire, positional therapy, surgery) rather than repeat MAD trial','MAD');
     } else if(priorJaw) {
       /* Fix #1: Wire priorJaw — prior jaw surgery affects MAD candidacy */
       pushRec(recs,'Prior jaw surgery noted \u2014 MAD candidacy requires careful dental evaluation of occlusal changes','MAD');
@@ -931,7 +938,13 @@ document.getElementById('form').addEventListener('submit', e => {
     } else {
       pushRec(recs,'Custom oral appliance (MAD)','MAD');
     }
-    pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
+    /* Only recommend generic surgery when anatomical findings are present */
+    const hasAnatomicalPhenotype = out.phen.includes('High Anatomical Contribution');
+    const hasNasalPhenotype = out.phen.includes('Nasal-Resistance Contributor');
+    const hasDISEEntry = [f.get('vDeg'), f.get('oDeg'), f.get('tDeg'), f.get('eDeg')].some(d => d && d !== '0');
+    if (hasAnatomicalPhenotype || hasNasalPhenotype || hasDISEEntry || friedmanStage === 'I' || friedmanStage === 'II') {
+      pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
+    }
 
     /* Fix #3: Mild AHI (5-14) with no phenotypes — lifestyle-first approach */
     if (ahi >= 5 && ahi < 15 && out.phen.length === 0) {
@@ -1083,11 +1096,16 @@ document.getElementById('form').addEventListener('submit', e => {
   }
   if(hasCOMISA){
     const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
-    let comisaGuard = `COMISA (prevalence 29–67% in OSA treatment-seekers): ${comisaSeverity} (ISI ${isi}) co-morbid with OSA. Bidirectional antagonism — each condition perpetuates the other. Sequential CBT-I → CPAP is the strongest evidence-based approach (Sweetman 2019 RCT). Target 4–6 CBT-I sessions before CPAP initiation. Use APAP over fixed CPAP (lower mean delivered pressure); set EPR/flex to max, enable ramp, conservative range (min 4–5, max 15–16). Avoid sedative-hypnotics as monotherapy (worsen OSA). If brief hypnotic bridge needed for sleep-onset subtype, ensure concurrent PAP.`;
+    let comisaBullets = `<strong>COMISA — ${comisaSeverity} (ISI ${isi}) + OSA</strong>
+      <ul class="mb-1 mt-1">
+        <li>Start CBT-I first (4–6 sessions), then initiate CPAP <small class="text-muted">(Sweetman 2019 RCT)</small></li>
+        <li>Use APAP over fixed CPAP; set EPR/flex to max, enable ramp (min 4–5, max 15–16)</li>
+        <li>Avoid sedative-hypnotics as monotherapy (worsen OSA); if hypnotic bridge needed, ensure concurrent PAP</li>`;
     if(sleepyCOMISA){
-      comisaGuard += ` CAUTION: High ESS (${ess}) + high ISI — full sleep restriction therapy is contraindicated due to excessive daytime sleepiness risk. Use stimulus control + cognitive restructuring first; introduce sleep compression gradually.`;
+      comisaBullets += `<li class="text-danger"><strong>CAUTION:</strong> High ESS (${ess}) + high ISI — full sleep restriction contraindicated. Use stimulus control + cognitive restructuring first; introduce sleep compression gradually</li>`;
     }
-    guardrails.push(comisaGuard);
+    comisaBullets += `</ul>`;
+    guardrails.push(comisaBullets);
   }
 
   const surgTargets = [];
@@ -1145,7 +1163,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const noteCards   = `Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: If High Loop Gain persists with TECSA, consider O\u2082/acetazolamide; ASV only if LVEF > 45%.`;
 
   const followUps = [];
-  if(hasCOMISA) followUps.push('COMISA follow-up: reassess ISI at 4\u20136 weeks post-CBT-I. Initiate APAP after CBT-I course (typically 4\u20136 sessions). If insomnia persists despite CBT-I, consider in-person sleep psychology. Monitor CPAP adherence closely at 1, 4, and 12 weeks \u2014 insomnia is the top predictor of CPAP abandonment. Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings.');
+  if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI at 4–6 weeks post-CBT-I</li><li>Initiate APAP after CBT-I course (typically 4–6 sessions)</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor CPAP adherence at 1, 4, and 12 weeks (insomnia = top predictor of abandonment)</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
   if(hasLowAr && !hasCOMISA) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
@@ -1257,9 +1275,7 @@ document.getElementById('form').addEventListener('submit', e => {
       if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
       if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
       if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication (Azarbarzin 2025):</strong> ' + triggers.join('; ') + '. High-risk OSA per pooled multi-trial analysis. CPAP significantly reduces cardiovascular events in this group. Strongly prioritize effective PAP therapy.'
-        + (synergy ? ' <strong>⚠ ΔHR + HB synergy:</strong> Combined high ΔHR and high HB confers HR 3.50 for fatal CVD (Azarbarzin 2021). Highest-risk phenotype — urgent treatment indicated.' : '')
-        + '</div>';
+      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>High-risk OSA per pooled multi-trial analysis <small class="text-muted">(Azarbarzin 2025)</small></li><li>CPAP significantly reduces CV events in this group — strongly prioritize effective PAP</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD — highest-risk phenotype, urgent treatment <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}</ul></div>`;
     }
     if (highHB || severeOther) {
       const triggers = [];
@@ -1267,9 +1283,7 @@ document.getElementById('form').addEventListener('submit', e => {
       if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
       if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
       if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return '<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP Cardiovascular Benefit (Pinilla 2023):</strong> ' + triggers.join('; ') + '. Above thresholds where CPAP reduces cardiovascular events (HR 0.57). RICCADSA confirms HB (not AHI alone) predicts MACCEs (HR 1.87). Prioritize effective PAP therapy for CV risk reduction.'
-        + (synergy ? ' <strong>⚠ ΔHR + HB synergy:</strong> Combined high ΔHR and high HB confers HR 3.50 for fatal CVD (Azarbarzin 2021).' : '')
-        + '</div>';
+      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP CV Benefit</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>Above thresholds where CPAP reduces CV events (HR 0.57) <small class="text-muted">(Pinilla 2023)</small></li><li>HB (not AHI alone) predicts MACCEs (HR 1.87) <small class="text-muted">(RICCADSA / Peker 2025)</small></li><li>Prioritize effective PAP therapy for CV risk reduction</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}</ul></div>`;
     }
     return '';
   })();
@@ -1281,11 +1295,11 @@ document.getElementById('form').addEventListener('submit', e => {
 
     const isMild = ahi < 15;
     if (isMild) {
-      return '<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden (Pinilla 2023):</strong> In patients with low HB, CPAP and non-CPAP treatments (MAD, positional therapy, weight management) show comparable outcomes. Treatment allocation does not significantly affect cardiovascular or symptomatic endpoints in this group. Patient preference should guide treatment selection — alternatives are a strong first-line option.<br><small class="text-muted">Note: In the ISAACC trial, low-HB patients randomized to CPAP showed a trend toward increased CV events (HR 1.33, not statistically significant). While not definitive, this supports an alternatives-first approach when HB is low.</small></div>';
+      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>CPAP and non-CPAP treatments (MAD, positional, weight loss) show comparable outcomes <small class="text-muted">(Pinilla 2023)</small></li><li>Patient preference should guide selection — alternatives are strong first-line</li><li><small class="text-muted">Note: ISAACC low-HB patients on CPAP trended toward increased CV events (HR 1.33, NS) — supports alternatives-first approach</small></li></ul></div>`;
     }
     // Moderate OSA + low HB: still worth noting
     if (ahi < 30) {
-      return '<div class="alert alert-info mt-2 py-2 px-3"><strong>Moderate OSA + Low Hypoxic Burden (Pinilla 2023, Peker 2025):</strong> HB below CV-risk threshold. RICCADSA data shows that high AHI with low HB is not associated with MACCEs — only high HB predicts cardiovascular events regardless of AHI. Non-CPAP alternatives are reasonable. Shared decision-making appropriate.</div>';
+      return `<div class="alert alert-info mt-2 py-2 px-3"><strong>Moderate OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>HB below CV-risk threshold <small class="text-muted">(Pinilla 2023, Peker 2025)</small></li><li>High AHI with low HB is not associated with MACCEs — only high HB predicts CV events <small class="text-muted">(RICCADSA)</small></li><li>Non-CPAP alternatives reasonable; shared decision-making appropriate</li></ul></div>`;
     }
     return '';
   })();
@@ -1295,7 +1309,7 @@ document.getElementById('form').addEventListener('submit', e => {
     const hasAnat = out.phen.includes('High Anatomical Contribution');
     const hasNonanat = out.phen.includes('Low Arousal Threshold') || out.phen.includes('High Loop Gain') || out.phen.includes('Poor Muscle Responsiveness');
     if (hasAnat && hasNonanat) {
-      return '<div class="alert alert-info mt-2 py-2 px-3"><small><strong>ATS 2025 Triage:</strong> Anatomical + nonanatomic endotypes detected. Per ATS Research Statement, address collapsibility (anatomy) first — nonanatomic therapies (ArTH, LG targeting) are unlikely to succeed if airway is highly collapsible.</small></div>';
+      return `<div class="alert alert-info mt-2 py-2 px-3"><strong>ATS 2025 Triage: Anatomy + Nonanatomic Endotypes</strong><ul class="mb-0 mt-1"><li>Address collapsibility (anatomy) first</li><li>ArTH / LG targeting unlikely to succeed if airway is highly collapsible</li></ul></div>`;
     }
     return '';
   })();
@@ -1306,11 +1320,94 @@ document.getElementById('form').addEventListener('submit', e => {
     return `<div class="osa-clin-rec${priority}"><span class="osa-clin-rec-num">${i+1}</span><span>${r}</span></div>`;
   }).join('');
 
+  /* ── Care Pathway Bar (clinician report) ──────────────── */
+  const milestones = [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value);
+  const careStages = [
+    { id: 'eval',      label: 'Evaluation',          keys: ['Initial Eval'] },
+    { id: 'study',     label: 'Sleep Study',          keys: ['HST Ordered', 'HST Reviewed'] },
+    { id: 'planning',  label: 'Treatment Planning',   keys: ['Treatment Plan', 'DISE Scheduled', 'DISE Completed'] },
+    { id: 'treatment', label: 'Treatment',            keys: ['CPAP Trial', 'CPAP Follow-up', 'Surgery Scheduled', 'Post-Op'] },
+  ];
+  // Determine current stage index
+  let currentStageIdx = -1;
+  careStages.forEach((stage, i) => {
+    if (stage.keys.some(k => milestones.includes(k))) currentStageIdx = i;
+  });
+  // If patient loaded but no milestones, default to eval
+  if (currentStageIdx < 0 && document.getElementById('patientName')?.value) currentStageIdx = 0;
+
+  const pathwayHTML = currentStageIdx >= 0 ? `<div class="osa-care-pathway mb-3">${careStages.map((s, i) => {
+    const state = i < currentStageIdx ? 'completed' : i === currentStageIdx ? 'active' : 'upcoming';
+    const completedKeys = s.keys.filter(k => milestones.includes(k));
+    const icon = state === 'completed' ? '<i class="bi bi-check-circle-fill"></i>' : state === 'active' ? '<i class="bi bi-circle-fill"></i>' : '<i class="bi bi-circle"></i>';
+    return `<div class="osa-pathway-step osa-pathway-${state}" title="${completedKeys.length ? completedKeys.join(', ') : s.label}">${icon}<span>${s.label}</span></div>`;
+  }).join('<div class="osa-pathway-connector"></div>')}</div>` : '';
+
+  /* ── Care Summary Card (clinician report) ────────────── */
+  // Only show when there's meaningful context (milestones or treatment history)
+  const hasTxHistory = cpapCurrent || cpapFailed || prefAvoidCpap || priorMAD || priorUPPP || priorInspire;
+  const careSummaryParts = [];
+  if ((milestones.length || hasTxHistory) && exists(ahi)) careSummaryParts.push(`AHI ${ahi} (${sevLabel || 'normal'})`);
+  if (cpapCurrent) careSummaryParts.push('Current CPAP user');
+  else if (cpapFailed) careSummaryParts.push(`CPAP tried (${cpapWillRetry ? 'will retry' : 'discontinued'})`);
+  else if (prefAvoidCpap) careSummaryParts.push('Prefers to avoid CPAP');
+  if (priorMAD) careSummaryParts.push('Prior MAD');
+  if (priorUPPP) careSummaryParts.push('Prior UPPP');
+  if (priorInspire) careSummaryParts.push('Prior Inspire');
+  if (hasCOMISA) careSummaryParts.push('COMISA');
+  if (milestones.length) careSummaryParts.push(`Stage: ${milestones[milestones.length - 1]}`);
+
+  const careSummaryHTML = careSummaryParts.length ? `<div class="osa-care-summary mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>${careSummaryParts.join(' · ')}</div>` : '';
+
+  /* ── Build collapsible clinical analysis content ──────── */
+  const clinAnalysisParts = [];
+  if (edwardsArTH && out.phen.includes('Low Arousal Threshold'))
+    clinAnalysisParts.push(`<div class="alert alert-info py-2 px-3 mb-2"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables. Enter Apnea Index + Hypopnea Index in Lab PSG section for full score.]</small>' : ''}</div>`);
+  if (exists(fHypopneas)) {
+    const collLabel = collapsibility === 'high' ? 'High' : collapsibility === 'moderate' ? 'Moderate' : 'Low';
+    const collImplication = collapsibility === 'high' ? 'Anatomy-directed therapy (CPAP, surgery, HNS) prioritized' : collapsibility === 'low' ? 'Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed' : 'Mixed pattern — both anatomic and nonanatomic therapies may be effective';
+    clinAnalysisParts.push(`<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Collapsibility: ${collLabel}</strong> <small class="text-muted">(Vena 2022)</small><ul class="mb-0 mt-1"><li>F(hypopneas) = ${fHypopneas.toFixed(0)}%</li><li>${collImplication}</li></ul></div>`);
+  }
+  if (exists(lgEstimate)) {
+    const lgLevel = lgEstimate > 0.7 ? 'High' : lgEstimate > 0.5 ? 'Borderline' : 'Low';
+    const lgAction = lgEstimate > 0.7 ? '<li>Consider O₂ or acetazolamide</li><li>Monitor for treatment-emergent centrals</li>' : lgEstimate > 0.5 ? '<li>Monitor for residual events on therapy</li>' : '';
+    clinAnalysisParts.push(`<div class="alert alert-${lgEstimate > 0.7 ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Loop Gain: ${lgLevel} (LG ≈ ${lgEstimate.toFixed(2)})</strong> <small class="text-muted">(Schmickl 2022)</small>${lgAction ? `<ul class="mb-0 mt-1">${lgAction}</ul>` : ''}</div>`);
+  }
+  if (hbTreatmentNote) clinAnalysisParts.push(hbTreatmentNote.replace(/mt-2/g, 'mb-2'));
+  if (atsTriage) clinAnalysisParts.push(atsTriage.replace(/mt-2/g, 'mb-2'));
+  if (mildLowHbNote) clinAnalysisParts.push(mildLowHbNote.replace(/mt-2/g, 'mb-2'));
+
+  /* ── Build collapsible treatment candidacy content ───── */
+  const txCandidacyParts = [];
+  if (friedmanStage)
+    txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
+  if (hnsStage)
+    txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+  txCandidacyParts.push(`<div class="alert alert-${madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
+  if (surgHelper) txCandidacyParts.push(surgHelper);
+  if (hgnsHTML) txCandidacyParts.push(`<div class="mt-2">${hgnsHTML}</div>`);
+
+  /* ── Summary badges for collapsed headers ───────────── */
+  const analysisBadges = [
+    exists(fHypopneas) ? `Collapsibility: ${collapsibility}` : null,
+    exists(lgEstimate) ? `Loop Gain: ${lgEstimate.toFixed(2)}` : null,
+    edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `Low Arousal Threshold (${edwardsArTH.score}/${edwardsArTH.maxScore} criteria)` : null,
+    hbTreatmentNote ? 'Hypoxic burden note' : null,
+  ].filter(Boolean);
+
+  const candidacyBadges = [
+    friedmanStage ? `Friedman ${friedmanStage}` : null,
+    `MAD: ${madScore.tier}`,
+    hnsStage ? `Inspire: ${hnsStage.responseRate}% response (Stage ${hnsStage.stage})` : null,
+  ].filter(Boolean);
+
   let cHTML = `
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
       <h2 class="h4 osa-section-title mb-0">Clinician Decision Support</h2>
       <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
     </div>
+    ${pathwayHTML}
+    ${careSummaryHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
     ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => ({cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'inefficacy',cpapTravel:'travel'}[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
     ${keyNumsGrid}
@@ -1323,22 +1420,48 @@ document.getElementById('form').addEventListener('submit', e => {
         </table>
       </div>` : ''
     }
-    ${friedmanStage ? `<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} mt-3 py-2 px-3"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>` : ''}
-    ${hnsStage ? `<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} mt-2 py-2 px-3"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>` : ''}
-    <div class="alert alert-${madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} mt-2 py-2 px-3"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score}) — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>
-    ${edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `<div class="alert alert-info mt-2 py-2 px-3"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables. Enter Apnea Index + Hypopnea Index in Lab PSG section for full score.]</small>' : ''}</div>` : ''}
-    ${exists(fHypopneas) ? `<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} mt-2 py-2 px-3"><strong>Collapsibility Estimate (Vena 2022):</strong> F(hypopneas) = ${fHypopneas.toFixed(0)}% → <strong>${collapsibility === 'high' ? 'High collapsibility' : collapsibility === 'moderate' ? 'Moderate collapsibility' : 'Low collapsibility'}</strong>${collapsibility === 'high' ? ' — more apneas than hypopneas indicates highly collapsible airway. Anatomy-directed therapy (CPAP, surgery, HNS) prioritized over nonanatomic approaches.' : collapsibility === 'low' ? ' — mostly hypopneas, suggesting mild collapsibility. Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed.' : ' — mixed pattern. Both anatomic and nonanatomic therapies may be effective.'}</div>` : ''}
-    ${exists(lgEstimate) ? `<div class="alert alert-${lgEstimate > 0.7 ? 'warning' : 'info'} mt-2 py-2 px-3"><strong>Loop Gain Estimate (Schmickl 2022):</strong> LG ≈ ${lgEstimate.toFixed(2)}${lgEstimate > 0.7 ? ' (>0.7 — suggests high loop gain, r=0.48, AUC 0.73). Consider oxygen therapy or acetazolamide. Monitor for treatment-emergent centrals on PAP.' : lgEstimate > 0.5 ? ' (0.5–0.7 — borderline). Monitor for residual events on therapy.' : ' (<0.5 — low loop gain).'} <small class="text-muted">Point-of-care model: 0.0016×AHI − 0.0019×Hypopnea%</small></div>` : ''}
-    ${hbTreatmentNote}
-    ${atsTriage}
-    ${mildLowHbNote}
-    <h5 class="mt-3 mb-2">Ranked Treatment Plan</h5>
+
+    <h5 class="mt-3 mb-2">Treatment Plan</h5>
     ${rankedPlan}
-    ${guardrails.length?`<div class="alert alert-warning mt-3"><strong>Guardrails:</strong> <ul class="mb-0">${guardrails.map(g=>`<li>${g}</li>`).join('')}</ul></div>`:''}
-    ${surgHelper}
-    <div class="mt-4">${hgnsHTML}</div>
-    <h5 class="mt-3">Follow-up</h5>
-    <ul>${followUps.map(x=>`<li>${x}</li>`).join('')}</ul>
+    ${guardrails.length?`<div class="alert alert-warning mt-3 mb-2"><strong>Guardrails</strong>${guardrails.map(g => g.startsWith('<strong>') ? `<div class="mt-2">${g}</div>` : `<ul class="mb-1"><li>${g}</li></ul>`).join('')}</div>`:''}
+
+    ${clinAnalysisParts.length ? `
+    <div class="osa-clin-section mt-3">
+      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinAnalysis" aria-expanded="false">
+        <span><i class="bi bi-graph-up me-2"></i>Clinical Analysis</span>
+        <span class="osa-clin-section-badges">${analysisBadges.map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
+        <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
+      </div>
+      <div class="collapse" id="clinAnalysis">
+        <div class="osa-clin-section-body">${clinAnalysisParts.join('')}</div>
+      </div>
+    </div>` : ''}
+
+    <div class="osa-clin-section mt-2">
+      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#txCandidacy" aria-expanded="false">
+        <span><i class="bi bi-clipboard2-check me-2"></i>Treatment Candidacy</span>
+        <span class="osa-clin-section-badges">${candidacyBadges.map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
+        <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
+      </div>
+      <div class="collapse" id="txCandidacy">
+        <div class="osa-clin-section-body">${txCandidacyParts.join('')}</div>
+      </div>
+    </div>
+
+    <div class="osa-clin-section mt-2">
+      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinFollowup" aria-expanded="false">
+        <span><i class="bi bi-calendar-check me-2"></i>Follow-up Plan</span>
+        <span class="osa-clin-section-badges">${[
+          hasCOMISA ? 'COMISA protocol' : null,
+          out.phen.includes('Positional OSA') ? 'Positional recheck' : null,
+          `${followUps.length} items`,
+        ].filter(Boolean).map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
+        <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
+      </div>
+      <div class="collapse" id="clinFollowup">
+        <div class="osa-clin-section-body">${followUps.map(x => x.startsWith('<strong>') ? `<div class="mb-2">${x}</div>` : `<ul class="mb-1"><li>${x}</li></ul>`).join('')}</div>
+      </div>
+    </div>
   `;
 
   // ── Populate analysis data for patient report ──
@@ -1404,6 +1527,9 @@ document.getElementById('form').addEventListener('submit', e => {
     collapsibility,
     lgEstimate,
     dhr,
+    milestones: [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value),
+    cpapPressure: n(f.get('cpapPressure')),
+    age: n(f.get('age')),
   };
 
   // Show the Generate Patient Report button
