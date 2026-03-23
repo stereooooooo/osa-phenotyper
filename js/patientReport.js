@@ -40,6 +40,30 @@ var PatientReport = (() => {
       .replace(/"/g, '&quot;');
   }
 
+  /* ── Helper: determine visit context ──────────────────────────────────── */
+  function getVisitContext(data) {
+    const ms = Array.isArray(data.milestones) ? data.milestones : [];
+    const hasStudy = data.primaryAHI !== null && data.primaryAHI !== undefined;
+    const hasTreatmentHistory = data.cpapCurrent || data.cpapFailed || data.priorMAD || data.priorUPPP || data.priorInspire;
+
+    if (!hasStudy) return { stage: 'pre-study', isFirstVisit: true, label: 'Initial Evaluation' };
+
+    // Has study data — check if returning
+    const beyondInitial = ms.some(m => m !== 'Initial Eval');
+    if (beyondInitial || hasTreatmentHistory) {
+      return { stage: 'returning', isFirstVisit: false, label: 'Follow-up Visit' };
+    }
+    return { stage: 'new-results', isFirstVisit: true, label: 'Sleep Study Results' };
+  }
+
+  /* ── Care Pathway Stage Definitions ─────────────────────────────────── */
+  const CARE_STAGES = [
+    { id: 'eval',      label: 'Evaluation',        keys: ['Initial Eval'] },
+    { id: 'study',     label: 'Sleep Study',        keys: ['HST Ordered', 'HST Reviewed'] },
+    { id: 'planning',  label: 'Treatment Planning', keys: ['Treatment Plan', 'DISE Scheduled', 'DISE Completed'] },
+    { id: 'treatment', label: 'Treatment',          keys: ['CPAP Trial', 'CPAP Follow-up', 'Surgery Scheduled', 'Post-Op'] },
+  ];
+
   /* ── Helper: format ISO date ──────────────────────────────────────────── */
   function formatDate(isoDate) {
     if (!isoDate) return '';
@@ -59,9 +83,15 @@ var PatientReport = (() => {
      ══════════════════════════════════════════════════════════════════════════ */
   function renderHeader(data) {
     const stage     = getReportStage(data);
-    const title     = stage === 'pre-study'
-      ? 'Your Sleep Evaluation Summary'
-      : 'Your Sleep Apnea Report';
+    const ctx       = getVisitContext(data);
+    let title;
+    if (stage === 'pre-study') {
+      title = 'Your Sleep Evaluation Summary';
+    } else if (ctx.isFirstVisit) {
+      title = 'Your Sleep Apnea Report';
+    } else {
+      title = 'Your Sleep Apnea Update';
+    }
     const logoImg   = logoDataURI
       ? `<img src="${logoDataURI}" alt="Capital ENT" class="report-logo">`
       : `<span style="font-weight:700;color:#1F3A5C;font-size:1.1rem;">Capital ENT</span>`;
@@ -78,6 +108,75 @@ var PatientReport = (() => {
     ${patName ? `<div style="font-weight:600;color:#374151;">${patName}</div>` : ''}
     ${dateStr ? `<div>${dateStr}</div>` : ''}
   </div>
+</div>`;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     CARE PATHWAY BAR — Visual step indicator for the patient
+     ══════════════════════════════════════════════════════════════════════════ */
+  function renderCarePathway(data) {
+    const ms = Array.isArray(data.milestones) ? data.milestones : [];
+    if (!ms.length && !data.patientName) return '';  // no patient context → skip
+
+    let currentIdx = -1;
+    CARE_STAGES.forEach((stage, i) => {
+      if (stage.keys.some(k => ms.includes(k))) currentIdx = i;
+    });
+    // Default to first stage if patient exists but no milestones
+    if (currentIdx < 0) currentIdx = 0;
+
+    const steps = CARE_STAGES.map((s, i) => {
+      let cls, icon;
+      if (i < currentIdx) {
+        cls = 'pathway-completed';
+        icon = '\u2713'; // checkmark
+      } else if (i === currentIdx) {
+        cls = 'pathway-active';
+        icon = '\u25CF'; // filled circle
+      } else {
+        cls = 'pathway-upcoming';
+        icon = '\u25CB'; // open circle
+      }
+      return `<div class="pathway-step ${cls}"><span class="pathway-icon">${icon}</span><span class="pathway-label">${s.label}</span></div>`;
+    });
+
+    return `
+<div class="care-pathway">
+  <div class="pathway-title">Your Care Journey</div>
+  <div class="pathway-steps">${steps.join('<span class="pathway-line"></span>')}</div>
+</div>`;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     CARE SUMMARY CARD — Compact "story so far" for returning patients
+     ══════════════════════════════════════════════════════════════════════════ */
+  function renderCareSummary(data) {
+    const ctx = getVisitContext(data);
+    if (ctx.isFirstVisit) return '';  // no summary for first visit
+
+    const parts = [];
+    // AHI baseline
+    if (data.primaryAHI !== null && data.primaryAHI !== undefined) {
+      const sev = ahiSeverityLabel(data.primaryAHI);
+      parts.push(`Your sleep study showed <strong>${sev} sleep apnea</strong> (AHI ${Math.round(data.primaryAHI)})`);
+    }
+
+    // Treatment history
+    const txParts = [];
+    if (data.cpapCurrent) txParts.push('currently using CPAP');
+    else if (data.cpapFailed) txParts.push(data.cpapWillRetry ? 'tried CPAP (willing to retry)' : 'tried CPAP (discontinued)');
+    if (data.priorMAD) txParts.push('tried an oral appliance');
+    if (data.priorUPPP) txParts.push('had UPPP surgery');
+    if (data.priorInspire) txParts.push('has Inspire implant');
+    if (txParts.length) parts.push('You have ' + txParts.join(', '));
+
+    if (!parts.length) return '';
+
+    return `
+<div class="care-summary-card">
+  <div class="care-summary-title">Where You Are</div>
+  <p>${parts.join('. ')}.</p>
+  <p style="font-size:0.85rem;color:#6B7280;margin-bottom:0;">This report focuses on what's changed and what's next in your care plan.</p>
 </div>`;
   }
 
@@ -202,7 +301,7 @@ ${examParts.join('')}`);
     if (parts.length === 0) return '';
 
     return `
-<h2>Why We're Recommending a Sleep Study</h2>
+<h2>Your Sleep Evaluation</h2>
 ${parts.join('')}`;
   }
 
@@ -215,9 +314,16 @@ ${parts.join('')}`;
     const ahi      = data.primaryAHI;
     const severity = ahiSeverityLabel(ahi);
     const ahiRound = Math.round(ahi);
+    const ctx      = getVisitContext(data);
 
-    /* — Plain language AHI explanation — */
-    const ahiExpl = `
+    /* — Plain language AHI explanation (visit-aware) — */
+    let ahiExpl;
+    if (!ctx.isFirstVisit && severity !== 'normal') {
+      // Returning patient: brief reminder, not full explanation
+      ahiExpl = `
+<p>As a reminder, your sleep study showed an AHI of <strong>${ahiRound} events per hour</strong>, which is in the <strong>${severity} range</strong> for obstructive sleep apnea. This means your breathing was interrupted about ${ahiRound} times every hour of sleep.</p>`;
+    } else {
+      ahiExpl = `
 <p>During your sleep study, we measured how often your breathing slowed down or stopped while you were asleep. This is called the <strong>Apnea-Hypopnea Index (AHI)</strong>. Your AHI is <strong>${ahiRound} events per hour</strong>, which means your breathing was interrupted about ${ahiRound} times every hour of sleep.</p>
 ${severity === 'normal'
   ? '<p>This result is in the <strong>normal range</strong> — fewer than 5 breathing interruptions per hour. While your breathing during sleep appears healthy, we will continue to review your full results with you.</p>'
@@ -229,6 +335,7 @@ ${severity === 'normal'
         : 'Severe sleep apnea puts significant stress on your heart, blood pressure, and overall health. Treatment can make a major difference.'
   }</p>`
 }`;
+    }
 
     /* — AHI Severity Scale visual — */
     const displayMax = 60;
@@ -263,8 +370,10 @@ Your results show a pattern called COMISA — comorbid insomnia and obstructive 
 Not everyone with sleep apnea feels tired or has obvious symptoms — and you appear to fall into this category. Even so, the repeated drops in oxygen and the strain of repeatedly reopening the airway take a quiet toll on the heart, blood pressure, and brain over time. People with untreated sleep apnea — even those who feel fine — have higher rates of high blood pressure, heart disease, and stroke. Treating sleep apnea now is an investment in your long-term health.</p>`;
     }
 
+    const sectionTitle = ctx.isFirstVisit ? 'Understanding Your Results' : 'Your Sleep Apnea Summary';
+
     return `
-<h2>Understanding Your Results</h2>
+<h2>${sectionTitle}</h2>
 ${ahiExpl}
 ${ahiScale}
 ${subtypeHtml}`;
@@ -417,6 +526,7 @@ ${items}`;
     'SLEEP-STUDY': `<strong>Sleep Study</strong> — A sleep study measures your breathing, oxygen levels, heart rate, and sleep stages to get a full picture of what's happening while you sleep. Depending on your situation, this may be a home sleep test (a small device you wear overnight at home) or an in-lab study (which captures more detailed data in a monitored sleep center). The results will guide your treatment decisions.`,
     'UARS-EVAL': `<strong>Evaluation for Upper Airway Resistance Syndrome (UARS)</strong> — Your home sleep study did not show obstructive sleep apnea, but your symptoms and some patterns in your results suggest you may have a related condition called upper airway resistance syndrome (UARS). In UARS, the airway narrows enough to disrupt sleep without fully blocking airflow — which means a home test may not detect it. An in-lab sleep study with more detailed monitoring can identify this condition and guide treatment.`,
     'SNORE-ALCOHOL': `<strong>Avoid Alcohol Before Bed</strong> — Alcohol relaxes the muscles in your throat, making snoring worse and increasing the chance of airway collapse during sleep. Avoiding alcohol within 3 hours of bedtime can noticeably reduce snoring and improve sleep quality.`,
+    'SNORE-LIFESTYLE': `<strong>Reducing Snoring While We Wait for Results</strong> — There are several things you can start doing now to reduce snoring. <strong>Sleep on your side</strong> — snoring is usually worse on your back because gravity pulls the tongue and soft tissues into the airway. A body pillow or positional device can help. <strong>Avoid alcohol within 3 hours of bedtime</strong> — alcohol relaxes the throat muscles, making snoring louder and more frequent. <strong>Maintain a healthy weight</strong> — even modest weight loss (as little as 5–7 pounds) can noticeably reduce snoring by decreasing tissue bulk around the airway. <strong>Stay active</strong> — regular aerobic exercise may reduce snoring independent of weight loss. <strong>Reduce sedative use</strong> — benzodiazepines and other sedating medications relax the airway and worsen snoring when possible to avoid. These steps form the foundation of snoring management and will also help with any sleep apnea treatment we recommend after your sleep study.`,
     'INSPIRE-EVAL': `<strong>Inspire Candidacy Evaluation</strong> — You have expressed interest in Inspire therapy. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. A candidacy evaluation involves a sleep endoscopy (DISE) to assess your airway anatomy. Your ENT surgeon will review whether Inspire is a good option for you.`,
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
@@ -518,6 +628,12 @@ ${items}`;
     /* ── Build deduplicated, ordered rec list ── */
     const seenDescriptions = new Set();
     const allRecs = [];  // {html, tag}
+
+    /* Pre-study snoring patients: inject lifestyle snoring rec */
+    const isPreStudy = getReportStage(data) === 'pre-study';
+    if (isPreStudy && !recTags.some(r => r.tag === 'SNORE-LIFESTYLE')) {
+      recTags.push({ text: 'Snoring lifestyle modifications', tag: 'SNORE-LIFESTYLE' });
+    }
 
     /* For COMISA patients: ensure CBT-I appears first */
     if (data.hasCOMISA) {
@@ -682,7 +798,7 @@ ${items}`;
     /* Nasal */
     if (tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR')) {
       checkItems.push('Begin saline nasal rinses (such as a neti pot or squeeze bottle) once or twice daily to reduce nasal inflammation and improve airflow.');
-      checkItems.push('Schedule a follow-up appointment to discuss your nasal anatomy and whether a procedure might help.');
+      checkItems.push('Schedule a follow-up appointment in 4–6 weeks to discuss your nasal anatomy, whether a procedure might help, and review your overall progress.');
     }
 
     /* Inspire */
@@ -730,8 +846,13 @@ ${items}`;
       checkItems.push('If you are open to trying CPAP in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.');
     }
 
-    /* Always add follow-up */
-    checkItems.push('Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.');
+    /* Always add follow-up — but combine with nasal if both would appear */
+    const hasNasalFollowUp = tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR');
+    if (hasNasalFollowUp) {
+      /* Nasal follow-up already scheduled above — just add the timeline */
+    } else {
+      checkItems.push('Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.');
+    }
 
     const items = checkItems.map(item => `
 <div class="checklist-item">
@@ -756,7 +877,8 @@ ${items}`;
     const hasNasal    = phen.includes('Nasal-Resistance Contributor');
 
     /* Check whether any what-if scenario applies */
-    const showWeight   = bmi !== null && bmi >= 27 && hasPrimAHI;
+    const isPreStudy   = !hasPrimAHI;
+    const showWeight   = bmi !== null && bmi >= 27 && (hasPrimAHI || isPreStudy);
     const showPos      = hasPos;
     const showNasal    = hasNasal;
 
@@ -764,13 +886,19 @@ ${items}`;
 
     const items = [];
 
-    /* Weight / AHI projection */
-    if (showWeight) {
+    /* Weight / AHI projection (or pre-study snoring version) */
+    if (showWeight && hasPrimAHI) {
       const projAHI = Math.round(data.primaryAHI * 0.70);
       items.push(`
 <div class="whatif-item">
   <strong>What if you lost weight?</strong>
   <p style="margin:0.4rem 0 0;">Your current AHI is <strong>${Math.round(data.primaryAHI)}</strong>. Research shows that meaningful weight loss can reduce sleep apnea severity by about 30% or more. Based on your results, reaching a healthier weight could potentially bring your AHI down to around <strong>${projAHI}</strong> — a significant improvement. Weight loss does not guarantee a cure, but it often makes other treatments work better and reduces the strain on your heart and joints.</p>
+</div>`);
+    } else if (showWeight && isPreStudy) {
+      items.push(`
+<div class="whatif-item">
+  <strong>What if you lost weight?</strong>
+  <p style="margin:0.4rem 0 0;">Your BMI of <strong>${bmi.toFixed(1)}</strong> puts you in the ${bmi >= 30 ? 'obese' : 'overweight'} range. Excess weight — especially around the neck, tongue, and throat — is one of the strongest risk factors for both snoring and sleep apnea. Studies show that even modest weight loss of 5–7 pounds can reduce snoring frequency by up to 45%. Losing weight also shrinks the soft tissues that vibrate during snoring and reduces pressure on the airway when you lie down. If your sleep study does show sleep apnea, weight loss will make every other treatment — CPAP, oral appliances, surgery — work better.</p>
 </div>`);
     }
 
@@ -805,9 +933,13 @@ ${items}`;
 </div>`);
     }
 
+    const whatIfIntro = isPreStudy
+      ? 'These scenarios show how specific changes could affect your snoring and overall sleep quality — even before we have your sleep study results.'
+      : 'These scenarios show how specific changes could affect your sleep apnea. They\u2019re meant to motivate and inform — not to suggest that these steps alone will resolve everything.';
+
     return `
 <h2>What If…?</h2>
-<p>These scenarios show how specific changes could affect your sleep apnea. They're meant to motivate and inform — not to suggest that these steps alone will resolve everything.</p>
+<p>${whatIfIntro}</p>
 ${items.join('')}`;
   }
 
@@ -867,6 +999,8 @@ ${items.join('')}`;
   function generateReportHTML(data) {
     const sections = [
       renderHeader(data),
+      renderCarePathway(data),
+      renderCareSummary(data),
       renderSectionA(data),
       renderSectionB(data),
       renderSectionB2(data),
