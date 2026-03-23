@@ -798,7 +798,7 @@ ${items}`;
     /* Nasal */
     if (tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR')) {
       checkItems.push('Begin saline nasal rinses (such as a neti pot or squeeze bottle) once or twice daily to reduce nasal inflammation and improve airflow.');
-      checkItems.push('Schedule a follow-up appointment in 4–6 weeks to discuss your nasal anatomy, whether a procedure might help, and review your overall progress.');
+      checkItems.push('Schedule a follow-up appointment in 4–6 weeks to review your sleep study results, discuss your nasal anatomy and whether a procedure might help, and see how you are responding to nasal saline rinses.');
     }
 
     /* Inspire */
