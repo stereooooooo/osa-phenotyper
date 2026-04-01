@@ -16,14 +16,23 @@ A client-side clinical decision-support tool for obstructive sleep apnea (OSA). 
 | File | Purpose |
 |------|---------|
 | `index.html` | Single-page form + results UI |
+| `intake.html` | Patient-facing intake questionnaire (magic-link access) |
 | `js/app.js` | Main phenotyping engine, recommendation logic, form handler |
 | `js/config.js` | All clinical thresholds (centralized) |
+| `js/db.js` | Patient CRUD + intake token API methods |
+| `js/auth.js` | Cognito authentication (clinician accounts) |
 | `js/patientReport.js` | Patient-facing report HTML generator |
 | `js/pdf-export.js` | PDF generation (html2canvas + jsPDF) |
 | `js/validate.js` | Form field validation |
 | `js/pdf-parser.js` | WatchPAT PDF drag-and-drop parser |
+| `js/questionnaire-parser.js` | Intake questionnaire PDF parser (Doctible/IntakeQ) |
 | `css/styles.css` | Main app styles |
+| `css/intake.css` | Patient intake page styles |
 | `css/patientReport.css` | Patient report overlay + PDF styles |
+| `infrastructure/template.yaml` | CloudFormation: DynamoDB, Cognito, Lambda, API Gateway, WAF, CloudTrail |
+| `infrastructure/lambda/index.mjs` | Main Lambda: patient CRUD + token management |
+| `infrastructure/lambda/intake.mjs` | Intake Lambda: token validation, form submission (restricted IAM) |
+| `infrastructure/deploy.sh` | AWS deployment script |
 
 ## 9 Phenotypes
 High Anatomical Contribution, Low Arousal Threshold, High Loop Gain, Poor Muscle Responsiveness, Positional OSA, REM-Predominant OSA, High Hypoxic Burden, Nasal-Resistance Contributor, Elevated Delta Heart Rate
@@ -70,6 +79,17 @@ Recommendations use tags (e.g., `CPAP`, `MAD-FAVORABLE`, `HNS`, `CBTI`) that map
 - Use preview server to run test patients via JS eval
 - Sex field is a `<select>` with values `M`/`F` (not radio with Male/Female)
 - `recSeen` and `recTagMap` are module-scoped in app.js — not accessible from eval. Form `reset()` is sufficient between test runs; the submit handler clears them internally.
+
+## Patient Intake System
+- **Magic-link tokens**: Staff generates a 72-hour, single-use token via "Intake Link" button → copies URL → sends to patient via HIPAA-compliant channel
+- **Token security**: 256-bit random tokens, SHA-256 hashed before DB storage, 5-attempt lockout, single-use enforcement
+- **Intake page** (`intake.html`): Standalone, zero third-party scripts, CSP headers, `Referrer-Policy: no-referrer`
+- **Separate Lambda** (`intake.mjs`) with restricted IAM: only `UpdateItem` on patient `formData` — cannot list, delete, or read full records
+- **Field mapping**: Intake Lambda maps patient responses to exact `formData` keys used by `app.js` and `populateForm()`. Boolean fields use `'on'`/`''` to match HTML checkbox behavior.
+- **Audit**: CloudTrail logs all DynamoDB data-plane events, CloudWatch logs retained 7 years (2557 days), no PHI in any log
+- **HIPAA**: Full compliance checklist in `docs/plans/staged-bubbling-cosmos.md`. All AWS services are HIPAA-eligible with active BAA.
+- **WAF**: Rate limiting (100 req/5min/IP) + AWS managed rule groups on intake endpoints
+- **Token table**: `osa-intake-tokens-*` with DynamoDB TTL auto-cleanup, KMS encryption, PITR
 
 ## Evidence & Citations
 All clinical evidence is tracked in `docs/citations.md`. When adding new clinical logic:

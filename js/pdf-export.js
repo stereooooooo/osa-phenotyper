@@ -121,10 +121,31 @@ const OSAPdfExport = (() => {
     .rec-item { padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
     .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
     .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
+    .checklist-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 4px; }
+    .checklist-group-label:first-of-type { margin-top: 0; }
+    .checklist-group-subtitle { font-size: 11px; color: #9ca3af; margin-top: 0; margin-bottom: 6px; font-style: italic; }
     .whatif-item { background: #f0f9ff; border-left: 3px solid #1F3A5C; padding: 10px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
     .cpap-context-box { background: #fef3c7; border-left: 3px solid #f59e0b; padding: 10px 12px; margin-bottom: 12px; border-radius: 0 6px 6px 0; font-size: 13px; }
     .comisa-callout { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; font-size: 13px; }
     .report-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #9ca3af; text-align: center; }
+
+    /* Care pathway bar */
+    .care-pathway { margin: 0 0 20px; padding: 12px 16px; background: #f8fafc; border: 1px solid #E5E7EB; border-radius: 8px; }
+    .pathway-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-bottom: 8px; }
+    .pathway-steps { display: flex; align-items: center; justify-content: center; gap: 3px 0; flex-wrap: wrap; }
+    .pathway-step { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px; font-weight: 500; padding: 3px 6px; border-radius: 16px; }
+    .pathway-icon { font-size: 9px; line-height: 1; }
+    .pathway-completed { color: #1F3A5C; }
+    .pathway-completed .pathway-icon { color: #22c55e; }
+    .pathway-active { background: #1F3A5C; color: #fff; font-weight: 600; }
+    .pathway-active .pathway-icon { color: #fff; }
+    .pathway-upcoming { color: #c4c8cf; }
+    .pathway-upcoming .pathway-icon { color: #d1d5db; }
+    .pathway-line { display: inline-block; width: 14px; height: 2px; background: #E5E7EB; flex-shrink: 1; min-width: 6px; }
+
+    /* Care summary card */
+    .care-summary-card { background: #f0f2f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; }
+    .care-summary-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; margin-bottom: 4px; }
   `;
 
   /**
@@ -141,7 +162,7 @@ const OSAPdfExport = (() => {
     // Collect bottom-edges of all block-level children and their nested blocks
     const breakable = container.querySelectorAll(
       'h2, h3, p, div.rec-item, div.phenotype-item, div.checklist-item, div.whatif-item, ' +
-      'div.cpap-context-box, div.comisa-callout, div.treatment-group-label, div.report-header, ' +
+      'div.cpap-context-box, div.comisa-callout, div.treatment-group-label, div.checklist-group-label, div.report-header, ' +
       'div.ahi-scale, div.report-footer'
     );
     const containerTop = container.getBoundingClientRect().top;

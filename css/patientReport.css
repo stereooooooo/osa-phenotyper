@@ -198,6 +198,25 @@ body.report-preview-open {
   border-radius: 3px;
   margin-top: 0.2rem;
 }
+.patient-report .checklist-group-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6B7280;
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+.patient-report .checklist-group-label:first-of-type {
+  margin-top: 0;
+}
+.patient-report .checklist-group-subtitle {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
 
 /* ── What-If Scenarios ── */
 .patient-report .whatif-item {
@@ -206,6 +225,85 @@ body.report-preview-open {
   padding: 0.75rem 1rem;
   margin-bottom: 0.75rem;
   border-radius: 0 6px 6px 0;
+}
+
+/* ── Care Pathway (Patient Report) ── */
+.patient-report .care-pathway {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+}
+.patient-report .pathway-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6B7280;
+  margin-bottom: 0.6rem;
+}
+.patient-report .pathway-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 0;
+  flex-wrap: wrap;
+}
+.patient-report .pathway-step {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 16px;
+}
+.patient-report .pathway-icon {
+  font-size: 0.65rem;
+  line-height: 1;
+}
+.patient-report .pathway-completed {
+  color: #1F3A5C;
+}
+.patient-report .pathway-completed .pathway-icon { color: #22c55e; }
+.patient-report .pathway-active {
+  background: #1F3A5C;
+  color: #fff;
+  font-weight: 600;
+}
+.patient-report .pathway-active .pathway-icon { color: #fff; }
+.patient-report .pathway-upcoming {
+  color: #c4c8cf;
+}
+.patient-report .pathway-upcoming .pathway-icon { color: #d1d5db; }
+.patient-report .pathway-line {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  background: #E5E7EB;
+  flex-shrink: 1;
+  min-width: 8px;
+}
+
+/* ── Care Summary Card (Patient Report) ── */
+.patient-report .care-summary-card {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+.patient-report .care-summary-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1F3A5C;
+  margin-bottom: 0.5rem;
+}
+.patient-report .care-summary-card p {
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
 }
 
 /* ── Footer ── */

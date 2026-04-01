@@ -11,5 +11,9 @@ node_modules/
 Test Data/
 *.pdf
 
+# Superpowers working files
+.superpowers/
+docs/superpowers/
+
 # npm
 package-lock.json

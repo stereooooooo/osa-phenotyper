@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src https://*.execute-api.us-east-2.amazonaws.com; font-src 'self' https://cdn.jsdelivr.net">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Sleep Health Questionnaire &bull; Capital&nbsp;ENT</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/intake.css" rel="stylesheet">
+</head>
+<body data-api-url="https://eetcsdv1v9.execute-api.us-east-2.amazonaws.com">
+
+<!-- ===== STATE: Loading ===== -->
+<div id="stateLoading" class="intake-state intake-state--active">
+  <div class="intake-spinner intake-spinner--dark intake-spinner--large"></div>
+  <p style="margin-top:1.5rem;color:#6B7280;">Verifying your link&hellip;</p>
+</div>
+
+<!-- ===== STATE: Error ===== -->
+<div id="stateError" class="intake-state">
+  <svg class="intake-state__icon intake-state__icon--error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+  <h1 class="intake-state__title">This link is no longer active</h1>
+  <p class="intake-state__message">It may have expired or already been used.</p>
+  <p class="intake-state__message">Please contact Capital ENT &amp; Sinus Center to request a new link.</p>
+  <a href="tel:+15123394040" class="intake-state__phone">(512) 339-4040</a>
+</div>
+
+<!-- ===== STATE: Thank You ===== -->
+<div id="stateThankYou" class="intake-state">
+  <svg class="intake-state__icon intake-state__icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  <h1 class="intake-state__title">Thank you, <span id="thankYouName"></span>!</h1>
+  <p class="intake-state__message">Your responses have been received by Capital ENT &amp; Sinus Center.</p>
+  <p class="intake-state__message">Your healthcare team will review this information before your appointment.</p>
+  <p class="intake-state__message" style="margin-top:1rem;">If you have questions, call us at</p>
+  <a href="tel:+15123394040" class="intake-state__phone">(512) 339-4040</a>
+</div>
+
+<!-- ===== STATE: Main Form ===== -->
+<div id="stateForm" class="intake-form-view">
+
+  <!-- Progress Bar -->
+  <div class="intake-progress" id="progressBar">
+    <div class="intake-progress__bar-track">
+      <div class="intake-progress__bar-fill" id="progressFill"></div>
+    </div>
+    <div class="intake-progress__label" id="progressLabel">Step 1 of 8</div>
+  </div>
+
+  <!-- Privacy Notice -->
+  <div class="privacy-notice">
+    <svg class="privacy-notice__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div class="privacy-notice__text">
+      Your responses will be shared with your healthcare team at Capital ENT &amp; Sinus Center to help plan your care. Your data is encrypted and transmitted securely.
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="intake-header">
+    <img src="capentlogo.svg" alt="Capital ENT &amp; Sinus Center" class="intake-header__logo">
+    <h1 class="intake-header__title">Sleep Health Questionnaire</h1>
+    <p class="intake-header__greeting">Welcome, <span id="greetingName"></span></p>
+    <p class="intake-header__expiry" id="expiryNotice"></p>
+  </div>
+
+  <!-- Validation Summary -->
+  <div class="intake-validation-summary" id="validationSummary">
+    Please answer all required questions before submitting.
+  </div>
+
+  <form id="intakeForm" novalidate>
+    <div class="intake-container">
+
+      <!-- ══════════ Section 1: About You ══════════ -->
+      <section class="intake-section" data-section="1">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 1 of 8</div>
+          <h2 class="intake-section__title">About You</h2>
+        </div>
+        <div class="intake-section__body">
+
+          <div class="intake-field-group">
+            <label for="age" class="intake-label intake-label--required">Age</label>
+            <input type="number" id="age" name="age" class="intake-input" min="1" max="120" inputmode="numeric" required autocomplete="off" style="max-width:120px;">
+            <div class="intake-error" id="ageError">Please enter your age (1-120).</div>
+          </div>
+
+          <div class="intake-field-group">
+            <label for="sex" class="intake-label intake-label--required">Sex</label>
+            <select id="sex" name="sex" class="intake-select" required style="max-width:200px;">
+              <option value="">Select&hellip;</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+            <div class="intake-error" id="sexError">Please select your sex.</div>
+          </div>
+
+          <div class="intake-field-group">
+            <label class="intake-label intake-label--required">Height</label>
+            <div class="intake-field-row" style="max-width:260px;">
+              <div class="intake-field-group">
+                <select id="heightFeet" name="heightFeet" class="intake-select" required>
+                  <option value="">Feet</option>
+                  <option value="3">3 ft</option>
+                  <option value="4">4 ft</option>
+                  <option value="5">5 ft</option>
+                  <option value="6">6 ft</option>
+                  <option value="7">7 ft</option>
+                </select>
+              </div>
+              <div class="intake-field-group">
+                <select id="heightInches" name="heightInches" class="intake-select" required>
+                  <option value="">Inches</option>
+                  <option value="0">0 in</option>
+                  <option value="1">1 in</option>
+                  <option value="2">2 in</option>
+                  <option value="3">3 in</option>
+                  <option value="4">4 in</option>
+                  <option value="5">5 in</option>
+                  <option value="6">6 in</option>
+                  <option value="7">7 in</option>
+                  <option value="8">8 in</option>
+                  <option value="9">9 in</option>
+                  <option value="10">10 in</option>
+                  <option value="11">11 in</option>
+                </select>
+              </div>
+            </div>
+            <div class="intake-error" id="heightError">Please enter your height.</div>
+          </div>
+
+          <div class="intake-field-group">
+            <label for="weight" class="intake-label intake-label--required">Weight (lbs)</label>
+            <input type="number" id="weight" name="weight" class="intake-input" min="50" max="600" inputmode="numeric" required autocomplete="off" style="max-width:150px;">
+            <div class="intake-error" id="weightError">Please enter your weight (50-600 lbs).</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══════════ Section 2: Epworth Sleepiness Scale ══════════ -->
+      <section class="intake-section" data-section="2">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 2 of 8</div>
+          <h2 class="intake-section__title">Daytime Sleepiness</h2>
+        </div>
+        <div class="intake-section__body">
+          <p class="intake-section__intro">
+            How likely are you to doze off or fall asleep in the following situations? This refers to your usual way of life in recent times. Even if you have not done some of these things recently, try to work out how they would have affected you.
+          </p>
+          <div class="intake-scale-legend">
+            <span><strong>0</strong> = Would never doze</span>
+            <span><strong>1</strong> = Slight chance</span>
+            <span><strong>2</strong> = Moderate chance</span>
+            <span><strong>3</strong> = High chance</span>
+          </div>
+
+          <div id="essQuestions">
+            <!-- ESS questions are generated by JS -->
+          </div>
+        </div>
+        <div class="intake-score">
+          <span>Your score:</span>
+          <span class="intake-score__value"><span id="essScore">0</span> / 24</span>
+        </div>
+      </section>
+
+      <!-- ══════════ Section 3: Insomnia Severity Index ══════════ -->
+      <section class="intake-section" data-section="3">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 3 of 8</div>
+          <h2 class="intake-section__title">Sleep Quality</h2>
+        </div>
+        <div class="intake-section__body">
+          <div id="isiQuestions">
+            <!-- ISI questions are generated by JS -->
+          </div>
+        </div>
+        <div class="intake-score">
+          <span>Your score:</span>
+          <span class="intake-score__value"><span id="isiScore">0</span> / 28</span>
+        </div>
+      </section>
+
+      <!-- ══════════ Section 4: NOSE Scale ══════════ -->
+      <section class="intake-section" data-section="4">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 4 of 8</div>
+          <h2 class="intake-section__title">Nasal Symptoms</h2>
+        </div>
+        <div class="intake-section__body">
+          <p class="intake-section__intro">
+            Over the past month, how much of a problem were the following conditions for you?
+          </p>
+          <div class="intake-scale-legend">
+            <span><strong>0</strong> = Not a Problem</span>
+            <span><strong>1</strong> = Very Mild</span>
+            <span><strong>2</strong> = Moderate</span>
+            <span><strong>3</strong> = Fairly Bad</span>
+            <span><strong>4</strong> = Severe</span>
+          </div>
+
+          <div id="noseQuestions">
+            <!-- NOSE questions are generated by JS -->
+          </div>
+
+          <!-- Nasal obstruction toggle -->
+          <div class="intake-question" style="border-top:1px solid var(--intake-gray-border);margin-top:0.5rem;padding-top:1rem;">
+            <div class="intake-question__text">
+              Do you have trouble breathing through your nose on a regular basis?
+            </div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="nasalObs" value="yes" id="nasalObsYes" class="intake-radio" required>
+              <label for="nasalObsYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="nasalObs" value="no" id="nasalObsNo" class="intake-radio">
+              <label for="nasalObsNo" class="intake-radio-label">No</label>
+            </div>
+            <div class="intake-error" id="nasalObsError">Please answer this question.</div>
+          </div>
+        </div>
+        <div class="intake-score">
+          <span>Your score:</span>
+          <span class="intake-score__value"><span id="noseScore">0</span> / 100</span>
+        </div>
+      </section>
+
+      <!-- ══════════ Section 5: Snoring ══════════ -->
+      <section class="intake-section" data-section="5">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 5 of 8</div>
+          <h2 class="intake-section__title">Snoring</h2>
+        </div>
+        <div class="intake-section__body">
+          <div class="intake-question" style="border-bottom:none;padding-bottom:0;">
+            <div class="intake-question__text">
+              Do you or does your bed partner notice snoring?
+            </div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="snoringReported" value="yes" id="snoringYes" class="intake-radio" required>
+              <label for="snoringYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="snoringReported" value="no" id="snoringNo" class="intake-radio">
+              <label for="snoringNo" class="intake-radio-label">No</label>
+            </div>
+            <div class="intake-error" id="snoringError">Please answer this question.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ Section 6: Treatment Preferences ══════════ -->
+      <section class="intake-section" data-section="6">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 6 of 8</div>
+          <h2 class="intake-section__title">Treatment Preferences</h2>
+        </div>
+        <div class="intake-section__body">
+          <p class="intake-section__intro">
+            These questions help us understand your treatment preferences. There are no right or wrong answers.
+          </p>
+          <div class="intake-checkbox-group">
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="prefAvoidCPAP" class="intake-checkbox" value="yes">
+              <span class="intake-checkbox-text">I would prefer to avoid CPAP (breathing machine) if possible</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="prefOpenSurgery" class="intake-checkbox" value="yes">
+              <span class="intake-checkbox-text">I am open to considering surgery if recommended</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="prefInspire" class="intake-checkbox" value="yes">
+              <span class="intake-checkbox-text">I am interested in learning about Inspire (a small implanted device)</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ Section 7: Previous Treatments ══════════ -->
+      <section class="intake-section" data-section="7">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 7 of 8</div>
+          <h2 class="intake-section__title">Previous Sleep Treatments</h2>
+        </div>
+        <div class="intake-section__body">
+          <p class="intake-section__intro">
+            Have you had any of the following treatments for snoring or sleep apnea?
+          </p>
+          <div class="intake-checkbox-group" id="priorTreatments">
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="cpap">
+              <span class="intake-checkbox-text">CPAP or BiPAP machine</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="mad">
+              <span class="intake-checkbox-text">Oral appliance / mouthpiece (MAD)</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="uppp">
+              <span class="intake-checkbox-text">Throat surgery (UPPP / tonsillectomy)</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="nasal-surgery">
+              <span class="intake-checkbox-text">Nasal surgery</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="sinus-surgery">
+              <span class="intake-checkbox-text">Sinus surgery</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="jaw-surgery">
+              <span class="intake-checkbox-text">Jaw surgery</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="inspire">
+              <span class="intake-checkbox-text">Inspire implant</span>
+            </label>
+            <label class="intake-checkbox-wrap">
+              <input type="checkbox" name="priorTx" class="intake-checkbox" value="none" id="priorTxNone">
+              <span class="intake-checkbox-text">None of the above</span>
+            </label>
+          </div>
+
+          <!-- Conditional CPAP Details -->
+          <div class="intake-conditional" id="cpapDetails">
+            <div class="intake-conditional__title">CPAP Details</div>
+
+            <div class="intake-field-group">
+              <div class="intake-question__text" style="font-size:0.9rem;">Are you currently using CPAP?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="cpapCurrent" value="yes" id="cpapCurrentYes" class="intake-radio">
+                <label for="cpapCurrentYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="cpapCurrent" value="no" id="cpapCurrentNo" class="intake-radio">
+                <label for="cpapCurrentNo" class="intake-radio-label">No</label>
+              </div>
+            </div>
+
+            <div class="intake-field-group">
+              <div class="intake-question__text" style="font-size:0.9rem;">Did you notice improvement with CPAP?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="cpapImproved" value="yes" id="cpapImprovedYes" class="intake-radio">
+                <label for="cpapImprovedYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="cpapImproved" value="no" id="cpapImprovedNo" class="intake-radio">
+                <label for="cpapImprovedNo" class="intake-radio-label">No</label>
+                <input type="radio" name="cpapImproved" value="unsure" id="cpapImprovedUnsure" class="intake-radio">
+                <label for="cpapImprovedUnsure" class="intake-radio-label">Unsure</label>
+              </div>
+            </div>
+
+            <div class="intake-field-group" id="cpapRetryGroup" style="display:none;">
+              <div class="intake-question__text" style="font-size:0.9rem;">Would you be open to trying CPAP again?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="cpapRetry" value="yes" id="cpapRetryYes" class="intake-radio">
+                <label for="cpapRetryYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="cpapRetry" value="no" id="cpapRetryNo" class="intake-radio">
+                <label for="cpapRetryNo" class="intake-radio-label">No</label>
+                <input type="radio" name="cpapRetry" value="maybe" id="cpapRetryMaybe" class="intake-radio">
+                <label for="cpapRetryMaybe" class="intake-radio-label">Maybe</label>
+              </div>
+            </div>
+
+            <div class="intake-field-group">
+              <label for="cpapPressure" class="intake-label">CPAP pressure setting (optional, cmH2O)</label>
+              <input type="number" id="cpapPressure" name="cpapPressure" class="intake-input" min="4" max="25" inputmode="numeric" style="max-width:150px;">
+            </div>
+
+            <div class="intake-field-group">
+              <div class="intake-question__text" style="font-size:0.9rem;margin-bottom:0.5rem;">What were the main reasons you stopped or have difficulty with CPAP?</div>
+              <div class="intake-checkbox-group" id="cpapIssues">
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="mask-discomfort">
+                  <span class="intake-checkbox-text">Mask discomfort or poor fit</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="claustrophobia">
+                  <span class="intake-checkbox-text">Claustrophobia or anxiety</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="dryness">
+                  <span class="intake-checkbox-text">Dry mouth or nasal dryness</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="air-leaks">
+                  <span class="intake-checkbox-text">Air leaks or noise from the machine</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="sleep-difficulty">
+                  <span class="intake-checkbox-text">Trouble falling asleep with CPAP</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="skin-irritation">
+                  <span class="intake-checkbox-text">Skin irritation or pressure sores</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="no-improvement">
+                  <span class="intake-checkbox-text">Didn't notice improvement</span>
+                </label>
+                <label class="intake-checkbox-wrap">
+                  <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="travel">
+                  <span class="intake-checkbox-text">Difficulty traveling with the machine</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ Section 8: Weight Management ══════════ -->
+      <section class="intake-section" data-section="8">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 8 of 8</div>
+          <h2 class="intake-section__title">Weight Management</h2>
+        </div>
+        <div class="intake-section__body">
+          <div class="intake-question" style="border-bottom:none;padding-bottom:0;">
+            <div class="intake-question__text">
+              Which best describes your interest in weight management as part of your sleep treatment?
+            </div>
+            <div class="intake-radio-group">
+              <input type="radio" name="weightInterest" value="ready" id="weightReady" class="intake-radio">
+              <label for="weightReady" class="intake-radio-label" style="padding:0.6rem 1.2rem;">Ready to start</label>
+              <input type="radio" name="weightInterest" value="thinking" id="weightThinking" class="intake-radio">
+              <label for="weightThinking" class="intake-radio-label" style="padding:0.6rem 1.2rem;">Thinking about it</label>
+              <input type="radio" name="weightInterest" value="not-now" id="weightNotNow" class="intake-radio">
+              <label for="weightNotNow" class="intake-radio-label" style="padding:0.6rem 1.2rem;">Not interested right now</label>
+            </div>
+            <div class="intake-error" id="weightError">Please select an option.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ Submit ══════════ -->
+      <div class="intake-submit">
+        <button type="submit" class="intake-submit__btn" id="submitBtn">
+          Submit My Responses
+        </button>
+        <p class="intake-submit__note">You can only submit once. Please review your answers before submitting.</p>
+      </div>
+
+    </div><!-- /intake-container -->
+  </form>
+
+</div><!-- /stateForm -->
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   Patient Intake — Capital ENT & Sinus Center
+   HIPAA-compliant: zero third-party JS, no external tracking.
+   ────────────────────────────────────────────────────────────── */
+(function() {
+  'use strict';
+
+  // ── Config ──────────────────────────────────────────────────
+  const API_URL = document.body.dataset.apiUrl || 'https://eetcsdv1v9.execute-api.us-east-2.amazonaws.com';
+  const token = new URLSearchParams(window.location.search).get('t');
+
+  // ── DOM refs ────────────────────────────────────────────────
+  const stateLoading   = document.getElementById('stateLoading');
+  const stateError     = document.getElementById('stateError');
+  const stateThankYou  = document.getElementById('stateThankYou');
+  const stateForm      = document.getElementById('stateForm');
+  const greetingName   = document.getElementById('greetingName');
+  const thankYouName   = document.getElementById('thankYouName');
+  const expiryNotice   = document.getElementById('expiryNotice');
+  const intakeForm     = document.getElementById('intakeForm');
+  const submitBtn      = document.getElementById('submitBtn');
+  const validationSummary = document.getElementById('validationSummary');
+  const progressFill   = document.getElementById('progressFill');
+  const progressLabel  = document.getElementById('progressLabel');
+
+  // ── Questionnaire Data ──────────────────────────────────────
+  const ESS_QUESTIONS = [
+    'Sitting and reading',
+    'Watching TV',
+    'Sitting inactive in a public place (e.g., a theater or meeting)',
+    'As a passenger in a car for an hour without a break',
+    'Lying down to rest in the afternoon when circumstances permit',
+    'Sitting and talking to someone',
+    'Sitting quietly after a lunch without alcohol',
+    'In a car, while stopped for a few minutes in traffic'
+  ];
+
+  const ISI_QUESTIONS = [
+    { text: 'Difficulty falling asleep', labels: ['None','Mild','Moderate','Severe','Very Severe'] },
+    { text: 'Difficulty staying asleep', labels: ['None','Mild','Moderate','Severe','Very Severe'] },
+    { text: 'Problem waking up too early', labels: ['None','Mild','Moderate','Severe','Very Severe'] },
+    { text: 'How satisfied/dissatisfied are you with your current sleep pattern?', labels: ['Very Satisfied','Satisfied','Moderately Satisfied','Dissatisfied','Very Dissatisfied'] },
+    { text: 'How noticeable to others do you think your sleep problem is in terms of impairing the quality of your life?', labels: ['Not at all Noticeable','A Little','Somewhat','Much','Very Much Noticeable'] },
+    { text: 'How worried/distressed are you about your current sleep problem?', labels: ['Not at all Worried','A Little','Somewhat','Much','Very Much Worried'] },
+    { text: 'To what extent do you consider your sleep problem to interfere with your daily functioning?', labels: ['Not at all Interfering','A Little','Somewhat','Much','Very Much Interfering'] }
+  ];
+
+  const NOSE_QUESTIONS = [
+    'Nasal congestion or stuffiness',
+    'Nasal blockage or obstruction',
+    'Trouble breathing through my nose',
+    'Trouble sleeping',
+    'Unable to get enough air through my nose during exercise or exertion'
+  ];
+
+  // ── State Management ────────────────────────────────────────
+  function showState(stateEl) {
+    [stateLoading, stateError, stateThankYou, stateForm].forEach(function(el) {
+      el.classList.remove('intake-state--active', 'intake-form-view--active');
+    });
+    if (stateEl === stateForm) {
+      stateEl.classList.add('intake-form-view--active');
+    } else {
+      stateEl.classList.add('intake-state--active');
+    }
+  }
+
+  // ── Build Questionnaire Sections ────────────────────────────
+  function buildESS() {
+    var container = document.getElementById('essQuestions');
+    ESS_QUESTIONS.forEach(function(q, i) {
+      var num = i + 1;
+      var div = document.createElement('div');
+      div.className = 'intake-question';
+      div.setAttribute('data-ess', num);
+
+      var textDiv = document.createElement('div');
+      textDiv.className = 'intake-question__text';
+      var numSpan = document.createElement('span');
+      numSpan.className = 'intake-question__number';
+      numSpan.textContent = num;
+      textDiv.appendChild(numSpan);
+      textDiv.appendChild(document.createTextNode(q));
+      div.appendChild(textDiv);
+
+      var groupDiv = document.createElement('div');
+      groupDiv.className = 'intake-radio-group';
+      groupDiv.setAttribute('role', 'radiogroup');
+      groupDiv.setAttribute('aria-label', 'ESS question ' + num);
+
+      for (var v = 0; v <= 3; v++) {
+        var id = 'ess' + num + '_' + v;
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'ess' + num;
+        input.value = v;
+        input.id = id;
+        input.className = 'intake-radio';
+        input.required = true;
+
+        var label = document.createElement('label');
+        label.htmlFor = id;
+        label.className = 'intake-radio-label';
+        label.textContent = v;
+
+        groupDiv.appendChild(input);
+        groupDiv.appendChild(label);
+      }
+      div.appendChild(groupDiv);
+
+      var err = document.createElement('div');
+      err.className = 'intake-error';
+      err.id = 'ess' + num + 'Error';
+      err.textContent = 'Please answer this question.';
+      div.appendChild(err);
+
+      container.appendChild(div);
+    });
+  }
+
+  function buildISI() {
+    var container = document.getElementById('isiQuestions');
+    ISI_QUESTIONS.forEach(function(q, i) {
+      var num = i + 1;
+      var div = document.createElement('div');
+      div.className = 'intake-question';
+      div.setAttribute('data-isi', num);
+
+      var textDiv = document.createElement('div');
+      textDiv.className = 'intake-question__text';
+      var numSpan = document.createElement('span');
+      numSpan.className = 'intake-question__number';
+      numSpan.textContent = num;
+      textDiv.appendChild(numSpan);
+      textDiv.appendChild(document.createTextNode(q.text));
+      div.appendChild(textDiv);
+
+      // Scale legend inline for ISI (since labels differ per question)
+      var legend = document.createElement('div');
+      legend.className = 'intake-scale-legend';
+      legend.style.marginBottom = '0.5rem';
+      q.labels.forEach(function(lbl, v) {
+        var s = document.createElement('span');
+        var b = document.createElement('strong');
+        b.textContent = v;
+        s.appendChild(b);
+        s.appendChild(document.createTextNode(' = ' + lbl));
+        legend.appendChild(s);
+      });
+      div.appendChild(legend);
+
+      var groupDiv = document.createElement('div');
+      groupDiv.className = 'intake-radio-group';
+      groupDiv.setAttribute('role', 'radiogroup');
+      groupDiv.setAttribute('aria-label', 'ISI question ' + num);
+
+      for (var v = 0; v <= 4; v++) {
+        var id = 'isi' + num + '_' + v;
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'isi' + num;
+        input.value = v;
+        input.id = id;
+        input.className = 'intake-radio';
+        input.required = true;
+
+        var label = document.createElement('label');
+        label.htmlFor = id;
+        label.className = 'intake-radio-label';
+        label.textContent = v;
+
+        groupDiv.appendChild(input);
+        groupDiv.appendChild(label);
+      }
+      div.appendChild(groupDiv);
+
+      var err = document.createElement('div');
+      err.className = 'intake-error';
+      err.id = 'isi' + num + 'Error';
+      err.textContent = 'Please answer this question.';
+      div.appendChild(err);
+
+      container.appendChild(div);
+    });
+  }
+
+  function buildNOSE() {
+    var container = document.getElementById('noseQuestions');
+    NOSE_QUESTIONS.forEach(function(q, i) {
+      var num = i + 1;
+      var div = document.createElement('div');
+      div.className = 'intake-question';
+      div.setAttribute('data-nose', num);
+
+      var textDiv = document.createElement('div');
+      textDiv.className = 'intake-question__text';
+      var numSpan = document.createElement('span');
+      numSpan.className = 'intake-question__number';
+      numSpan.textContent = num;
+      textDiv.appendChild(numSpan);
+      textDiv.appendChild(document.createTextNode(q));
+      div.appendChild(textDiv);
+
+      var groupDiv = document.createElement('div');
+      groupDiv.className = 'intake-radio-group';
+      groupDiv.setAttribute('role', 'radiogroup');
+      groupDiv.setAttribute('aria-label', 'NOSE question ' + num);
+
+      for (var v = 0; v <= 4; v++) {
+        var id = 'nose' + num + '_' + v;
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'nose' + num;
+        input.value = v;
+        input.id = id;
+        input.className = 'intake-radio';
+        input.required = true;
+
+        var label = document.createElement('label');
+        label.htmlFor = id;
+        label.className = 'intake-radio-label';
+        label.textContent = v;
+
+        groupDiv.appendChild(input);
+        groupDiv.appendChild(label);
+      }
+      div.appendChild(groupDiv);
+
+      var err = document.createElement('div');
+      err.className = 'intake-error';
+      err.id = 'nose' + num + 'Error';
+      err.textContent = 'Please answer this question.';
+      div.appendChild(err);
+
+      container.appendChild(div);
+    });
+  }
+
+  // ── Running Score Calculators ───────────────────────────────
+  function calcScore(prefix, count) {
+    var total = 0;
+    for (var i = 1; i <= count; i++) {
+      var el = document.querySelector('input[name="' + prefix + i + '"]:checked');
+      if (el) total += parseInt(el.value, 10);
+    }
+    return total;
+  }
+
+  function updateScores() {
+    var essEl = document.getElementById('essScore');
+    var isiEl = document.getElementById('isiScore');
+    var noseEl = document.getElementById('noseScore');
+    if (essEl) essEl.textContent = calcScore('ess', 8);
+    if (isiEl) isiEl.textContent = calcScore('isi', 7);
+    if (noseEl) noseEl.textContent = calcScore('nose', 5) * 5;
+  }
+
+  // ── Progress Tracking ──────────────────────────────────────
+  var totalSections = 8;
+
+  function updateProgress() {
+    var sections = document.querySelectorAll('.intake-section');
+    var completed = 0;
+
+    sections.forEach(function(section) {
+      var sectionNum = parseInt(section.dataset.section, 10);
+      if (isSectionComplete(sectionNum)) completed++;
+    });
+
+    var pct = Math.round((completed / totalSections) * 100);
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = completed + ' of ' + totalSections + ' complete';
+  }
+
+  function isSectionComplete(num) {
+    switch(num) {
+      case 1:
+        return document.getElementById('age').value &&
+               document.getElementById('sex').value &&
+               document.getElementById('heightFeet').value &&
+               document.getElementById('heightInches').value !== '' &&
+               document.getElementById('weight').value;
+      case 2:
+        for (var i = 1; i <= 8; i++) {
+          if (!document.querySelector('input[name="ess' + i + '"]:checked')) return false;
+        }
+        return true;
+      case 3:
+        for (var j = 1; j <= 7; j++) {
+          if (!document.querySelector('input[name="isi' + j + '"]:checked')) return false;
+        }
+        return true;
+      case 4:
+        for (var k = 1; k <= 5; k++) {
+          if (!document.querySelector('input[name="nose' + k + '"]:checked')) return false;
+        }
+        return !!document.querySelector('input[name="nasalObs"]:checked');
+      case 5:
+        return !!document.querySelector('input[name="snoringReported"]:checked');
+      case 6:
+        return true; // optional section, always "complete"
+      case 7:
+        return true; // optional section, always "complete"
+      case 8:
+        return !!document.querySelector('input[name="weightInterest"]:checked');
+      default:
+        return false;
+    }
+  }
+
+  // ── Prior Treatment Logic ──────────────────────────────────
+  function setupPriorTreatments() {
+    var treatmentGroup = document.getElementById('priorTreatments');
+    var cpapDetails = document.getElementById('cpapDetails');
+    var noneCheckbox = document.getElementById('priorTxNone');
+    var cpapRetryGroup = document.getElementById('cpapRetryGroup');
+
+    treatmentGroup.addEventListener('change', function(e) {
+      if (e.target.type !== 'checkbox') return;
+      var allChecks = treatmentGroup.querySelectorAll('input[type="checkbox"]');
+      var cpapCheck = treatmentGroup.querySelector('input[value="cpap"]');
+
+      if (e.target === noneCheckbox && noneCheckbox.checked) {
+        // "None" clears all others
+        allChecks.forEach(function(cb) {
+          if (cb !== noneCheckbox) cb.checked = false;
+        });
+      } else if (e.target !== noneCheckbox && e.target.checked) {
+        // Any other selection clears "None"
+        noneCheckbox.checked = false;
+      }
+
+      // Show/hide CPAP details
+      if (cpapCheck.checked) {
+        cpapDetails.classList.add('intake-conditional--visible');
+      } else {
+        cpapDetails.classList.remove('intake-conditional--visible');
+      }
+
+      updateCheckboxWrapStates(treatmentGroup);
+    });
+
+    // Show retry question only when not currently using CPAP
+    document.querySelectorAll('input[name="cpapCurrent"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        if (this.value === 'no') {
+          cpapRetryGroup.style.display = '';
+        } else {
+          cpapRetryGroup.style.display = 'none';
+        }
+      });
+    });
+
+    // CPAP issues checkbox wrap state
+    var cpapIssues = document.getElementById('cpapIssues');
+    cpapIssues.addEventListener('change', function() {
+      updateCheckboxWrapStates(cpapIssues);
+    });
+  }
+
+  function updateCheckboxWrapStates(container) {
+    container.querySelectorAll('.intake-checkbox-wrap').forEach(function(wrap) {
+      var cb = wrap.querySelector('input[type="checkbox"]');
+      if (cb.checked) {
+        wrap.classList.add('intake-checkbox-wrap--checked');
+      } else {
+        wrap.classList.remove('intake-checkbox-wrap--checked');
+      }
+    });
+  }
+
+  // Treatment preferences checkbox wrap states
+  function setupPreferences() {
+    var prefs = document.querySelectorAll('.intake-section[data-section="6"] .intake-checkbox-wrap');
+    prefs.forEach(function(wrap) {
+      wrap.addEventListener('change', function() {
+        var cb = wrap.querySelector('input[type="checkbox"]');
+        if (cb.checked) {
+          wrap.classList.add('intake-checkbox-wrap--checked');
+        } else {
+          wrap.classList.remove('intake-checkbox-wrap--checked');
+        }
+      });
+    });
+  }
+
+  // ── Validation ──────────────────────────────────────────────
+  function clearErrors() {
+    document.querySelectorAll('.intake-error').forEach(function(el) {
+      el.classList.remove('intake-error--visible');
+    });
+    document.querySelectorAll('.intake-input--error, .intake-select--error').forEach(function(el) {
+      el.classList.remove('intake-input--error', 'intake-select--error');
+    });
+    document.querySelectorAll('.intake-radio-group--error').forEach(function(el) {
+      el.classList.remove('intake-radio-group--error');
+    });
+    validationSummary.classList.remove('intake-validation-summary--visible');
+  }
+
+  function showError(fieldId, errorId) {
+    var field = document.getElementById(fieldId);
+    var err = document.getElementById(errorId);
+    if (field) {
+      if (field.classList.contains('intake-input')) field.classList.add('intake-input--error');
+      if (field.classList.contains('intake-select')) field.classList.add('intake-select--error');
+    }
+    if (err) err.classList.add('intake-error--visible');
+  }
+
+  function showRadioGroupError(name, errorId) {
+    var group = document.querySelector('input[name="' + name + '"]');
+    if (group) {
+      var rgDiv = group.closest('.intake-radio-group, .intake-toggle-group');
+      if (rgDiv) rgDiv.classList.add('intake-radio-group--error');
+    }
+    var err = document.getElementById(errorId);
+    if (err) err.classList.add('intake-error--visible');
+  }
+
+  function validateForm() {
+    clearErrors();
+    var errors = [];
+    var firstErrorEl = null;
+
+    // Demographics
+    var age = parseInt(document.getElementById('age').value, 10);
+    if (!age || age < 1 || age > 120) {
+      showError('age', 'ageError');
+      errors.push('age');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('age');
+    }
+
+    if (!document.getElementById('sex').value) {
+      showError('sex', 'sexError');
+      errors.push('sex');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('sex');
+    }
+
+    if (!document.getElementById('heightFeet').value || document.getElementById('heightInches').value === '') {
+      showError('heightFeet', 'heightError');
+      errors.push('height');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('heightFeet');
+    }
+
+    var weight = parseInt(document.getElementById('weight').value, 10);
+    if (!weight || weight < 50 || weight > 600) {
+      showError('weight', 'weightError');
+      errors.push('weight');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('weight');
+    }
+
+    // ESS (all 8 required)
+    for (var e = 1; e <= 8; e++) {
+      if (!document.querySelector('input[name="ess' + e + '"]:checked')) {
+        showRadioGroupError('ess' + e, 'ess' + e + 'Error');
+        errors.push('ess' + e);
+        if (!firstErrorEl) firstErrorEl = document.querySelector('[data-ess="' + e + '"]');
+      }
+    }
+
+    // ISI (all 7 required)
+    for (var s = 1; s <= 7; s++) {
+      if (!document.querySelector('input[name="isi' + s + '"]:checked')) {
+        showRadioGroupError('isi' + s, 'isi' + s + 'Error');
+        errors.push('isi' + s);
+        if (!firstErrorEl) firstErrorEl = document.querySelector('[data-isi="' + s + '"]');
+      }
+    }
+
+    // NOSE (all 5 required)
+    for (var n = 1; n <= 5; n++) {
+      if (!document.querySelector('input[name="nose' + n + '"]:checked')) {
+        showRadioGroupError('nose' + n, 'nose' + n + 'Error');
+        errors.push('nose' + n);
+        if (!firstErrorEl) firstErrorEl = document.querySelector('[data-nose="' + n + '"]');
+      }
+    }
+
+    // Nasal obstruction
+    if (!document.querySelector('input[name="nasalObs"]:checked')) {
+      showRadioGroupError('nasalObs', 'nasalObsError');
+      errors.push('nasalObs');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('nasalObsYes');
+    }
+
+    // Snoring
+    if (!document.querySelector('input[name="snoringReported"]:checked')) {
+      showRadioGroupError('snoringReported', 'snoringError');
+      errors.push('snoring');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('snoringYes');
+    }
+
+    // Weight management
+    if (!document.querySelector('input[name="weightInterest"]:checked')) {
+      showRadioGroupError('weightInterest', 'weightError');
+      errors.push('weight-interest');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('weightReady');
+    }
+
+    if (errors.length > 0) {
+      validationSummary.classList.add('intake-validation-summary--visible');
+      if (firstErrorEl) {
+        firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  // ── Collect Form Data ──────────────────────────────────────
+  function collectData() {
+    var feet = parseInt(document.getElementById('heightFeet').value, 10);
+    var inches = parseInt(document.getElementById('heightInches').value, 10);
+    var totalInches = (feet * 12) + inches;
+
+    var radioVal = function(name) {
+      var el = document.querySelector('input[name="' + name + '"]:checked');
+      return el ? el.value : null;
+    };
+
+    // ESS: object with q1-q8 keys (matches Lambda validation)
+    var ess = {};
+    for (var e = 1; e <= 8; e++) {
+      var el = document.querySelector('input[name="ess' + e + '"]:checked');
+      ess['q' + e] = el ? parseInt(el.value, 10) : 0;
+    }
+
+    // ISI: object with q1-q7 keys
+    var isi = {};
+    for (var s = 1; s <= 7; s++) {
+      var el2 = document.querySelector('input[name="isi' + s + '"]:checked');
+      isi['q' + s] = el2 ? parseInt(el2.value, 10) : 0;
+    }
+
+    // NOSE: object with q1-q5 keys
+    var nose = {};
+    for (var n = 1; n <= 5; n++) {
+      var el3 = document.querySelector('input[name="nose' + n + '"]:checked');
+      nose['q' + n] = el3 ? parseInt(el3.value, 10) : 0;
+    }
+
+    // Prior treatments as boolean object (matches Lambda validation)
+    var checkedTx = [];
+    document.querySelectorAll('input[name="priorTx"]:checked').forEach(function(cb) {
+      checkedTx.push(cb.value);
+    });
+    var priorTreatments = {
+      uppp: checkedTx.indexOf('uppp') !== -1,
+      nasalSurgery: checkedTx.indexOf('nasal-surgery') !== -1,
+      sinusSurgery: checkedTx.indexOf('sinus-surgery') !== -1,
+      jawSurgery: checkedTx.indexOf('jaw-surgery') !== -1,
+      inspire: checkedTx.indexOf('inspire') !== -1,
+      mad: checkedTx.indexOf('mad') !== -1
+    };
+
+    // CPAP reason codes — map HTML values to Lambda's VALID_CPAP_REASONS
+    var cpapReasonMap = {
+      'mask-discomfort': 'mask',
+      'claustrophobia': 'claustrophobia',
+      'dryness': 'dryMouth',
+      'air-leaks': 'leaks',
+      'sleep-difficulty': 'troubleSleeping',
+      'skin-irritation': 'skinIrritation',
+      'no-improvement': 'noImprovement',
+      'travel': 'travel'
+    };
+    var cpapReasons = [];
+    document.querySelectorAll('input[name="cpapIssue"]:checked').forEach(function(cb) {
+      var mapped = cpapReasonMap[cb.value];
+      if (mapped) cpapReasons.push(mapped);
+    });
+
+    // Helped value mapping
+    var helpedRaw = radioVal('cpapImproved');
+    var helpedMap = { 'yes': 'Yes', 'no': 'No', 'unsure': 'Unsure' };
+    var helped = helpedMap[helpedRaw] || '';
+
+    // Retry value mapping
+    var retryRaw = radioVal('cpapRetry');
+    var retryMap = { 'yes': 'Yes', 'no': 'No', 'maybe': 'Maybe' };
+    var retryWilling = retryMap[retryRaw] || '';
+
+    // Weight loss readiness mapping (HTML values → Lambda enum values)
+    var wlrRaw = radioVal('weightInterest');
+    var wlrMap = { 'ready': 'ready', 'thinking': 'considering', 'not-now': 'not-ready' };
+    var weightLossReadiness = wlrMap[wlrRaw] || '';
+
+    // Build payload matching the Lambda's expected schema
+    var data = {
+      age: parseInt(document.getElementById('age').value, 10),
+      sex: document.getElementById('sex').value,
+      heightInches: totalInches,
+      weightLbs: parseInt(document.getElementById('weight').value, 10),
+      ess: ess,
+      isi: isi,
+      nose: nose,
+      nasalObs: radioVal('nasalObs') === 'yes',
+      snoringReported: radioVal('snoringReported') === 'yes',
+      preferences: {
+        avoidCpap: !!document.querySelector('input[name="prefAvoidCPAP"]:checked'),
+        openToSurgery: !!document.querySelector('input[name="prefOpenSurgery"]:checked'),
+        interestedInInspire: !!document.querySelector('input[name="prefInspire"]:checked')
+      },
+      priorTreatments: priorTreatments,
+      weightLossReadiness: weightLossReadiness
+    };
+
+    // CPAP history (only if CPAP selected as prior treatment)
+    if (checkedTx.indexOf('cpap') !== -1) {
+      var pressureVal = document.getElementById('cpapPressure').value;
+      data.cpapHistory = {
+        priorCpap: true,
+        currentlyUsing: radioVal('cpapCurrent') === 'yes',
+        helped: helped,
+        retryWilling: retryWilling,
+        pressure: pressureVal ? parseInt(pressureVal, 10) : null,
+        reasonsStopped: cpapReasons
+      };
+    }
+
+    return data;
+  }
+
+  // ── Expiry Display ─────────────────────────────────────────
+  function displayExpiry(expiresAt) {
+    if (!expiresAt) return;
+    var expiry = new Date(expiresAt);
+    var now = new Date();
+    var diffMs = expiry - now;
+    if (diffMs <= 0) {
+      expiryNotice.textContent = 'This link has expired.';
+      return;
+    }
+    var hours = Math.floor(diffMs / (1000 * 60 * 60));
+    var minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) {
+      expiryNotice.textContent = 'This page expires in about ' + hours + ' hour' + (hours !== 1 ? 's' : '') + '.';
+    } else {
+      expiryNotice.textContent = 'This page expires in about ' + minutes + ' minute' + (minutes !== 1 ? 's' : '') + '.';
+    }
+  }
+
+  // ── Token Validation ───────────────────────────────────────
+  async function validateToken() {
+    if (!token) {
+      showState(stateError);
+      return;
+    }
+
+    try {
+      var resp = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
+        method: 'GET'
+      });
+
+      if (!resp.ok) {
+        showState(stateError);
+        return;
+      }
+
+      var data = await resp.json();
+
+      // Use textContent (not innerHTML) for security
+      greetingName.textContent = data.firstName || 'there';
+      thankYouName.textContent = data.firstName || '';
+      displayExpiry(data.expiresAt);
+
+      buildESS();
+      buildISI();
+      buildNOSE();
+      setupPriorTreatments();
+      setupPreferences();
+      attachListeners();
+
+      showState(stateForm);
+    } catch (err) {
+      showState(stateError);
+    }
+  }
+
+  // ── Event Listeners ─────────────────────────────────────────
+  function attachListeners() {
+    // Update scores and progress on any radio change
+    intakeForm.addEventListener('change', function() {
+      updateScores();
+      updateProgress();
+    });
+
+    // Also update progress on text input changes
+    intakeForm.addEventListener('input', function(e) {
+      if (e.target.type === 'number' || e.target.tagName === 'SELECT') {
+        updateProgress();
+      }
+    });
+
+    // Form submission
+    intakeForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      if (!validateForm()) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '';
+      var spinner = document.createElement('span');
+      spinner.className = 'intake-spinner';
+      submitBtn.appendChild(spinner);
+      submitBtn.appendChild(document.createTextNode(' Submitting\u2026'));
+
+      try {
+        var payload = collectData();
+        var resp = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          var errData;
+          try { errData = await resp.json(); } catch(_) { errData = {}; }
+          throw new Error(errData.message || 'Submission failed');
+        }
+
+        // Success — remove token from URL for safety
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        showState(stateThankYou);
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit My Responses';
+        validationSummary.textContent = 'Something went wrong. Please try again or call (512) 339-4040 for help.';
+        validationSummary.classList.add('intake-validation-summary--visible');
+        validationSummary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+
+  // ── Init ────────────────────────────────────────────────────
+  validateToken();
+
+})();
+</script>
+
+</body>
+</html>

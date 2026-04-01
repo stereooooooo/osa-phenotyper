@@ -56,13 +56,68 @@ var PatientReport = (() => {
     return { stage: 'new-results', isFirstVisit: true, label: 'Sleep Study Results' };
   }
 
-  /* ── Care Pathway Stage Definitions ─────────────────────────────────── */
-  const CARE_STAGES = [
-    { id: 'eval',      label: 'Evaluation',        keys: ['Initial Eval'] },
-    { id: 'study',     label: 'Sleep Study',        keys: ['HST Ordered', 'HST Reviewed'] },
-    { id: 'planning',  label: 'Treatment Planning', keys: ['Treatment Plan', 'DISE Scheduled', 'DISE Completed'] },
-    { id: 'treatment', label: 'Treatment',          keys: ['CPAP Trial', 'CPAP Follow-up', 'Surgery Scheduled', 'Post-Op'] },
-  ];
+  /* ── Dynamic Care Pathway Detection (patient-friendly labels) ─────── */
+  function detectPatientPathway(data) {
+    const ms = Array.isArray(data.milestones) ? data.milestones : [];
+    const st = data.studyType;
+    const studyLabel = st === 'psg' ? 'Lab Sleep Study' : st === 'watchpat' ? 'Home Sleep Test' : 'Sleep Study';
+
+    const surgicalKeys = ['DISE Scheduled', 'DISE Completed', 'Surgery Scheduled', 'Post-Op'];
+    const cpapKeys = ['CPAP Trial', 'CPAP Follow-up'];
+    const madKeys = ['MAD Referred', 'MAD Follow-up'];
+
+    let path = 'generic';
+    if (surgicalKeys.some(k => ms.includes(k))) path = 'surgical';
+    else if (cpapKeys.some(k => ms.includes(k))) path = 'cpap';
+    else if (madKeys.some(k => ms.includes(k))) path = 'mad';
+
+    const stages = [
+      { id: 'eval',  label: 'Your Evaluation', keys: ['Initial Eval'] },
+      { id: 'study', label: studyLabel,         keys: ['Study Ordered', 'Study Reviewed'] },
+    ];
+
+    if (path === 'cpap') {
+      stages.push({ id: 'cpap-trial',    label: 'Starting CPAP',  keys: ['CPAP Trial'] });
+      stages.push({ id: 'cpap-followup', label: 'CPAP Check-in',  keys: ['CPAP Follow-up'] });
+      stages.push({ id: 'ongoing',       label: 'Ongoing Care',   keys: [] });
+    } else if (path === 'surgical') {
+      stages.push({ id: 'planning', label: 'Planning Your Treatment', keys: ['Treatment Plan'] });
+      if (ms.includes('DISE Scheduled') || ms.includes('DISE Completed'))
+        stages.push({ id: 'dise', label: 'Sleep Endoscopy', keys: ['DISE Scheduled', 'DISE Completed'] });
+      stages.push({ id: 'surgery', label: 'Your Procedure', keys: ['Surgery Scheduled'] });
+      stages.push({ id: 'postop',  label: 'Recovery',       keys: ['Post-Op'] });
+      if (ms.includes('Efficacy Study'))
+        stages.push({ id: 'efficacy', label: 'Follow-up Study', keys: ['Efficacy Study'] });
+    } else if (path === 'mad') {
+      stages.push({ id: 'mad-referral',  label: 'Oral Appliance Referral', keys: ['MAD Referred'] });
+      stages.push({ id: 'mad-followup',  label: 'Follow-up',              keys: ['MAD Follow-up'] });
+      if (ms.includes('Efficacy Study'))
+        stages.push({ id: 'efficacy', label: 'Follow-up Study', keys: ['Efficacy Study'] });
+    } else {
+      stages.push({ id: 'planning',  label: 'Next Steps',      keys: ['Treatment Plan'] });
+      stages.push({ id: 'treatment', label: 'Your Treatment',  keys: [] });
+    }
+
+    // Determine current stage (last stage with a matching milestone)
+    let currentIdx = -1;
+    stages.forEach((stage, i) => {
+      if (stage.keys.some(k => ms.includes(k))) currentIdx = i;
+    });
+    // "New Sleep Study" override: re-baselining resets to study stage
+    if (ms.includes('New Sleep Study')) currentIdx = 1;
+    // Infer minimum progress from data when milestones aren't set:
+    // If we have study results, the study is at least completed → advance past study stage
+    const hasStudyData = data.primaryAHI !== null && data.primaryAHI !== undefined;
+    const studyStageIdx = stages.findIndex(s => s.id === 'study');
+    if (hasStudyData && studyStageIdx >= 0 && currentIdx <= studyStageIdx) {
+      // Place them at the stage after the study (planning/next steps)
+      currentIdx = Math.min(studyStageIdx + 1, stages.length - 1);
+    }
+    // Default to first stage if patient exists but no milestones and no data
+    if (currentIdx < 0) currentIdx = 0;
+
+    return { stages, currentIdx };
+  }
 
   /* ── Helper: format ISO date ──────────────────────────────────────────── */
   function formatDate(isoDate) {
@@ -118,14 +173,9 @@ var PatientReport = (() => {
     const ms = Array.isArray(data.milestones) ? data.milestones : [];
     if (!ms.length && !data.patientName) return '';  // no patient context → skip
 
-    let currentIdx = -1;
-    CARE_STAGES.forEach((stage, i) => {
-      if (stage.keys.some(k => ms.includes(k))) currentIdx = i;
-    });
-    // Default to first stage if patient exists but no milestones
-    if (currentIdx < 0) currentIdx = 0;
+    const { stages, currentIdx } = detectPatientPathway(data);
 
-    const steps = CARE_STAGES.map((s, i) => {
+    const steps = stages.map((s, i) => {
       let cls, icon;
       if (i < currentIdx) {
         cls = 'pathway-completed';
@@ -316,15 +366,25 @@ ${parts.join('')}`;
     const ahiRound = Math.round(ahi);
     const ctx      = getVisitContext(data);
 
+    /* — O2 nadir (best available from WatchPAT or PSG) — */
+    const nadirRaw = Math.min(
+      data.nadir    !== null && data.nadir    !== undefined ? +data.nadir    : 999,
+      data.nadirPsg !== null && data.nadirPsg !== undefined ? +data.nadirPsg : 999
+    );
+    const hasNadir = nadirRaw < 999;
+    const nadirNote = hasNadir
+      ? ` Your lowest oxygen level during the study was <strong>${Math.round(nadirRaw)}%</strong>${nadirRaw < 80 ? ' — significantly below normal, which puts extra strain on your heart and body' : nadirRaw < 88 ? ' — below the normal range, which can affect your heart and overall health over time' : ''}.`
+      : '';
+
     /* — Plain language AHI explanation (visit-aware) — */
     let ahiExpl;
     if (!ctx.isFirstVisit && severity !== 'normal') {
       // Returning patient: brief reminder, not full explanation
       ahiExpl = `
-<p>As a reminder, your sleep study showed an AHI of <strong>${ahiRound} events per hour</strong>, which is in the <strong>${severity} range</strong> for obstructive sleep apnea. This means your breathing was interrupted about ${ahiRound} times every hour of sleep.</p>`;
+<p>As a reminder, your sleep study showed an AHI of <strong>${ahiRound} events per hour</strong>, which is in the <strong>${severity} range</strong> for obstructive sleep apnea. This means your breathing was interrupted about ${ahiRound} times every hour of sleep.${nadirNote}</p>`;
     } else {
       ahiExpl = `
-<p>During your sleep study, we measured how often your breathing slowed down or stopped while you were asleep. This is called the <strong>Apnea-Hypopnea Index (AHI)</strong>. Your AHI is <strong>${ahiRound} events per hour</strong>, which means your breathing was interrupted about ${ahiRound} times every hour of sleep.</p>
+<p>During your sleep study, we measured how often your breathing slowed down or stopped while you were asleep. This is called the <strong>Apnea-Hypopnea Index (AHI)</strong>. Your AHI is <strong>${ahiRound} events per hour</strong>, which means your breathing was interrupted about ${ahiRound} times every hour of sleep.${nadirNote}</p>
 ${severity === 'normal'
   ? '<p>This result is in the <strong>normal range</strong> — fewer than 5 breathing interruptions per hour. While your breathing during sleep appears healthy, we will continue to review your full results with you.</p>'
   : `<p>This places you in the <strong>${severity} range</strong> for obstructive sleep apnea. ${
@@ -517,7 +577,7 @@ ${items}`;
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`,
     'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the gold-standard, non-medication treatment for insomnia. It works by changing the thoughts and habits that interfere with sleep — things like irregular sleep schedules, spending too much time in bed, or anxiety about sleep. CBT-I is highly effective and its benefits last long-term, unlike sleep medications. It can be done with a therapist in-person or through a validated digital program.`,
-    'SURGALT': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. Your ENT surgeon will discuss which approach, if any, is appropriate for your situation.`,
+    'SURGALT': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. A sleep endoscopy (DISE) — a brief procedure performed under light sedation — allows your ENT surgeon to see exactly where and how your airway collapses during sleep, and is used to determine which surgical approach is most appropriate for you.`,
     'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you.`,
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
@@ -531,7 +591,7 @@ ${items}`;
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
     'COMISA-SRT-CAUTION': null,  // Clinical detail
-    'SURG': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. Your ENT surgeon will discuss which approach, if any, is appropriate for your situation.`,
+    'SURG': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. A sleep endoscopy (DISE) — a brief procedure performed under light sedation — allows your ENT surgeon to see exactly where and how your airway collapses during sleep, and is used to determine which surgical approach is most appropriate for you.`,
     'SOFT-TISSUE-REVISION': null,  // Clinical detail
     'SOFT-TISSUE-STRONG': null,  // Merged into tonsil/surgery recs
     'SOFT-TISSUE-CONSIDER': null,
@@ -556,6 +616,10 @@ ${items}`;
     if (cpapSubTags.has(tag) || nasalSubTags.has(tag) || suppressedTags.has(tag)) return null;
     /* Suppress MAD recs if patient already tried MAD */
     if ((tag === 'MAD' || tag === 'MAD-FAVORABLE' || tag === 'MAD-POOR') && data && data.priorMAD) return null;
+    /* Suppress standalone CPAP rec for patients who failed CPAP and won't retry —
+       the context box already acknowledges CPAP, and the checklist has a lower-priority
+       "try CPAP in the future" note */
+    if (tag === 'CPAP' && data && data.cpapFailed && !data.cpapWillRetry) return null;
     /* Inspire with BMI >40 context */
     if (tag === 'HNS' && data && data.bmi > 40) {
       return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. <strong>Important:</strong> Inspire currently requires a BMI of 40 or below (some insurance plans require an even lower BMI). Since your BMI is currently above this threshold, reaching a BMI under 40 through weight management would be the first step toward Inspire candidacy. This is a goal worth discussing with your care team.`;
@@ -748,9 +812,19 @@ ${items}`;
     const hasCPAP = tags.has('CPAP') || tags.has('CPAP-OPT') || tags.has('CPAP-FIXED');
     const checkItems = [];
 
+    /* ── Detect patient pathway from milestones ── */
+    const ms = Array.isArray(data.milestones) ? data.milestones : [];
+    const surgicalKeys = ['DISE Scheduled', 'DISE Completed', 'Surgery Scheduled', 'Post-Op'];
+    const isSurgicalPathway = surgicalKeys.some(k => ms.includes(k));
+    const diseScheduled = ms.includes('DISE Scheduled');
+    const diseCompleted = ms.includes('DISE Completed');
+    const surgeryScheduled = ms.includes('Surgery Scheduled');
+    const isEstablishedPatient = ms.some(m => m !== 'Initial Eval') ||
+      data.cpapCurrent || data.cpapFailed || data.priorMAD || data.priorUPPP || data.priorInspire;
+
     /* CBT-I first for COMISA patients */
     if (data.hasCOMISA && tags.has('CBTI')) {
-      checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away. Starting CBT-I early can also make it easier to use CPAP or other treatments later.');
+      checkItems.push({ text: 'Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away. Starting CBT-I early can also make it easier to use CPAP or other treatments later.', group: 'everyone' });
     }
 
     /* CPAP — but different messaging for non-compliant/avoidant patients */
@@ -759,9 +833,9 @@ ${items}`;
     if (hasCPAP) {
       if (data.cpapFailed && !data.cpapWillRetry && data.severity?.toLowerCase() === 'severe' && limitedAlts) {
         // Severe patients with limited alternatives — encourage CPAP retry
-        checkItems.push('Schedule a CPAP consultation to discuss a fresh start — ask about auto-adjusting (APAP) machines, nasal pillow masks, and heated humidification.');
-        checkItems.push('Practice wearing the mask for 20–30 minutes during relaxing activities (TV, reading) before trying overnight use.');
-        checkItems.push('If nasal congestion is an issue, talk to your doctor about treating it first — this can make CPAP significantly more comfortable.');
+        checkItems.push({ text: 'Schedule a CPAP consultation to discuss a fresh start — ask about auto-adjusting (APAP) machines, nasal pillow masks, and heated humidification.', group: 'treatment' });
+        checkItems.push({ text: 'Practice wearing the mask for 20–30 minutes during relaxing activities (TV, reading) before trying overnight use.', group: 'treatment' });
+        checkItems.push({ text: 'If nasal congestion is an issue, talk to your doctor about treating it first — this can make CPAP significantly more comfortable.', group: 'treatment' });
       } else if ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed)) {
         // Don't lead with CPAP setup for patients who don't want it
         // Instead, add it further down as a "consider" item
@@ -769,101 +843,139 @@ ${items}`;
         // Mild + low HB: don't lead with CPAP — alternatives are equally effective
         // CPAP added further down as a fallback option
       } else if (data.cpapFailed && data.cpapWillRetry) {
-        checkItems.push('Schedule a CPAP re-fitting appointment — ask about newer mask styles and auto-adjusting machines that may address your prior concerns.');
-        checkItems.push('Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.');
+        checkItems.push({ text: 'Schedule a CPAP re-fitting appointment — ask about newer mask styles and auto-adjusting machines that may address your prior concerns.', group: 'treatment' });
+        checkItems.push({ text: 'Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.', group: 'treatment' });
       } else if (!data.cpapFailed) {
-        checkItems.push('Schedule your CPAP setup appointment with the equipment supplier.');
-        checkItems.push('Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.');
-        checkItems.push('Aim to use CPAP for at least 4 hours every night. Consistent use, even when imperfect, leads to better results over time.');
+        checkItems.push({ text: 'Schedule your CPAP setup appointment with the equipment supplier.', group: 'treatment' });
+        checkItems.push({ text: 'Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.', group: 'treatment' });
+        checkItems.push({ text: 'Aim to use CPAP for at least 4 hours every night. Consistent use, even when imperfect, leads to better results over time.', group: 'treatment' });
       }
     }
 
-    /* Oral appliance — skip if patient already tried MAD */
-    if (!data.priorMAD && (tags.has('MAD') || tags.has('MAD-FAVORABLE') || tags.has('MAD-POOR') || tags.has('SURGALT') || recTags.some(r => r.text.toLowerCase().includes('mandibular')))) {
-      checkItems.push('Schedule a consultation with a sleep dentist to begin the process of fitting your custom oral appliance.');
+    /* Oral appliance — skip if patient already tried MAD, and skip for surgical
+       pathway patients unless MAD is specifically recommended (not just SURGALT) */
+    const hasMADTag = tags.has('MAD') || tags.has('MAD-FAVORABLE') || tags.has('MAD-POOR');
+    const hasMADFromText = recTags.some(r => r.text.toLowerCase().includes('mandibular'));
+    if (!data.priorMAD && (hasMADTag || hasMADFromText) && !isSurgicalPathway) {
+      checkItems.push({ text: 'Schedule a consultation with a sleep dentist to begin the process of fitting your custom oral appliance.', group: 'treatment' });
     }
 
     /* Positional */
     if (tags.has('POS')) {
-      checkItems.push('Try a positional sleep device or body pillow to help you stay off your back during sleep.');
-      checkItems.push('Keep a brief note of what position you wake up in for one week — this will help us see how well the positional therapy is working.');
+      checkItems.push({ text: 'Try a positional sleep device or body pillow to help you stay off your back during sleep.', group: 'treatment' });
+      checkItems.push({ text: 'Keep a brief note of what position you wake up in for one week — this will help us see how well the positional therapy is working.', group: 'treatment' });
     }
 
     /* Weight */
     if (tags.has('WEIGHT')) {
-      checkItems.push('Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.');
-      checkItems.push('Ask your doctor about a referral to a registered dietitian or a structured weight management program.');
+      checkItems.push({ text: 'Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.', group: 'everyone' });
+      checkItems.push({ text: 'Ask your doctor about a referral to a registered dietitian, a structured weight management program, or medical weight loss options such as GLP-1 medications (e.g., Zepbound/tirzepatide), which have shown significant results for weight loss in sleep apnea patients.', group: 'everyone' });
     }
 
     /* Nasal */
     if (tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR')) {
-      checkItems.push('Begin saline nasal rinses (such as a neti pot or squeeze bottle) once or twice daily to reduce nasal inflammation and improve airflow.');
-      checkItems.push('Schedule a follow-up appointment in 4–6 weeks to review your sleep study results, discuss your nasal anatomy and whether a procedure might help, and see how you are responding to nasal saline rinses.');
+      checkItems.push({ text: 'Begin saline nasal rinses (such as a neti pot or squeeze bottle) once or twice daily to reduce nasal inflammation and improve airflow.', group: 'everyone' });
+      checkItems.push({ text: 'Schedule a follow-up appointment in 4–6 weeks to review your sleep study results, discuss your nasal anatomy and whether a procedure might help, and see how you are responding to nasal saline rinses.', group: 'everyone' });
     }
 
-    /* Inspire */
+    /* Inspire — milestone-aware for surgical pathway */
     if (tags.has('HNS') || tags.has('INSPIRE-EVAL')) {
       if (data.bmi && data.bmi > 40) {
-        checkItems.push('Discuss Inspire therapy with your ENT surgeon — you will need to reach a BMI of 40 or below before a formal candidacy evaluation. Ask about weight management resources to help reach this goal.');
+        checkItems.push({ text: 'Discuss Inspire therapy with your ENT surgeon — you will need to reach a BMI of 40 or below before a formal candidacy evaluation. Ask about weight management resources to help reach this goal.', group: 'treatment' });
+      } else if (diseCompleted) {
+        /* DISE already done — next step is reviewing results and scheduling surgery if candidate */
+        checkItems.push({ text: 'Your sleep endoscopy (DISE) results will be reviewed with you. If the findings confirm you are a candidate for Inspire, the next step is scheduling the implant procedure.', group: 'treatment' });
+      } else if (diseScheduled) {
+        /* DISE is upcoming — attend the appointment */
+        checkItems.push({ text: 'Attend your upcoming sleep endoscopy (DISE) appointment — this brief procedure under light sedation will allow your surgeon to see exactly how your airway behaves during sleep and determine whether Inspire is the right option for you.', group: 'treatment' });
+      } else if (isSurgicalPathway) {
+        /* On surgical pathway but DISE not yet scheduled — schedule it */
+        checkItems.push({ text: 'Schedule a sleep endoscopy (DISE) with your ENT surgeon — this brief procedure under light sedation is needed to evaluate your airway and determine whether Inspire therapy is right for you.', group: 'treatment' });
       } else {
-        checkItems.push('Schedule a formal Inspire candidacy evaluation with your ENT surgeon to determine whether you qualify for the implant procedure.');
+        /* Not on surgical pathway yet — schedule evaluation */
+        checkItems.push({ text: 'Schedule an Inspire candidacy evaluation with your ENT surgeon, which includes a sleep endoscopy (DISE) to assess your airway anatomy and determine whether you qualify for the implant procedure.', group: 'treatment' });
       }
     }
 
     /* UARS */
     if (tags.has('UARS-EVAL')) {
-      checkItems.push('Ask your doctor about scheduling an in-lab overnight sleep study (polysomnography) to evaluate for upper airway resistance syndrome.');
+      checkItems.push({ text: 'Ask your doctor about scheduling an in-lab overnight sleep study (polysomnography) to evaluate for upper airway resistance syndrome.', group: 'treatment' });
     }
 
-    /* Fix #5: Inspire optimization (prior implant) */
+    /* Inspire optimization (prior implant) */
     if (tags.has('INSPIRE-OPT') && data.priorInspire) {
-      checkItems.push('Schedule a follow-up with your Inspire specialist to verify device activation and optimize settings.');
+      checkItems.push({ text: 'Schedule a follow-up with your Inspire specialist to verify device activation and optimize settings.', group: 'treatment' });
     }
 
-    /* Fix #5: Hypoxic burden urgency */
-    if (tags.has('HB-URG')) {
-      checkItems.push('Schedule your first treatment appointment as soon as possible — your oxygen levels during sleep need prompt attention for your heart health.');
+    /* Hypoxic burden urgency — only for new patients who aren't already established
+       in care. Established patients already have a treatment plan in motion. */
+    if (tags.has('HB-URG') && !isEstablishedPatient) {
+      checkItems.push({ text: 'Schedule your first treatment appointment as soon as possible — your oxygen levels during sleep need prompt attention for your heart health.', group: 'everyone' });
     }
 
     /* Mild lifestyle-first */
     if (tags.has('MILD-LIFESTYLE')) {
-      checkItems.push('Start with lifestyle changes: sleep on your side, maintain a healthy weight, keep your nose clear, and avoid alcohol before bed.');
-      checkItems.push('Schedule a repeat sleep study in 6–12 months to reassess after lifestyle modifications.');
+      checkItems.push({ text: 'Start with lifestyle changes: sleep on your side, maintain a healthy weight, keep your nose clear, and avoid alcohol before bed.', group: 'treatment' });
+      checkItems.push({ text: 'Schedule a repeat sleep study in 6–12 months to reassess after lifestyle modifications.', group: 'treatment' });
     }
 
     /* CBT-I (non-COMISA — already handled above for COMISA) */
     if (!data.hasCOMISA && tags.has('CBTI')) {
-      checkItems.push('Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away.');
+      checkItems.push({ text: 'Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away.', group: 'everyone' });
     }
 
     /* CPAP as lower-priority for mild + low HB patients */
     if (hasCPAP && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
-      checkItems.push('CPAP is also an option if other treatments don\'t provide enough improvement. Ask your doctor about it at your follow-up if needed.');
+      checkItems.push({ text: 'CPAP is also an option if other treatments don\'t provide enough improvement. Ask your doctor about it at your follow-up if needed.', group: 'consider' });
     }
 
-    /* CPAP as lower-priority for non-compliant/avoidant patients */
-    if (hasCPAP && ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed))) {
-      checkItems.push('If you are open to trying CPAP in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.');
+    /* CPAP as lower-priority for non-compliant/avoidant patients —
+       but skip if severe+limitedAlts path already added detailed CPAP retry steps above */
+    const alreadyHasCPAPRetry = data.cpapFailed && !data.cpapWillRetry &&
+      data.severity?.toLowerCase() === 'severe' && limitedAlts;
+    if (hasCPAP && !alreadyHasCPAPRetry && ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed))) {
+      checkItems.push({ text: 'If you are open to trying CPAP in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.', group: 'consider' });
     }
 
-    /* Always add follow-up — but combine with nasal if both would appear */
+    /* Follow-up — skip for surgical pathway (their next steps are DISE/surgery,
+       not a generic 4-6 week follow-up). Combine with nasal if both would appear. */
     const hasNasalFollowUp = tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR');
-    if (hasNasalFollowUp) {
+    if (isSurgicalPathway) {
+      /* Surgical pathway patients: next step is DISE or surgery — already covered above */
+    } else if (hasNasalFollowUp) {
       /* Nasal follow-up already scheduled above — just add the timeline */
     } else {
-      checkItems.push('Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.');
+      checkItems.push({ text: 'Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.', group: 'everyone' });
     }
 
-    const items = checkItems.map(item => `
-<div class="checklist-item">
+    const GROUP_META = {
+      everyone:  { label: 'For Everyone',      subtitle: 'These steps are helpful regardless of which treatment you choose.' },
+      treatment: { label: 'For Your Treatment', subtitle: 'These steps are specific to the treatment plan your doctor recommended.' },
+      consider:  { label: 'Worth Considering',  subtitle: null }
+    };
+    const GROUP_ORDER = ['everyone', 'treatment', 'consider'];
+
+    let itemsHTML = '';
+    for (const groupKey of GROUP_ORDER) {
+      const groupItems = checkItems.filter(ci => ci.group === groupKey);
+      if (groupItems.length === 0) continue;
+      const meta = GROUP_META[groupKey];
+      itemsHTML += `\n<div class="checklist-group-label">${esc(meta.label)}</div>`;
+      if (meta.subtitle) {
+        itemsHTML += `\n<p class="checklist-group-subtitle">${esc(meta.subtitle)}</p>`;
+      }
+      groupItems.forEach(ci => {
+        itemsHTML += `\n<div class="checklist-item">
   <div class="checklist-box"></div>
-  <div>${esc(item)}</div>
-</div>`).join('');
+  <div>${esc(ci.text)}</div>
+</div>`;
+      });
+    }
 
     return `
 <h2>Your First 30 Days</h2>
 <p>Here is a practical checklist to help you get started. Check off each item as you complete it.</p>
-${items}`;
+${itemsHTML}`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════

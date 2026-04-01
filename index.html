@@ -177,7 +177,63 @@
       <strong id="patientNameDisplay"></strong>
       <span class="text-muted small" id="patientDobDisplay"></span>
       <span class="text-muted small" id="patientMrnDisplay"></span>
-      <span class="ms-auto text-muted small" id="patientLastSaved"></span>
+      <span id="intakeStatusBadge" class="d-none"></span>
+      <span class="ms-auto d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnIntakeLink" title="Generate a secure intake questionnaire link for the patient">
+          <i class="bi bi-link-45deg"></i> Intake Link
+        </button>
+        <span class="text-muted small" id="patientLastSaved"></span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Intake Link Modal ===== -->
+<div class="modal fade" id="intakeLinkModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-link-45deg"></i> Patient Intake Link</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Generate view -->
+        <div id="intakeGenerate">
+          <p class="small text-muted mb-3">Generate a secure, single-use link for the patient to complete their sleep questionnaire online. The link expires in 72 hours.</p>
+          <button type="button" class="btn btn-primary w-100" id="btnGenerateIntakeLink">
+            <i class="bi bi-plus-circle"></i> Generate New Link
+          </button>
+        </div>
+        <!-- Link display view -->
+        <div id="intakeLinkDisplay" class="d-none">
+          <div class="alert alert-success small">
+            <i class="bi bi-check-circle-fill"></i> Link generated! Copy it below and send to the patient via a secure channel.
+          </div>
+          <div class="input-group mb-2">
+            <input type="text" class="form-control form-control-sm" id="intakeLinkUrl" readonly>
+            <button class="btn btn-outline-secondary btn-sm" type="button" id="btnCopyIntakeLink" title="Copy to clipboard">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+          <div class="small text-muted mb-3" id="intakeLinkExpiry"></div>
+          <div class="alert alert-warning small mb-0">
+            <i class="bi bi-shield-lock"></i> <strong>HIPAA reminder:</strong> Send this link only via your practice's secure communication channels (encrypted email, patient portal, or HIPAA-compliant SMS).
+          </div>
+        </div>
+        <!-- Active tokens list -->
+        <div id="intakeTokensList" class="mt-3 d-none">
+          <hr>
+          <h6 class="small fw-semibold text-muted">Active Links</h6>
+          <div id="intakeTokensBody"></div>
+        </div>
+        <!-- Loading spinner -->
+        <div id="intakeLinkSpinner" class="text-center py-3 d-none">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -203,15 +259,19 @@
     <label class="form-label mb-1 small fw-semibold text-muted">Completed Steps</label>
     <div id="patientMilestones" class="d-flex flex-wrap" style="gap:0.15rem 1rem;">
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-initial-eval" value="Initial Eval"><label class="form-check-label small" for="ms-initial-eval">Initial Eval</label></div>
-      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-hst-ordered" value="HST Ordered"><label class="form-check-label small" for="ms-hst-ordered">HST Ordered</label></div>
-      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-hst-reviewed" value="HST Reviewed"><label class="form-check-label small" for="ms-hst-reviewed">HST Reviewed</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-study-ordered" value="Study Ordered"><label class="form-check-label small" for="ms-study-ordered">Study Ordered</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-study-reviewed" value="Study Reviewed"><label class="form-check-label small" for="ms-study-reviewed">Study Reviewed</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-treatment-plan" value="Treatment Plan"><label class="form-check-label small" for="ms-treatment-plan">Treatment Plan</label></div>
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-cpap-trial" value="CPAP Trial"><label class="form-check-label small" for="ms-cpap-trial">CPAP Trial</label></div>
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-cpap-followup" value="CPAP Follow-up"><label class="form-check-label small" for="ms-cpap-followup">CPAP Follow-up</label></div>
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-dise-scheduled" value="DISE Scheduled"><label class="form-check-label small" for="ms-dise-scheduled">DISE Scheduled</label></div>
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-dise-completed" value="DISE Completed"><label class="form-check-label small" for="ms-dise-completed">DISE Completed</label></div>
-      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-treatment-plan" value="Treatment Plan"><label class="form-check-label small" for="ms-treatment-plan">Treatment Plan</label></div>
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-surgery-scheduled" value="Surgery Scheduled"><label class="form-check-label small" for="ms-surgery-scheduled">Surgery Scheduled</label></div>
       <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-post-op" value="Post-Op"><label class="form-check-label small" for="ms-post-op">Post-Op</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-mad-referred" value="MAD Referred"><label class="form-check-label small" for="ms-mad-referred">MAD Referred</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-mad-followup" value="MAD Follow-up"><label class="form-check-label small" for="ms-mad-followup">MAD Follow-up</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-new-study" value="New Sleep Study"><label class="form-check-label small" for="ms-new-study">New Sleep Study</label></div>
+      <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ms-efficacy-study" value="Efficacy Study"><label class="form-check-label small" for="ms-efficacy-study">Efficacy Study</label></div>
     </div>
   </div>
 </div>
@@ -950,15 +1010,19 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         tr.style.cursor = 'pointer';
         const statusColors = {
           'Initial Eval': 'secondary',
-          'HST Ordered': 'info',
-          'HST Reviewed': 'primary',
+          'Study Ordered': 'info',
+          'Study Reviewed': 'primary',
+          'Treatment Plan': 'success',
           'CPAP Trial': 'warning',
           'CPAP Follow-up': 'warning',
           'DISE Scheduled': 'info',
           'DISE Completed': 'primary',
-          'Treatment Plan': 'success',
           'Surgery Scheduled': 'danger',
           'Post-Op': 'dark',
+          'MAD Referred': 'info',
+          'MAD Follow-up': 'primary',
+          'New Sleep Study': 'warning',
+          'Efficacy Study': 'success',
         };
         // milestones is an array; status is legacy string — show latest milestone
         const milestones = Array.isArray(p.milestones) ? p.milestones : (p.status ? [p.status] : []);
@@ -1129,6 +1193,122 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   origClear.addEventListener('click', () => {
     clearCurrentPatient();
   }, true); // capture phase to run before existing handler
+
+  // ── Intake Link Management ──────────────────────────────────
+  const intakeModal = new bootstrap.Modal(document.getElementById('intakeLinkModal'));
+  const apiBaseUrl = typeof AWS_CONFIG !== 'undefined' ? AWS_CONFIG.apiUrl : '';
+  // Use /intake (not /intake.html) — the serve static server's clean-URL
+  // feature redirects .html → extensionless, stripping query strings.
+  const intakeBaseUrl = window.location.origin + '/intake';
+
+  document.getElementById('btnIntakeLink').addEventListener('click', async () => {
+    if (!currentPatientId) {
+      alert('Please save the patient first before generating an intake link.');
+      return;
+    }
+    // Reset modal state
+    document.getElementById('intakeGenerate').classList.remove('d-none');
+    document.getElementById('intakeLinkDisplay').classList.add('d-none');
+    document.getElementById('intakeLinkSpinner').classList.add('d-none');
+    // Load existing tokens
+    loadIntakeTokens(currentPatientId);
+    intakeModal.show();
+  });
+
+  document.getElementById('btnGenerateIntakeLink').addEventListener('click', async () => {
+    const btn = document.getElementById('btnGenerateIntakeLink');
+    const spinner = document.getElementById('intakeLinkSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+      const result = await OSADatabase.createIntakeToken(currentPatientId);
+      const url = `${intakeBaseUrl}?t=${result.token}`;
+
+      document.getElementById('intakeLinkUrl').value = url;
+      document.getElementById('intakeLinkExpiry').textContent =
+        `Expires: ${new Date(result.expiresAt).toLocaleString()}`;
+
+      document.getElementById('intakeGenerate').classList.add('d-none');
+      document.getElementById('intakeLinkDisplay').classList.remove('d-none');
+      spinner.classList.add('d-none');
+
+      // Refresh tokens list
+      loadIntakeTokens(currentPatientId);
+    } catch (err) {
+      alert('Failed to generate link: ' + err.message);
+      spinner.classList.add('d-none');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btnCopyIntakeLink').addEventListener('click', () => {
+    const input = document.getElementById('intakeLinkUrl');
+    navigator.clipboard.writeText(input.value).then(() => {
+      const btn = document.getElementById('btnCopyIntakeLink');
+      btn.innerHTML = '<i class="bi bi-check"></i>';
+      setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
+    });
+  });
+
+  async function loadIntakeTokens(patientId) {
+    const container = document.getElementById('intakeTokensList');
+    const body = document.getElementById('intakeTokensBody');
+    try {
+      const tokens = await OSADatabase.listIntakeTokens(patientId);
+      if (!tokens.length) {
+        container.classList.add('d-none');
+        return;
+      }
+      container.classList.remove('d-none');
+      body.innerHTML = tokens.map(t => {
+        const status = t.status;
+        const badgeClass = status === 'active' ? 'bg-success' : status === 'used' ? 'bg-info' : status === 'expired' ? 'bg-secondary' : 'bg-danger';
+        const created = new Date(t.createdAt).toLocaleDateString();
+        const revokeBtn = status === 'active'
+          ? ` <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="revokeToken('${escHtml(t.tokenHash)}')" title="Revoke this link"><i class="bi bi-x-circle"></i></button>`
+          : '';
+        return `<div class="d-flex align-items-center gap-2 mb-1">
+          <span class="badge ${badgeClass}" style="min-width:60px;">${status}</span>
+          <span class="small text-muted">${created}</span>
+          ${t.usedAt ? `<span class="small text-success"><i class="bi bi-check-circle"></i> Submitted ${new Date(t.usedAt).toLocaleDateString()}</span>` : ''}
+          ${revokeBtn}
+        </div>`;
+      }).join('');
+    } catch (err) {
+      container.classList.add('d-none');
+    }
+  }
+
+  // Expose revoke globally for onclick handler
+  window.revokeToken = async function(tokenHash) {
+    if (!confirm('Revoke this intake link? The patient will no longer be able to use it.')) return;
+    try {
+      await OSADatabase.revokeIntakeToken(tokenHash);
+      loadIntakeTokens(currentPatientId);
+    } catch (err) {
+      alert('Failed to revoke: ' + err.message);
+    }
+  };
+
+  // Show intake status badge when loading a patient
+  const origUpdatePatientBar = updatePatientBar;
+  updatePatientBar = function(patient) {
+    origUpdatePatientBar(patient);
+    const badge = document.getElementById('intakeStatusBadge');
+    if (patient.intakeStatus === 'received') {
+      badge.className = 'badge bg-success-subtle text-success';
+      badge.textContent = 'Intake Received';
+      badge.classList.remove('d-none');
+    } else if (patient.intakeStatus === 'pending') {
+      badge.className = 'badge bg-warning-subtle text-warning';
+      badge.textContent = 'Intake Pending';
+      badge.classList.remove('d-none');
+    } else {
+      badge.classList.add('d-none');
+    }
+  };
 
 })();
 </script>

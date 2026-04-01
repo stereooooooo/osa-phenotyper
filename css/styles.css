@@ -631,6 +631,123 @@ fieldset legend {
 .osa-journey-wrap { margin-bottom: 1rem; overflow-x: auto; }
 .osa-journey-wrap svg { max-width: 100%; height: auto; }
 
+/* ── Care Pathway Bar ────────────────────────────────────────── */
+.osa-care-pathway {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--osa-white);
+  border: 1px solid var(--osa-gray-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  gap: 0;
+}
+.osa-pathway-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.osa-pathway-step i { font-size: 0.7rem; }
+.osa-pathway-completed {
+  color: var(--osa-navy);
+  background: rgba(31,58,92,0.06);
+}
+.osa-pathway-completed i { color: #22c55e; }
+.osa-pathway-active {
+  color: #fff;
+  background: var(--osa-crimson);
+  font-weight: 600;
+}
+.osa-pathway-active i { color: #fff; }
+.osa-pathway-upcoming {
+  color: #9ca3af;
+  background: transparent;
+}
+.osa-pathway-upcoming i { color: #d1d5db; }
+.osa-pathway-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--osa-gray-border);
+  flex-shrink: 0;
+}
+.osa-pathway-completed + .osa-pathway-connector { background: #22c55e; }
+
+/* ── Care Summary Card ───────────────────────────────────────── */
+.osa-care-summary {
+  display: flex;
+  align-items: center;
+  background: #f0f2f6;
+  border: 1px solid var(--osa-gray-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  font-family: 'Inter', sans-serif;
+  color: var(--osa-navy);
+  line-height: 1.4;
+}
+.osa-care-summary i { color: var(--osa-crimson); font-size: 1rem; }
+
+/* ── Collapsible Clinician Sections ─────────────────────────── */
+.osa-clin-section {
+  border: 1px solid var(--osa-gray-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.osa-clin-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: #f8f9fb;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: var(--osa-navy);
+  user-select: none;
+  transition: background 0.15s;
+}
+.osa-clin-section-header:hover {
+  background: #eef0f4;
+}
+.osa-clin-section-header > span:first-child {
+  flex-shrink: 0;
+}
+.osa-clin-section-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-left: 0.25rem;
+}
+.osa-clin-section-badges .badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2em 0.5em;
+}
+.osa-collapse-icon {
+  transition: transform 0.25s;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+.osa-clin-section-header[aria-expanded="true"] .osa-collapse-icon {
+  transform: rotate(180deg);
+}
+.osa-clin-section-body {
+  padding: 0.75rem 0.9rem;
+  font-size: 0.88rem;
+}
+.osa-clin-section-body .alert {
+  font-size: 0.85rem;
+}
+
 /* ── Print styles ────────────────────────────────────────────── */
 @media print {
   .no-print { display: none !important; }

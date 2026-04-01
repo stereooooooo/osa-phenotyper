@@ -1,0 +1,643 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: OSA Phenotyper - HIPAA-compliant patient database infrastructure
+
+Parameters:
+  ClinicName:
+    Type: String
+    Default: capital-ent
+    Description: Clinic identifier (lowercase, no spaces)
+  AdminEmail:
+    Type: String
+    Description: Email for the initial admin user
+
+Resources:
+
+  # ─── KMS Encryption Key ─────────────────────────────────────
+  EncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: OSA Phenotyper patient data encryption key
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowRootAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+      EnableKeyRotation: true
+
+  EncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/osa-phenotyper-${ClinicName}'
+      TargetKeyId: !Ref EncryptionKey
+
+  # ─── DynamoDB Tables ────────────────────────────────────────
+  PatientTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'osa-patients-${ClinicName}'
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: S
+        - AttributeName: mrn
+          AttributeType: S
+        - AttributeName: nameLower
+          AttributeType: S
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: mrn-index
+          KeySchema:
+            - AttributeName: mrn
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: name-index
+          KeySchema:
+            - AttributeName: nameLower
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  IntakeTokenTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'osa-intake-tokens-${ClinicName}'
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      AttributeDefinitions:
+        - AttributeName: tokenHash
+          AttributeType: S
+        - AttributeName: patientId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tokenHash
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: patient-index
+          KeySchema:
+            - AttributeName: patientId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # ─── Cognito User Pool ──────────────────────────────────────
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub 'osa-phenotyper-${ClinicName}'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: name
+          Required: true
+          Mutable: true
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: osa-phenotyper-web
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      PreventUserExistenceErrors: ENABLED
+
+  # ─── Initial Admin User ─────────────────────────────────────
+  AdminUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref UserPool
+      Username: !Ref AdminEmail
+      UserAttributes:
+        - Name: email
+          Value: !Ref AdminEmail
+        - Name: name
+          Value: Admin
+      DesiredDeliveryMediums:
+        - EMAIL
+
+  # ─── Lambda Execution Role ──────────────────────────────────
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'osa-phenotyper-lambda-${ClinicName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                Resource:
+                  - !GetAtt PatientTable.Arn
+                  - !Sub '${PatientTable.Arn}/index/*'
+        - PolicyName: TokenTableAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:Query'
+                Resource:
+                  - !GetAtt IntakeTokenTable.Arn
+                  - !Sub '${IntakeTokenTable.Arn}/index/*'
+        - PolicyName: KMSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:GenerateDataKey'
+                Resource: !GetAtt EncryptionKey.Arn
+
+  # ─── Intake Lambda Execution Role (least-privilege) ─────────
+  IntakeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'osa-intake-lambda-${ClinicName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: TokenTableAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                Resource:
+                  - !GetAtt IntakeTokenTable.Arn
+                  - !Sub '${IntakeTokenTable.Arn}/index/*'
+        - PolicyName: PatientTableLimitedAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:UpdateItem'
+                Resource:
+                  - !GetAtt PatientTable.Arn
+        - PolicyName: KMSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:GenerateDataKey'
+                Resource: !GetAtt EncryptionKey.Arn
+
+  # ─── Lambda Functions ───────────────────────────────────────
+  PatientApi:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'osa-patients-api-${ClinicName}'
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PatientTable
+          TOKEN_TABLE: !Ref IntakeTokenTable
+          ALLOWED_ORIGIN: '*'
+      Code:
+        ZipFile: |
+          // Placeholder - deploy real code via update
+          exports.handler = async () => ({ statusCode: 200, body: 'OK' });
+
+  IntakeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'osa-intake-api-${ClinicName}'
+      Runtime: nodejs22.x
+      Handler: intake.handler
+      Role: !GetAtt IntakeLambdaRole.Arn
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          PATIENT_TABLE: !Ref PatientTable
+          TOKEN_TABLE: !Ref IntakeTokenTable
+          ALLOWED_ORIGIN: '*'
+      Code:
+        ZipFile: |
+          // Placeholder - deploy real code via update
+          exports.handler = async () => ({ statusCode: 200, body: 'OK' });
+
+  # ─── API Gateway (HTTP API) ─────────────────────────────────
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub 'osa-phenotyper-api-${ClinicName}'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        MaxAge: 86400
+
+  HttpApiAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref HttpApi
+      AuthorizerType: JWT
+      IdentitySource:
+        - '$request.header.Authorization'
+      Name: cognito-authorizer
+      JwtConfiguration:
+        Audience:
+          - !Ref UserPoolClient
+        Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
+
+  LambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt PatientApi.Arn
+      PayloadFormatVersion: '2.0'
+
+  IntakeLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt IntakeLambda.Arn
+      PayloadFormatVersion: '2.0'
+
+  # Routes — Patient CRUD (Cognito-authorized)
+  RouteGetPatients:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /patients'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteGetPatient:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /patients/{id}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteCreatePatient:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /patients'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteUpdatePatient:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'PUT /patients/{id}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteDeletePatient:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'DELETE /patients/{id}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteSearchPatients:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /patients/search'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  # Routes — Patient Intake (public, token-validated in Lambda)
+  RouteGetIntake:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /intake/{token}'
+      AuthorizationType: NONE
+      Target: !Sub 'integrations/${IntakeLambdaIntegration}'
+
+  RoutePostIntake:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /intake/{token}'
+      AuthorizationType: NONE
+      Target: !Sub 'integrations/${IntakeLambdaIntegration}'
+
+  # Routes — Token Management (Cognito-authorized, clinician-facing)
+  RouteCreateIntakeToken:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /intake-tokens'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteGetIntakeTokens:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /intake-tokens/{patientId}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteDeleteIntakeToken:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'DELETE /intake-tokens/{tokenHash}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  LambdaApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PatientApi
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+  IntakeLambdaApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IntakeLambda
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+  # ─── CloudWatch Log Groups (HIPAA: ~7-year retention) ───────
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/osa-patients-api-${ClinicName}'
+      RetentionInDays: 2557
+
+  IntakeApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/osa-intake-api-${ClinicName}'
+      RetentionInDays: 2557
+
+  # ─── CloudTrail Audit Logging ───────────────────────────────
+  AuditLogBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'osa-audit-logs-${ClinicName}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: RetainAuditLogs
+            Status: Enabled
+            Transitions:
+              - StorageClass: GLACIER
+                TransitionInDays: 90
+            ExpirationInDays: 2557
+
+  AuditLogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AuditLogBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: 's3:GetBucketAcl'
+            Resource: !GetAtt AuditLogBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: 's3:PutObject'
+            Resource: !Sub '${AuditLogBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                's3:x-amz-acl': bucket-owner-full-control
+
+  AuditTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: AuditLogBucketPolicy
+    Properties:
+      TrailName: !Sub 'osa-phenotyper-audit-${ClinicName}'
+      IsLogging: true
+      S3BucketName: !Ref AuditLogBucket
+      EnableLogFileValidation: true
+      EventSelectors:
+        - ReadWriteType: All
+          IncludeManagementEvents: false
+          DataResources:
+            - Type: AWS::DynamoDB::Table
+              Values:
+                - !GetAtt PatientTable.Arn
+                - !GetAtt IntakeTokenTable.Arn
+
+  # ─── WAF WebACL ────────────────────────────────────────────
+  # Note: AWS WAF association with HTTP API requires CLI:
+  # aws wafv2 associate-web-acl --web-acl-arn <arn> --resource-arn <api-stage-arn>
+  IntakeWaf:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub 'osa-intake-waf-${ClinicName}'
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub 'osa-intake-waf-${ClinicName}'
+      Rules:
+        - Name: RateLimitIntake
+          Priority: 1
+          Action:
+            Block: {}
+          Statement:
+            RateBasedStatement:
+              Limit: 100
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: IntakeRateLimit
+        - Name: AWSCommonRules
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSCommonRules
+        - Name: AWSSQLiRules
+          Priority: 3
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSSQLiRules
+
+Outputs:
+  ApiUrl:
+    Description: API endpoint URL
+    Value: !GetAtt HttpApi.ApiEndpoint
+
+  ApiId:
+    Description: API Gateway HTTP API ID (for WAF association)
+    Value: !Ref HttpApi
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID (for browser)
+    Value: !Ref UserPoolClient
+
+  Region:
+    Description: AWS Region
+    Value: !Ref 'AWS::Region'
+
+  TableName:
+    Description: DynamoDB table name
+    Value: !Ref PatientTable
+
+  IntakeTokenTableName:
+    Description: Intake token DynamoDB table name
+    Value: !Ref IntakeTokenTable
+
+  IntakeLambdaName:
+    Description: Intake Lambda function name
+    Value: !Sub 'osa-intake-api-${ClinicName}'
+
+  WafWebAclArn:
+    Description: WAF WebACL ARN (associate with API via CLI)
+    Value: !GetAtt IntakeWaf.Arn
