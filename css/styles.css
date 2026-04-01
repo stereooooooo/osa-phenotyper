@@ -378,6 +378,9 @@ fieldset legend {
 }
 .osa-progress-step {
   flex: 1;
+  appearance: none;
+  background: transparent;
+  border: 0;
   text-align: center;
   padding: 0.45rem 0.2rem;
   font-size: 0.65rem;
@@ -390,6 +393,10 @@ fieldset legend {
   transition: all 0.2s;
   white-space: nowrap;
   font-weight: 500;
+}
+.osa-progress-step:focus-visible {
+  outline: 2px solid var(--osa-crimson);
+  outline-offset: -2px;
 }
 .osa-progress-step:hover {
   color: var(--osa-navy);
@@ -532,6 +539,10 @@ fieldset legend {
   .card { border-radius: 6px; }
   .card-body { padding: 0.6rem 0.75rem; }
   .btn-lg { width: 100%; padding: 0.65rem; }
+  #analysisActions {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
   .osa-metrics-grid { grid-template-columns: 1fr 1fr; }
 }
 

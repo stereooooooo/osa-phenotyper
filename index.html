@@ -142,13 +142,13 @@
 <form id="form" novalidate>
 
 <!-- ===== Progress Track ===== -->
-<div class="osa-progress-track no-print" id="progressTrack">
-  <div class="osa-progress-step" data-section="demographics" data-target="#cardDemographics">Demographics</div>
-  <div class="osa-progress-step" data-section="treatment" data-target="#cardTreatment">Treatment Hx</div>
-  <div class="osa-progress-step" data-section="exam" data-target="#cardPhysicalExam">Exam</div>
-  <div class="osa-progress-step" data-section="imaging" data-target="#cardImaging">DISE</div>
-  <div class="osa-progress-step" data-section="questionnaires" data-target="#cardQuestionnaires">Questionnaires</div>
-  <div class="osa-progress-step" data-section="sleep-study" data-target="#sleepStudyWatchpat">Sleep Study</div>
+<div class="osa-progress-track no-print" id="progressTrack" role="navigation" aria-label="Clinician form sections">
+  <button type="button" class="osa-progress-step" data-section="demographics" data-target="#cardDemographics">Demographics</button>
+  <button type="button" class="osa-progress-step" data-section="treatment" data-target="#cardTreatment">Treatment Hx</button>
+  <button type="button" class="osa-progress-step" data-section="exam" data-target="#cardPhysicalExam">Exam</button>
+  <button type="button" class="osa-progress-step" data-section="imaging" data-target="#cardImaging">DISE</button>
+  <button type="button" class="osa-progress-step" data-section="questionnaires" data-target="#cardQuestionnaires">Questionnaires</button>
+  <button type="button" class="osa-progress-step" data-section="sleep-study" data-target="#sleepStudyWatchpat">Sleep Study</button>
 </div>
 
 <!-- ===== PDF Import (top of form for fast workflow) ===== -->
@@ -258,11 +258,11 @@
   <div class="card-body row g-2 align-items-end">
     <div class="col-md-4">
       <label class="form-label required mb-1">Patient Name</label>
-      <input type="text" id="patientName" class="form-control form-control-sm" placeholder="Last, First">
+      <input type="text" id="patientName" class="form-control form-control-sm" placeholder="Last, First" required data-label="Patient name">
     </div>
     <div class="col-md-3">
       <label class="form-label required mb-1">Date of Birth</label>
-      <input type="date" id="patientDob" class="form-control form-control-sm">
+      <input type="date" id="patientDob" class="form-control form-control-sm" required data-label="Date of birth">
     </div>
     <div class="col-md-3">
       <label class="form-label mb-1">MRN</label>
@@ -294,9 +294,9 @@
 <div class="card" id="cardDemographics">
   <div class="card-header"><i class="bi bi-person-badge"></i> Demographics &amp; History</div>
   <div class="card-body row g-2 align-items-center">
-    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">Age</label><input type="number" name="age" class="form-control form-control-sm" min="1" max="120"></div>
-    <div class="col-auto" style="width:90px;"><label class="form-label required mb-1">Sex</label><select name="sex" class="form-select form-select-sm"><option value="M">M</option><option value="F">F</option></select></div>
-    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">BMI</label><input type="number" step="0.1" name="bmi" class="form-control form-control-sm" min="10" max="80"></div>
+    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">Age</label><input type="number" name="age" class="form-control form-control-sm" min="1" max="120" required data-label="Age"></div>
+    <div class="col-auto" style="width:110px;"><label class="form-label required mb-1">Sex</label><select name="sex" class="form-select form-select-sm" required data-label="Sex"><option value="">Select…</option><option value="M">Male</option><option value="F">Female</option></select></div>
+    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">BMI</label><input type="number" step="0.1" name="bmi" class="form-control form-control-sm" min="10" max="80" required data-label="BMI"></div>
     <div class="col-auto" style="width:110px;"><label class="form-label mb-1">Neck (in)</label><input type="number" step="0.1" name="neck" class="form-control form-control-sm" min="8" max="30"></div>
     <div class="col d-flex align-items-center ps-3" style="margin-top:1.1rem;">
       <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" name="cvd" id="cvd"><label class="form-check-label" for="cvd">Cardiovascular disease (HTN / CAD / HF / AF)</label></div>
@@ -397,8 +397,8 @@
       </div>
       <div class="collapse show" id="collapsePhysExam">
         <div class="card-body row g-3">
-          <div class="col-4"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-          <div class="col-4"><label class="form-label">FTP</label><select name="ftp" class="form-select"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div>
+          <div class="col-4"><label class="form-label">Tonsil Size</label><select name="tonsils" class="form-select" data-label="Tonsil size"><option value="">—</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+          <div class="col-4"><label class="form-label">FTP</label><select name="ftp" class="form-select" data-label="Friedman tongue position"><option value="">—</option><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option></select></div>
           <div class="col-4"><label class="form-label">Retrognathia</label><select name="retrognathia" class="form-select"><option value="">None</option><option value="mild">Mild</option><option value="moderate">Moderate-Severe</option></select></div>
         </div>
       </div>
@@ -545,7 +545,7 @@
 <!-- ===== Validation Alerts & Submit ===== -->
 <div id="validationAlerts" class="mt-3"></div>
 
-<div class="text-center mt-4 d-flex justify-content-center gap-3">
+<div class="text-center mt-4 d-flex justify-content-center gap-3 flex-wrap" id="analysisActions">
   <button type="button" class="btn btn-success btn-lg px-4" id="btnSavePatient"><i class="bi bi-cloud-upload"></i> Save Patient</button>
   <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
 </div>
@@ -620,8 +620,9 @@
 </div>
 
 <!-- Patient Report Preview Overlay -->
-<div class="report-overlay" id="reportOverlay">
+<div class="report-overlay" id="reportOverlay" role="dialog" aria-modal="true" aria-labelledby="reportPreviewTitle" tabindex="-1">
   <div class="report-toolbar">
+    <span class="visually-hidden" id="reportPreviewTitle">Patient report preview</span>
     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCloseReport">
       <i class="bi bi-x-lg"></i> Close Preview
     </button>
@@ -683,7 +684,15 @@ function resetWorkspaceForNewPatient() {
   document.getElementById('sleepStudyPSG').style.display = 'none';
   document.getElementById('sleepStudyWatchpat').style.display = '';
   document.getElementById('cpapDetails').style.display = 'none';
-  document.querySelectorAll('.osa-progress-step').forEach(s => s.classList.remove('completed','active'));
+  document.querySelectorAll('.osa-progress-step').forEach(s => {
+    s.classList.remove('completed','active');
+    s.setAttribute('aria-current', 'false');
+  });
+  document.querySelectorAll('#form .is-invalid, #form .is-warning').forEach(el => {
+    el.classList.remove('is-invalid', 'is-warning');
+    el.removeAttribute('aria-invalid');
+  });
+  document.querySelectorAll('#form .invalid-feedback, #form .warning-feedback').forEach(el => el.remove());
 }
 
 document.getElementById('btnClearForm').addEventListener('click', () => {
@@ -818,19 +827,20 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   const steps = document.querySelectorAll('.osa-progress-step');
   const form = document.getElementById('form');
 
+  function hasFieldValue(el) {
+    if (!el) return false;
+    if (el.type === 'checkbox') return el.checked;
+    if (el.tagName === 'SELECT') return el.value !== '' && el.value !== '\u2014';
+    return el.value !== '';
+  }
+
   function updateProgress() {
     steps.forEach(step => {
       const section = step.dataset.section;
       const fields = sectionFields[section] || [];
       const hasValue = fields.some(name => {
         const el = form.querySelector(`[name="${name}"]`);
-        if (!el) return false;
-        if (el.type === 'checkbox') return el.checked;
-        if (el.tagName === 'SELECT') {
-          const val = el.value;
-          return val && val !== '0' && val !== 'I' && val !== 'M' && val !== '\u2014';
-        }
-        return el.value !== '';
+        return hasFieldValue(el);
       });
       step.classList.toggle('completed', hasValue);
     });
@@ -860,9 +870,13 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     if (!el.name) return;
     steps.forEach(step => {
       const fields = sectionFields[step.dataset.section] || [];
-      step.classList.toggle('active', fields.includes(el.name));
+      const isActive = fields.includes(el.name);
+      step.classList.toggle('active', isActive);
+      step.setAttribute('aria-current', isActive ? 'step' : 'false');
     });
   });
+
+  updateProgress();
 })();
 
 /* ══════════════════════════════════════════════════════════════

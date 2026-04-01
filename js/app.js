@@ -31,7 +31,7 @@ function pushRec(arr, text, tag){
 const T = OSA_CONFIG.thresholds;
 let lastAnalysisData = null;
 
-/* ── Confidence helper (uses config thresholds) ───────────────── */
+/* ── Signal-strength helper (heuristic support, not validated probability) ── */
 function confidenceFor(tag, ctx){
   const m = ctx.metrics;
   switch(tag){
@@ -475,11 +475,16 @@ document.getElementById('form').addEventListener('submit', e => {
   /* ── Validation gate ────────────────────────────────────────── */
   const { errors, warnings } = OSAValidation.validateForm(e.target);
   const alertBox = document.getElementById('validationAlerts');
+  const firstInvalid = errors.find(err => err.element)?.element || null;
 
   if (errors.length > 0) {
     if (alertBox) {
       alertBox.innerHTML = `<div class="alert alert-danger"><strong>Please fix these errors:</strong><ul>${errors.map(e => `<li><strong>${e.field}:</strong> ${e.message}</li>`).join('')}</ul></div>`;
       alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (firstInvalid) {
+      firstInvalid.focus({ preventScroll: true });
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     return; // block submission
   }
@@ -1064,11 +1069,11 @@ document.getElementById('form').addEventListener('submit', e => {
     'Elevated Delta Heart Rate':    'bi-activity'
   };
 
-  // Confidence badge colors — used by clinician confTable
+  // Signal-strength badges — used by clinician phenotype table
   const confBadge = (conf) => {
-    if (conf === 'High')     return '<span class="badge bg-danger">High confidence</span>';
-    if (conf === 'Moderate') return '<span class="badge bg-warning text-dark">Moderate confidence</span>';
-    return '<span class="badge bg-secondary">Low confidence</span>';
+    if (conf === 'High')     return '<span class="badge bg-danger">Strong signal</span>';
+    if (conf === 'Moderate') return '<span class="badge bg-warning text-dark">Moderate signal</span>';
+    return '<span class="badge bg-secondary">Limited signal</span>';
   };
 
   const hasLowAr = out.phen.includes('Low Arousal Threshold');
@@ -1506,9 +1511,10 @@ document.getElementById('form').addEventListener('submit', e => {
     ${out.phen.length ? `
       <div class="table-responsive mt-3">
         <table class="table table-sm align-middle osa-report-table">
-          <thead><tr><th>Phenotype</th><th>Confidence</th><th>Triggers</th></tr></thead>
+          <thead><tr><th>Phenotype</th><th>Signal Strength</th><th>Triggers</th></tr></thead>
           <tbody>${confTable}</tbody>
         </table>
+        <p class="small text-muted mb-0">Signal strength reflects internal rule support and should not be interpreted as a validated probability score.</p>
       </div>` : ''
     }
 
@@ -1648,18 +1654,40 @@ document.getElementById('form').addEventListener('submit', e => {
 });
 
 // ── Patient Report Overlay ──────────────────────────────────────
-document.getElementById('btnGenerateReport')?.addEventListener('click', () => {
-  if (!lastAnalysisData) return;
+const reportOverlay = document.getElementById('reportOverlay');
+const reportCloseButton = document.getElementById('btnCloseReport');
+let lastReportTrigger = null;
+
+function getReportFocusableElements() {
+  if (!reportOverlay) return [];
+  return [...reportOverlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+}
+
+function openReportOverlay(triggerEl) {
+  if (!lastAnalysisData || !reportOverlay) return;
+  lastReportTrigger = triggerEl || document.activeElement;
   const html = PatientReport.generateReportHTML(lastAnalysisData);
   document.getElementById('reportPreviewContent').innerHTML = html;
-  document.getElementById('reportOverlay').classList.add('active');
+  reportOverlay.classList.add('active');
   document.body.classList.add('report-preview-open');
+  window.setTimeout(() => reportCloseButton?.focus(), 0);
+}
+
+function closeReportOverlay() {
+  if (!reportOverlay) return;
+  reportOverlay.classList.remove('active');
+  document.body.classList.remove('report-preview-open');
+  const returnFocusEl = lastReportTrigger instanceof HTMLElement ? lastReportTrigger : document.getElementById('btnGenerateReport');
+  returnFocusEl?.focus();
+}
+
+document.getElementById('btnGenerateReport')?.addEventListener('click', (e) => {
+  openReportOverlay(e.currentTarget);
 });
 
-document.getElementById('btnCloseReport')?.addEventListener('click', () => {
-  document.getElementById('reportOverlay').classList.remove('active');
-  document.body.classList.remove('report-preview-open');
-  document.getElementById('btnGenerateReport')?.focus();
+reportCloseButton?.addEventListener('click', () => {
+  closeReportOverlay();
 });
 
 document.getElementById('btnDownloadReportPdf')?.addEventListener('click', () => {
@@ -1669,7 +1697,25 @@ document.getElementById('btnDownloadReportPdf')?.addEventListener('click', () =>
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && document.getElementById('reportOverlay')?.classList.contains('active')) {
-    document.getElementById('btnCloseReport')?.click();
+  if (!reportOverlay?.classList.contains('active')) return;
+
+  if (e.key === 'Escape') {
+    closeReportOverlay();
+    return;
+  }
+
+  if (e.key === 'Tab') {
+    const focusable = getReportFocusableElements();
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 });

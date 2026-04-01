@@ -8,6 +8,36 @@ const OSAValidation = (() => {
   const ranges = OSA_CONFIG.validation.ranges;
   const crossChecks = OSA_CONFIG.validation.crossField;
 
+  function getInputByName(formEl, name) {
+    const field = formEl.elements[name];
+    if (!field) return null;
+    return field instanceof RadioNodeList ? field[0] || null : field;
+  }
+
+  function getFieldLabel(input) {
+    if (!input) return 'This field';
+    if (input.dataset.label) return input.dataset.label;
+    if (input.labels && input.labels.length) return input.labels[0].textContent.replace('*', '').trim();
+    return input.name || 'This field';
+  }
+
+  function validateRequiredField(input) {
+    if (!input || !input.required || input.disabled) return { valid: true, error: null };
+
+    if (input.type === 'checkbox') {
+      return input.checked
+        ? { valid: true, error: null }
+        : { valid: false, error: 'Please select this option.' };
+    }
+
+    const value = typeof input.value === 'string' ? input.value.trim() : input.value;
+    if (value === '' || value === null || value === undefined) {
+      return { valid: false, error: 'This field is required.' };
+    }
+
+    return { valid: true, error: null };
+  }
+
   /**
    * Validate a single field value.
    * @param {string} name  – form field name (must match a key in ranges)
@@ -84,16 +114,29 @@ const OSAValidation = (() => {
     const errors = [];
     const warnings = [];
     const data = new FormData(formEl);
+    const requiredInputs = formEl.querySelectorAll('[required]');
+
+    requiredInputs.forEach(input => {
+      clearFieldState(input);
+      const result = validateRequiredField(input);
+      if (!result.valid) {
+        setFieldError(input, result.error);
+        errors.push({ field: getFieldLabel(input), message: result.error, element: input });
+      }
+    });
 
     // Per-field checks
     for (const name of Object.keys(ranges)) {
+      const input = getInputByName(formEl, name);
       const value = data.get(name);
       if (value === null || value === '') continue;
       const result = validateField(name, value);
       if (!result.valid) {
-        errors.push({ field: name, message: result.error });
+        if (input) setFieldError(input, result.error);
+        errors.push({ field: getFieldLabel(input), message: result.error, element: input || null });
       } else if (result.warning) {
-        warnings.push({ field: name, message: result.warning });
+        if (input) setFieldWarning(input, result.warning);
+        warnings.push({ field: getFieldLabel(input), message: result.warning, element: input || null });
       }
     }
 
@@ -107,17 +150,22 @@ const OSAValidation = (() => {
   /* ── Live validation on form inputs ────────────────────────── */
 
   function attachLiveValidation(formEl) {
-    const inputs = formEl.querySelectorAll('input[type="number"]');
+    const inputs = formEl.querySelectorAll('input, select, textarea');
 
     inputs.forEach(input => {
       input.addEventListener('blur', () => {
-        const name = input.name;
-        const value = input.value;
         clearFieldState(input);
 
-        if (value === '') return;
+        const requiredResult = validateRequiredField(input);
+        if (!requiredResult.valid) {
+          setFieldError(input, requiredResult.error);
+          return;
+        }
 
-        const result = validateField(name, value);
+        if (!input.name || !(input.name in ranges)) return;
+        if (input.value === '') return;
+
+        const result = validateField(input.name, input.value);
 
         if (!result.valid) {
           setFieldError(input, result.error);

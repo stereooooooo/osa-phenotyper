@@ -1,4 +1,4 @@
-# Patient Report Test Matrix
+# OSA Phenotyper Regression Test Matrix
 
 ## Test Profiles
 
@@ -102,3 +102,13 @@
 | 55 | API audit logging | HTTP API stage should emit access logs to the KMS-encrypted access-log group, and CloudTrail should capture both management and DynamoDB data-plane events |
 | 56 | Safe runtime config defaults | Fresh checkout should no longer point `js/aws-config.js` or `intake.html` at production AWS endpoints until `deploy.sh` writes environment-specific values |
 | 57 | Declarative WAF attachment | Stack deployment should create the WAF association without requiring a follow-up CLI command or best-effort script step |
+
+### Group 12: UI & Code Quality Regression Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 58 | No silent clinical defaults | Fresh form load should leave sex, tonsils, and FTP blank until the clinician explicitly selects values |
+| 59 | Required-field submit gate | Attempting to analyze with missing patient name, DOB, age, sex, or BMI should block submission, highlight fields inline, and focus the first invalid control |
+| 60 | Progress-track completion semantics | Progress steps should mark complete only when the section has real entered values, not placeholder/default artifacts |
+| 61 | Mobile action stack | On mobile width, `Analyze / Generate Report / Save` actions should stack cleanly without clipped or side-scrolling buttons |
+| 62 | Report preview dialog focus | Opening the patient report preview should move focus into the dialog, trap tab navigation within it, and return focus to the trigger on close |
+| 63 | Heuristic signal wording | Clinician phenotype table should display `Signal Strength` with `Strong / Moderate / Limited signal`, plus the heuristic note, instead of validated-sounding `Confidence` labels |
