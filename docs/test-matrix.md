@@ -79,3 +79,16 @@
 | 40 | Low-HB wording guardrail | Mild OSA with measured low hypoxic burden — report should use uncertainty-aware language ("reasonable first-line alternatives"), not "works just as well" certainty language |
 | 41 | Patient PDF metadata | Exported patient PDF filename should use patient name + report date, and per-page footer date should match the report date rather than export time |
 | 42 | Patient PDF pagination | Long patient report with care pathway, checklist groups, and multiple what-if cards — page breaks should prefer section/card boundaries instead of clipping through those blocks |
+
+### Group 10: Intake & Data Integrity Regression Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 43 | Intake CPAP current required | Patient selects prior CPAP in intake — form must require current-use status before submission, and backend must reject missing `currentlyUsing` |
+| 44 | Intake CPAP retry required | Patient selects prior CPAP and `currently using = no` — form must require retry willingness, and backend must reject missing `retryWilling` |
+| 45 | Intake token atomicity | Simulate patient-write failure after token validation — token must remain active so the patient can retry instead of losing the link |
+| 46 | Stale clinician save after intake | Clinician loads patient, patient submits intake, clinician saves stale tab — save must 409 instead of silently overwriting the newer intake-backed record |
+| 47 | Pending intake override staging | Intake conflicts with already-saved chart values (for example, chart says current CPAP user, intake says not current) — live form data should stay intact, conflicting fields should land in `intakePendingOverrides`, and UI should show review-needed status |
+| 48 | Clear-form confirmation integrity | Clicking `New Patient` and canceling the confirmation should not drop `currentPatientId` or disconnect the loaded chart from the save target |
+| 49 | Intake-only preference round-trip | Intake submits `weightLossReadiness` — the clinician form should retain and resave it instead of dropping it on the next chart save |
+| 50 | Patient archive behavior | Archiving a patient should remove the record from active list/search and invalidate future load/token creation instead of hard-deleting the row |
+| 51 | Canonical workflow status | Check milestones out of order in the UI — saved `status` and displayed badge should follow the defined workflow order, not the checkbox click order |

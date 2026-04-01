@@ -357,6 +357,15 @@
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefAvoidCpap" id="prefAvoidCpap"><label class="form-check-label small" for="prefAvoidCpap">Avoid CPAP if possible</label></div>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefSurgery" id="prefSurgery"><label class="form-check-label small" for="prefSurgery">Open to surgery</label></div>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefInspire" id="prefInspire"><label class="form-check-label small" for="prefInspire">Interested in Inspire</label></div>
+          <div class="mt-2">
+            <label class="form-label small mb-1" for="weightLossReadiness">Weight-loss readiness</label>
+            <select class="form-select form-select-sm" name="weightLossReadiness" id="weightLossReadiness">
+              <option value="">—</option>
+              <option value="ready">Ready now</option>
+              <option value="considering">Considering it</option>
+              <option value="not-ready">Not right now</option>
+            </select>
+          </div>
         </fieldset>
       </div>
     </div>
@@ -650,20 +659,22 @@ document.getElementById('priorCpap').addEventListener('change', function() {
 });
 
 /* ── New Patient / Clear Form ─────────────────────────────────── */
-document.getElementById('btnClearForm').addEventListener('click', () => {
-  if(!confirm('Clear all fields and start a new patient?')) return;
+function resetWorkspaceForNewPatient() {
+  clearCurrentPatient();
   document.getElementById('form').reset();
   document.getElementById('patientSummary').innerHTML = '';
   document.getElementById('clinicianReport').innerHTML = '';
   const alerts = document.getElementById('validationAlerts');
-  if(alerts) alerts.innerHTML = '';
-  // Re-apply study type default
+  if (alerts) alerts.innerHTML = '';
   document.getElementById('sleepStudyPSG').style.display = 'none';
   document.getElementById('sleepStudyWatchpat').style.display = '';
-  // Hide CPAP details
   document.getElementById('cpapDetails').style.display = 'none';
-  // Reset progress track
   document.querySelectorAll('.osa-progress-step').forEach(s => s.classList.remove('completed','active'));
+}
+
+document.getElementById('btnClearForm').addEventListener('click', () => {
+  if(!confirm('Clear all fields and start a new patient?')) return;
+  resetWorkspaceForNewPatient();
 });
 
 /* ── Bootstrap tooltips ───────────────────────────────────────── */
@@ -784,7 +795,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','cpapPressure'],
+    treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','cpapPressure'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -866,7 +877,24 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   OSADatabase.init(AWS_CONFIG);
 
   let currentPatientId = null;
+  let currentPatientVersion = null;
   let pendingCognitoUser = null;
+  const workflowMilestones = [
+    'Initial Eval',
+    'Study Ordered',
+    'Study Reviewed',
+    'Treatment Plan',
+    'CPAP Trial',
+    'CPAP Follow-up',
+    'DISE Scheduled',
+    'DISE Completed',
+    'Surgery Scheduled',
+    'Post-Op',
+    'MAD Referred',
+    'MAD Follow-up',
+    'New Sleep Study',
+    'Efficacy Study',
+  ];
 
   function showError(msg) {
     loginError.textContent = msg;
@@ -874,6 +902,27 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   }
   function clearError() {
     loginError.classList.add('d-none');
+  }
+
+  function normalizeMilestonesForUi(milestones, fallbackStatus = '') {
+    const rawMilestones = Array.isArray(milestones) ? milestones.filter(Boolean) : [];
+    const uniqueMilestones = [...new Set(rawMilestones)];
+    const orderedKnownMilestones = workflowMilestones.filter(step => uniqueMilestones.includes(step));
+    const unknownMilestones = uniqueMilestones.filter(step => !workflowMilestones.includes(step));
+    const normalizedMilestones = [...orderedKnownMilestones, ...unknownMilestones];
+    if (normalizedMilestones.length) return normalizedMilestones;
+    return fallbackStatus ? [fallbackStatus] : [];
+  }
+
+  function getPatientMilestones(patient, fallbackStatus = '') {
+    const rawMilestones = patient && Array.isArray(patient.milestones) ? patient.milestones : [];
+    const derivedFallback = patient && patient.status ? patient.status : fallbackStatus;
+    return normalizeMilestonesForUi(rawMilestones, derivedFallback);
+  }
+
+  function getLatestMilestone(patient, fallbackLabel = 'New') {
+    const milestones = getPatientMilestones(patient);
+    return milestones.length ? milestones[milestones.length - 1] : fallbackLabel;
   }
 
   function showApp() {
@@ -897,6 +946,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     document.getElementById('mfaForm').classList.add('d-none');
     clearError();
     currentPatientId = null;
+    currentPatientVersion = null;
   }
 
   // ── Check existing session on load ──────────────────────────
@@ -1024,9 +1074,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
           'New Sleep Study': 'warning',
           'Efficacy Study': 'success',
         };
-        // milestones is an array; status is legacy string — show latest milestone
-        const milestones = Array.isArray(p.milestones) ? p.milestones : (p.status ? [p.status] : []);
-        const latestMs = milestones.length ? milestones[milestones.length - 1] : 'New';
+        const latestMs = getLatestMilestone(p, 'New');
         const color = statusColors[latestMs] || 'secondary';
         const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : '';
         tr.innerHTML = `
@@ -1036,8 +1084,8 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
           <td><span class="badge bg-${color}">${escHtml(latestMs)}</span></td>
           <td class="text-muted small">${updated}</td>
           <td>
-            <button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Delete">
-              <i class="bi bi-trash"></i>
+            <button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Archive">
+              <i class="bi bi-archive"></i>
             </button>
           </td>`;
 
@@ -1051,18 +1099,18 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         tbody.appendChild(tr);
       });
 
-      // Delete buttons
+      // Archive buttons
       tbody.querySelectorAll('.btn-delete-patient').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const id = btn.dataset.id;
-          if (!confirm('Delete this patient? This cannot be undone.')) return;
+          if (!confirm('Archive this patient record? It will be removed from the active list but preserved in the database.')) return;
           try {
             await OSADatabase.deletePatient(id);
-            if (currentPatientId === id) clearCurrentPatient();
+            if (currentPatientId === id) resetWorkspaceForNewPatient();
             await loadPatientList(document.getElementById('patientSearch').value.trim());
           } catch (err) {
-            alert('Failed to delete: ' + err.message);
+            alert('Failed to archive: ' + err.message);
           }
         });
       });
@@ -1093,13 +1141,14 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     try {
       const patient = await OSADatabase.getPatient(id);
       currentPatientId = patient.patientId;
+      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : 1;
 
       // Fill patient info fields
       document.getElementById('patientName').value = patient.name || '';
       document.getElementById('patientDob').value = patient.dob || '';
       document.getElementById('patientMrn').value = patient.mrn || '';
       // Load milestones (checkboxes)
-      const milestones = Array.isArray(patient.milestones) ? patient.milestones : (patient.status ? [patient.status] : []);
+      const milestones = getPatientMilestones(patient);
       document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => {
         cb.checked = milestones.includes(cb.value);
       });
@@ -1113,6 +1162,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 
       // Update identifier bar
       updatePatientBar(patient);
+      renderIntakeReviewAlert(patient);
 
       // Clear reports
       document.getElementById('patientSummary').innerHTML = '';
@@ -1128,8 +1178,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   function updatePatientBar(patient) {
     const bar = document.getElementById('patientIdBar');
     bar.style.display = '';
-    const ms = Array.isArray(patient.milestones) ? patient.milestones : (patient.status ? [patient.status] : []);
-    document.getElementById('patientStatusBadge').textContent = ms.length ? ms[ms.length - 1] : 'New';
+    document.getElementById('patientStatusBadge').textContent = getLatestMilestone(patient, 'New');
     document.getElementById('patientNameDisplay').textContent = patient.name || '';
     document.getElementById('patientDobDisplay').textContent = patient.dob ? 'DOB: ' + patient.dob : '';
     document.getElementById('patientMrnDisplay').textContent = patient.mrn ? 'MRN: ' + patient.mrn : '';
@@ -1138,13 +1187,76 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       : '';
   }
 
+  function formatPendingIntakeValue(value) {
+    if (value === true || value === 'on' || value === 'true') return 'Yes';
+    if (value === false || value === '' || value === 'false' || value === null || value === undefined) return 'No';
+    return String(value);
+  }
+
+  function renderIntakeReviewAlert(patient) {
+    const alerts = document.getElementById('validationAlerts');
+    const pending = (patient && patient.intakePendingOverrides && typeof patient.intakePendingOverrides === 'object')
+      ? Object.entries(patient.intakePendingOverrides)
+      : [];
+    if (!pending.length) {
+      alerts.innerHTML = '';
+      return;
+    }
+
+    const labelMap = {
+      nasalObs: 'Nasal obstruction',
+      snoringReported: 'Snoring',
+      prefAvoidCpap: 'Prefers to avoid CPAP',
+      prefSurgery: 'Open to surgery',
+      prefInspire: 'Interested in Inspire',
+      priorUPPP: 'Prior throat surgery',
+      priorNasal: 'Prior nasal surgery',
+      priorSinus: 'Prior sinus surgery',
+      priorJaw: 'Prior jaw surgery',
+      priorInspire: 'Prior Inspire implant',
+      priorMAD: 'Prior oral appliance',
+      priorCpap: 'Prior CPAP use',
+      cpapCurrent: 'Currently using CPAP',
+      cpapHelped: 'CPAP improvement',
+      cpapRetry: 'Open to retrying CPAP',
+      cpapPressure: 'CPAP pressure',
+      cpapMask: 'CPAP mask discomfort',
+      cpapClaustro: 'CPAP claustrophobia',
+      cpapDry: 'CPAP dryness',
+      cpapLeaks: 'CPAP leaks/noise',
+      cpapSleep: 'CPAP trouble sleeping',
+      cpapSkin: 'CPAP skin irritation',
+      cpapNoImprove: 'CPAP no improvement',
+      cpapTravel: 'CPAP travel difficulty',
+      age: 'Age',
+      sex: 'Sex',
+      bmi: 'BMI',
+      ess: 'ESS',
+      isi: 'ISI',
+      noseScore: 'NOSE score',
+      weightLossReadiness: 'Weight-management interest',
+    };
+    const items = pending.map(([key, value]) =>
+      `<li><strong>${escHtml(labelMap[key] || key)}</strong>: ${escHtml(formatPendingIntakeValue(value))}</li>`
+    ).join('');
+
+    alerts.innerHTML = `
+      <div class="alert alert-warning mb-0">
+        <strong>Patient intake needs review.</strong> The most recent intake submission conflicts with saved chart values for ${pending.length} field${pending.length !== 1 ? 's' : ''}. Review and reconcile these before saving:
+        <ul class="mb-0 mt-2">${items}</ul>
+      </div>
+    `;
+  }
+
   function clearCurrentPatient() {
     currentPatientId = null;
+    currentPatientVersion = null;
     document.getElementById('patientIdBar').style.display = 'none';
     document.getElementById('patientName').value = '';
     document.getElementById('patientDob').value = '';
     document.getElementById('patientMrn').value = '';
     document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.getElementById('validationAlerts').innerHTML = '';
   }
 
   // ── Save patient ────────────────────────────────────────────
@@ -1152,7 +1264,10 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     const name = document.getElementById('patientName').value.trim();
     const dob = document.getElementById('patientDob').value;
     const mrn = document.getElementById('patientMrn').value.trim();
-    const milestones = [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value);
+    const milestones = normalizeMilestonesForUi(
+      [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value),
+      'Initial Eval'
+    );
     const status = milestones.length ? milestones[milestones.length - 1] : 'Initial Eval';
 
     if (!name) { alert('Patient name is required.'); return; }
@@ -1169,7 +1284,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       let patient;
       if (currentPatientId) {
         patient = await OSADatabase.updatePatient(currentPatientId, {
-          name, dob, mrn, status, milestones, formData,
+          name, dob, mrn, status, milestones, formData, version: currentPatientVersion,
           visitAction: 'Data updated',
         });
       } else {
@@ -1178,21 +1293,21 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         });
         currentPatientId = patient.patientId;
       }
+      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
       updatePatientBar(patient);
+      renderIntakeReviewAlert(patient);
       btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
       setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000);
     } catch (err) {
-      alert('Save failed: ' + err.message);
+      if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
+        alert('This patient record changed in another tab or after a patient intake submission. Reload the patient record, review the latest data, and then save again.');
+      } else {
+        alert('Save failed: ' + err.message);
+      }
       btn.innerHTML = origText;
       btn.disabled = false;
     }
   });
-
-  // ── Override New Patient to also clear DB state ─────────────
-  const origClear = document.getElementById('btnClearForm');
-  origClear.addEventListener('click', () => {
-    clearCurrentPatient();
-  }, true); // capture phase to run before existing handler
 
   // ── Intake Link Management ──────────────────────────────────
   const intakeModal = new bootstrap.Modal(document.getElementById('intakeLinkModal'));
@@ -1297,9 +1412,19 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   updatePatientBar = function(patient) {
     origUpdatePatientBar(patient);
     const badge = document.getElementById('intakeStatusBadge');
-    if (patient.intakeStatus === 'received') {
+    if (patient.intakeStatus === 'review-needed') {
+      badge.className = 'badge bg-warning-subtle text-warning';
+      badge.textContent = patient.intakePendingFieldCount
+        ? `Intake Review Needed (${patient.intakePendingFieldCount})`
+        : 'Intake Review Needed';
+      badge.classList.remove('d-none');
+    } else if (patient.intakeStatus === 'received') {
       badge.className = 'badge bg-success-subtle text-success';
       badge.textContent = 'Intake Received';
+      badge.classList.remove('d-none');
+    } else if (patient.intakeStatus === 'reviewed') {
+      badge.className = 'badge bg-info-subtle text-info';
+      badge.textContent = 'Intake Reviewed';
       badge.classList.remove('d-none');
     } else if (patient.intakeStatus === 'pending') {
       badge.className = 'badge bg-warning-subtle text-warning';

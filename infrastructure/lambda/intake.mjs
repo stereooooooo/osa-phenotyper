@@ -10,10 +10,10 @@
  *   - Tokens are SHA-256 hashed before DB lookup (never stored in plain text)
  *   - All errors return generic messages (no info leakage)
  *   - Request bodies, patient data, and token values are NEVER logged
- *   - IAM restricted: UpdateItem on patients, GetItem/UpdateItem on tokens
+ *   - IAM restricted: minimal patient reads plus transactional writes on patients/tokens
  */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { createHash } from 'node:crypto';
 
 /* ── Configuration ───────────────────────────────────────── */
@@ -100,6 +100,7 @@ async function incrementAttempts(tokenHash) {
       TableName: TOKEN_TABLE,
       Key: { tokenHash },
       UpdateExpression: 'ADD attempts :one',
+      ConditionExpression: 'attribute_exists(tokenHash)',
       ExpressionAttributeValues: { ':one': 1 },
     }));
   } catch (_) {
@@ -164,6 +165,20 @@ async function handleGetIntake(rawToken) {
     return fail(TOKEN_INVALID_MSG, 403);
   }
 
+  const { Item: patient } = await ddb.send(new GetCommand({
+    TableName: PATIENT_TABLE,
+    Key: { patientId: record.patientId },
+    ProjectionExpression: 'patientId, isDeleted',
+  }));
+  if (!patient || patient.isDeleted) {
+    console.log(JSON.stringify({
+      action: 'intake_validate_patient_unavailable',
+      patientId: record.patientId,
+      timestamp: new Date().toISOString(),
+    }));
+    return fail(TOKEN_INVALID_MSG, 403);
+  }
+
   console.log(JSON.stringify({
     action: 'intake_validate_success',
     patientId: record.patientId,
@@ -200,6 +215,74 @@ const VALID_CPAP_REASONS = new Set([
   'mask', 'claustrophobia', 'dryMouth', 'leaks',
   'troubleSleeping', 'skinIrritation', 'noImprovement', 'travel',
 ]);
+
+const CHECKBOX_STYLE_FORM_KEYS = new Set([
+  'nasalObs', 'snoringReported', 'prefAvoidCpap', 'prefSurgery', 'prefInspire',
+  'priorUPPP', 'priorNasal', 'priorSinus', 'priorJaw', 'priorInspire', 'priorMAD',
+  'priorCpap', 'cpapCurrent', 'cpapMask', 'cpapClaustro', 'cpapDry', 'cpapLeaks',
+  'cpapSleep', 'cpapSkin', 'cpapNoImprove', 'cpapTravel',
+]);
+
+function isEmptyLike(val) {
+  return val === null || val === undefined || val === '' || val === false || val === 'false';
+}
+
+function canonicalFormValue(val) {
+  if (val === true || val === 'on' || val === 'true') return 'bool:true';
+  if (isEmptyLike(val)) return 'bool:false';
+  if (typeof val === 'number') return `num:${val}`;
+  if (typeof val === 'string' && /^-?\d+(\.\d+)?$/.test(val.trim())) return `num:${Number(val.trim())}`;
+  return `str:${String(val).trim()}`;
+}
+
+function formValuesEqual(a, b) {
+  return canonicalFormValue(a) === canonicalFormValue(b);
+}
+
+function hasMeaningfulIntakeValue(key, val) {
+  if (CHECKBOX_STYLE_FORM_KEYS.has(key)) return val !== undefined && val !== null;
+  return !isEmptyLike(val);
+}
+
+function buildIntakeMerge(currentFormData, intakeFormData, existingPendingOverrides) {
+  const mergedFormData = {
+    ...(currentFormData && typeof currentFormData === 'object' ? currentFormData : {}),
+  };
+  const pendingOverrides = {
+    ...(existingPendingOverrides && typeof existingPendingOverrides === 'object' ? existingPendingOverrides : {}),
+  };
+  const appliedFields = [];
+  const pendingFields = [];
+
+  for (const [key, newValue] of Object.entries(intakeFormData)) {
+    const hasCurrentKey = Object.prototype.hasOwnProperty.call(mergedFormData, key);
+    const currentValue = mergedFormData[key];
+
+    if (hasMeaningfulIntakeValue(key, newValue) && (!hasCurrentKey || isEmptyLike(currentValue))) {
+      mergedFormData[key] = newValue;
+      delete pendingOverrides[key];
+      appliedFields.push(key);
+      continue;
+    }
+
+    if (hasCurrentKey && formValuesEqual(currentValue, newValue)) {
+      delete pendingOverrides[key];
+      continue;
+    }
+
+    if (hasMeaningfulIntakeValue(key, newValue)) {
+      pendingOverrides[key] = newValue;
+      pendingFields.push(key);
+    }
+  }
+
+  return {
+    mergedFormData,
+    pendingOverrides,
+    appliedFields,
+    pendingFields,
+  };
+}
 
 /**
  * Validate and sanitize the full intake request body.
@@ -326,8 +409,16 @@ function validateIntakeData(body) {
       const ch = body.cpapHistory;
       const cpap = {};
 
-      cpap.priorCpap      = ch.priorCpap === true;
-      cpap.currentlyUsing  = ch.currentlyUsing === true;
+      if (ch.priorCpap !== true) {
+        errors.push('cpapHistory.priorCpap');
+      }
+      cpap.priorCpap = ch.priorCpap === true;
+
+      if (typeof ch.currentlyUsing !== 'boolean') {
+        errors.push('cpapHistory.currentlyUsing');
+      } else {
+        cpap.currentlyUsing = ch.currentlyUsing;
+      }
 
       // helped: one of "Yes", "No", "Unsure", ""
       const validHelped = new Set(['Yes', 'No', 'Unsure', '']);
@@ -344,12 +435,16 @@ function validateIntakeData(body) {
 
       // retryWilling: one of "Yes", "No", "Maybe", ""
       const validRetry = new Set(['Yes', 'No', 'Maybe', '']);
-      if (ch.retryWilling !== undefined && ch.retryWilling !== null) {
-        const retryVal = stripHtml(String(ch.retryWilling));
-        if (!validRetry.has(retryVal)) {
+      if (cpap.currentlyUsing === false) {
+        if (ch.retryWilling === undefined || ch.retryWilling === null || ch.retryWilling === '') {
           errors.push('cpapHistory.retryWilling');
         } else {
-          cpap.retryWilling = retryVal;
+          const retryVal = stripHtml(String(ch.retryWilling));
+          if (!validRetry.has(retryVal) || retryVal === '') {
+            errors.push('cpapHistory.retryWilling');
+          } else {
+            cpap.retryWilling = retryVal;
+          }
         }
       } else {
         cpap.retryWilling = '';
@@ -553,99 +648,115 @@ async function handlePostIntake(rawToken, rawBody) {
   const formData = mapToFormData(data, scores);
   const now = new Date().toISOString();
 
-  // ── 5. Merge into patient record (UpdateItem) ────────────
-  // Two-step approach: first ensure formData + visits exist,
-  // then set the individual fields. This avoids DynamoDB's
-  // "conflicting path" error when setting both a parent map
-  // and its nested attributes in one expression.
-  //
-  // Step A: Initialize formData and visits if they don't exist yet.
-  await ddb.send(new UpdateCommand({
+  const { Item: patient } = await ddb.send(new GetCommand({
     TableName: PATIENT_TABLE,
     Key: { patientId: tokenRecord.patientId },
-    UpdateExpression: 'SET #fd = if_not_exists(#fd, :emptyMap), #v = if_not_exists(#v, :emptyList)',
-    ExpressionAttributeNames:  { '#fd': 'formData', '#v': 'visits' },
-    ExpressionAttributeValues: { ':emptyMap': {}, ':emptyList': [] },
-    ConditionExpression: 'attribute_exists(patientId)',
+    ProjectionExpression: 'patientId, formData, intakePendingOverrides, isDeleted, #v',
+    ExpressionAttributeNames: { '#v': 'version' },
   }));
 
-  // Step B: Set individual formData fields + metadata + append visit
-  const exprParts = [];
-  const exprNames = {};
-  const exprValues = {};
-
-  // Set each formData field: formData.age = :fd_age, formData.sex = :fd_sex, ...
-  let idx = 0;
-  for (const [key, value] of Object.entries(formData)) {
-    const namePlaceholder = `#fd${idx}`;
-    const valPlaceholder  = `:fd${idx}`;
-    exprParts.push(`#formData.${namePlaceholder} = ${valPlaceholder}`);
-    exprNames[namePlaceholder] = key;
-    exprValues[valPlaceholder] = value;
-    idx++;
+  if (!patient || patient.isDeleted) {
+    console.log(JSON.stringify({
+      action: patient && patient.isDeleted ? 'intake_patient_archived' : 'intake_patient_not_found',
+      patientId: tokenRecord.patientId,
+      timestamp: now,
+    }));
+    return fail(TOKEN_INVALID_MSG, 403);
   }
-  exprNames['#formData'] = 'formData';
 
-  // Metadata fields
-  exprParts.push('#updatedAt = :now');
-  exprParts.push('#updatedBy = :updatedBy');
-  exprParts.push('#intakeStatus = :intakeStatus');
-  exprParts.push('#intakeReceivedAt = :intakeReceivedAt');
-  exprNames['#updatedAt']        = 'updatedAt';
-  exprNames['#updatedBy']        = 'updatedBy';
-  exprNames['#intakeStatus']     = 'intakeStatus';
-  exprNames['#intakeReceivedAt'] = 'intakeReceivedAt';
-  exprValues[':now']              = now;
-  exprValues[':updatedBy']        = 'patient-intake';
-  exprValues[':intakeStatus']     = 'received';
-  exprValues[':intakeReceivedAt'] = now;
-
-  // Append visit entry to the visits array
+  const mergeResult = buildIntakeMerge(
+    patient.formData,
+    formData,
+    patient.intakePendingOverrides
+  );
+  const pendingOverrideKeys = Object.keys(mergeResult.pendingOverrides);
+  const currentVersion = Number.isInteger(patient.version) ? patient.version : 1;
+  const nextVersion = currentVersion + 1;
   const visitEntry = {
     date: now,
     user: 'patient-intake',
     action: 'Patient intake submitted',
   };
-  exprParts.push('#visits = list_append(#visits, :visit)');
-  exprNames['#visits'] = 'visits';
-  exprValues[':visit'] = [visitEntry];
+  const exprNames = {
+    '#fd': 'formData',
+    '#updatedAt': 'updatedAt',
+    '#updatedBy': 'updatedBy',
+    '#intakeStatus': 'intakeStatus',
+    '#intakeReceivedAt': 'intakeReceivedAt',
+    '#visits': 'visits',
+    '#version': 'version',
+    '#intakeAppliedFieldCount': 'intakeAppliedFieldCount',
+    '#intakePendingFieldCount': 'intakePendingFieldCount',
+    '#intakePendingOverrides': 'intakePendingOverrides',
+  };
+  const exprValues = {
+    ':used': 'used',
+    ':active': 'active',
+    ':now': now,
+    ':fd': mergeResult.mergedFormData,
+    ':updatedBy': 'patient-intake',
+    ':intakeStatus': pendingOverrideKeys.length ? 'review-needed' : 'received',
+    ':visit': [visitEntry],
+    ':emptyList': [],
+    ':expectedVersion': currentVersion,
+    ':nextVersion': nextVersion,
+    ':appliedCount': mergeResult.appliedFields.length,
+    ':pendingCount': pendingOverrideKeys.length,
+  };
+  const patientCondition = Number.isInteger(patient.version)
+    ? 'attribute_exists(patientId) AND #version = :expectedVersion'
+    : 'attribute_exists(patientId) AND attribute_not_exists(#version)';
+  let patientUpdateExpression =
+    'SET #fd = :fd, #updatedAt = :now, #updatedBy = :updatedBy, #intakeStatus = :intakeStatus, ' +
+    '#intakeReceivedAt = :now, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), ' +
+    '#version = :nextVersion, #intakeAppliedFieldCount = :appliedCount, #intakePendingFieldCount = :pendingCount';
 
-  const updateExpression = 'SET ' + exprParts.join(', ');
+  if (pendingOverrideKeys.length) {
+    exprValues[':pendingOverrides'] = mergeResult.pendingOverrides;
+    patientUpdateExpression += ', #intakePendingOverrides = :pendingOverrides';
+  } else {
+    patientUpdateExpression += ' REMOVE #intakePendingOverrides';
+  }
 
-  // ── 5. Mark token as used FIRST ──────────────────────────
-  // This prevents race conditions: if the Lambda crashes between
-  // steps 5 and 6, the token is burned (safe — staff generates a new one)
-  // rather than leaving the token active for duplicate submission.
-  await ddb.send(new UpdateCommand({
-    TableName: TOKEN_TABLE,
-    Key: { tokenHash },
-    UpdateExpression: 'SET #s = :used, usedAt = :now',
-    ConditionExpression: '#s = :active',
-    ExpressionAttributeNames: { '#s': 'status' },
-    ExpressionAttributeValues: { ':used': 'used', ':now': now, ':active': 'active' },
-  }));
-
-  // ── 6. Merge intake data into patient record ─────────────
   try {
-    await ddb.send(new UpdateCommand({
-      TableName: PATIENT_TABLE,
-      Key: { patientId: tokenRecord.patientId },
-      UpdateExpression: updateExpression,
-      ExpressionAttributeNames: exprNames,
-      ExpressionAttributeValues: exprValues,
-      ConditionExpression: 'attribute_exists(patientId)',
+    await ddb.send(new TransactWriteCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: TOKEN_TABLE,
+            Key: { tokenHash },
+            UpdateExpression: 'SET #s = :used, usedAt = :now',
+            ConditionExpression: '#s = :active',
+            ExpressionAttributeNames: { '#s': 'status' },
+            ExpressionAttributeValues: {
+              ':used': 'used',
+              ':active': 'active',
+              ':now': now,
+            },
+          },
+        },
+        {
+          Update: {
+            TableName: PATIENT_TABLE,
+            Key: { patientId: tokenRecord.patientId },
+            UpdateExpression: patientUpdateExpression,
+            ConditionExpression: patientCondition,
+            ExpressionAttributeNames: exprNames,
+            ExpressionAttributeValues: exprValues,
+          },
+        },
+      ],
     }));
   } catch (err) {
-    if (err.name === 'ConditionalCheckFailedException') {
-      // Patient record doesn't exist — log and return generic error
+    if (err.name === 'TransactionCanceledException' || err.name === 'ConditionalCheckFailedException') {
       console.log(JSON.stringify({
-        action: 'intake_patient_not_found',
+        action: 'intake_transaction_conflict',
         patientId: tokenRecord.patientId,
         timestamp: now,
       }));
-      return fail(TOKEN_INVALID_MSG, 403);
+      return fail('We could not save your responses. Please try again.', 409);
     }
-    throw err; // Re-throw unexpected errors to the top-level handler
+    throw err;
   }
 
   // ── 7. Audit log (no PHI) ───────────────────────────────
@@ -654,6 +765,8 @@ async function handlePostIntake(rawToken, rawBody) {
     patientId: tokenRecord.patientId,
     timestamp: now,
     fieldsReceived: Object.keys(formData).length,
+    fieldsApplied: mergeResult.appliedFields.length,
+    fieldsPendingReview: pendingOverrideKeys.length,
     // NO field values, NO patient name, NO token value
   }));
 

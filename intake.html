@@ -45,7 +45,7 @@
     <div class="intake-progress__bar-track">
       <div class="intake-progress__bar-fill" id="progressFill"></div>
     </div>
-    <div class="intake-progress__label" id="progressLabel">Step 1 of 8</div>
+    <div class="intake-progress__label" id="progressLabel">0 of 6 required sections complete</div>
   </div>
 
   <!-- Privacy Notice -->
@@ -331,6 +331,7 @@
                 <input type="radio" name="cpapCurrent" value="no" id="cpapCurrentNo" class="intake-radio">
                 <label for="cpapCurrentNo" class="intake-radio-label">No</label>
               </div>
+              <div class="intake-error" id="cpapCurrentError">Please tell us whether you are currently using CPAP.</div>
             </div>
 
             <div class="intake-field-group">
@@ -355,6 +356,7 @@
                 <input type="radio" name="cpapRetry" value="maybe" id="cpapRetryMaybe" class="intake-radio">
                 <label for="cpapRetryMaybe" class="intake-radio-label">Maybe</label>
               </div>
+              <div class="intake-error" id="cpapRetryError">Please tell us whether you would be open to trying CPAP again.</div>
             </div>
 
             <div class="intake-field-group">
@@ -422,7 +424,7 @@
               <input type="radio" name="weightInterest" value="not-now" id="weightNotNow" class="intake-radio">
               <label for="weightNotNow" class="intake-radio-label" style="padding:0.6rem 1.2rem;">Not interested right now</label>
             </div>
-            <div class="intake-error" id="weightError">Please select an option.</div>
+            <div class="intake-error" id="weightInterestError">Please select an option.</div>
           </div>
         </div>
       </section>
@@ -699,20 +701,42 @@
   }
 
   // ── Progress Tracking ──────────────────────────────────────
-  var totalSections = 8;
+  var requiredSections = [1, 2, 3, 4, 5, 8];
+  var optionalSections = [6, 7];
 
   function updateProgress() {
-    var sections = document.querySelectorAll('.intake-section');
-    var completed = 0;
+    var completedRequired = 0;
+    var completedOptional = 0;
 
-    sections.forEach(function(section) {
-      var sectionNum = parseInt(section.dataset.section, 10);
-      if (isSectionComplete(sectionNum)) completed++;
+    requiredSections.forEach(function(sectionNum) {
+      if (isSectionComplete(sectionNum)) completedRequired++;
+    });
+    optionalSections.forEach(function(sectionNum) {
+      if (isSectionAnswered(sectionNum)) completedOptional++;
     });
 
-    var pct = Math.round((completed / totalSections) * 100);
+    var pct = Math.round((completedRequired / requiredSections.length) * 100);
     progressFill.style.width = pct + '%';
-    progressLabel.textContent = completed + ' of ' + totalSections + ' complete';
+    progressLabel.textContent = completedRequired + ' of ' + requiredSections.length + ' required sections complete'
+      + (completedOptional ? ' · ' + completedOptional + ' optional section' + (completedOptional !== 1 ? 's' : '') + ' answered' : '');
+  }
+
+  function resetCpapDetails() {
+    document.querySelectorAll('input[name="cpapCurrent"]').forEach(function(radio) {
+      radio.checked = false;
+    });
+    document.querySelectorAll('input[name="cpapRetry"]').forEach(function(radio) {
+      radio.checked = false;
+    });
+    document.querySelectorAll('input[name="cpapImproved"]').forEach(function(radio) {
+      radio.checked = false;
+    });
+    document.getElementById('cpapPressure').value = '';
+    document.querySelectorAll('input[name="cpapIssue"]').forEach(function(cb) {
+      cb.checked = false;
+    });
+    document.getElementById('cpapRetryGroup').style.display = 'none';
+    updateCheckboxWrapStates(document.getElementById('cpapIssues'));
   }
 
   function isSectionComplete(num) {
@@ -741,13 +765,29 @@
       case 5:
         return !!document.querySelector('input[name="snoringReported"]:checked');
       case 6:
-        return true; // optional section, always "complete"
+        return true; // optional section is excluded from required progress
       case 7:
-        return true; // optional section, always "complete"
+        if (!document.querySelector('input[name="priorTx"]:checked')) return true;
+        if (!document.querySelector('input[name="priorTx"][value="cpap"]:checked')) return true;
+        var cpapCurrent = document.querySelector('input[name="cpapCurrent"]:checked');
+        if (!cpapCurrent) return false;
+        if (cpapCurrent.value === 'no' && !document.querySelector('input[name="cpapRetry"]:checked')) return false;
+        return true;
       case 8:
         return !!document.querySelector('input[name="weightInterest"]:checked');
       default:
         return false;
+    }
+  }
+
+  function isSectionAnswered(num) {
+    switch(num) {
+      case 6:
+        return !!document.querySelector('.intake-section[data-section="6"] input[type="checkbox"]:checked');
+      case 7:
+        return !!document.querySelector('input[name="priorTx"]:checked');
+      default:
+        return isSectionComplete(num);
     }
   }
 
@@ -778,6 +818,7 @@
         cpapDetails.classList.add('intake-conditional--visible');
       } else {
         cpapDetails.classList.remove('intake-conditional--visible');
+        resetCpapDetails();
       }
 
       updateCheckboxWrapStates(treatmentGroup);
@@ -790,6 +831,9 @@
           cpapRetryGroup.style.display = '';
         } else {
           cpapRetryGroup.style.display = 'none';
+          document.querySelectorAll('input[name="cpapRetry"]').forEach(function(retryRadio) {
+            retryRadio.checked = false;
+          });
         }
       });
     });
@@ -936,9 +980,23 @@
 
     // Weight management
     if (!document.querySelector('input[name="weightInterest"]:checked')) {
-      showRadioGroupError('weightInterest', 'weightError');
+      showRadioGroupError('weightInterest', 'weightInterestError');
       errors.push('weight-interest');
       if (!firstErrorEl) firstErrorEl = document.getElementById('weightReady');
+    }
+
+    // CPAP history details become required once prior CPAP is selected
+    if (document.querySelector('input[name="priorTx"][value="cpap"]:checked')) {
+      var cpapCurrent = document.querySelector('input[name="cpapCurrent"]:checked');
+      if (!cpapCurrent) {
+        showRadioGroupError('cpapCurrent', 'cpapCurrentError');
+        errors.push('cpap-current');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('cpapCurrentYes');
+      } else if (cpapCurrent.value === 'no' && !document.querySelector('input[name="cpapRetry"]:checked')) {
+        showRadioGroupError('cpapRetry', 'cpapRetryError');
+        errors.push('cpap-retry');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('cpapRetryYes');
+      }
     }
 
     if (errors.length > 0) {
@@ -1161,7 +1219,7 @@
         if (!resp.ok) {
           var errData;
           try { errData = await resp.json(); } catch(_) { errData = {}; }
-          throw new Error(errData.message || 'Submission failed');
+          throw new Error(errData.error || errData.message || 'Submission failed');
         }
 
         // Success — remove token from URL for safety

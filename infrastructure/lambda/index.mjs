@@ -6,7 +6,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient, GetCommand, PutCommand,
-  UpdateCommand, DeleteCommand, ScanCommand, QueryCommand
+  UpdateCommand, ScanCommand, QueryCommand
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
 
@@ -32,6 +32,60 @@ const fail = (msg, code = 400) => ({
   headers,
   body: JSON.stringify({ error: msg }),
 });
+
+function isEmptyLike(val) {
+  return val === null || val === undefined || val === '' || val === false || val === 'false';
+}
+
+function canonicalFormValue(val) {
+  if (val === true || val === 'on' || val === 'true') return 'bool:true';
+  if (isEmptyLike(val)) return 'bool:false';
+  if (typeof val === 'number') return `num:${val}`;
+  if (typeof val === 'string' && /^-?\d+(\.\d+)?$/.test(val.trim())) return `num:${Number(val.trim())}`;
+  return `str:${String(val).trim()}`;
+}
+
+function formValuesEqual(a, b) {
+  return canonicalFormValue(a) === canonicalFormValue(b);
+}
+
+const WORKFLOW_MILESTONES = [
+  'Initial Eval',
+  'Study Ordered',
+  'Study Reviewed',
+  'Treatment Plan',
+  'CPAP Trial',
+  'CPAP Follow-up',
+  'DISE Scheduled',
+  'DISE Completed',
+  'Surgery Scheduled',
+  'Post-Op',
+  'MAD Referred',
+  'MAD Follow-up',
+  'New Sleep Study',
+  'Efficacy Study',
+];
+
+function normalizeMilestones(milestones, fallbackStatus = 'Initial Eval') {
+  const rawMilestones = Array.isArray(milestones) ? milestones.filter(Boolean) : [];
+  const uniqueMilestones = Array.from(new Set(rawMilestones));
+  const orderedKnownMilestones = WORKFLOW_MILESTONES.filter(step => uniqueMilestones.includes(step));
+  const unknownMilestones = uniqueMilestones.filter(step => !WORKFLOW_MILESTONES.includes(step));
+  const normalizedMilestones = [...orderedKnownMilestones, ...unknownMilestones];
+
+  if (normalizedMilestones.length) {
+    return normalizedMilestones;
+  }
+
+  return fallbackStatus ? [fallbackStatus] : [];
+}
+
+function derivePatientStatus(milestones, fallbackStatus = 'Initial Eval') {
+  const normalizedMilestones = normalizeMilestones(milestones, fallbackStatus);
+  return normalizedMilestones.length
+    ? normalizedMilestones[normalizedMilestones.length - 1]
+    : (fallbackStatus || 'Initial Eval');
+}
 
 /* ── Route dispatcher ─────────────────────────────────────── */
 export async function handler(event) {
@@ -67,7 +121,7 @@ export async function handler(event) {
     // DELETE /patients/:id
     if (method === 'DELETE' && path.match(/^\/patients\/[^/]+$/)) {
       const id = path.split('/').pop();
-      return await deletePatient(id);
+      return await deletePatient(id, user);
     }
 
     // ── Intake Token Management Routes ──────────────────────
@@ -107,14 +161,15 @@ async function createPatient(body, user) {
   if (!name || !dob) return fail('Name and DOB are required');
 
   const now = new Date().toISOString();
+  const normalizedMilestones = normalizeMilestones(milestones, status || 'Initial Eval');
   const item = {
     patientId: randomUUID(),
     name: name.trim(),
     nameLower: name.trim().toLowerCase(),
     dob,
     mrn: (mrn || '').trim(),
-    status: status || 'Initial Eval',
-    milestones: Array.isArray(milestones) ? milestones : [],
+    status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
+    milestones: normalizedMilestones,
     formData: formData || {},
     visits: [{
       date: now,
@@ -126,6 +181,7 @@ async function createPatient(body, user) {
     updatedAt: now,
     createdBy: user,
     updatedBy: user,
+    version: 1,
   };
 
   await ddb.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -137,7 +193,7 @@ async function getPatient(id) {
     TableName: TABLE,
     Key: { patientId: id },
   }));
-  if (!Item) return fail('Patient not found', 404);
+  if (!Item || Item.isDeleted) return fail('Patient not found', 404);
   return ok(Item);
 }
 
@@ -145,7 +201,9 @@ async function listPatients() {
   const { Items } = await ddb.send(new ScanCommand({
     TableName: TABLE,
     ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt',
+    FilterExpression: 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse',
     ExpressionAttributeNames: { '#n': 'name', '#s': 'status' },
+    ExpressionAttributeValues: { ':isDeletedFalse': false },
   }));
   // Sort by most recently updated
   const sorted = (Items || []).sort((a, b) =>
@@ -160,10 +218,21 @@ async function updatePatient(id, body, user) {
     TableName: TABLE,
     Key: { patientId: id },
   }));
-  if (!Item) return fail('Patient not found', 404);
+  if (!Item || Item.isDeleted) return fail('Patient not found', 404);
+  if (!Number.isInteger(body.version)) {
+    return fail('This patient record was updated elsewhere. Reload before saving again.', 409);
+  }
 
   const now = new Date().toISOString();
   const { name, dob, mrn, formData, status, milestones } = body;
+  const expectedVersion = body.version;
+  const normalizedMilestones = milestones !== undefined
+    ? normalizeMilestones(milestones, status || Item.status || 'Initial Eval')
+    : null;
+  const currentPendingOverrides = (Item.intakePendingOverrides && typeof Item.intakePendingOverrides === 'object')
+    ? Item.intakePendingOverrides
+    : {};
+  let remainingPendingOverrides = currentPendingOverrides;
 
   // Build visit entry
   const visit = {
@@ -177,9 +246,19 @@ async function updatePatient(id, body, user) {
     ':now': now,
     ':user': user,
     ':visit': [visit],
+    ':emptyList': [],
+    ':expectedVersion': expectedVersion,
+    ':legacyVersion': 1,
+    ':nextVersion': expectedVersion + 1,
   };
-  const names = { '#u': 'updatedAt', '#ub': 'updatedBy', '#v': 'visits' };
-  let expr = 'SET #u = :now, #ub = :user, #v = list_append(#v, :visit)';
+  const names = {
+    '#u': 'updatedAt',
+    '#ub': 'updatedBy',
+    '#visits': 'visits',
+    '#ver': 'version',
+  };
+  let expr = 'SET #u = :now, #ub = :user, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), #ver = :nextVersion';
+  const removeExpr = [];
 
   if (name !== undefined) {
     expr += ', #n = :name, #nl = :nameLower';
@@ -199,35 +278,109 @@ async function updatePatient(id, body, user) {
   if (formData !== undefined) {
     expr += ', formData = :fd';
     updates[':fd'] = formData;
+
+    if (Object.keys(currentPendingOverrides).length) {
+      remainingPendingOverrides = {};
+      for (const [key, pendingValue] of Object.entries(currentPendingOverrides)) {
+        if (!formValuesEqual(formData[key], pendingValue)) {
+          remainingPendingOverrides[key] = pendingValue;
+        }
+      }
+
+      if (Object.keys(remainingPendingOverrides).length) {
+        expr += ', #ipo = :ipo, #ipfc = :ipfc, #is = :reviewNeeded';
+        names['#ipo'] = 'intakePendingOverrides';
+        names['#ipfc'] = 'intakePendingFieldCount';
+        names['#is'] = 'intakeStatus';
+        updates[':ipo'] = remainingPendingOverrides;
+        updates[':ipfc'] = Object.keys(remainingPendingOverrides).length;
+        updates[':reviewNeeded'] = 'review-needed';
+      } else {
+        expr += ', #is = :reviewed, intakeReviewedAt = :now';
+        names['#is'] = 'intakeStatus';
+        updates[':reviewed'] = 'reviewed';
+        removeExpr.push('#ipo', '#ipfc');
+        names['#ipo'] = 'intakePendingOverrides';
+        names['#ipfc'] = 'intakePendingFieldCount';
+      }
+    }
   }
-  if (status !== undefined) {
+  if (normalizedMilestones) {
+    expr += ', milestones = :ms, #s = :status';
+    updates[':ms'] = normalizedMilestones;
+    updates[':status'] = derivePatientStatus(normalizedMilestones, status || Item.status || 'Initial Eval');
+    names['#s'] = 'status';
+  } else if (status !== undefined) {
     expr += ', #s = :status';
     updates[':status'] = status;
     names['#s'] = 'status';
   }
-  if (milestones !== undefined) {
-    expr += ', milestones = :ms';
-    updates[':ms'] = Array.isArray(milestones) ? milestones : [];
+
+  if (removeExpr.length) {
+    expr += ' REMOVE ' + removeExpr.join(', ');
   }
 
-  const { Attributes } = await ddb.send(new UpdateCommand({
-    TableName: TABLE,
-    Key: { patientId: id },
-    UpdateExpression: expr,
-    ExpressionAttributeValues: updates,
-    ExpressionAttributeNames: names,
-    ReturnValues: 'ALL_NEW',
-  }));
+  let Attributes;
+  try {
+    ({ Attributes } = await ddb.send(new UpdateCommand({
+      TableName: TABLE,
+      Key: { patientId: id },
+      UpdateExpression: expr,
+      ExpressionAttributeValues: updates,
+      ExpressionAttributeNames: names,
+      ConditionExpression: 'attribute_exists(patientId) AND ((attribute_not_exists(#ver) AND :expectedVersion = :legacyVersion) OR #ver = :expectedVersion)',
+      ReturnValues: 'ALL_NEW',
+    })));
+  } catch (err) {
+    if (err.name === 'ConditionalCheckFailedException') {
+      return fail('This patient record was updated elsewhere. Reload before saving again.', 409);
+    }
+    throw err;
+  }
 
   return ok(Attributes);
 }
 
-async function deletePatient(id) {
-  await ddb.send(new DeleteCommand({
-    TableName: TABLE,
-    Key: { patientId: id },
-  }));
-  return ok({ deleted: id });
+async function deletePatient(id, user) {
+  const now = new Date().toISOString();
+  const visit = [{
+    date: now,
+    user,
+    action: 'Archived',
+  }];
+
+  let Attributes;
+  try {
+    ({ Attributes } = await ddb.send(new UpdateCommand({
+      TableName: TABLE,
+      Key: { patientId: id },
+      UpdateExpression: 'SET isDeleted = :true, deletedAt = :now, deletedBy = :user, #u = :now, #ub = :user, #s = :archived, #visits = list_append(if_not_exists(#visits, :emptyList), :visit)',
+      ConditionExpression: 'attribute_exists(patientId) AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+      ExpressionAttributeNames: {
+        '#u': 'updatedAt',
+        '#ub': 'updatedBy',
+        '#s': 'status',
+        '#visits': 'visits',
+      },
+      ExpressionAttributeValues: {
+        ':true': true,
+        ':false': false,
+        ':now': now,
+        ':user': user,
+        ':archived': 'Archived',
+        ':emptyList': [],
+        ':visit': visit,
+      },
+      ReturnValues: 'ALL_NEW',
+    })));
+  } catch (err) {
+    if (err.name === 'ConditionalCheckFailedException') {
+      return fail('Patient not found', 404);
+    }
+    throw err;
+  }
+
+  return ok({ archived: Attributes?.patientId || id });
 }
 
 async function searchPatients(params) {
@@ -239,15 +392,16 @@ async function searchPatients(params) {
     TableName: TABLE,
     IndexName: 'mrn-index',
     KeyConditionExpression: 'mrn = :mrn',
-    ExpressionAttributeValues: { ':mrn': q },
+    FilterExpression: 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse',
+    ExpressionAttributeValues: { ':mrn': q, ':isDeletedFalse': false },
   }));
   if (mrnItems?.length) return ok(mrnItems);
 
   // Fall back to name scan (fine for small datasets)
   const { Items: nameItems } = await ddb.send(new ScanCommand({
     TableName: TABLE,
-    FilterExpression: 'contains(nameLower, :q)',
-    ExpressionAttributeValues: { ':q': q },
+    FilterExpression: '(attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse) AND contains(nameLower, :q)',
+    ExpressionAttributeValues: { ':q': q, ':isDeletedFalse': false },
   }));
   return ok(nameItems || []);
 }
@@ -267,10 +421,10 @@ async function createIntakeToken(body, user) {
   const { Item: patient } = await ddb.send(new GetCommand({
     TableName: TABLE,
     Key: { patientId },
-    ProjectionExpression: '#n',
+    ProjectionExpression: '#n, isDeleted',
     ExpressionAttributeNames: { '#n': 'name' },
   }));
-  if (!patient) return fail('Patient not found', 404);
+  if (!patient || patient.isDeleted) return fail('Patient not found', 404);
 
   // Generate 256-bit cryptographically random token
   const rawToken = randomBytes(32).toString('base64url');
