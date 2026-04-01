@@ -9,6 +9,18 @@ Parameters:
   AdminEmail:
     Type: String
     Description: Email for the initial admin user
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Default: http://localhost:3000
+    Description: Comma-separated browser origins allowed to call the API
+  AdminGroupName:
+    Type: String
+    Default: osa-admin
+    Description: Cognito group name for administrative users
+  ClinicianGroupName:
+    Type: String
+    Default: osa-clinician
+    Description: Cognito group name for clinician users
 
 Resources:
 
@@ -26,6 +38,34 @@ Resources:
               AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
             Action: 'kms:*'
             Resource: '*'
+          - Sid: AllowCloudWatchLogsUse
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              ArnLike:
+                'kms:EncryptionContext:aws:logs:arn': !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+          - Sid: AllowCloudTrailUse
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceArn': !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/osa-phenotyper-audit-${ClinicName}'
       EnableKeyRotation: true
 
   EncryptionKeyAlias:
@@ -37,6 +77,8 @@ Resources:
   # ─── DynamoDB Tables ────────────────────────────────────────
   PatientTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub 'osa-patients-${ClinicName}'
       BillingMode: PAY_PER_REQUEST
@@ -72,6 +114,8 @@ Resources:
 
   IntakeTokenTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub 'osa-intake-tokens-${ClinicName}'
       BillingMode: PAY_PER_REQUEST
@@ -109,7 +153,7 @@ Resources:
         - email
       UsernameAttributes:
         - email
-      MfaConfiguration: OPTIONAL
+      MfaConfiguration: 'ON'
       EnabledMfas:
         - SOFTWARE_TOKEN_MFA
       Policies:
@@ -151,6 +195,22 @@ Resources:
         RefreshToken: days
       PreventUserExistenceErrors: ENABLED
 
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: !Ref AdminGroupName
+      Description: Administrative access for OSA Phenotyper
+      Precedence: 1
+      UserPoolId: !Ref UserPool
+
+  ClinicianGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: !Ref ClinicianGroupName
+      Description: Standard clinician access for OSA Phenotyper
+      Precedence: 2
+      UserPoolId: !Ref UserPool
+
   # ─── Initial Admin User ─────────────────────────────────────
   AdminUser:
     Type: AWS::Cognito::UserPoolUser
@@ -164,6 +224,13 @@ Resources:
           Value: Admin
       DesiredDeliveryMediums:
         - EMAIL
+
+  AdminUserGroupAttachment:
+    Type: AWS::Cognito::UserPoolUserToGroupAttachment
+    Properties:
+      GroupName: !Ref AdminGroupName
+      Username: !Ref AdminEmail
+      UserPoolId: !Ref UserPool
 
   # ─── Lambda Execution Role ──────────────────────────────────
   LambdaRole:
@@ -189,7 +256,6 @@ Resources:
                   - 'dynamodb:GetItem'
                   - 'dynamodb:PutItem'
                   - 'dynamodb:UpdateItem'
-                  - 'dynamodb:DeleteItem'
                   - 'dynamodb:Query'
                   - 'dynamodb:Scan'
                 Resource:
@@ -204,7 +270,6 @@ Resources:
                   - 'dynamodb:PutItem'
                   - 'dynamodb:GetItem'
                   - 'dynamodb:UpdateItem'
-                  - 'dynamodb:DeleteItem'
                   - 'dynamodb:Query'
                 Resource:
                   - !GetAtt IntakeTokenTable.Arn
@@ -289,7 +354,9 @@ Resources:
         Variables:
           TABLE_NAME: !Ref PatientTable
           TOKEN_TABLE: !Ref IntakeTokenTable
-          ALLOWED_ORIGIN: '*'
+          ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
+          ADMIN_GROUP_NAME: !Ref AdminGroupName
+          CLINICIAN_GROUP_NAME: !Ref ClinicianGroupName
       Code:
         ZipFile: |
           // Placeholder - deploy real code via update
@@ -308,7 +375,7 @@ Resources:
         Variables:
           PATIENT_TABLE: !Ref PatientTable
           TOKEN_TABLE: !Ref IntakeTokenTable
-          ALLOWED_ORIGIN: '*'
+          ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
       Code:
         ZipFile: |
           // Placeholder - deploy real code via update
@@ -321,8 +388,7 @@ Resources:
       Name: !Sub 'osa-phenotyper-api-${ClinicName}'
       ProtocolType: HTTP
       CorsConfiguration:
-        AllowOrigins:
-          - '*'
+        AllowOrigins: !Ref AllowedOrigins
         AllowMethods:
           - GET
           - POST
@@ -469,6 +535,12 @@ Resources:
       ApiId: !Ref HttpApi
       StageName: '$default'
       AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt HttpApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength","integrationError":"$context.integrationErrorMessage"}
+      DefaultRouteSettings:
+        DetailedMetricsEnabled: true
 
   LambdaApiPermission:
     Type: AWS::Lambda::Permission
@@ -492,16 +564,27 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/osa-patients-api-${ClinicName}'
       RetentionInDays: 2557
+      KmsKeyId: !GetAtt EncryptionKey.Arn
 
   IntakeApiLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/osa-intake-api-${ClinicName}'
       RetentionInDays: 2557
+      KmsKeyId: !GetAtt EncryptionKey.Arn
+
+  HttpApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/osa-phenotyper-${ClinicName}'
+      RetentionInDays: 2557
+      KmsKeyId: !GetAtt EncryptionKey.Arn
 
   # ─── CloudTrail Audit Logging ───────────────────────────────
   AuditLogBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub 'osa-audit-logs-${ClinicName}-${AWS::AccountId}'
       VersioningConfiguration:
@@ -509,7 +592,9 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref EncryptionKey
+            BucketKeyEnabled: true
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -553,11 +638,14 @@ Resources:
     Properties:
       TrailName: !Sub 'osa-phenotyper-audit-${ClinicName}'
       IsLogging: true
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
       S3BucketName: !Ref AuditLogBucket
+      KMSKeyId: !GetAtt EncryptionKey.Arn
       EnableLogFileValidation: true
       EventSelectors:
         - ReadWriteType: All
-          IncludeManagementEvents: false
+          IncludeManagementEvents: true
           DataResources:
             - Type: AWS::DynamoDB::Table
               Values:
@@ -565,8 +653,6 @@ Resources:
                 - !GetAtt IntakeTokenTable.Arn
 
   # ─── WAF WebACL ────────────────────────────────────────────
-  # Note: AWS WAF association with HTTP API requires CLI:
-  # aws wafv2 associate-web-acl --web-acl-arn <arn> --resource-arn <api-stage-arn>
   IntakeWaf:
     Type: AWS::WAFv2::WebACL
     Properties:
@@ -616,13 +702,20 @@ Resources:
             CloudWatchMetricsEnabled: true
             MetricName: AWSSQLiRules
 
+  IntakeWafAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    DependsOn: HttpApiStage
+    Properties:
+      ResourceArn: !Sub 'arn:aws:apigateway:${AWS::Region}::/apis/${HttpApi}/stages/$default'
+      WebACLArn: !GetAtt IntakeWaf.Arn
+
 Outputs:
   ApiUrl:
     Description: API endpoint URL
     Value: !GetAtt HttpApi.ApiEndpoint
 
   ApiId:
-    Description: API Gateway HTTP API ID (for WAF association)
+    Description: API Gateway HTTP API ID
     Value: !Ref HttpApi
 
   UserPoolId:
@@ -650,5 +743,13 @@ Outputs:
     Value: !Sub 'osa-intake-api-${ClinicName}'
 
   WafWebAclArn:
-    Description: WAF WebACL ARN (associate with API via CLI)
+    Description: WAF WebACL ARN
     Value: !GetAtt IntakeWaf.Arn
+
+  AdminGroup:
+    Description: Cognito admin group name
+    Value: !Ref AdminGroupName
+
+  ClinicianGroup:
+    Description: Cognito clinician group name
+    Value: !Ref ClinicianGroupName

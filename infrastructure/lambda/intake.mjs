@@ -20,26 +20,41 @@ import { createHash } from 'node:crypto';
 
 const PATIENT_TABLE = process.env.PATIENT_TABLE;
 const TOKEN_TABLE   = process.env.TOKEN_TABLE;
-const ORIGIN        = process.env.ALLOWED_ORIGIN || '*';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 const ddb           = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const MAX_TOKEN_ATTEMPTS = 5;
 
 /* ── CORS + security response headers ────────────────────── */
 
-const headers = {
-  'Content-Type':              'application/json',
-  'Access-Control-Allow-Origin':  ORIGIN,
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-  'Referrer-Policy':           'no-referrer',
-  'X-Content-Type-Options':    'nosniff',
-};
+function getAllowedOrigin(event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : '';
+}
+
+function buildHeaders(event) {
+  const allowedOrigin = getAllowedOrigin(event);
+  return {
+    'Content-Type': 'application/json',
+    ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, 'Vary': 'Origin' } : {}),
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Cache-Control': 'no-store',
+    'Pragma': 'no-cache',
+    'Referrer-Policy': 'no-referrer',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+  };
+}
 
 /* ── Response helpers ────────────────────────────────────── */
 
-const ok   = (body, code = 200) => ({ statusCode: code, headers, body: JSON.stringify(body) });
-const fail = (msg, code = 400)  => ({ statusCode: code, headers, body: JSON.stringify({ error: msg }) });
+const ok   = (event, body, code = 200) => ({ statusCode: code, headers: buildHeaders(event), body: JSON.stringify(body) });
+const fail = (event, msg, code = 400)  => ({ statusCode: code, headers: buildHeaders(event), body: JSON.stringify({ error: msg }) });
 
 /** Generic token-failure message — never reveals which check failed. */
 const TOKEN_INVALID_MSG = 'This link is invalid or has expired.';
@@ -53,22 +68,22 @@ export async function handler(event) {
   try {
     // OPTIONS preflight
     if (method === 'OPTIONS') {
-      return ok({});
+      return ok(event, {});
     }
 
     // GET /intake/{token}
     if (method === 'GET' && path.match(/^\/intake\/[^/]+$/)) {
       const token = path.split('/').pop();
-      return await handleGetIntake(token);
+      return await handleGetIntake(event, token);
     }
 
     // POST /intake/{token}
     if (method === 'POST' && path.match(/^\/intake\/[^/]+$/)) {
       const token = path.split('/').pop();
-      return await handlePostIntake(token, event.body);
+      return await handlePostIntake(event, token, event.body);
     }
 
-    return fail('Not found', 404);
+    return fail(event, 'Not found', 404);
   } catch (err) {
     // Log error type only — no request bodies or PHI
     console.log(JSON.stringify({
@@ -76,7 +91,7 @@ export async function handler(event) {
       errorType: err.name || 'Error',
       timestamp: new Date().toISOString(),
     }));
-    return fail('Internal server error', 500);
+    return fail(event, 'Internal server error', 500);
   }
 }
 
@@ -158,11 +173,11 @@ async function lookupAndValidateToken(rawToken) {
 
 /* ── GET /intake/{token} ─────────────────────────────────── */
 
-async function handleGetIntake(rawToken) {
+async function handleGetIntake(event, rawToken) {
   const { valid, record, tokenHash } = await lookupAndValidateToken(rawToken);
 
   if (!valid) {
-    return fail(TOKEN_INVALID_MSG, 403);
+    return fail(event, TOKEN_INVALID_MSG, 403);
   }
 
   const { Item: patient } = await ddb.send(new GetCommand({
@@ -176,7 +191,7 @@ async function handleGetIntake(rawToken) {
       patientId: record.patientId,
       timestamp: new Date().toISOString(),
     }));
-    return fail(TOKEN_INVALID_MSG, 403);
+    return fail(event, TOKEN_INVALID_MSG, 403);
   }
 
   console.log(JSON.stringify({
@@ -185,7 +200,7 @@ async function handleGetIntake(rawToken) {
     timestamp: new Date().toISOString(),
   }));
 
-  return ok({
+  return ok(event, {
     valid: true,
     firstName: record.patientFirstName,
     expiresAt: new Date(record.expiresAt * 1000).toISOString(),
@@ -604,13 +619,13 @@ function mapToFormData(data, scores) {
 
 /* ── POST /intake/{token} ────────────────────────────────── */
 
-async function handlePostIntake(rawToken, rawBody) {
+async function handlePostIntake(event, rawToken, rawBody) {
   // ── 1. Validate token ────────────────────────────────────
   const { valid: tokenValid, record: tokenRecord, tokenHash } =
     await lookupAndValidateToken(rawToken);
 
   if (!tokenValid) {
-    return fail(TOKEN_INVALID_MSG, 403);
+    return fail(event, TOKEN_INVALID_MSG, 403);
   }
 
   // Check if already used (separate from generic validation so we
@@ -624,7 +639,7 @@ async function handlePostIntake(rawToken, rawBody) {
   try {
     body = JSON.parse(rawBody || '{}');
   } catch (_) {
-    return fail('Please check your responses and try again.', 400);
+    return fail(event, 'Please check your responses and try again.', 400);
   }
 
   // ── 3. Validate and sanitize ─────────────────────────────
@@ -638,7 +653,7 @@ async function handlePostIntake(rawToken, rawBody) {
       invalidFields: validation.errors,
       timestamp: new Date().toISOString(),
     }));
-    return fail('Please check your responses and try again.', 400);
+    return fail(event, 'Please check your responses and try again.', 400);
   }
 
   const data = validation.data;
@@ -661,7 +676,7 @@ async function handlePostIntake(rawToken, rawBody) {
       patientId: tokenRecord.patientId,
       timestamp: now,
     }));
-    return fail(TOKEN_INVALID_MSG, 403);
+    return fail(event, TOKEN_INVALID_MSG, 403);
   }
 
   const mergeResult = buildIntakeMerge(
@@ -754,7 +769,7 @@ async function handlePostIntake(rawToken, rawBody) {
         patientId: tokenRecord.patientId,
         timestamp: now,
       }));
-      return fail('We could not save your responses. Please try again.', 409);
+      return fail(event, 'We could not save your responses. Please try again.', 409);
     }
     throw err;
   }
@@ -770,7 +785,7 @@ async function handlePostIntake(rawToken, rawBody) {
     // NO field values, NO patient name, NO token value
   }));
 
-  return ok({
+  return ok(event, {
     success: true,
     message: 'Thank you! Your responses have been received.',
   });

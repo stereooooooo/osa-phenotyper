@@ -61,6 +61,20 @@
         </div>
         <button class="btn btn-primary w-100" id="btnVerifyMfa">Verify</button>
       </div>
+
+      <!-- MFA setup -->
+      <div id="mfaSetupForm" class="d-none">
+        <p class="small text-muted mb-2">Set up an authenticator app to finish sign-in.</p>
+        <div class="alert alert-light border small">
+          <div class="fw-semibold mb-1">Manual setup key</div>
+          <code id="mfaSetupSecret" class="small user-select-all"></code>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Authenticator Code</label>
+          <input type="text" id="mfaSetupCode" class="form-control text-center" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+        </div>
+        <button class="btn btn-primary w-100" id="btnCompleteMfaSetup">Finish MFA Setup</button>
+      </div>
     </div>
   </div>
 </div>
@@ -879,6 +893,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   let currentPatientId = null;
   let currentPatientVersion = null;
   let pendingCognitoUser = null;
+  let currentUserGroups = [];
+  let currentUserIsAdmin = false;
+  const adminGroupName = (typeof AWS_CONFIG !== 'undefined' && AWS_CONFIG.adminGroupName) || 'osa-admin';
   const workflowMilestones = [
     'Initial Eval',
     'Study Ordered',
@@ -928,7 +945,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   function showApp() {
     loginScreen.classList.add('d-none');
     appContainer.classList.remove('d-none');
-    OSAAuth.getUserEmail().then(email => {
+    Promise.all([OSAAuth.getUserEmail(), OSAAuth.getUserGroups()]).then(([email, groups]) => {
+      currentUserGroups = Array.isArray(groups) ? groups : [];
+      currentUserIsAdmin = currentUserGroups.includes(adminGroupName);
       document.getElementById('userEmail').textContent = email || '';
     });
     OSAAuth.startIdleWatch(() => {
@@ -944,9 +963,25 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     document.getElementById('loginForm').classList.remove('d-none');
     document.getElementById('newPasswordForm').classList.add('d-none');
     document.getElementById('mfaForm').classList.add('d-none');
+    document.getElementById('mfaSetupForm').classList.add('d-none');
     clearError();
     currentPatientId = null;
     currentPatientVersion = null;
+    currentUserGroups = [];
+    currentUserIsAdmin = false;
+    document.getElementById('mfaCode').value = '';
+    document.getElementById('mfaSetupCode').value = '';
+    document.getElementById('mfaSetupSecret').textContent = '';
+  }
+
+  async function startMfaSetup(cognitoUser) {
+    const secret = await OSAAuth.beginMfaSetup(cognitoUser);
+    document.getElementById('loginForm').classList.add('d-none');
+    document.getElementById('newPasswordForm').classList.add('d-none');
+    document.getElementById('mfaForm').classList.add('d-none');
+    document.getElementById('mfaSetupForm').classList.remove('d-none');
+    document.getElementById('mfaSetupSecret').textContent = secret;
+    document.getElementById('mfaSetupCode').value = '';
   }
 
   // ── Check existing session on load ──────────────────────────
@@ -973,6 +1008,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         pendingCognitoUser = result.cognitoUser;
         document.getElementById('loginForm').classList.add('d-none');
         document.getElementById('mfaForm').classList.remove('d-none');
+      } else if (result.challenge === 'MFA_SETUP') {
+        pendingCognitoUser = result.cognitoUser;
+        await startMfaSetup(pendingCognitoUser);
       } else {
         showApp();
       }
@@ -996,8 +1034,12 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     if (pw.length < 12) return showError('Password must be at least 12 characters.');
     if (pw !== pw2) return showError('Passwords do not match.');
     try {
-      await OSAAuth.completeNewPassword(pendingCognitoUser, pw);
-      showApp();
+      const result = await OSAAuth.completeNewPassword(pendingCognitoUser, pw);
+      if (result && result.challenge === 'MFA_SETUP') {
+        await startMfaSetup(pendingCognitoUser);
+      } else {
+        showApp();
+      }
     } catch (err) {
       showError(err.message || 'Failed to set password.');
     }
@@ -1013,6 +1055,19 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       showApp();
     } catch (err) {
       showError(err.message || 'Invalid code.');
+    }
+  });
+
+  // ── MFA setup ───────────────────────────────────────────────
+  document.getElementById('btnCompleteMfaSetup').addEventListener('click', async () => {
+    clearError();
+    const code = document.getElementById('mfaSetupCode').value.trim();
+    if (code.length !== 6) return showError('Enter 6-digit code.');
+    try {
+      await OSAAuth.completeMfaSetup(pendingCognitoUser, code);
+      showApp();
+    } catch (err) {
+      showError(err.message || 'Could not complete MFA setup.');
     }
   });
 
@@ -1077,17 +1132,18 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         const latestMs = getLatestMilestone(p, 'New');
         const color = statusColors[latestMs] || 'secondary';
         const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : '';
+        const archiveButton = currentUserIsAdmin
+          ? `<button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Archive">
+              <i class="bi bi-archive"></i>
+            </button>`
+          : '';
         tr.innerHTML = `
           <td><strong>${escHtml(p.name || '')}</strong></td>
           <td>${escHtml(p.dob || '')}</td>
           <td><code>${escHtml(p.mrn || '—')}</code></td>
           <td><span class="badge bg-${color}">${escHtml(latestMs)}</span></td>
           <td class="text-muted small">${updated}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Archive">
-              <i class="bi bi-archive"></i>
-            </button>
-          </td>`;
+          <td>${archiveButton}</td>`;
 
         // Click row to load patient (but not if clicking delete)
         tr.addEventListener('click', (e) => {

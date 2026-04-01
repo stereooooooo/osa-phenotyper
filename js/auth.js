@@ -39,10 +39,22 @@ const OSAAuth = (function () {
 
   /* ── Get current user's email ────────────────────────────── */
   async function getUserEmail() {
+    const claims = await getUserClaims();
+    return claims ? (claims.email || null) : null;
+  }
+
+  /* ── Get current user's claims/groups ────────────────────── */
+  async function getUserClaims() {
     const session = await getSession();
-    if (!session) return null;
-    const payload = session.getIdToken().decodePayload();
-    return payload.email || null;
+    return session ? session.getIdToken().decodePayload() : null;
+  }
+
+  async function getUserGroups() {
+    const claims = await getUserClaims();
+    if (!claims || !claims['cognito:groups']) return [];
+    const rawGroups = claims['cognito:groups'];
+    if (Array.isArray(rawGroups)) return rawGroups;
+    return String(rawGroups).split(',').map(group => group.trim()).filter(Boolean);
   }
 
   /* ── Sign in ─────────────────────────────────────────────── */
@@ -74,6 +86,13 @@ const OSAAuth = (function () {
             cognitoUser,
           });
         },
+        mfaSetup: () => {
+          resolve({
+            session: null,
+            challenge: 'MFA_SETUP',
+            cognitoUser,
+          });
+        },
       });
     });
   }
@@ -82,7 +101,8 @@ const OSAAuth = (function () {
   function completeNewPassword(cognitoUser, newPassword) {
     return new Promise((resolve, reject) => {
       cognitoUser.completeNewPasswordChallenge(newPassword, {}, {
-        onSuccess: (session) => resolve(session),
+        onSuccess: (session) => resolve({ session, challenge: null }),
+        mfaSetup: () => resolve({ session: null, challenge: 'MFA_SETUP', cognitoUser }),
         onFailure: (err) => reject(err),
       });
     });
@@ -95,6 +115,34 @@ const OSAAuth = (function () {
         onSuccess: (session) => resolve(session),
         onFailure: (err) => reject(err),
       }, 'SOFTWARE_TOKEN_MFA');
+    });
+  }
+
+  function beginMfaSetup(cognitoUser) {
+    return new Promise((resolve, reject) => {
+      cognitoUser.associateSoftwareToken({
+        associateSecretCode: (secretCode) => resolve(secretCode),
+        onFailure: (err) => reject(err),
+      });
+    });
+  }
+
+  function completeMfaSetup(cognitoUser, code) {
+    return new Promise((resolve, reject) => {
+      cognitoUser.verifySoftwareToken(code, 'OSA Phenotyper', {
+        onSuccess: (result) => {
+          if (typeof cognitoUser.setUserMfaPreference !== 'function') {
+            resolve(result);
+            return;
+          }
+          cognitoUser.setUserMfaPreference(
+            null,
+            { PreferredMfa: true, Enabled: true },
+            (err) => err ? reject(err) : resolve(result)
+          );
+        },
+        onFailure: (err) => reject(err),
+      });
     });
   }
 
@@ -112,6 +160,7 @@ const OSAAuth = (function () {
 
   /* ── Idle timeout (15 min) ───────────────────────────────── */
   let idleTimer = null;
+  let idleResetHandler = null;
   const IDLE_MS = 15 * 60 * 1000;
 
   function resetIdleTimer(onTimeout) {
@@ -124,14 +173,23 @@ const OSAAuth = (function () {
 
   function startIdleWatch(onTimeout) {
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    if (idleResetHandler) {
+      stopIdleWatch();
+    }
+    idleResetHandler = () => resetIdleTimer(onTimeout);
     events.forEach((evt) =>
-      document.addEventListener(evt, () => resetIdleTimer(onTimeout), { passive: true })
+      document.addEventListener(evt, idleResetHandler, { passive: true })
     );
     resetIdleTimer(onTimeout);
   }
 
   function stopIdleWatch() {
     clearTimeout(idleTimer);
+    if (!idleResetHandler) return;
+    ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach((evt) =>
+      document.removeEventListener(evt, idleResetHandler, { passive: true })
+    );
+    idleResetHandler = null;
   }
 
   return {
@@ -140,9 +198,13 @@ const OSAAuth = (function () {
     signOut,
     completeNewPassword,
     completeMfa,
+    beginMfaSetup,
+    completeMfaSetup,
     getSession,
     getIdToken,
     getUserEmail,
+    getUserClaims,
+    getUserGroups,
     isAuthenticated,
     startIdleWatch,
     stopIdleWatch,

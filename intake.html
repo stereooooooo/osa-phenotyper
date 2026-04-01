@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src https://*.execute-api.us-east-2.amazonaws.com; font-src 'self' https://cdn.jsdelivr.net">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; font-src 'self' https://cdn.jsdelivr.net">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <title>Sleep Health Questionnaire &bull; Capital&nbsp;ENT</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="css/intake.css" rel="stylesheet">
 </head>
-<body data-api-url="https://eetcsdv1v9.execute-api.us-east-2.amazonaws.com">
+<body data-api-url="">
 
 <!-- ===== STATE: Loading ===== -->
 <div id="stateLoading" class="intake-state intake-state--active">
@@ -451,7 +451,7 @@
   'use strict';
 
   // ── Config ──────────────────────────────────────────────────
-  const API_URL = document.body.dataset.apiUrl || 'https://eetcsdv1v9.execute-api.us-east-2.amazonaws.com';
+  const API_URL = (document.body.dataset.apiUrl || '').trim();
   const token = new URLSearchParams(window.location.search).get('t');
 
   // ── DOM refs ────────────────────────────────────────────────
@@ -508,6 +508,12 @@
     } else {
       stateEl.classList.add('intake-state--active');
     }
+  }
+
+  function showConfigError() {
+    stateError.querySelector('.intake-state__title').textContent = 'This intake page is not configured';
+    stateError.querySelector('.intake-state__message').textContent = 'Please contact Capital ENT & Sinus Center to request an updated intake link.';
+    showState(stateError);
   }
 
   // ── Build Questionnaire Sections ────────────────────────────
@@ -1147,6 +1153,10 @@
   async function validateToken() {
     if (!token) {
       showState(stateError);
+      return;
+    }
+    if (!API_URL) {
+      showConfigError();
       return;
     }
 

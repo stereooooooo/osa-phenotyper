@@ -92,3 +92,13 @@
 | 49 | Intake-only preference round-trip | Intake submits `weightLossReadiness` — the clinician form should retain and resave it instead of dropping it on the next chart save |
 | 50 | Patient archive behavior | Archiving a patient should remove the record from active list/search and invalidate future load/token creation instead of hard-deleting the row |
 | 51 | Canonical workflow status | Check milestones out of order in the UI — saved `status` and displayed badge should follow the defined workflow order, not the checkbox click order |
+
+### Group 11: HIPAA & Infrastructure Regression Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 52 | Restricted origin enforcement | API request from an origin outside `AllowedOrigins` should not receive permissive CORS headers, while allowed origins continue to work |
+| 53 | MFA bootstrap flow | First admin sign-in after deployment should require new password + TOTP setup, and subsequent sign-ins should require authenticator code |
+| 54 | Cognito group RBAC | Authenticated user without `osa-admin` or `osa-clinician` group should receive `403` on patient/token routes; archive should remain admin-only |
+| 55 | API audit logging | HTTP API stage should emit access logs to the KMS-encrypted access-log group, and CloudTrail should capture both management and DynamoDB data-plane events |
+| 56 | Safe runtime config defaults | Fresh checkout should no longer point `js/aws-config.js` or `intake.html` at production AWS endpoints until `deploy.sh` writes environment-specific values |
+| 57 | Declarative WAF attachment | Stack deployment should create the WAF association without requiring a follow-up CLI command or best-effort script step |

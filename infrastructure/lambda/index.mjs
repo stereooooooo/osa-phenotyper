@@ -12,24 +12,43 @@ import { randomUUID, randomBytes, createHash } from 'node:crypto';
 
 const TABLE = process.env.TABLE_NAME;
 const TOKEN_TABLE = process.env.TOKEN_TABLE;
-const ORIGIN = process.env.ALLOWED_ORIGIN || '*';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const ADMIN_GROUP_NAME = process.env.ADMIN_GROUP_NAME || 'osa-admin';
+const CLINICIAN_GROUP_NAME = process.env.CLINICIAN_GROUP_NAME || 'osa-clinician';
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': ORIGIN,
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-};
+function getAllowedOrigin(event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : '';
+}
 
-const ok = (body, code = 200) => ({
+function buildHeaders(event) {
+  const allowedOrigin = getAllowedOrigin(event);
+  return {
+    'Content-Type': 'application/json',
+    ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, 'Vary': 'Origin' } : {}),
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    'Cache-Control': 'no-store',
+    'Pragma': 'no-cache',
+    'Referrer-Policy': 'no-referrer',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'X-Content-Type-Options': 'nosniff',
+  };
+}
+
+const ok = (event, body, code = 200) => ({
   statusCode: code,
-  headers,
+  headers: buildHeaders(event),
   body: JSON.stringify(body),
 });
 
-const fail = (msg, code = 400) => ({
+const fail = (event, msg, code = 400) => ({
   statusCode: code,
-  headers,
+  headers: buildHeaders(event),
   body: JSON.stringify({ error: msg }),
 });
 
@@ -87,78 +106,105 @@ function derivePatientStatus(milestones, fallbackStatus = 'Initial Eval') {
     : (fallbackStatus || 'Initial Eval');
 }
 
+function getUserGroups(event) {
+  const rawGroups = event?.requestContext?.authorizer?.jwt?.claims?.['cognito:groups'];
+  if (!rawGroups) return [];
+  if (Array.isArray(rawGroups)) return rawGroups.map(group => String(group).trim()).filter(Boolean);
+  return String(rawGroups)
+    .split(',')
+    .map(group => group.trim())
+    .filter(Boolean);
+}
+
+function hasRequiredGroup(userGroups, allowedGroups) {
+  return allowedGroups.some(group => userGroups.includes(group));
+}
+
 /* ── Route dispatcher ─────────────────────────────────────── */
 export async function handler(event) {
   const method = event.requestContext?.http?.method || event.httpMethod;
   const path = event.requestContext?.http?.path || event.path;
   const user = event.requestContext?.authorizer?.jwt?.claims?.email || 'unknown';
+  const userGroups = getUserGroups(event);
 
   try {
+    if (method === 'OPTIONS') {
+      return ok(event, {});
+    }
+
     // GET /patients/search?q=...
     if (method === 'GET' && path === '/patients/search') {
-      return await searchPatients(event.queryStringParameters);
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      return await searchPatients(event, event.queryStringParameters);
     }
     // GET /patients/:id
     if (method === 'GET' && path.match(/^\/patients\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const id = path.split('/').pop();
-      return await getPatient(id);
+      return await getPatient(event, id);
     }
     // GET /patients
     if (method === 'GET' && path === '/patients') {
-      return await listPatients();
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      return await listPatients(event);
     }
     // POST /patients
     if (method === 'POST' && path === '/patients') {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const body = JSON.parse(event.body || '{}');
-      return await createPatient(body, user);
+      return await createPatient(event, body, user);
     }
     // PUT /patients/:id
     if (method === 'PUT' && path.match(/^\/patients\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const id = path.split('/').pop();
       const body = JSON.parse(event.body || '{}');
-      return await updatePatient(id, body, user);
+      return await updatePatient(event, id, body, user);
     }
     // DELETE /patients/:id
     if (method === 'DELETE' && path.match(/^\/patients\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const id = path.split('/').pop();
-      return await deletePatient(id, user);
+      return await deletePatient(event, id, user);
     }
 
     // ── Intake Token Management Routes ──────────────────────
     // POST /intake-tokens — generate a new intake token for a patient
     if (method === 'POST' && path === '/intake-tokens') {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const body = JSON.parse(event.body || '{}');
-      return await createIntakeToken(body, user);
+      return await createIntakeToken(event, body, user);
     }
     // GET /intake-tokens/:patientId — list active tokens for a patient
     if (method === 'GET' && path.match(/^\/intake-tokens\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const patientId = path.split('/').pop();
-      return await listIntakeTokens(patientId);
+      return await listIntakeTokens(event, patientId);
     }
     // DELETE /intake-tokens/:tokenHash — revoke an active token
     if (method === 'DELETE' && path.match(/^\/intake-tokens\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const tokenHash = path.split('/').pop();
-      return await revokeIntakeToken(tokenHash, user);
+      return await revokeIntakeToken(event, tokenHash, user);
     }
 
-    return fail('Not found', 404);
+    return fail(event, 'Not found', 404);
   } catch (err) {
     // Log error type only — never log full error object (may contain PHI in stack/message)
     console.log(JSON.stringify({
       action: 'lambda_error',
       errorType: err.name || 'Error',
-      message: err.message || 'Unknown',
       timestamp: new Date().toISOString(),
     }));
-    return fail('Internal server error', 500);
+    return fail(event, 'Internal server error', 500);
   }
 }
 
 /* ── CRUD operations ──────────────────────────────────────── */
 
-async function createPatient(body, user) {
+async function createPatient(event, body, user) {
   const { name, dob, mrn, formData, status, milestones } = body;
-  if (!name || !dob) return fail('Name and DOB are required');
+  if (!name || !dob) return fail(event, 'Name and DOB are required');
 
   const now = new Date().toISOString();
   const normalizedMilestones = normalizeMilestones(milestones, status || 'Initial Eval');
@@ -185,19 +231,19 @@ async function createPatient(body, user) {
   };
 
   await ddb.send(new PutCommand({ TableName: TABLE, Item: item }));
-  return ok(item, 201);
+  return ok(event, item, 201);
 }
 
-async function getPatient(id) {
+async function getPatient(event, id) {
   const { Item } = await ddb.send(new GetCommand({
     TableName: TABLE,
     Key: { patientId: id },
   }));
-  if (!Item || Item.isDeleted) return fail('Patient not found', 404);
-  return ok(Item);
+  if (!Item || Item.isDeleted) return fail(event, 'Patient not found', 404);
+  return ok(event, Item);
 }
 
-async function listPatients() {
+async function listPatients(event) {
   const { Items } = await ddb.send(new ScanCommand({
     TableName: TABLE,
     ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt',
@@ -209,18 +255,18 @@ async function listPatients() {
   const sorted = (Items || []).sort((a, b) =>
     (b.updatedAt || '').localeCompare(a.updatedAt || '')
   );
-  return ok(sorted);
+  return ok(event, sorted);
 }
 
-async function updatePatient(id, body, user) {
+async function updatePatient(event, id, body, user) {
   // Verify patient exists
   const { Item } = await ddb.send(new GetCommand({
     TableName: TABLE,
     Key: { patientId: id },
   }));
-  if (!Item || Item.isDeleted) return fail('Patient not found', 404);
+  if (!Item || Item.isDeleted) return fail(event, 'Patient not found', 404);
   if (!Number.isInteger(body.version)) {
-    return fail('This patient record was updated elsewhere. Reload before saving again.', 409);
+    return fail(event, 'This patient record was updated elsewhere. Reload before saving again.', 409);
   }
 
   const now = new Date().toISOString();
@@ -333,15 +379,15 @@ async function updatePatient(id, body, user) {
     })));
   } catch (err) {
     if (err.name === 'ConditionalCheckFailedException') {
-      return fail('This patient record was updated elsewhere. Reload before saving again.', 409);
+      return fail(event, 'This patient record was updated elsewhere. Reload before saving again.', 409);
     }
     throw err;
   }
 
-  return ok(Attributes);
+  return ok(event, Attributes);
 }
 
-async function deletePatient(id, user) {
+async function deletePatient(event, id, user) {
   const now = new Date().toISOString();
   const visit = [{
     date: now,
@@ -375,17 +421,17 @@ async function deletePatient(id, user) {
     })));
   } catch (err) {
     if (err.name === 'ConditionalCheckFailedException') {
-      return fail('Patient not found', 404);
+      return fail(event, 'Patient not found', 404);
     }
     throw err;
   }
 
-  return ok({ archived: Attributes?.patientId || id });
+  return ok(event, { archived: Attributes?.patientId || id });
 }
 
-async function searchPatients(params) {
+async function searchPatients(event, params) {
   const q = (params?.q || '').trim().toLowerCase();
-  if (!q) return ok([]);
+  if (!q) return ok(event, []);
 
   // Try MRN exact match first
   const { Items: mrnItems } = await ddb.send(new QueryCommand({
@@ -395,7 +441,7 @@ async function searchPatients(params) {
     FilterExpression: 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse',
     ExpressionAttributeValues: { ':mrn': q, ':isDeletedFalse': false },
   }));
-  if (mrnItems?.length) return ok(mrnItems);
+  if (mrnItems?.length) return ok(event, mrnItems);
 
   // Fall back to name scan (fine for small datasets)
   const { Items: nameItems } = await ddb.send(new ScanCommand({
@@ -403,7 +449,7 @@ async function searchPatients(params) {
     FilterExpression: '(attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse) AND contains(nameLower, :q)',
     ExpressionAttributeValues: { ':q': q, ':isDeletedFalse': false },
   }));
-  return ok(nameItems || []);
+  return ok(event, nameItems || []);
 }
 
 /* ── Intake Token Management ─────────────────────────────── */
@@ -413,9 +459,9 @@ async function searchPatients(params) {
  * Generate a time-limited, single-use intake token for a patient.
  * Token is returned once; only SHA-256 hash is stored.
  */
-async function createIntakeToken(body, user) {
+async function createIntakeToken(event, body, user) {
   const { patientId } = body;
-  if (!patientId) return fail('patientId is required');
+  if (!patientId) return fail(event, 'patientId is required');
 
   // Verify patient exists
   const { Item: patient } = await ddb.send(new GetCommand({
@@ -424,7 +470,7 @@ async function createIntakeToken(body, user) {
     ProjectionExpression: '#n, isDeleted',
     ExpressionAttributeNames: { '#n': 'name' },
   }));
-  if (!patient || patient.isDeleted) return fail('Patient not found', 404);
+  if (!patient || patient.isDeleted) return fail(event, 'Patient not found', 404);
 
   // Generate 256-bit cryptographically random token
   const rawToken = randomBytes(32).toString('base64url');
@@ -465,7 +511,7 @@ async function createIntakeToken(body, user) {
     timestamp: now.toISOString(),
   }));
 
-  return ok({
+  return ok(event, {
     token: rawToken,
     expiresAt: new Date(expiresAt * 1000).toISOString(),
   }, 201);
@@ -475,7 +521,7 @@ async function createIntakeToken(body, user) {
  * GET /intake-tokens/:patientId
  * List active/used tokens for a patient (for clinician revocation UI).
  */
-async function listIntakeTokens(patientId) {
+async function listIntakeTokens(event, patientId) {
   const { Items } = await ddb.send(new QueryCommand({
     TableName: TOKEN_TABLE,
     IndexName: 'patient-index',
@@ -497,14 +543,14 @@ async function listIntakeTokens(patientId) {
 
   // Sort by createdAt desc
   tokens.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return ok(tokens);
+  return ok(event, tokens);
 }
 
 /**
  * DELETE /intake-tokens/:tokenHash
  * Revoke an active token (sets status to 'revoked').
  */
-async function revokeIntakeToken(tokenHash, user) {
+async function revokeIntakeToken(event, tokenHash, user) {
   try {
     await ddb.send(new UpdateCommand({
       TableName: TOKEN_TABLE,
@@ -527,10 +573,10 @@ async function revokeIntakeToken(tokenHash, user) {
       timestamp: new Date().toISOString(),
     }));
 
-    return ok({ revoked: true });
+    return ok(event, { revoked: true });
   } catch (err) {
     if (err.name === 'ConditionalCheckFailedException') {
-      return fail('Token is not active or does not exist', 404);
+      return fail(event, 'Token is not active or does not exist', 404);
     }
     throw err;
   }

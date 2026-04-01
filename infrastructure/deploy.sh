@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # OSA Phenotyper – AWS Deployment Script
-# Usage: ./deploy.sh <admin-email> [region] [clinic-name]
+# Usage: ./deploy.sh <admin-email> [region] [clinic-name] <allowed-origins>
 #
 # Prerequisites:
 #   - AWS CLI installed and configured (aws configure)
@@ -10,9 +10,12 @@
 #
 set -euo pipefail
 
-ADMIN_EMAIL="${1:?Usage: ./deploy.sh <admin-email> [region] [clinic-name]}"
+USAGE="Usage: ./deploy.sh <admin-email> [region] [clinic-name] <allowed-origins>"
+
+ADMIN_EMAIL="${1:?${USAGE}}"
 REGION="${2:-us-east-1}"
 CLINIC="${3:-capital-ent}"
+ALLOWED_ORIGINS="${4:?${USAGE}}"
 STACK_NAME="osa-phenotyper-${CLINIC}"
 
 echo "═══════════════════════════════════════════════════"
@@ -21,6 +24,7 @@ echo "════════════════════════�
 echo "  Admin email : ${ADMIN_EMAIL}"
 echo "  Region      : ${REGION}"
 echo "  Clinic      : ${CLINIC}"
+echo "  Origins     : ${ALLOWED_ORIGINS}"
 echo "  Stack       : ${STACK_NAME}"
 echo "═══════════════════════════════════════════════════"
 echo ""
@@ -33,6 +37,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     ClinicName="${CLINIC}" \
     AdminEmail="${ADMIN_EMAIL}" \
+    AllowedOrigins="${ALLOWED_ORIGINS}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "${REGION}" \
   --no-fail-on-empty-changeset
@@ -86,6 +91,18 @@ CLIENT_ID=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
   --output text)
 
+ADMIN_GROUP=$(aws cloudformation describe-stacks \
+  --stack-name "${STACK_NAME}" \
+  --region "${REGION}" \
+  --query "Stacks[0].Outputs[?OutputKey=='AdminGroup'].OutputValue" \
+  --output text)
+
+CLINICIAN_GROUP=$(aws cloudformation describe-stacks \
+  --stack-name "${STACK_NAME}" \
+  --region "${REGION}" \
+  --query "Stacks[0].Outputs[?OutputKey=='ClinicianGroup'].OutputValue" \
+  --output text)
+
 # Update aws-config.js
 CONFIG_FILE="$(dirname "$0")/../js/aws-config.js"
 cat > "${CONFIG_FILE}" << EOF
@@ -99,30 +116,15 @@ const AWS_CONFIG = {
   userPoolId: '${POOL_ID}',
   userPoolClientId: '${CLIENT_ID}',
   apiUrl: '${API_URL}',
+  adminGroupName: '${ADMIN_GROUP}',
+  clinicianGroupName: '${CLINICIAN_GROUP}',
 };
 EOF
 
-# Associate WAF with API Gateway (if WAF exists)
-WAF_ARN=$(aws cloudformation describe-stacks \
-  --stack-name "${STACK_NAME}" \
-  --region "${REGION}" \
-  --query "Stacks[0].Outputs[?OutputKey=='WafWebAclArn'].OutputValue" \
-  --output text 2>/dev/null || echo "")
-
-API_ID=$(aws cloudformation describe-stacks \
-  --stack-name "${STACK_NAME}" \
-  --region "${REGION}" \
-  --query "Stacks[0].Outputs[?OutputKey=='ApiId'].OutputValue" \
-  --output text 2>/dev/null || echo "")
-API_STAGE_ARN="arn:aws:apigateway:${REGION}::/apis/${API_ID}/stages/\$default"
-
-if [ -n "${WAF_ARN}" ] && [ "${WAF_ARN}" != "None" ]; then
-  echo "Associating WAF with API Gateway..."
-  aws wafv2 associate-web-acl \
-    --web-acl-arn "${WAF_ARN}" \
-    --resource-arn "${API_STAGE_ARN}" \
-    --region "${REGION}" 2>/dev/null || echo "  (WAF association skipped — may require manual setup)"
-fi
+# Update intake page runtime URL + CSP connect-src origin
+INTAKE_FILE="$(dirname "$0")/../intake.html"
+perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${API_URL}#g" "${INTAKE_FILE}"
+perl -0pi -e "s#data-api-url=\"[^\"]*\"#data-api-url=\"${API_URL}\"#g" "${INTAKE_FILE}"
 
 echo ""
 echo "═══════════════════════════════════════════════════"
@@ -132,12 +134,13 @@ echo ""
 echo "  API URL      : ${API_URL}"
 echo "  User Pool    : ${POOL_ID}"
 echo "  Client ID    : ${CLIENT_ID}"
+echo "  Allowed CORS : ${ALLOWED_ORIGINS}"
 echo "  Intake page  : Served from your web server at /intake.html"
 echo ""
 echo "  Config written to: js/aws-config.js"
 echo ""
 echo "  A temporary password has been sent to: ${ADMIN_EMAIL}"
-echo "  Use it to sign in — you'll be prompted to set a new password."
+echo "  Use it to sign in — you'll be prompted to set a new password and configure MFA."
 echo ""
 echo "  Next steps:"
 echo "  1. Open the app in your browser"
