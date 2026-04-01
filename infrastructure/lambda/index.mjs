@@ -18,6 +18,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .filter(Boolean);
 const ADMIN_GROUP_NAME = process.env.ADMIN_GROUP_NAME || 'osa-admin';
 const CLINICIAN_GROUP_NAME = process.env.CLINICIAN_GROUP_NAME || 'osa-clinician';
+const REPORT_SNAPSHOT_LIMIT = 5;
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 function getAllowedOrigin(event) {
@@ -66,6 +67,78 @@ function canonicalFormValue(val) {
 
 function formValuesEqual(a, b) {
   return canonicalFormValue(a) === canonicalFormValue(b);
+}
+
+function cloneJson(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function buildFieldProvenance(existing, formData, source, user, timestamp) {
+  const provenance = (existing && typeof existing === 'object' && !Array.isArray(existing))
+    ? { ...existing }
+    : {};
+
+  if (!formData || typeof formData !== 'object' || Array.isArray(formData)) {
+    return provenance;
+  }
+
+  Object.keys(formData).forEach((field) => {
+    provenance[field] = {
+      source,
+      updatedAt: timestamp,
+      updatedBy: user,
+    };
+  });
+
+  return provenance;
+}
+
+function filterPendingMetadata(existing, pendingKeys) {
+  const next = {};
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) return next;
+  pendingKeys.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(existing, key)) {
+      next[key] = existing[key];
+    }
+  });
+  return next;
+}
+
+function buildReportSnapshots(existingSnapshots, payload, user, timestamp) {
+  if (!payload || typeof payload !== 'object') return existingSnapshots || [];
+
+  const patientReportHtml = typeof payload.patientReportHtml === 'string'
+    ? payload.patientReportHtml.trim()
+    : '';
+  if (!patientReportHtml) return existingSnapshots || [];
+
+  const analysisData = cloneJson(payload.analysisData || {});
+  const analysisJson = JSON.stringify(analysisData);
+  const stage = analysisData.primaryAHI === null || analysisData.primaryAHI === undefined
+    ? 'pre-study'
+    : 'post-study';
+
+  const snapshot = {
+    snapshotId: randomUUID(),
+    createdAt: timestamp,
+    createdBy: user,
+    reportDate: payload.reportDate || timestamp.split('T')[0],
+    patientName: String(payload.patientName || '').trim(),
+    stage,
+    severity: analysisData.severity || null,
+    primaryAHI: analysisData.primaryAHI ?? null,
+    phenotypes: Array.isArray(analysisData.phen) ? analysisData.phen.slice(0, 20) : [],
+    recTags: Array.isArray(analysisData.recTags) ? analysisData.recTags.map(rec => rec.tag).filter(Boolean).slice(0, 30) : [],
+    analysisData,
+    analysisHash: createHash('sha256').update(analysisJson).digest('hex'),
+    patientReportHtml,
+    patientReportHash: createHash('sha256').update(patientReportHtml).digest('hex'),
+    schemaVersion: 1,
+  };
+
+  const snapshots = Array.isArray(existingSnapshots) ? existingSnapshots.slice() : [];
+  snapshots.push(snapshot);
+  return snapshots.slice(-REPORT_SNAPSHOT_LIMIT);
 }
 
 const WORKFLOW_MILESTONES = [
@@ -135,7 +208,7 @@ export async function handler(event) {
     // GET /patients/search?q=...
     if (method === 'GET' && path === '/patients/search') {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      return await searchPatients(event, event.queryStringParameters);
+      return await searchPatients(event, event.queryStringParameters, userGroups);
     }
     // GET /patients/:id
     if (method === 'GET' && path.match(/^\/patients\/[^/]+$/)) {
@@ -146,7 +219,7 @@ export async function handler(event) {
     // GET /patients
     if (method === 'GET' && path === '/patients') {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      return await listPatients(event);
+      return await listPatients(event, event.queryStringParameters, userGroups);
     }
     // POST /patients
     if (method === 'POST' && path === '/patients') {
@@ -159,7 +232,7 @@ export async function handler(event) {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const id = path.split('/').pop();
       const body = JSON.parse(event.body || '{}');
-      return await updatePatient(event, id, body, user);
+      return await updatePatient(event, id, body, user, userGroups);
     }
     // DELETE /patients/:id
     if (method === 'DELETE' && path.match(/^\/patients\/[^/]+$/)) {
@@ -208,6 +281,7 @@ async function createPatient(event, body, user) {
 
   const now = new Date().toISOString();
   const normalizedMilestones = normalizeMilestones(milestones, status || 'Initial Eval');
+  const normalizedFormData = formData || {};
   const item = {
     patientId: randomUUID(),
     name: name.trim(),
@@ -216,12 +290,13 @@ async function createPatient(event, body, user) {
     mrn: (mrn || '').trim(),
     status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
     milestones: normalizedMilestones,
-    formData: formData || {},
+    formData: normalizedFormData,
+    fieldProvenance: buildFieldProvenance({}, normalizedFormData, 'clinician', user, now),
     visits: [{
       date: now,
       user,
       action: 'Created',
-      formSnapshot: formData || {},
+      formSnapshot: normalizedFormData,
     }],
     createdAt: now,
     updatedAt: now,
@@ -243,14 +318,21 @@ async function getPatient(event, id) {
   return ok(event, Item);
 }
 
-async function listPatients(event) {
-  const { Items } = await ddb.send(new ScanCommand({
+async function listPatients(event, params, userGroups) {
+  const includeArchived = String(params?.includeArchived || '').toLowerCase();
+  const showArchived = ['1', 'true', 'yes'].includes(includeArchived) && hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME]);
+  const scanParams = {
     TableName: TABLE,
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt',
-    FilterExpression: 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse',
-    ExpressionAttributeNames: { '#n': 'name', '#s': 'status' },
-    ExpressionAttributeValues: { ':isDeletedFalse': false },
-  }));
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
+  };
+
+  if (!showArchived) {
+    scanParams.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    scanParams.ExpressionAttributeValues = { ':isDeletedFalse': false };
+  }
+
+  const { Items } = await ddb.send(new ScanCommand(scanParams));
   // Sort by most recently updated
   const sorted = (Items || []).sort((a, b) =>
     (b.updatedAt || '').localeCompare(a.updatedAt || '')
@@ -258,13 +340,59 @@ async function listPatients(event) {
   return ok(event, sorted);
 }
 
-async function updatePatient(event, id, body, user) {
+async function updatePatient(event, id, body, user, userGroups) {
   // Verify patient exists
   const { Item } = await ddb.send(new GetCommand({
     TableName: TABLE,
     Key: { patientId: id },
   }));
-  if (!Item || Item.isDeleted) return fail(event, 'Patient not found', 404);
+  if (!Item) return fail(event, 'Patient not found', 404);
+  const isRestore = body.restore === true;
+  if (Item.isDeleted && !isRestore) return fail(event, 'Patient not found', 404);
+  if (isRestore && !hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+
+  if (isRestore) {
+    const now = new Date().toISOString();
+    const restoredStatus = derivePatientStatus(Item.milestones, 'Initial Eval');
+    const visit = [{
+      date: now,
+      user,
+      action: 'Restored',
+    }];
+
+    let Attributes;
+    try {
+      ({ Attributes } = await ddb.send(new UpdateCommand({
+        TableName: TABLE,
+        Key: { patientId: id },
+        UpdateExpression: 'SET #u = :now, #ub = :user, #s = :status, #visits = list_append(if_not_exists(#visits, :emptyList), :visit) REMOVE isDeleted, deletedAt, deletedBy',
+        ConditionExpression: 'attribute_exists(patientId) AND isDeleted = :true',
+        ExpressionAttributeNames: {
+          '#u': 'updatedAt',
+          '#ub': 'updatedBy',
+          '#s': 'status',
+          '#visits': 'visits',
+        },
+        ExpressionAttributeValues: {
+          ':true': true,
+          ':now': now,
+          ':user': user,
+          ':status': restoredStatus,
+          ':emptyList': [],
+          ':visit': visit,
+        },
+        ReturnValues: 'ALL_NEW',
+      })));
+    } catch (err) {
+      if (err.name === 'ConditionalCheckFailedException') {
+        return fail(event, 'Patient not found', 404);
+      }
+      throw err;
+    }
+
+    return ok(event, Attributes);
+  }
+
   if (!Number.isInteger(body.version)) {
     return fail(event, 'This patient record was updated elsewhere. Reload before saving again.', 409);
   }
@@ -278,7 +406,11 @@ async function updatePatient(event, id, body, user) {
   const currentPendingOverrides = (Item.intakePendingOverrides && typeof Item.intakePendingOverrides === 'object')
     ? Item.intakePendingOverrides
     : {};
+  const currentPendingProvenance = (Item.intakePendingProvenance && typeof Item.intakePendingProvenance === 'object')
+    ? Item.intakePendingProvenance
+    : {};
   let remainingPendingOverrides = currentPendingOverrides;
+  let remainingPendingProvenance = currentPendingProvenance;
 
   // Build visit entry
   const visit = {
@@ -324,6 +456,9 @@ async function updatePatient(event, id, body, user) {
   if (formData !== undefined) {
     expr += ', formData = :fd';
     updates[':fd'] = formData;
+    expr += ', #fp = :fp';
+    names['#fp'] = 'fieldProvenance';
+    updates[':fp'] = buildFieldProvenance(Item.fieldProvenance, formData, 'clinician', user, now);
 
     if (Object.keys(currentPendingOverrides).length) {
       remainingPendingOverrides = {};
@@ -332,6 +467,7 @@ async function updatePatient(event, id, body, user) {
           remainingPendingOverrides[key] = pendingValue;
         }
       }
+      remainingPendingProvenance = filterPendingMetadata(currentPendingProvenance, Object.keys(remainingPendingOverrides));
 
       if (Object.keys(remainingPendingOverrides).length) {
         expr += ', #ipo = :ipo, #ipfc = :ipfc, #is = :reviewNeeded';
@@ -341,13 +477,17 @@ async function updatePatient(event, id, body, user) {
         updates[':ipo'] = remainingPendingOverrides;
         updates[':ipfc'] = Object.keys(remainingPendingOverrides).length;
         updates[':reviewNeeded'] = 'review-needed';
+        expr += ', #ipp = :ipp';
+        names['#ipp'] = 'intakePendingProvenance';
+        updates[':ipp'] = remainingPendingProvenance;
       } else {
         expr += ', #is = :reviewed, intakeReviewedAt = :now';
         names['#is'] = 'intakeStatus';
         updates[':reviewed'] = 'reviewed';
-        removeExpr.push('#ipo', '#ipfc');
+        removeExpr.push('#ipo', '#ipfc', '#ipp');
         names['#ipo'] = 'intakePendingOverrides';
         names['#ipfc'] = 'intakePendingFieldCount';
+        names['#ipp'] = 'intakePendingProvenance';
       }
     }
   }
@@ -360,6 +500,16 @@ async function updatePatient(event, id, body, user) {
     expr += ', #s = :status';
     updates[':status'] = status;
     names['#s'] = 'status';
+  }
+  if (body.reportSnapshot !== undefined) {
+    const reportSnapshots = buildReportSnapshots(Item.reportSnapshots, body.reportSnapshot, user, now);
+    expr += ', #rs = :rs, #rsc = :rsc, #lrs = :lrs';
+    names['#rs'] = 'reportSnapshots';
+    names['#rsc'] = 'reportSnapshotCount';
+    names['#lrs'] = 'latestReportSnapshotAt';
+    updates[':rs'] = reportSnapshots;
+    updates[':rsc'] = reportSnapshots.length;
+    updates[':lrs'] = now;
   }
 
   if (removeExpr.length) {
@@ -429,26 +579,38 @@ async function deletePatient(event, id, user) {
   return ok(event, { archived: Attributes?.patientId || id });
 }
 
-async function searchPatients(event, params) {
+async function searchPatients(event, params, userGroups) {
   const q = (params?.q || '').trim().toLowerCase();
   if (!q) return ok(event, []);
+  const includeArchived = String(params?.includeArchived || '').toLowerCase();
+  const showArchived = ['1', 'true', 'yes'].includes(includeArchived) && hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME]);
 
   // Try MRN exact match first
-  const { Items: mrnItems } = await ddb.send(new QueryCommand({
+  const mrnQuery = {
     TableName: TABLE,
     IndexName: 'mrn-index',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, isDeleted, deletedAt, #v, reportSnapshotCount',
     KeyConditionExpression: 'mrn = :mrn',
-    FilterExpression: 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse',
+    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
     ExpressionAttributeValues: { ':mrn': q, ':isDeletedFalse': false },
-  }));
+  };
+  if (!showArchived) {
+    mrnQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+  }
+  const { Items: mrnItems } = await ddb.send(new QueryCommand(mrnQuery));
   if (mrnItems?.length) return ok(event, mrnItems);
 
   // Fall back to name scan (fine for small datasets)
-  const { Items: nameItems } = await ddb.send(new ScanCommand({
+  const nameScan = {
     TableName: TABLE,
-    FilterExpression: '(attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse) AND contains(nameLower, :q)',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
     ExpressionAttributeValues: { ':q': q, ':isDeletedFalse': false },
-  }));
+  };
+  nameScan.FilterExpression = showArchived
+    ? 'contains(nameLower, :q)'
+    : '(attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse) AND contains(nameLower, :q)';
+  const { Items: nameItems } = await ddb.send(new ScanCommand(nameScan));
   return ok(event, nameItems || []);
 }
 

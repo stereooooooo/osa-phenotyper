@@ -36,8 +36,9 @@ const OSADatabase = (function () {
 
   /* ── CRUD Operations ─────────────────────────────────────── */
 
-  async function listPatients() {
-    return apiFetch('/patients');
+  async function listPatients(includeArchived = false) {
+    const suffix = includeArchived ? '?includeArchived=true' : '';
+    return apiFetch(`/patients${suffix}`);
   }
 
   async function getPatient(id) {
@@ -58,14 +59,22 @@ const OSADatabase = (function () {
     });
   }
 
+  async function restorePatient(id) {
+    return apiFetch(`/patients/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ restore: true }),
+    });
+  }
+
   async function deletePatient(id) {
     return apiFetch(`/patients/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   }
 
-  async function searchPatients(query) {
-    return apiFetch(`/patients/search?q=${encodeURIComponent(query)}`);
+  async function searchPatients(query, includeArchived = false) {
+    const archivedParam = includeArchived ? '&includeArchived=true' : '';
+    return apiFetch(`/patients/search?q=${encodeURIComponent(query)}${archivedParam}`);
   }
 
   /* ── Intake Token Operations ─────────────────────────────── */
@@ -163,6 +172,7 @@ const OSADatabase = (function () {
     getPatient,
     createPatient,
     updatePatient,
+    restorePatient,
     deletePatient,
     searchPatients,
     createIntakeToken,

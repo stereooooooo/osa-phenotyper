@@ -254,6 +254,33 @@ function formValuesEqual(a, b) {
   return canonicalFormValue(a) === canonicalFormValue(b);
 }
 
+function updateFieldProvenance(existing, fields, source, user, timestamp) {
+  const provenance = (existing && typeof existing === 'object' && !Array.isArray(existing))
+    ? { ...existing }
+    : {};
+
+  fields.forEach((field) => {
+    provenance[field] = {
+      source,
+      updatedAt: timestamp,
+      updatedBy: user,
+    };
+  });
+
+  return provenance;
+}
+
+function filterPendingMetadata(existing, pendingKeys) {
+  const next = {};
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) return next;
+  pendingKeys.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(existing, key)) {
+      next[key] = existing[key];
+    }
+  });
+  return next;
+}
+
 function hasMeaningfulIntakeValue(key, val) {
   if (CHECKBOX_STYLE_FORM_KEYS.has(key)) return val !== undefined && val !== null;
   return !isEmptyLike(val);
@@ -666,7 +693,7 @@ async function handlePostIntake(event, rawToken, rawBody) {
   const { Item: patient } = await ddb.send(new GetCommand({
     TableName: PATIENT_TABLE,
     Key: { patientId: tokenRecord.patientId },
-    ProjectionExpression: 'patientId, formData, intakePendingOverrides, isDeleted, #v',
+    ProjectionExpression: 'patientId, formData, fieldProvenance, intakePendingOverrides, intakePendingProvenance, isDeleted, #v',
     ExpressionAttributeNames: { '#v': 'version' },
   }));
 
@@ -685,6 +712,20 @@ async function handlePostIntake(event, rawToken, rawBody) {
     patient.intakePendingOverrides
   );
   const pendingOverrideKeys = Object.keys(mergeResult.pendingOverrides);
+  const nextFieldProvenance = updateFieldProvenance(
+    patient.fieldProvenance,
+    mergeResult.appliedFields,
+    'patient-intake',
+    'patient-intake',
+    now
+  );
+  const nextPendingProvenance = updateFieldProvenance(
+    filterPendingMetadata(patient.intakePendingProvenance, pendingOverrideKeys),
+    pendingOverrideKeys,
+    'patient-intake-pending',
+    'patient-intake',
+    now
+  );
   const currentVersion = Number.isInteger(patient.version) ? patient.version : 1;
   const nextVersion = currentVersion + 1;
   const visitEntry = {
@@ -700,15 +741,18 @@ async function handlePostIntake(event, rawToken, rawBody) {
     '#intakeReceivedAt': 'intakeReceivedAt',
     '#visits': 'visits',
     '#version': 'version',
+    '#fieldProvenance': 'fieldProvenance',
     '#intakeAppliedFieldCount': 'intakeAppliedFieldCount',
     '#intakePendingFieldCount': 'intakePendingFieldCount',
     '#intakePendingOverrides': 'intakePendingOverrides',
+    '#intakePendingProvenance': 'intakePendingProvenance',
   };
   const exprValues = {
     ':used': 'used',
     ':active': 'active',
     ':now': now,
     ':fd': mergeResult.mergedFormData,
+    ':fieldProvenance': nextFieldProvenance,
     ':updatedBy': 'patient-intake',
     ':intakeStatus': pendingOverrideKeys.length ? 'review-needed' : 'received',
     ':visit': [visitEntry],
@@ -722,15 +766,16 @@ async function handlePostIntake(event, rawToken, rawBody) {
     ? 'attribute_exists(patientId) AND #version = :expectedVersion'
     : 'attribute_exists(patientId) AND attribute_not_exists(#version)';
   let patientUpdateExpression =
-    'SET #fd = :fd, #updatedAt = :now, #updatedBy = :updatedBy, #intakeStatus = :intakeStatus, ' +
+    'SET #fd = :fd, #fieldProvenance = :fieldProvenance, #updatedAt = :now, #updatedBy = :updatedBy, #intakeStatus = :intakeStatus, ' +
     '#intakeReceivedAt = :now, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), ' +
     '#version = :nextVersion, #intakeAppliedFieldCount = :appliedCount, #intakePendingFieldCount = :pendingCount';
 
   if (pendingOverrideKeys.length) {
     exprValues[':pendingOverrides'] = mergeResult.pendingOverrides;
-    patientUpdateExpression += ', #intakePendingOverrides = :pendingOverrides';
+    exprValues[':pendingProvenance'] = nextPendingProvenance;
+    patientUpdateExpression += ', #intakePendingOverrides = :pendingOverrides, #intakePendingProvenance = :pendingProvenance';
   } else {
-    patientUpdateExpression += ' REMOVE #intakePendingOverrides';
+    patientUpdateExpression += ' REMOVE #intakePendingOverrides, #intakePendingProvenance';
   }
 
   try {

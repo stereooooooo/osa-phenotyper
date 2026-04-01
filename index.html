@@ -103,8 +103,14 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="patientListLabel"><i class="bi bi-people"></i> Patient List</h5>
-        <div class="ms-auto me-3" style="width:250px;">
+        <div class="ms-auto d-flex align-items-center gap-3 me-3">
+          <div class="form-check form-switch small mb-0 d-none" id="archivedToggleWrap">
+            <input class="form-check-input" type="checkbox" role="switch" id="toggleArchivedPatients">
+            <label class="form-check-label" for="toggleArchivedPatients">Show archived</label>
+          </div>
+          <div style="width:250px;">
           <input type="text" id="patientSearch" class="form-control form-control-sm" placeholder="Search by name or MRN...">
+          </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -186,13 +192,19 @@
 <!-- ===== Patient Identifier Bar ===== -->
 <div class="card mb-3 border-primary" id="patientIdBar" style="display:none;">
   <div class="card-body py-2">
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
       <span class="badge bg-primary" id="patientStatusBadge">New Patient</span>
       <strong id="patientNameDisplay"></strong>
       <span class="text-muted small" id="patientDobDisplay"></span>
       <span class="text-muted small" id="patientMrnDisplay"></span>
       <span id="intakeStatusBadge" class="d-none"></span>
-      <span class="ms-auto d-flex align-items-center gap-2">
+      <span class="ms-auto d-flex align-items-center gap-2 flex-wrap justify-content-end">
+        <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnFieldProvenance" title="View where current chart fields came from">
+          <i class="bi bi-journal-medical"></i> Provenance
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnReportSnapshots" title="View saved report snapshots">
+          <i class="bi bi-clock-history"></i> Snapshots
+        </button>
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnIntakeLink" title="Generate a secure intake questionnaire link for the patient">
           <i class="bi bi-link-45deg"></i> Intake Link
         </button>
@@ -626,11 +638,72 @@
     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCloseReport">
       <i class="bi bi-x-lg"></i> Close Preview
     </button>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="btnSaveReportSnapshot">
+      <i class="bi bi-folder-check"></i> Save Snapshot
+    </button>
     <button type="button" class="btn btn-success btn-sm" id="btnDownloadReportPdf">
       <i class="bi bi-file-earmark-pdf"></i> Download PDF
     </button>
   </div>
   <div id="reportPreviewContent"></div>
+</div>
+
+<!-- Field Provenance Modal -->
+<div class="modal fade" id="fieldProvenanceModal" tabindex="-1" aria-labelledby="fieldProvenanceLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="fieldProvenanceLabel"><i class="bi bi-journal-medical"></i> Field Provenance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="fieldProvenanceEmpty" class="text-muted small">No provenance metadata is available for this chart yet.</div>
+        <div class="table-responsive d-none" id="fieldProvenanceTableWrap">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Field</th>
+                <th>Value</th>
+                <th>Source</th>
+                <th>Updated</th>
+                <th>By</th>
+              </tr>
+            </thead>
+            <tbody id="fieldProvenanceBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report Snapshots Modal -->
+<div class="modal fade" id="reportSnapshotsModal" tabindex="-1" aria-labelledby="reportSnapshotsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reportSnapshotsLabel"><i class="bi bi-clock-history"></i> Report Snapshots</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="reportSnapshotsEmpty" class="text-muted small">No saved report snapshots yet.</div>
+        <div class="table-responsive d-none" id="reportSnapshotsTableWrap">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Saved</th>
+                <th>Report Date</th>
+                <th>Summary</th>
+                <th>By</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="reportSnapshotsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -906,9 +979,11 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 
   let currentPatientId = null;
   let currentPatientVersion = null;
+  let currentPatientRecord = null;
   let pendingCognitoUser = null;
   let currentUserGroups = [];
   let currentUserIsAdmin = false;
+  let showArchivedPatients = false;
   const adminGroupName = (typeof AWS_CONFIG !== 'undefined' && AWS_CONFIG.adminGroupName) || 'osa-admin';
   const workflowMilestones = [
     'Initial Eval',
@@ -963,6 +1038,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       currentUserGroups = Array.isArray(groups) ? groups : [];
       currentUserIsAdmin = currentUserGroups.includes(adminGroupName);
       document.getElementById('userEmail').textContent = email || '';
+      document.getElementById('archivedToggleWrap').classList.toggle('d-none', !currentUserIsAdmin);
     });
     OSAAuth.startIdleWatch(() => {
       alert('Session expired due to inactivity. Please sign in again.');
@@ -981,11 +1057,15 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     clearError();
     currentPatientId = null;
     currentPatientVersion = null;
+    currentPatientRecord = null;
     currentUserGroups = [];
     currentUserIsAdmin = false;
+    showArchivedPatients = false;
     document.getElementById('mfaCode').value = '';
     document.getElementById('mfaSetupCode').value = '';
     document.getElementById('mfaSetupSecret').textContent = '';
+    document.getElementById('toggleArchivedPatients').checked = false;
+    document.getElementById('archivedToggleWrap').classList.add('d-none');
   }
 
   async function startMfaSetup(cognitoUser) {
@@ -1093,11 +1173,18 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 
   // ── Patient list ────────────────────────────────────────────
   const patientListModal = new bootstrap.Modal(document.getElementById('patientListModal'));
+  const fieldProvenanceModal = new bootstrap.Modal(document.getElementById('fieldProvenanceModal'));
+  const reportSnapshotsModal = new bootstrap.Modal(document.getElementById('reportSnapshotsModal'));
   let patientListDebounce = null;
 
   document.getElementById('btnPatientList').addEventListener('click', async () => {
     patientListModal.show();
     await loadPatientList();
+  });
+
+  document.getElementById('toggleArchivedPatients').addEventListener('change', async (e) => {
+    showArchivedPatients = e.target.checked;
+    await loadPatientList(document.getElementById('patientSearch').value.trim() || undefined);
   });
 
   async function loadPatientList(query) {
@@ -1113,8 +1200,8 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 
     try {
       const patients = query
-        ? await OSADatabase.searchPatients(query)
-        : await OSADatabase.listPatients();
+        ? await OSADatabase.searchPatients(query, showArchivedPatients)
+        : await OSADatabase.listPatients(showArchivedPatients);
 
       loading.classList.add('d-none');
 
@@ -1144,24 +1231,32 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
           'Efficacy Study': 'success',
         };
         const latestMs = getLatestMilestone(p, 'New');
-        const color = statusColors[latestMs] || 'secondary';
+        const isArchived = !!p.isDeleted;
+        const displayStatus = isArchived ? 'Archived' : latestMs;
+        const color = isArchived ? 'dark' : (statusColors[latestMs] || 'secondary');
         const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : '';
-        const archiveButton = currentUserIsAdmin
+        const archiveButton = currentUserIsAdmin && !isArchived
           ? `<button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Archive">
               <i class="bi bi-archive"></i>
             </button>`
           : '';
+        const restoreButton = currentUserIsAdmin && isArchived
+          ? `<button class="btn btn-sm btn-outline-success btn-restore-patient" data-id="${p.patientId}" title="Restore">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>`
+          : '';
+        tr.classList.toggle('table-secondary', isArchived);
         tr.innerHTML = `
           <td><strong>${escHtml(p.name || '')}</strong></td>
           <td>${escHtml(p.dob || '')}</td>
           <td><code>${escHtml(p.mrn || '—')}</code></td>
-          <td><span class="badge bg-${color}">${escHtml(latestMs)}</span></td>
+          <td><span class="badge bg-${color}">${escHtml(displayStatus)}</span></td>
           <td class="text-muted small">${updated}</td>
-          <td>${archiveButton}</td>`;
+          <td class="text-end">${restoreButton || archiveButton}</td>`;
 
         // Click row to load patient (but not if clicking delete)
         tr.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-delete-patient')) return;
+          if (e.target.closest('.btn-delete-patient') || e.target.closest('.btn-restore-patient') || isArchived) return;
           loadPatient(p.patientId);
           patientListModal.hide();
         });
@@ -1181,6 +1276,19 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
             await loadPatientList(document.getElementById('patientSearch').value.trim());
           } catch (err) {
             alert('Failed to archive: ' + err.message);
+          }
+        });
+      });
+      tbody.querySelectorAll('.btn-restore-patient').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          if (!confirm('Restore this archived patient record to the active list?')) return;
+          try {
+            await OSADatabase.restorePatient(id);
+            await loadPatientList(document.getElementById('patientSearch').value.trim());
+          } catch (err) {
+            alert('Failed to restore: ' + err.message);
           }
         });
       });
@@ -1212,6 +1320,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       const patient = await OSADatabase.getPatient(id);
       currentPatientId = patient.patientId;
       currentPatientVersion = Number.isInteger(patient.version) ? patient.version : 1;
+      currentPatientRecord = patient;
 
       // Fill patient info fields
       document.getElementById('patientName').value = patient.name || '';
@@ -1255,12 +1364,162 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     document.getElementById('patientLastSaved').textContent = patient.updatedAt
       ? 'Last saved: ' + new Date(patient.updatedAt).toLocaleString()
       : '';
+    const provenanceButton = document.getElementById('btnFieldProvenance');
+    const snapshotButton = document.getElementById('btnReportSnapshots');
+    provenanceButton.classList.toggle('d-none', !patient.patientId);
+    snapshotButton.classList.toggle('d-none', !patient.patientId);
+    const snapshotCount = Number.isInteger(patient.reportSnapshotCount)
+      ? patient.reportSnapshotCount
+      : (Array.isArray(patient.reportSnapshots) ? patient.reportSnapshots.length : 0);
+    snapshotButton.innerHTML = `<i class="bi bi-clock-history"></i> Snapshots${snapshotCount ? ` (${snapshotCount})` : ''}`;
   }
 
   function formatPendingIntakeValue(value) {
     if (value === true || value === 'on' || value === 'true') return 'Yes';
     if (value === false || value === '' || value === 'false' || value === null || value === undefined) return 'No';
     return String(value);
+  }
+
+  const chartFieldLabels = {
+    age: 'Age',
+    sex: 'Sex',
+    bmi: 'BMI',
+    neck: 'Neck circumference',
+    tonsils: 'Tonsils',
+    ftp: 'Friedman Tongue Position',
+    retrognathia: 'Retrognathia',
+    ess: 'ESS',
+    isi: 'ISI',
+    noseScore: 'NOSE score',
+    nasalObs: 'Nasal obstruction',
+    snoringReported: 'Snoring',
+    prefAvoidCpap: 'Prefers to avoid CPAP',
+    prefSurgery: 'Open to surgery',
+    prefInspire: 'Interested in Inspire',
+    priorUPPP: 'Prior throat surgery',
+    priorNasal: 'Prior nasal surgery',
+    priorSinus: 'Prior sinus surgery',
+    priorJaw: 'Prior jaw surgery',
+    priorInspire: 'Prior Inspire implant',
+    priorMAD: 'Prior oral appliance',
+    priorCpap: 'Prior CPAP use',
+    cpapCurrent: 'Currently using CPAP',
+    cpapHelped: 'CPAP improvement',
+    cpapRetry: 'Open to retrying CPAP',
+    cpapPressure: 'CPAP pressure',
+    cpapMask: 'CPAP mask discomfort',
+    cpapClaustro: 'CPAP claustrophobia',
+    cpapDry: 'CPAP dryness',
+    cpapLeaks: 'CPAP leaks/noise',
+    cpapSleep: 'CPAP trouble sleeping',
+    cpapSkin: 'CPAP skin irritation',
+    cpapNoImprove: 'CPAP no improvement',
+    cpapTravel: 'CPAP travel difficulty',
+    weightLossReadiness: 'Weight-management interest',
+  };
+
+  function getChartFieldLabel(key) {
+    return chartFieldLabels[key] || key;
+  }
+
+  function formatSourceLabel(source) {
+    return ({
+      clinician: 'Clinician entry',
+      'patient-intake': 'Patient intake',
+      'patient-intake-pending': 'Pending intake change',
+    })[source] || source || 'Unknown';
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  }
+
+  function renderFieldProvenanceModal(patient) {
+    const body = document.getElementById('fieldProvenanceBody');
+    const empty = document.getElementById('fieldProvenanceEmpty');
+    const wrap = document.getElementById('fieldProvenanceTableWrap');
+    body.innerHTML = '';
+
+    const formData = (patient && patient.formData && typeof patient.formData === 'object') ? patient.formData : {};
+    const provenance = (patient && patient.fieldProvenance && typeof patient.fieldProvenance === 'object') ? patient.fieldProvenance : {};
+    const pending = (patient && patient.intakePendingOverrides && typeof patient.intakePendingOverrides === 'object') ? patient.intakePendingOverrides : {};
+    const pendingProvenance = (patient && patient.intakePendingProvenance && typeof patient.intakePendingProvenance === 'object') ? patient.intakePendingProvenance : {};
+    const fields = [...new Set([...Object.keys(formData), ...Object.keys(provenance), ...Object.keys(pending)])].sort((a, b) => getChartFieldLabel(a).localeCompare(getChartFieldLabel(b)));
+
+    if (!fields.length) {
+      empty.classList.remove('d-none');
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    fields.forEach((field) => {
+      const tr = document.createElement('tr');
+      const isPending = Object.prototype.hasOwnProperty.call(pending, field);
+      const meta = isPending ? pendingProvenance[field] : provenance[field];
+      const value = isPending ? pending[field] : formData[field];
+      tr.innerHTML = `
+        <td><strong>${escHtml(getChartFieldLabel(field))}</strong>${isPending ? '<div class="small text-warning">Pending clinician review</div>' : ''}</td>
+        <td>${escHtml(formatPendingIntakeValue(value))}</td>
+        <td>${escHtml(formatSourceLabel(meta && meta.source))}</td>
+        <td>${escHtml(formatDateTime(meta && meta.updatedAt))}</td>
+        <td>${escHtml((meta && meta.updatedBy) || '—')}</td>`;
+      body.appendChild(tr);
+    });
+
+    empty.classList.add('d-none');
+    wrap.classList.remove('d-none');
+  }
+
+  function buildSnapshotSummary(snapshot) {
+    const parts = [];
+    if (snapshot.stage) parts.push(snapshot.stage === 'pre-study' ? 'Pre-study' : 'Post-study');
+    if (snapshot.severity) parts.push(String(snapshot.severity));
+    if (snapshot.primaryAHI !== null && snapshot.primaryAHI !== undefined) parts.push(`AHI ${snapshot.primaryAHI}`);
+    if (Array.isArray(snapshot.phenotypes) && snapshot.phenotypes.length) parts.push(snapshot.phenotypes.slice(0, 2).join(', '));
+    return parts.join(' | ') || 'Saved report snapshot';
+  }
+
+  function renderReportSnapshotsModal(patient) {
+    const body = document.getElementById('reportSnapshotsBody');
+    const empty = document.getElementById('reportSnapshotsEmpty');
+    const wrap = document.getElementById('reportSnapshotsTableWrap');
+    body.innerHTML = '';
+
+    const snapshots = Array.isArray(patient && patient.reportSnapshots) ? patient.reportSnapshots.slice().reverse() : [];
+    if (!snapshots.length) {
+      empty.classList.remove('d-none');
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    snapshots.forEach((snapshot) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escHtml(formatDateTime(snapshot.createdAt))}</td>
+        <td>${escHtml(snapshot.reportDate || '—')}</td>
+        <td>${escHtml(buildSnapshotSummary(snapshot))}</td>
+        <td>${escHtml(snapshot.createdBy || '—')}</td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-outline-primary btn-preview-snapshot" data-id="${escHtml(snapshot.snapshotId || '')}">
+            <i class="bi bi-eye"></i> Preview
+          </button>
+        </td>`;
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll('.btn-preview-snapshot').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const snapshot = snapshots.find(item => item.snapshotId === btn.dataset.id);
+        if (!snapshot || !snapshot.patientReportHtml) return;
+        reportSnapshotsModal.hide();
+        window.OSAReportState?.openHtmlSnapshot(snapshot.patientReportHtml, btn);
+      });
+    });
+
+    empty.classList.add('d-none');
+    wrap.classList.remove('d-none');
   }
 
   function renderIntakeReviewAlert(patient) {
@@ -1273,41 +1532,8 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       return;
     }
 
-    const labelMap = {
-      nasalObs: 'Nasal obstruction',
-      snoringReported: 'Snoring',
-      prefAvoidCpap: 'Prefers to avoid CPAP',
-      prefSurgery: 'Open to surgery',
-      prefInspire: 'Interested in Inspire',
-      priorUPPP: 'Prior throat surgery',
-      priorNasal: 'Prior nasal surgery',
-      priorSinus: 'Prior sinus surgery',
-      priorJaw: 'Prior jaw surgery',
-      priorInspire: 'Prior Inspire implant',
-      priorMAD: 'Prior oral appliance',
-      priorCpap: 'Prior CPAP use',
-      cpapCurrent: 'Currently using CPAP',
-      cpapHelped: 'CPAP improvement',
-      cpapRetry: 'Open to retrying CPAP',
-      cpapPressure: 'CPAP pressure',
-      cpapMask: 'CPAP mask discomfort',
-      cpapClaustro: 'CPAP claustrophobia',
-      cpapDry: 'CPAP dryness',
-      cpapLeaks: 'CPAP leaks/noise',
-      cpapSleep: 'CPAP trouble sleeping',
-      cpapSkin: 'CPAP skin irritation',
-      cpapNoImprove: 'CPAP no improvement',
-      cpapTravel: 'CPAP travel difficulty',
-      age: 'Age',
-      sex: 'Sex',
-      bmi: 'BMI',
-      ess: 'ESS',
-      isi: 'ISI',
-      noseScore: 'NOSE score',
-      weightLossReadiness: 'Weight-management interest',
-    };
     const items = pending.map(([key, value]) =>
-      `<li><strong>${escHtml(labelMap[key] || key)}</strong>: ${escHtml(formatPendingIntakeValue(value))}</li>`
+      `<li><strong>${escHtml(getChartFieldLabel(key))}</strong>: ${escHtml(formatPendingIntakeValue(value))}</li>`
     ).join('');
 
     alerts.innerHTML = `
@@ -1321,7 +1547,10 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   function clearCurrentPatient() {
     currentPatientId = null;
     currentPatientVersion = null;
+    currentPatientRecord = null;
     document.getElementById('patientIdBar').style.display = 'none';
+    document.getElementById('btnFieldProvenance').classList.add('d-none');
+    document.getElementById('btnReportSnapshots').classList.add('d-none');
     document.getElementById('patientName').value = '';
     document.getElementById('patientDob').value = '';
     document.getElementById('patientMrn').value = '';
@@ -1364,6 +1593,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         currentPatientId = patient.patientId;
       }
       currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+      currentPatientRecord = patient;
       updatePatientBar(patient);
       renderIntakeReviewAlert(patient);
       btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
@@ -1378,6 +1608,72 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       btn.disabled = false;
     }
   });
+
+  document.getElementById('btnFieldProvenance').addEventListener('click', () => {
+    if (!currentPatientRecord) return;
+    renderFieldProvenanceModal(currentPatientRecord);
+    fieldProvenanceModal.show();
+  });
+
+  document.getElementById('btnReportSnapshots').addEventListener('click', async () => {
+    if (!currentPatientId) return;
+    try {
+      const patient = await OSADatabase.getPatient(currentPatientId);
+      currentPatientRecord = patient;
+      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+      updatePatientBar(patient);
+      renderReportSnapshotsModal(patient);
+      reportSnapshotsModal.show();
+    } catch (err) {
+      alert('Could not load report snapshots: ' + err.message);
+    }
+  });
+
+  window.OSAChartActions = {
+    async saveReportSnapshot({ analysisData, patientReportHtml, reportDate, patientName, triggerEl }) {
+      if (!currentPatientId) {
+        alert('Save the patient chart before saving a report snapshot.');
+        return;
+      }
+
+      const button = document.getElementById('btnSaveReportSnapshot');
+      const originalHtml = button ? button.innerHTML : '';
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+      }
+
+      try {
+        const patient = await OSADatabase.updatePatient(currentPatientId, {
+          version: currentPatientVersion,
+          reportSnapshot: {
+            analysisData,
+            patientReportHtml,
+            reportDate,
+            patientName,
+          },
+          visitAction: 'Report snapshot saved',
+        });
+        currentPatientRecord = patient;
+        currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+        updatePatientBar(patient);
+        renderReportSnapshotsModal(patient);
+        alert('Report snapshot saved to the chart.');
+      } catch (err) {
+        if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
+          alert('This chart changed before the snapshot could be saved. Reload the patient record and try again.');
+        } else {
+          alert('Could not save report snapshot: ' + err.message);
+        }
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+          if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
+        }
+      }
+    }
+  };
 
   // ── Intake Link Management ──────────────────────────────────
   const intakeModal = new bootstrap.Modal(document.getElementById('intakeLinkModal'));

@@ -112,3 +112,14 @@
 | 61 | Mobile action stack | On mobile width, `Analyze / Generate Report / Save` actions should stack cleanly without clipped or side-scrolling buttons |
 | 62 | Report preview dialog focus | Opening the patient report preview should move focus into the dialog, trap tab navigation within it, and return focus to the trigger on close |
 | 63 | Heuristic signal wording | Clinician phenotype table should display `Signal Strength` with `Strong / Moderate / Limited signal`, plus the heuristic note, instead of validated-sounding `Confidence` labels |
+
+### Group 13: Chart Governance & Missing-Feature Regression Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 64 | Admin archived-list toggle | Admin enables `Show archived` in the patient list and sees archived rows with restore actions, while non-admin users never see the toggle |
+| 65 | Archived patient restore | Restoring an archived chart should return it to the active list with its prior milestone-derived status, without permitting standard load/edit while still archived |
+| 66 | Field provenance tracking | After clinician save and patient intake merge, loaded patient record should expose per-field provenance with source, updated timestamp, and actor for current chart values |
+| 67 | Pending intake provenance | Conflicting intake fields should appear in the provenance view as pending intake changes rather than overwriting the saved chart value silently |
+| 68 | Report snapshot save | Saving a report snapshot from the preview overlay should persist immutable patient-report HTML plus hashed analysis metadata, increment chart version, and append a visit entry |
+| 69 | Report snapshot history | Snapshot modal should list saved snapshots newest-first, allow frozen preview of prior reports, and cap retained snapshots to the configured history limit |
+| 70 | Snapshot save scope guardrail | Previewing a historical saved snapshot should disable the `Save Snapshot` action so clinicians cannot accidentally resave stale HTML as if it were the current live analysis |

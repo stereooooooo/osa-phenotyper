@@ -1656,6 +1656,7 @@ document.getElementById('form').addEventListener('submit', e => {
 // ── Patient Report Overlay ──────────────────────────────────────
 const reportOverlay = document.getElementById('reportOverlay');
 const reportCloseButton = document.getElementById('btnCloseReport');
+const saveReportSnapshotButton = document.getElementById('btnSaveReportSnapshot');
 let lastReportTrigger = null;
 
 function getReportFocusableElements() {
@@ -1668,9 +1669,16 @@ function openReportOverlay(triggerEl) {
   if (!lastAnalysisData || !reportOverlay) return;
   lastReportTrigger = triggerEl || document.activeElement;
   const html = PatientReport.generateReportHTML(lastAnalysisData);
+  openReportOverlayFromHtml(html, triggerEl, true);
+}
+
+function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false) {
+  if (!reportOverlay) return;
+  lastReportTrigger = triggerEl || document.activeElement;
   document.getElementById('reportPreviewContent').innerHTML = html;
   reportOverlay.classList.add('active');
   document.body.classList.add('report-preview-open');
+  if (saveReportSnapshotButton) saveReportSnapshotButton.disabled = !allowSnapshotSave;
   window.setTimeout(() => reportCloseButton?.focus(), 0);
 }
 
@@ -1684,6 +1692,18 @@ function closeReportOverlay() {
 
 document.getElementById('btnGenerateReport')?.addEventListener('click', (e) => {
   openReportOverlay(e.currentTarget);
+});
+
+document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', async (e) => {
+  if (!lastAnalysisData || !window.OSAChartActions?.saveReportSnapshot) return;
+  const currentHtml = document.getElementById('reportPreviewContent')?.innerHTML || '';
+  await window.OSAChartActions.saveReportSnapshot({
+    analysisData: lastAnalysisData,
+    patientReportHtml: currentHtml,
+    reportDate: lastAnalysisData.reportDate,
+    patientName: lastAnalysisData.patientName,
+    triggerEl: e.currentTarget,
+  });
 });
 
 reportCloseButton?.addEventListener('click', () => {
@@ -1719,3 +1739,9 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+window.OSAReportState = {
+  getLastAnalysisData: () => lastAnalysisData,
+  openHtmlSnapshot: (html, triggerEl) => openReportOverlayFromHtml(html, triggerEl, false),
+  closePreview: () => closeReportOverlay(),
+};
