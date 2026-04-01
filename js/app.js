@@ -1563,7 +1563,7 @@ document.getElementById('form').addEventListener('submit', e => {
     recTags: recTagMap.map(r => ({ text: r.text, tag: r.tag })),
     sex, bmi, neck,
     tonsils: tons,
-    ftp: Number(mall) || null,
+    ftp: mall || null,
     nasalObs, ctSeptum, ctTurbs,
     ess, isi, noseScore,
     studyType: f.get('studyType') || null,

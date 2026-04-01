@@ -40,6 +40,47 @@ var PatientReport = (() => {
       .replace(/"/g, '&quot;');
   }
 
+  function exists(val) {
+    return val !== null && val !== undefined && val !== '';
+  }
+
+  function normalizeFtp(ftp) {
+    if (!exists(ftp)) return null;
+    if (typeof ftp === 'number') return Number.isFinite(ftp) ? ftp : null;
+    const raw = String(ftp).trim().toUpperCase();
+    if (!raw) return null;
+    if (/^\d+$/.test(raw)) return Number(raw);
+    const romanMap = { I: 1, II: 2, III: 3, IV: 4 };
+    return romanMap[raw] || null;
+  }
+
+  function formatFtp(ftp) {
+    if (!exists(ftp)) return '';
+    return String(ftp).trim().toUpperCase();
+  }
+
+  function getPatientFacingRecEntries(data) {
+    const recTags = Array.isArray(data.recTags) ? data.recTags.slice() : [];
+    const isPreStudy = getReportStage(data) === 'pre-study';
+    if (isPreStudy) {
+      return recTags.filter(r => ['SLEEP-STUDY', 'CBTI', 'NASAL-OPT'].includes(r.tag));
+    }
+    if (exists(data.primaryAHI) && data.primaryAHI < 5) {
+      return recTags.filter(r => [
+        'UARS-EVAL',
+        'WEIGHT',
+        'NASAL-OPT',
+        'POS',
+        'MAD',
+        'SNORE-ALCOHOL',
+        'SNORE-LIFESTYLE',
+        'CBTI',
+        'SLEEP-STUDY'
+      ].includes(r.tag));
+    }
+    return recTags;
+  }
+
   /* ── Helper: determine visit context ──────────────────────────────────── */
   function getVisitContext(data) {
     const ms = Array.isArray(data.milestones) ? data.milestones : [];
@@ -160,7 +201,7 @@ var PatientReport = (() => {
     <div class="report-title" style="margin-top:0.5rem;">${esc(title)}</div>
   </div>
   <div class="report-meta">
-    ${patName ? `<div style="font-weight:600;color:#374151;">${patName}</div>` : ''}
+    ${patName ? `<div class="report-patient-name">${patName}</div>` : ''}
     ${dateStr ? `<div>${dateStr}</div>` : ''}
   </div>
 </div>`;
@@ -306,12 +347,14 @@ ${questParts.join('')}`);
 
     /* — Exam findings — */
     const examParts = [];
+    const ftpNumeric = normalizeFtp(data.ftp);
+    const ftpLabel = formatFtp(data.ftp);
 
     if (data.tonsils !== null && data.tonsils !== undefined && +data.tonsils >= 3) {
       examParts.push(`<p>Your tonsils are enlarged (size ${+data.tonsils} out of 4). Large tonsils can narrow the back of the throat and reduce the space available for airflow during sleep.</p>`);
     }
-    if (data.ftp !== null && data.ftp !== undefined && +data.ftp >= 3) {
-      examParts.push(`<p>Your Friedman Tongue Position score is ${+data.ftp}, which means there is limited space at the back of your tongue and throat. This is a common physical finding in people who have trouble breathing at night.</p>`);
+    if (ftpNumeric !== null && ftpNumeric >= 3) {
+      examParts.push(`<p>Your Friedman Tongue Position score is <strong>${esc(ftpLabel || String(ftpNumeric))}</strong>, which means there is limited space at the back of your tongue and throat. This is a common physical finding in people who have trouble breathing at night.</p>`);
     }
     if (data.nasalObs) {
       examParts.push(`<p>Your exam showed signs of nasal obstruction — a physical narrowing or blockage inside the nose. When the nose is blocked, the body works harder to pull air through, which can worsen sleep-related breathing problems.</p>`);
@@ -631,9 +674,9 @@ ${items}`;
       return `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).`;
     }
 
-    /* Mild + Low HB: de-emphasized CPAP description — alternatives are equally effective */
+    /* Mild + Low HB: de-emphasized CPAP description with uncertainty-aware language */
     if (tag === 'CPAP' && data && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
-      return `<strong>CPAP Therapy</strong> — CPAP is an effective treatment for sleep apnea at all severity levels. However, for mild sleep apnea with your oxygen profile, research shows that other treatments — like an oral appliance or positional therapy — achieve comparable results. CPAP remains an option if you prefer it or if other treatments don't provide enough improvement. If you do try CPAP, modern machines with auto-adjusting pressure and heated humidifiers make it much more comfortable than older models.`;
+      return `<strong>CPAP Therapy</strong> — CPAP is an effective treatment for sleep apnea at all severity levels. However, for mild sleep apnea with your oxygen profile, other approaches — such as an oral appliance or positional therapy — may be reasonable first-line options and can provide similar patient-centered improvement for many people. CPAP remains an option if you prefer it or if other treatments don't provide enough improvement. If you do try CPAP, modern machines with auto-adjusting pressure and heated humidifiers make it much more comfortable than older models.`;
     }
 
     /* Enhanced CPAP description for severe patients with limited alternatives */
@@ -692,18 +735,14 @@ ${items}`;
   }
 
   function renderSectionD(data) {
-    const recTags = data.recTags || [];
+    const recTags = getPatientFacingRecEntries(data);
     if (recTags.length === 0) return '';
 
     /* ── Build deduplicated, ordered rec list ── */
     const seenDescriptions = new Set();
     const allRecs = [];  // {html, tag}
-
-    /* Pre-study snoring patients: inject lifestyle snoring rec */
     const isPreStudy = getReportStage(data) === 'pre-study';
-    if (isPreStudy && !recTags.some(r => r.tag === 'SNORE-LIFESTYLE')) {
-      recTags.push({ text: 'Snoring lifestyle modifications', tag: 'SNORE-LIFESTYLE' });
-    }
+    const isNormalStudy = exists(data.primaryAHI) && data.primaryAHI < 5;
 
     /* For COMISA patients: ensure CBT-I appears first */
     if (data.hasCOMISA) {
@@ -726,7 +765,8 @@ ${items}`;
 
     /* Mild + Low HB: move CPAP after alternatives so lifestyle/MAD/positional lead */
     const isMildLowHB = data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden;
-    if (isMildLowHB) {
+    const isCpapAvoidant = data.prefAvoidCpap && !data.cpapFailed;
+    if (isMildLowHB || isCpapAvoidant) {
       const cpapIdx = allRecs.findIndex(r => r.tag === 'CPAP');
       if (cpapIdx >= 0 && cpapIdx < allRecs.length - 1) {
         const [cpapRec] = allRecs.splice(cpapIdx, 1);
@@ -735,11 +775,17 @@ ${items}`;
     }
 
     /* ── Split into Start Now / Discuss With Your Doctor ── */
-    const splitAt = Math.min(3, allRecs.length);
+    const shouldHoldCpapForDiscuss = (isMildLowHB || isCpapAvoidant) &&
+      allRecs.length > 1 &&
+      allRecs[allRecs.length - 1]?.tag === 'CPAP';
+    const splitAt = shouldHoldCpapForDiscuss
+      ? Math.min(3, allRecs.length - 1)
+      : Math.min(3, allRecs.length);
     const startNow = allRecs.slice(0, splitAt);
     const discuss  = allRecs.slice(splitAt);
 
-    let output = `\n<h2>Your Treatment Plan</h2>`;
+    const sectionTitle = (isPreStudy || isNormalStudy) ? 'Your Next Steps' : 'Your Treatment Plan';
+    let output = `\n<h2>${sectionTitle}</h2>`;
 
     /* ── CPAP context for non-compliant patients — BEFORE the rec list ── */
     const limitedAlternatives = (data.bmi > 40) || data.hasConcentricCollapse ||
@@ -775,11 +821,17 @@ ${items}`;
     if (isMildLowHB) {
       output += `
 <div class="cpap-context-box" style="border-left-color: #198754;">
-  <strong>Why you have good options beyond CPAP.</strong> Your sleep apnea is in the mild range, and your overnight oxygen levels stayed in a safe zone. For patients with this profile, research shows that treatments like an oral appliance, positional therapy, and weight management work just as well as CPAP. That means you can choose the option that fits your life best — and expect good results. Your treatment plan below starts with these alternatives.
+  <strong>Why you have good options beyond CPAP.</strong> Your sleep apnea is in the mild range, and your overnight oxygen levels stayed in a lower-risk zone. For patients with this profile, treatments like an oral appliance, positional therapy, and weight management can be reasonable first-line alternatives to CPAP, especially when they fit the patient's goals and are followed with repeat assessment. Your plan below starts with those options while keeping CPAP available if needed.
 </div>`;
     }
 
-    output += `\n<p>Based on your evaluation, your care team has put together a plan tailored to your results. These recommendations are ordered by priority.</p>`;
+    if (isPreStudy) {
+      output += `\n<p>Before we choose a sleep apnea treatment, the next step is confirming what is happening during sleep and starting any safe support measures that can help in the meantime.</p>`;
+    } else if (isNormalStudy) {
+      output += `\n<p>Based on your symptoms and the patterns seen on your sleep study, these are the most helpful next steps to discuss or begin now.</p>`;
+    } else {
+      output += `\n<p>Based on your evaluation, your care team has put together a plan tailored to your results. These recommendations are ordered by priority.</p>`;
+    }
 
     /* ── COMISA callout ── */
     if (data.hasCOMISA) {
@@ -811,7 +863,7 @@ ${items}`;
      SECTION E — Your First 30 Days
      ══════════════════════════════════════════════════════════════════════════ */
   function renderSectionE(data) {
-    const recTags = data.recTags || [];
+    const recTags = getPatientFacingRecEntries(data);
     if (recTags.length === 0) return '';
 
     const tags = new Set(recTags.map(r => r.tag));
@@ -827,6 +879,15 @@ ${items}`;
     const surgeryScheduled = ms.includes('Surgery Scheduled');
     const isEstablishedPatient = ms.some(m => m !== 'Initial Eval') ||
       data.cpapCurrent || data.cpapFailed || data.priorMAD || data.priorUPPP || data.priorInspire;
+
+    if (tags.has('SLEEP-STUDY')) {
+      const studyLabel = data.studyType === 'psg'
+        ? 'in-lab sleep study'
+        : data.studyType === 'watchpat'
+          ? 'home sleep study'
+          : 'sleep study';
+      checkItems.push({ text: `Schedule your ${studyLabel} and complete it as soon as you can so we can confirm whether sleep apnea is present and choose the right treatment.`, group: 'treatment' });
+    }
 
     /* CBT-I first for COMISA patients */
     if (data.hasCOMISA && tags.has('CBTI')) {
@@ -956,8 +1017,21 @@ ${items}`;
     } else if (hasNasalFollowUp) {
       /* Nasal follow-up already scheduled above — just add the timeline */
     } else {
-      checkItems.push({ text: 'Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.', group: 'everyone' });
+      checkItems.push({
+        text: getReportStage(data) === 'pre-study'
+          ? 'Schedule a follow-up appointment after your sleep study so we can review the results together and decide on the right treatment plan.'
+          : 'Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.',
+        group: 'everyone'
+      });
     }
+
+    const seenChecklistItems = new Set();
+    const uniqueCheckItems = checkItems.filter(ci => {
+      const key = ci.group + '::' + ci.text;
+      if (seenChecklistItems.has(key)) return false;
+      seenChecklistItems.add(key);
+      return true;
+    });
 
     const GROUP_META = {
       everyone:  { label: 'For Everyone',      subtitle: 'These steps are helpful regardless of which treatment you choose.' },
@@ -968,7 +1042,7 @@ ${items}`;
 
     let itemsHTML = '';
     for (const groupKey of GROUP_ORDER) {
-      const groupItems = checkItems.filter(ci => ci.group === groupKey);
+      const groupItems = uniqueCheckItems.filter(ci => ci.group === groupKey);
       if (groupItems.length === 0) continue;
       const meta = GROUP_META[groupKey];
       itemsHTML += `\n<div class="checklist-group-label">${esc(meta.label)}</div>`;
@@ -982,6 +1056,8 @@ ${items}`;
 </div>`;
       });
     }
+
+    if (!itemsHTML) return '';
 
     return `
 <h2>Your First 30 Days</h2>
@@ -1102,7 +1178,7 @@ ${items.join('')}`;
     return `
 <h2>Why This Matters</h2>
 <p>Your results showed ${findingsList}. When sleep apnea is left untreated at this level, the nightly stress on your body adds up over time. Research consistently links untreated moderate-to-severe sleep apnea with higher rates of high blood pressure, heart disease, stroke, type 2 diabetes, and cognitive decline. The repeated drops in oxygen and the strain of fighting to breathe hundreds of times each night are real physical stressors — even if they happen while you're unaware of them.</p>
-<p>The encouraging news is that effective treatment can significantly reduce these risks. Studies show that consistent CPAP use or successful surgical treatment brings blood pressure down, reduces cardiovascular events, and improves memory and mood. Addressing your sleep apnea is one of the most impactful steps you can take for your long-term health — and most people notice meaningful improvements in how they feel within weeks of starting treatment.</p>`;
+<p>The encouraging news is that effective treatment can improve symptoms and may reduce these risks, especially when it meaningfully controls your breathing events and oxygen drops over time. CPAP has shown the clearest cardiovascular benefit in patients with higher hypoxic burden and good adherence, and any surgical plan should be confirmed with follow-up testing rather than assumed to be curative. Addressing your sleep apnea is still one of the most important steps you can take for your long-term health, and many people notice better energy, focus, and sleep quality within weeks of starting effective treatment.</p>`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
@@ -1134,7 +1210,7 @@ ${items.join('')}`;
       renderSectionG(data),
       renderFooter(data),
     ];
-    return '<div class="patient-report">' + sections.join('') + '</div>';
+    return '<div class="patient-report" data-patient-name="' + esc(data.patientName || '') + '" data-report-date="' + esc(data.reportDate || '') + '">' + sections.join('') + '</div>';
   }
 
   return { generateReportHTML, getReportStage };

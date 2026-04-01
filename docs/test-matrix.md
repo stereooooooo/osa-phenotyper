@@ -69,3 +69,13 @@
 | 34 | Inspire interest without PAP failure | BMI 29, AHI 24, prefInspire yes, no prior PAP failure/intolerance — should not generate INSPIRE-EVAL |
 | 35 | Mild OSA without oxygen metrics | AHI 10, no ODI/nadir/T90/HB entered — should not show low-hypoxic-burden messaging |
 | 36 | Obese OSA without anatomical phenotype | BMI 33, AHI 12, small tonsils, FTP II, neck normal — should still receive WEIGHT recommendation |
+
+### Group 9: Patient Report & PDF Regression Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 37 | Pre-study report scope guardrail | Pre-study snorer with nasal obstruction — report should stay in "next steps" mode, without injected snoring-treatment recs beyond sleep-study / CBT-I / nasal support |
+| 38 | CPAP-avoidant ordering | Mild OSA, prefers to avoid CPAP, has alternatives — CPAP context box should appear and CPAP should fall into Discuss rather than Start Now when alternatives exist |
+| 39 | FTP handoff to patient report | Pre-study or OSA patient with FTP III/IV — Section A / exam language should explicitly mention the Friedman Tongue Position finding |
+| 40 | Low-HB wording guardrail | Mild OSA with measured low hypoxic burden — report should use uncertainty-aware language ("reasonable first-line alternatives"), not "works just as well" certainty language |
+| 41 | Patient PDF metadata | Exported patient PDF filename should use patient name + report date, and per-page footer date should match the report date rather than export time |
+| 42 | Patient PDF pagination | Long patient report with care pathway, checklist groups, and multiple what-if cards — page breaks should prefer section/card boundaries instead of clipping through those blocks |

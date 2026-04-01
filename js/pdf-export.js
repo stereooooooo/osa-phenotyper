@@ -30,6 +30,24 @@ const OSAPdfExport = (() => {
     return tmp.innerHTML;
   }
 
+  function formatPdfDate(isoDate) {
+    if (!isoDate) {
+      return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    const parts = String(isoDate).split('-');
+    if (parts.length !== 3) {
+      const parsed = new Date(isoDate);
+      return Number.isNaN(parsed.getTime())
+        ? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    const [year, month, day] = parts.map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime())
+      ? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
   /**
    * Inline PDF styles — injected into the container so html2canvas
    * can render them without needing external stylesheets (which may
@@ -102,6 +120,7 @@ const OSAPdfExport = (() => {
     .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #1F3A5C; }
     .patient-report .report-logo { height: 48px; width: auto; }
     .patient-report .report-meta { text-align: right; font-size: 12px; color: #6B7280; }
+    .patient-report .report-patient-name { font-weight: 600; color: #374151; }
     .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
     .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 24px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
     .ahi-scale { margin: 16px 0; }
@@ -161,9 +180,9 @@ const OSAPdfExport = (() => {
   function findBreakPoints(container, canvasScale) {
     // Collect bottom-edges of all block-level children and their nested blocks
     const breakable = container.querySelectorAll(
-      'h2, h3, p, div.rec-item, div.phenotype-item, div.checklist-item, div.whatif-item, ' +
-      'div.cpap-context-box, div.comisa-callout, div.treatment-group-label, div.checklist-group-label, div.report-header, ' +
-      'div.ahi-scale, div.report-footer'
+      'h2, h3, p, table, thead, tbody, tr, div.rec-item, div.phenotype-item, div.checklist-item, div.whatif-item, ' +
+      'div.cpap-context-box, div.comisa-callout, div.treatment-group-label, div.checklist-group-label, p.checklist-group-subtitle, ' +
+      'div.report-header, div.care-pathway, div.care-summary-card, div.ahi-scale, div.report-footer'
     );
     const containerTop = container.getBoundingClientRect().top;
     const points = [];
@@ -199,7 +218,7 @@ const OSAPdfExport = (() => {
     return best;
   }
 
-  async function exportFromHTML(html, filename, addFooter = false) {
+  async function exportFromHTML(html, filename, addFooter = false, footerDate = null) {
     if (typeof jspdf === 'undefined' || typeof html2canvas === 'undefined') {
       alert('PDF export libraries not loaded. Please check your internet connection.');
       return;
@@ -284,7 +303,7 @@ const OSAPdfExport = (() => {
         if (addFooter) {
           pdf.setFontSize(8);
           pdf.setTextColor(156, 163, 175);
-          const footerText = 'Prepared by Capital ENT \u00B7 ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const footerText = 'Prepared by Capital ENT \u00B7 ' + formatPdfDate(footerDate);
           pdf.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
         }
 
@@ -353,12 +372,14 @@ const OSAPdfExport = (() => {
     // Remove any no-print elements from clone
     clone.querySelectorAll('.no-print').forEach(n => n.remove());
 
-    const patientName = clone.querySelector('.report-meta strong')?.textContent || 'Patient';
+    const patientName = clone.getAttribute('data-patient-name') ||
+      clone.querySelector('.report-patient-name')?.textContent ||
+      'Patient';
     const safeName = patientName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = clone.getAttribute('data-report-date') || new Date().toISOString().split('T')[0];
     const filename = `Sleep_Report_${safeName}_${dateStr}.pdf`;
 
-    return exportFromHTML(clone.outerHTML, filename, true);
+    return exportFromHTML(clone.outerHTML, filename, true, dateStr);
   }
 
   return { exportClinicianPDF, exportPatientReportPDF };

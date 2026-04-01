@@ -140,8 +140,8 @@
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | HB ≥73.1 %min/h: CPAP reduces CV events (HR 0.57) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | Clinician report: "High HB — CPAP CV benefit" alert; HB area/hr high threshold (73) |
-| HB <73.1: CPAP trend toward harm (HR 1.33, NS) | Same Pinilla 2023 (ISAACC) | Low HB clinician caution note; mild OSA alternatives-first pathway |
-| Low HB: comparable outcomes with CPAP vs alternatives | Same Pinilla 2023 | Patient report: alternatives before CPAP; "good options beyond CPAP" context box |
+| HB <73.1: CPAP trend toward harm (HR 1.33, NS) | Same Pinilla 2023 (ISAACC) | Low HB clinician caution note; mild OSA alternatives-first pathway only when oxygen metrics are actually available |
+| Low HB: comparable outcomes with CPAP vs alternatives | Same Pinilla 2023 | Patient report: alternatives before CPAP with probabilistic language ("reasonable first-line options"), not certainty/equivalence language |
 | HB ≥87.1 %min/h: high-risk OSA (pooled multi-trial) | Azarbarzin A, et al. "Cardiovascular Benefit of CPAP According to High-Risk OSA." *Eur Heart J.* 2025;:ehaf447. | HB area/hr very-high threshold (87); "Very High HB" clinician alert |
 | High AHI + low HB ≠ CV risk; only HB predicts MACCEs | Peker Y, et al. "Hypoxic Burden Is Associated With CV Events: RICCADSA Cohort." *Chest.* 2025;:S0012-3692(25)05023-8. | Moderate OSA + low HB clinician note; validates alternatives-first approach |
 | ΔHR + HB synergy: HR 3.50 for fatal CVD | Azarbarzin A, et al. "Sleep Apnea-Specific Pulse-Rate Response Predicts CV Morbidity and Mortality." *Am J Respir Crit Care Med.* 2021;203(12):1546-1555. | Composite ΔHR + HB CV risk flag in clinician report |
@@ -195,7 +195,7 @@
 | ATS/AHA consensus: CPAP for CV risk benefit controversy | Cohen O, et al. "The Great Controversy of OSA Treatment for CV Risk Benefit." *Ann Am Thorac Soc.* 2024. | Context for nuanced CPAP recommendation; HB-guided treatment allocation |
 | RICCADSA: HB predicts CV events, AHI alone does not | Peker Y, et al. "Hypoxic Burden Is Associated With CV Events: RICCADSA Cohort." *Chest.* 2025. | High AHI + low HB ≠ CV risk; validates HB-guided approach |
 | Multi-trial pooled: CPAP CV benefit in high-risk OSA (HB≥87) | Azarbarzin A, et al. "CV Benefit of CPAP According to High-Risk OSA." *Eur Heart J.* 2025;:ehaf447. | HB ≥87 threshold for very high CV risk; strongest CPAP indication |
-| ISAACC: HB-guided CPAP allocation; low HB trend toward harm (HR 1.33) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | HB ≥73 = CPAP benefit; HB <73 = alternatives equally effective |
+| ISAACC: HB-guided CPAP allocation; low HB trend toward harm (HR 1.33) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | HB ≥73 = CPAP benefit; HB <73 supports alternatives-first framing, but patient-facing copy should remain uncertainty-aware |
 
 ---
 

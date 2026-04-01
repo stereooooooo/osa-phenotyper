@@ -57,6 +57,10 @@ body.report-preview-open {
   font-size: 0.85rem;
   color: #6B7280;
 }
+.patient-report .report-patient-name {
+  font-weight: 600;
+  color: #374151;
+}
 .patient-report .report-title {
   font-size: 1.4rem;
   font-weight: 700;
