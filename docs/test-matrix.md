@@ -60,3 +60,12 @@
 | 29 | AHI exactly 5 | Boundary: mild vs normal |
 | 30 | AHI exactly 15 | Boundary: moderate vs mild |
 | 31 | AHI exactly 30 | Boundary: severe vs moderate |
+
+### Group 8: Clinical Logic Regression Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 32 | Edwards low ArTH without insomnia | AHI 12, nadir 88, apnea index 3, hypopnea index 9, ISI 4 — should detect Low ArTH without automatically generating CBT-I |
+| 33 | REM-heavy but low NREM burden | AHI 22, REM AHI 36, NREM AHI 8 — should be REM-predominant, not Poor Muscle Responsiveness |
+| 34 | Inspire interest without PAP failure | BMI 29, AHI 24, prefInspire yes, no prior PAP failure/intolerance — should not generate INSPIRE-EVAL |
+| 35 | Mild OSA without oxygen metrics | AHI 10, no ODI/nadir/T90/HB entered — should not show low-hypoxic-burden messaging |
+| 36 | Obese OSA without anatomical phenotype | BMI 33, AHI 12, small tonsils, FTP II, neck normal — should still receive WEIGHT recommendation |

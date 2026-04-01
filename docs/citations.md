@@ -2,7 +2,7 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-03-19
+**Last updated:** 2026-04-01
 
 ---
 
@@ -55,9 +55,10 @@
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | Ji 2026 clinical severity staging (neck + BMI + AHI) | Ji J, et al. "Clinical Severity Staging System and Response to HNS." *JAMA Otolaryngol.* 2026;:2844563. | HNS Stage I-IV with response rate prediction (91%→38%) |
-| HNS FDA criteria (AHI 15-65, BMI ≤32-35) | Hassan F, Kaplish N. "Hypoglossal Nerve Stimulator: A Novel Treatment Approach." *Chest.* 2021;160(4):1406-1412. | HNS candidacy gating |
+| Current FDA Inspire indication expansion (AHI 15-100, BMI ≤40, PAP/BiPAP intolerance required) | U.S. Food and Drug Administration. "Inspire Upper Airway Stimulation – P130008/S090." Approved June 8, 2023. | Hard HGNS gating: AHI 15-100, BMI ceiling 40, documented PAP failure/intolerance required, CCC remains exclusion |
 | Concentric palatal collapse = HNS contraindication | Strollo PJ, et al. "Upper-Airway Stimulation for OSA." *N Engl J Med.* 2014;370(2):139-49. | DISE check: concentric collapse → HNS contraindicated |
 | HNS evaluation criteria and outcomes | Kent DT, et al. "Evaluation of HNS Treatment in OSA." *JAMA Otolaryngol.* 2019;145(11):1044-1052. | HNS recommendation logic |
+| Endotypic predictors of HGNS response | Op de Beeck S, Wellman A, Dieltjens M, et al. "Endotypic Mechanisms of Successful Hypoglossal Nerve Stimulation for OSA." *Am J Respir Crit Care Med.* 2021;203(6):746-755. | Higher arousal threshold and higher muscle compensation predict HGNS response; low ArTH / low muscle compensation are cautionary, not favorable |
 
 ## Surgical Selection
 
@@ -76,7 +77,7 @@
 | Polysomnographic endotyping — muscle compensation validated at AHI ≥15 | Sands SA, et al. "Phenotyping Pharyngeal Pathophysiology using Polysomnography in Patients with OSA." *Am J Respir Crit Care Med.* 2018;197(9):1187-1197. | Supports lowering Poor Muscle Responsiveness threshold from AHI≥30 to AHI≥15 |
 | MAD response predicted by muscle compensation at moderate AHI | Bamagoos AA, et al. "Dose-dependent effects of mandibular advancement on upper airway collapsibility and muscle function in OSA." *Sleep.* 2019;42(6):zsz049. | Clinical relevance of muscle responsiveness at AHI≥20; weaker compensation → better MAD response |
 | Sleep-stage-dependent Pcrit and muscle activity | Carberry JC, et al. "Upper Airway Collapsibility and Pharyngeal Dilator Muscle Activity are Sleep Stage Dependent." *Sleep.* 2016;39(3):511-521. | Physiological basis for REM/NREM ratio as muscle responsiveness surrogate |
-| Low arousal threshold identification without invasive testing | Edwards BA, et al. "Clinical Predictors of the Oxygen Desaturation Index and AHI in OSA." *Eur Respir J.* 2016;48(1):142-150. | Arousal threshold phenotype detection |
+| Low arousal threshold identification without invasive testing | Edwards BA, et al. "Clinical Predictors of the Respiratory Arousal Threshold in OSA." *Am J Respir Crit Care Med.* 2014;190(11):1293-1300. | Edwards score drives low-ArTH phenotype detection; WatchPAT uses partial score when hypopnea fraction unavailable, PSG uses full 3-variable score |
 | Positional OSA definition (supine/non-supine ratio >2, non-supine AHI <15) | Cartwright RD. "Effect of Sleep Position on Sleep Apnea Severity." *Sleep.* 1984;7(2):110-4. | Positional OSA phenotype criteria |
 | REM-predominant OSA (REM/NREM ratio >2, NREM AHI <15) | Mokhlesi B, et al. "REM-Related OSA: Prevalence and Clinical Significance." *Sleep.* 2014;37(11):1883-1891. | REM-predominant phenotype criteria |
 
@@ -84,7 +85,7 @@
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| GLP-1 agonists (tirzepatide) for OSA weight loss | Multiple emerging RCTs 2024-2025 | Zepbound/tirzepatide mentioned in weight management rec |
+| Tirzepatide FDA approval for moderate-severe OSA in adults with obesity | U.S. Food and Drug Administration. "FDA Approves First Medication for Obstructive Sleep Apnea." December 20, 2024. | Patient-facing GLP-1/Zepbound mention is gated to BMI ≥30 rather than generic weight counseling |
 | 10% weight loss → meaningful AHI reduction | Peppard PE, et al. "Longitudinal Study of Moderate Weight Change and SDB." *JAMA.* 2000;284(23):3015-21. | Weight loss what-if projection (30% AHI reduction) |
 
 ## UARS (Upper Airway Resistance Syndrome)
@@ -119,10 +120,10 @@
 |---------|----------|----------|
 | High loop gain predicts residual OSA on PAP (OR 2.17-3.31) | Eschbach E, et al. "Loop Gain Predicts Residual Sleep Apnoea Among People Using PAP." *Thorax.* 2026;:thorax-2025-223878. | Guardrail: monitor for treatment-emergent centrals on PAP |
 | Breath-holding to estimate loop gain (AUC 0.92) | Messineo L, et al. "Breath-Holding as a Means to Estimate Loop Gain." *J Physiol.* 2018;596(17):4043-4056. | Reference for clinic-based LG assessment |
-| Point-of-care LG prediction model (r=0.48, AUC 0.73) | Schmickl CN, et al. "Point-of-Care Prediction Model of Loop Gain." *BMC Pulm Med.* 2022;22(1):158. | LG estimate from AHI + Hypopnea%: LG = 0.0016×AHI − 0.0019×Hyp%. Displayed on clinician report when PSG apnea/hypopnea indices available |
+| Point-of-care LG prediction model (r=0.48, AUC 0.73) | Schmickl CN, et al. "Point-of-Care Prediction Model of Loop Gain." *BMC Pulm Med.* 2022;22(1):158. | Primary high-loop-gain estimate when apnea/hypopnea indices are available: LG = 0.0016×AHI − 0.0019×Hyp% |
 | LG quantification from PSG (correlation with CPAP dial-down r=0.63) | Terrill PI, et al. "Quantifying the Ventilatory Control Contribution to Sleep Apnoea." *Eur Respir J.* 2015;45(2):408-18. | Reference for PUP-estimated loop gain |
 | Self-similarity for periodic breathing detection (AUC 0.82-0.85) | Oppersma E, et al. "Algorithm for Automatic Detection of Self-Similarity." *Sleep.* 2021;44(4):zsaa215. | Reference: automated LG detection from RIP signals |
-| CPAP-associated acute respiratory instability prediction | Nassi TE, et al. "Morphological Prediction of CPAP Associated Acute Respiratory Instability." *Ann Am Thorac Soc.* 2024. | Reference: SS + CAI + HB outperforms CAI alone for CPAP failure |
+| CPAP-associated acute respiratory instability prediction | Nassi TE, et al. "Morphological Prediction of CPAP Associated Acute Respiratory Instability." *Ann Am Thorac Soc.* 2024. | Central / periodic-breathing markers are supportive signals only when full LG estimate is unavailable; not used as standalone trigger |
 | Automated LG from RIP signals (dynamical modeling) | Nassi T, et al. "Unravelling Sleep Apnea Dynamics: Quantifying Loop Gain Using Dynamical Modelling." *Sleep.* 2025;:zsaf213. | Reference: fully automated LG estimation (future) |
 | Scalable PUP endotype estimation (PUPpy) | Finnsson E, et al. "A Scalable Method of Determining Physiological Endotypes." *Sleep.* 2021;44(1):zsaa168. | Reference: cloud-based endotype estimation tool |
 

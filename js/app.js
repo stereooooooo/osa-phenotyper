@@ -48,25 +48,32 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'Low Arousal Threshold': {
-      const arRatio = (m.arInd && m.ahi) ? (m.arInd/m.ahi) : 0;
-      if((m.isi||0) >= T.arousal.isiHigh || arRatio >= T.arousal.arRatioHigh) return 'High';
-      if((m.isi||0) >= T.arousal.isi || arRatio >= T.arousal.arRatio) return 'Moderate';
+      const score = m.edwardsArTHScore || 0;
+      const maxScore = m.edwardsArTHMaxScore || 0;
+      if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
+      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Moderate';
       return 'Low';
     }
     case 'High Loop Gain': {
-      const p3 = m.pahic3||0, p4 = m.pahic4||0, csr = m.csr||0;
-      if(csr >= T.loopGain.csrHigh || p3 >= T.loopGain.pahic3High || p4 >= T.loopGain.pahic4High) return 'High';
-      if(csr >= T.loopGain.csr || p3 >= T.loopGain.pahic3 || p4 >= T.loopGain.pahic4) return 'Moderate';
-      // CVD bumps Low → Moderate (confidence modifier, not trigger)
-      if(m.cvd) return 'Moderate';
+      const lg = m.lgEstimate;
+      const supportCount =
+        ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
+        ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
+        ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
+        ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
+      if(exists(lg) && lg >= T.loopGain.estimateHigh) return supportCount >= 1 ? 'High' : 'Moderate';
+      if(exists(lg) && lg >= T.loopGain.estimateBorderline) return supportCount >= 1 || m.cvd ? 'Moderate' : 'Low';
+      if(supportCount >= 2) return m.cvd ? 'High' : 'Moderate';
+      if(supportCount >= 1 && m.cvd) return 'Moderate';
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
       const remNrem = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      /* High confidence: AHI≥30 (original PALM severe) + strong ratio (Eckert 2013) */
-      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh) return 'High';
+      const nrem = m.nremAhi || 0;
+      /* High confidence: persistent NREM burden + strong REM/NREM skew */
+      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
       /* Moderate: AHI≥15 validated by Sands 2018, Bamagoos 2019 */
-      if(remNrem > T.muscleResponse.remNremRatio) return 'Moderate';
+      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
       return 'Low';
     }
     case 'Positional OSA': {
@@ -193,8 +200,13 @@ function buildHGNSAssessment(ctx) {
     eligible = false;
     result.eligibilityIssues.push(`BMI ${bmi} exceeds the FDA ceiling of ${H.bmiMax}. Anatomical constraints at this BMI level typically limit HGNS effectiveness.`);
   }
-  if (!cpapFailed && !prefAvoidCpap) {
-    result.eligibilityIssues.push('HGNS is indicated for patients who have failed or are intolerant of CPAP. No CPAP failure or avoidance preference documented.');
+  if (!cpapFailed) {
+    eligible = false;
+    result.eligibilityIssues.push(
+      prefAvoidCpap
+        ? 'Patient prefers to avoid CPAP, but HGNS generally requires documented PAP failure or intolerance before candidacy evaluation.'
+        : 'HGNS is indicated only after documented PAP failure or intolerance. No PAP failure/intolerance is documented.'
+    );
   }
 
   // Central apnea proportion
@@ -237,8 +249,10 @@ function buildHGNSAssessment(ctx) {
   }
 
   if (exists(ahi)) {
-    if (ahi >= H.ahiMin && ahi <= 50) {
-      result.favorable.push({ factor: 'AHI in optimal range', detail: `AHI ${ahi} is within the original STAR trial range of 20–50, where the strongest efficacy data exists. FDA approval covers AHI 15–100.`, cite: 'Strollo 2014 STAR' });
+    if (ahi >= 20 && ahi <= 50) {
+      result.favorable.push({ factor: 'AHI in optimal range', detail: `AHI ${ahi} is within the original STAR trial range of 20–50, where the strongest efficacy data exists. FDA approval now covers AHI 15–100.`, cite: 'Strollo 2014 STAR; FDA P130008/S090' });
+    } else if (ahi >= H.ahiMin && ahi < 20) {
+      result.favorable.push({ factor: 'AHI in lower supported range', detail: `AHI ${ahi} meets the current FDA lower bound (15–100), though it sits below the original STAR lower cut point of 20. Shared decision-making should rely more heavily on anatomy, PAP history, and DISE findings in this range.`, cite: 'FDA P130008/S090; Strollo 2014 STAR' });
     } else if (ahi > 50 && ahi <= 65) {
       result.favorable.push({ factor: 'AHI in supported range', detail: `AHI ${ahi} is within the FDA-approved range (15–100). ADHERE registry data supports efficacy up to AHI 65 with strong evidence.`, cite: 'Thaler 2020 ADHERE' });
     } else if (ahi > 65 && ahi <= H.ahiMax) {
@@ -313,11 +327,10 @@ function buildHGNSAssessment(ctx) {
     result.favorable.push({ factor: 'No high loop gain', detail: `No elevated ventilatory loop gain detected (${details}). Low loop gain indicates predominantly anatomical rather than central/neurochemical OSA — the phenotype most responsive to HGNS, which works by mechanically opening the airway.`, cite: 'Op de Beeck 2021 AJRCCM' });
   }
   if (phenotypes.includes('Low Arousal Threshold')) {
-    result.favorable.push({ factor: 'Low arousal threshold may respond', detail: 'Op de Beeck et al. found that higher arousal thresholds predict HGNS success, but patients with low arousal threshold may benefit from HGNS if it can reduce respiratory events enough to allow deeper sleep. This is a nuanced factor — not a contraindication but may temper expectations.', cite: 'Op de Beeck 2021 AJRCCM' });
+    result.unfavorable.push({ factor: 'Low arousal threshold', detail: 'Endotyped HGNS responders had higher respiratory arousal thresholds. A low arousal threshold is not a formal contraindication, but it should be treated as a cautionary rather than favorable signal.', cite: 'Op de Beeck 2021 AJRCCM' });
   }
   if (phenotypes.includes('Poor Muscle Responsiveness')) {
-    // Interesting predictor — good genioglossus compensation predicts success
-    result.favorable.push({ factor: 'Poor muscle responsiveness', detail: 'Paradoxically, patients whose throat muscles respond poorly during sleep may benefit from direct electrical stimulation — HGNS bypasses the failed natural muscle activation and directly drives tongue protrusion.', cite: 'Op de Beeck 2021 AJRCCM' });
+    result.unfavorable.push({ factor: 'Low muscle compensation', detail: 'Endotyped HGNS responders demonstrated higher upper-airway muscle compensation. Reduced compensation therefore tempers expectations rather than strengthening candidacy.', cite: 'Op de Beeck 2021 AJRCCM' });
   }
 
   // ── Overall assessment ──
@@ -503,6 +516,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const csr     = n(f.get('csr'));
   const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));
   const pahic4  = n(f.get('pahic4'));
+  const cai     = n(f.get('cai'));
   const cvd     = yes(f,'cvd');
 
   /* ─── TREATMENT HISTORY & PREFERENCES ─────────────────────── */
@@ -566,64 +580,103 @@ document.getElementById('form').addEventListener('submit', e => {
     ? Math.max(0, 0.50 + 0.0016 * ahi - 0.0019 * fHypopneas)
     : null;
 
+  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
+  /* 3-variable clinical prediction of low arousal threshold:
+     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
+     Score ≥2 = likely low arousal threshold (84% accuracy) */
+  const edwardsArTH = (() => {
+    if (!exists(ahi)) return null;
+    let score = 0;
+    const details = [];
+    if (ahi < T.arousal.ahiMax) { score++; details.push(`AHI ${ahi} <${T.arousal.ahiMax}`); }
+    if (exists(nadir) && nadir > T.arousal.nadirMin) { score++; details.push(`nadir ${nadir}% >${T.arousal.nadirMin}%`); }
+    const hypFractionAvailable = exists(fHypopneas);
+    if (hypFractionAvailable) {
+      if (fHypopneas > T.arousal.hypFraction) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >${T.arousal.hypFraction}%`); }
+      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤${T.arousal.hypFraction}%`); }
+    }
+    const maxScore = hypFractionAvailable ? 3 : 2;
+    const prediction = score >= T.arousal.scoreLikely ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
+    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
+  })();
+
   /* nasal signals */
   const noseScore = n(f.get('noseScore'));
   const nasalObs  = yes(f,'nasalObs');
   const ctSeptum  = yes(f,'ctDev');
   const ctTurbs   = yes(f,'ctTurbs');
 
+  const oxygenMetricsAvailable = [hbPH, hb90PH, odi, t90, nadir].some(exists);
+  const osaConfirmed = exists(ahi) && ahi >= 5;
+
   /* pack context for confidence meters */
   const ctxBase = {
     sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
     remAhi, nremAhi, sup, nons, odi, nadir,
-    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, dhr
+    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
+    fHypopneas, lgEstimate,
+    edwardsArTHScore: edwardsArTH?.score ?? 0,
+    edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
   };
 
   /* Sex-specific neck threshold */
   const neckThreshold = (sex === 'F') ? T.anatomical.neck.female : T.anatomical.neck.male;
 
-  /* ─── PALM TRAITS ───────────────────────────────────────────── */
-  const anatFlags = [
-    bmi >= T.anatomical.bmi,
-    neck >= neckThreshold,
-    tons >= T.anatomical.tonsils,
-    T.anatomical.ftp.includes(mall),
-    ahi >= T.anatomical.ahiSevere
-  ].filter(Boolean).length;
+  /* ─── PHENOTYPES (suppressed until OSA is confirmed) ──────── */
+  if (osaConfirmed) {
+    const anatFlags = [
+      bmi >= T.anatomical.bmi,
+      neck >= neckThreshold,
+      tons >= T.anatomical.tonsils,
+      T.anatomical.ftp.includes(mall),
+      ahi >= T.anatomical.ahiSevere
+    ].filter(Boolean).length;
 
-  if(anatFlags >= T.anatomical.minCriteria){
-    add('High Anatomical Contribution',[
-      exists(bmi)?`BMI ${bmi}`:'',
-      exists(neck)?`Neck ${neck} in`:'',
-      exists(tons)?`Tonsils ${tons}`:'',
-      mall?`FTP ${mall}`:'',
-      exists(ahi)?`AHI ${ahi}`:''
-    ]);
-  }
+    if(anatFlags >= T.anatomical.minCriteria){
+      add('High Anatomical Contribution',[
+        exists(bmi)?`BMI ${bmi}`:'',
+        exists(neck)?`Neck ${neck} in`:'',
+        exists(tons)?`Tonsils ${tons}`:'',
+        mall?`FTP ${mall}`:'',
+        exists(ahi)?`AHI ${ahi}`:''
+      ]);
+    }
 
-  if( isi >= T.arousal.isi || (arInd && ahi && (arInd/ahi) > T.arousal.arRatio) ){
-    add('Low Arousal Threshold',[
-      `ISI ${exists(isi)?isi:'—'}`,
-      (arInd&&ahi)?`Arousal/AHI ${(arInd/ahi).toFixed(1)}` : ''
-    ]);
-  }
+    if(edwardsArTH && edwardsArTH.score >= T.arousal.scoreLikely){
+      add('Low Arousal Threshold',[
+        `Edwards ${edwardsArTH.score}/${edwardsArTH.maxScore}`,
+        ...edwardsArTH.details,
+        edwardsArTH.partial ? 'Hypopnea fraction unavailable' : ''
+      ]);
+    }
 
-  // High Loop Gain — CVD is NO LONGER a standalone trigger (confidence modifier only)
-  if( (csr && csr >= T.loopGain.csr) || (pahic3 && pahic3 >= T.loopGain.pahic3) || (pahic4 && pahic4 >= T.loopGain.pahic4) ){
-    add('High Loop Gain',[
-      csr?`CSR ${csr}%`:'',
-      exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
-      exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
-      cvd?'CVD present (confidence modifier)':''
-    ]);
-  }
+    const loopGainSupportCount =
+      ((csr||0) >= T.loopGain.csr ? 1 : 0) +
+      ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
+      ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
+      ((cai||0) >= T.loopGain.pahic3 ? 1 : 0);
+    const highLoopGainDetected =
+      (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateHigh) ||
+      (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateBorderline && loopGainSupportCount >= 1) ||
+      (!exists(lgEstimate) && loopGainSupportCount >= 2);
+    if(highLoopGainDetected){
+      add('High Loop Gain',[
+        exists(lgEstimate)?`LG≈${lgEstimate.toFixed(2)}`:'',
+        csr?`CSR ${csr}%`:'',
+        exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
+        exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
+        exists(cai)?`CAI ${cai}/h`:'',
+        cvd?'CVD present (confidence modifier only)':''
+      ]);
+    }
 
-  if( ahi >= T.muscleResponse.ahiMin && remAhi && nremAhi && (remAhi/nremAhi) > T.muscleResponse.remNremRatio ){
-    add('Poor Muscle Responsiveness',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `AHI ${ahi}`]);
-  }
+    if( ahi >= T.muscleResponse.ahiMin &&
+        remAhi && nremAhi &&
+        nremAhi >= T.muscleResponse.nremFloor &&
+        (remAhi/nremAhi) > T.muscleResponse.remNremRatio ){
+      add('Poor Muscle Responsiveness',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`]);
+    }
 
-  /* ─── ADDITIONAL PHENOTYPES (only meaningful when AHI ≥ 5) ── */
-  if (exists(ahi) && ahi >= 5) {
     if( sup && nons && (sup/nons) > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
       add('Positional OSA',[`Sup/Non-sup ${(sup/nons).toFixed(1)}`, `Non-sup AHI ${nons}`]);
     }
@@ -631,41 +684,41 @@ document.getElementById('form').addEventListener('submit', e => {
     if( remAhi && nremAhi && (remAhi/nremAhi) > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
       add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
     }
-  }
 
-  /* Composite HB: trigger if ANY metric is in moderate+ range.
-     Nadir only triggers at severe level (<75%) — weaker standalone predictor than
-     duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
-  const hbTrigger = (hbPH && hbPH >= T.hypoxicBurden.hbPerHour) ||
-                    (odi && odi >= T.hypoxicBurden.odi) ||
-                    (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) ||
-                    (t90 && t90 >= T.hypoxicBurden.t90) ||
-                    (hb90PH && hb90PH > T.hypoxicBurden.areaUnder90);
-  if(hbTrigger){
-    add('High Hypoxic Burden',[
-      exists(hbPH)?`HB/hr ${hbPH}`:'',
-      exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
-      exists(t90)?`T90 ${t90}%`:'',
-      exists(odi)?`ODI ${odi}`:'',
-      exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
-    ]);
-  }
+    /* Composite HB: trigger if ANY metric is in moderate+ range.
+       Nadir only triggers at severe level (<75%) — weaker standalone predictor than
+       duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
+    const hbTrigger = (exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHour) ||
+                      (exists(odi) && odi >= T.hypoxicBurden.odi) ||
+                      (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) ||
+                      (exists(t90) && t90 >= T.hypoxicBurden.t90) ||
+                      (exists(hb90PH) && hb90PH > T.hypoxicBurden.areaUnder90);
+    if(hbTrigger){
+      add('High Hypoxic Burden',[
+        exists(hbPH)?`HB/hr ${hbPH}`:'',
+        exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
+        exists(t90)?`T90 ${t90}%`:'',
+        exists(odi)?`ODI ${odi}`:'',
+        exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
+      ]);
+    }
 
-  if( (noseScore && noseScore >= T.nasal.noseMild) || nasalObs || ctSeptum || ctTurbs ){
-    add('Nasal-Resistance Contributor',[
-      noseScore ? `NOSE score ${noseScore}/100` : '',
-      nasalObs ? 'Patient-reported nasal obstruction' : '',
-      ctSeptum ? 'CT: deviated septum' : '',
-      ctTurbs ? 'CT: turbinate hypertrophy' : ''
-    ]);
-  }
+    if( (noseScore && noseScore >= T.nasal.noseMild) || nasalObs || ctSeptum || ctTurbs ){
+      add('Nasal-Resistance Contributor',[
+        noseScore ? `NOSE score ${noseScore}/100` : '',
+        nasalObs ? 'Patient-reported nasal obstruction' : '',
+        ctSeptum ? 'CT: deviated septum' : '',
+        ctTurbs ? 'CT: turbinate hypertrophy' : ''
+      ]);
+    }
 
-  // Delta Heart Rate (Phase 4 field — only triggers if the input exists)
-  if( dhr && dhr >= T.deltaHeartRate.dhr ){
-    add('Elevated Delta Heart Rate',[
-      `ΔHR ${dhr} bpm`,
-      cvd ? 'CVD present' : ''
-    ]);
+    // Delta Heart Rate (Phase 4 field — only triggers if the input exists)
+    if( dhr && dhr >= T.deltaHeartRate.dhr ){
+      add('Elevated Delta Heart Rate',[
+        `ΔHR ${dhr} bpm`,
+        cvd ? 'CVD present' : ''
+      ]);
+    }
   }
 
   /* ─── TREATMENT MAPPING (treatment-history-aware) ──────────── */
@@ -708,7 +761,6 @@ document.getElementById('form').addEventListener('submit', e => {
     switch(p){
       case 'High Anatomical Contribution':
         cpapRec();
-        if(bmi >= T.anatomical.bmi) pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
         if((!cpapFailed && !prefAvoidCpap) || cpapWillRetry) {
           pushRec(recs,'If CPAP fails or not tolerated: mandibular-advancement device or site-directed surgery / Inspire\u00AE.','SURGALT');
         }
@@ -718,7 +770,9 @@ document.getElementById('form').addEventListener('submit', e => {
         if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
           pushRec(recs,'Optimize CPAP comfort (humidification, auto-ramp, mask fit, desensitization).','CPAP-OPT');
         }
-        pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Untreated insomnia is the strongest predictor of CPAP non-adherence (Sweetman 2019). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst).','CBTI');
+        if(exists(isi) && isi >= 15) {
+          pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Untreated insomnia is the strongest predictor of CPAP non-adherence (Sweetman 2019). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst).','CBTI');
+        }
         break;
       case 'High Loop Gain':
         if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
@@ -727,12 +781,8 @@ document.getElementById('form').addEventListener('submit', e => {
         pushRec(recs,'If centrals persist: consider nocturnal oxygen, acetazolamide, or ASV (only if LVEF > 45%).','HLG-ADV');
         break;
       case 'Poor Muscle Responsiveness':
-        if(cpapCurrent) {
-          pushRec(recs,'Ensure adequate CPAP titration pressures for muscle responsiveness phenotype.','HNS');
-        } else if(cpapFailed) {
-          pushRec(recs,'Hypoglossal-nerve stimulation (Inspire\u00AE) is well-suited for poor muscle responsiveness with prior CPAP intolerance.','HNS');
-        } else {
-          pushRec(recs,'Ensure adequate CPAP titration; consider hypoglossal-nerve stimulation if CPAP fails.','HNS');
+        if(cpapFailed && exists(ahi) && ahi >= T.hgns.ahiMin && ahi <= T.hgns.ahiMax) {
+          pushRec(recs,'Hypoglossal-nerve stimulation (Inspire\u00AE) may be worth discussing for poor muscle responsiveness when PAP intolerance is documented and anatomy is favorable.','HNS');
         }
         break;
       case 'Positional OSA':
@@ -788,6 +838,11 @@ document.getElementById('form').addEventListener('submit', e => {
   /* ─── Ji 2026 HNS CLINICAL SEVERITY STAGING ─────────────── */
   const hnsStage = (() => {
     if (!exists(ahi) || ahi < 15) return null;
+    const missing = [];
+    if (!sex) missing.push('sex');
+    if (!exists(neck)) missing.push('neck circumference');
+    if (!exists(bmi)) missing.push('BMI');
+    if (missing.length) return { insufficient: true, missing, details: [] };
     let unfavorable = 0;
     const details = [];
     const neckThreshHNS = (sex === 'F') ? 14 : 16;
@@ -826,8 +881,11 @@ document.getElementById('form').addEventListener('submit', e => {
   /* Prior treatment-aware Inspire recommendation */
   if(priorInspire) {
     pushRec(recs,'Inspire\u00AE already in place \u2014 verify activation and optimize settings.','INSPIRE-OPT');
-  } else if(prefInspire && !priorInspire && !hasConcentricCollapse) {
-    pushRec(recs,'Patient interested in Inspire\u00AE \u2014 evaluate candidacy (AHI 15\u2013100, BMI \u2264 40, no concentric palatal collapse).','INSPIRE-EVAL');
+  } else if(prefInspire && !priorInspire && cpapFailed && exists(ahi) && ahi >= T.hgns.ahiMin && ahi <= T.hgns.ahiMax && !hasConcentricCollapse) {
+    const inspireEvalText = exists(bmi) && bmi > T.hgns.bmiMax
+      ? `Patient interested in Inspire\u00AE \u2014 current BMI ${bmi.toFixed(1)} is above the FDA-supported range. Weight reduction below 40 and payer-specific review would be required before formal candidacy evaluation.`
+      : 'Patient interested in Inspire\u00AE \u2014 evaluate candidacy (documented PAP intolerance, AHI 15\u2013100, BMI \u2264 40, no concentric palatal collapse).';
+    pushRec(recs,inspireEvalText,'INSPIRE-EVAL');
   }
 
   /* ─── MAD CANDIDACY SCORING ─────────────────────────────── */
@@ -905,6 +963,10 @@ document.getElementById('form').addEventListener('submit', e => {
     }
   } else {
     /* AHI ≥ 5: Standard OSA core trio (treatment-history-aware) */
+
+    if (exists(bmi) && bmi >= T.anatomical.bmi) {
+      pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
+    }
 
     /* Fix #4: priorMAD + priorUPPP combination — limited remaining options */
     if (priorMAD && priorUPPP && cpapFailed) {
@@ -1016,7 +1078,6 @@ document.getElementById('form').addEventListener('submit', e => {
   const hstFlags = [];
   const tst = n(f.get('tst'));
   const patRdi = n(f.get('patRdi'));
-  const cai = n(f.get('cai'));
 
   // 1. Total sleep time assessment
   if (exists(tst)) {
@@ -1183,7 +1244,7 @@ document.getElementById('form').addEventListener('submit', e => {
     oDeg: f.get('oDeg'), oPat: f.get('oPat'),
     tDeg: f.get('tDeg'), tPat: f.get('tPat'),
     pahic3, pahic4, csr,
-    cai: n(f.get('cai')),
+    cai,
     cpapPressure,
     phenotypes: out.phen,
     hasDISEData
@@ -1235,28 +1296,6 @@ document.getElementById('form').addEventListener('submit', e => {
     ? `<div class="osa-clin-metrics-row">${keyNumItems.join('')}</div>`
     : '';
 
-  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
-  /* 3-variable clinical prediction of low arousal threshold:
-     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
-     Score ≥2 = likely low arousal threshold (84% accuracy)
-     With PSG data: full 3/3 score available via apnea/hypopnea indices */
-  const edwardsArTH = (() => {
-    if (!exists(ahi)) return null;
-    let score = 0;
-    const details = [];
-    if (ahi < 30) { score++; details.push('AHI <30'); }
-    if (exists(nadir) && nadir > 82.5) { score++; details.push(`nadir ${nadir}% >82.5%`); }
-    // Hypopnea fraction: available from PSG (apnea index + hypopnea index)
-    const hypFractionAvailable = exists(fHypopneas);
-    if (hypFractionAvailable) {
-      if (fHypopneas > 58.3) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >58.3%`); }
-      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤58.3%`); }
-    }
-    const maxScore = hypFractionAvailable ? 3 : 2;
-    const prediction = score >= 2 ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
-    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
-  })();
-
   /* ── HB Treatment Allocation (Pinilla 2023, Azarbarzin 2025, Peker 2025) ── */
   const hbTreatmentNote = (() => {
     // Three-tier HB CV risk using updated evidence:
@@ -1294,7 +1333,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ── Low HB — Alternatives Equally Effective / CPAP Caution (Pinilla 2023) ── */
   const mildLowHbNote = (() => {
-    const lowHB = !out.phen.includes('High Hypoxic Burden');
+    const lowHB = oxygenMetricsAvailable && !out.phen.includes('High Hypoxic Burden');
     if (!lowHB || !exists(ahi) || ahi < 5) return '';
 
     const isMild = ahi < 15;
@@ -1416,9 +1455,9 @@ document.getElementById('form').addEventListener('submit', e => {
     clinAnalysisParts.push(`<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Collapsibility: ${collLabel}</strong> <small class="text-muted">(Vena 2022)</small><ul class="mb-0 mt-1"><li>F(hypopneas) = ${fHypopneas.toFixed(0)}%</li><li>${collImplication}</li></ul></div>`);
   }
   if (exists(lgEstimate)) {
-    const lgLevel = lgEstimate > 0.7 ? 'High' : lgEstimate > 0.5 ? 'Borderline' : 'Low';
-    const lgAction = lgEstimate > 0.7 ? '<li>Consider O₂ or acetazolamide</li><li>Monitor for treatment-emergent centrals</li>' : lgEstimate > 0.5 ? '<li>Monitor for residual events on therapy</li>' : '';
-    clinAnalysisParts.push(`<div class="alert alert-${lgEstimate > 0.7 ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Loop Gain: ${lgLevel} (LG ≈ ${lgEstimate.toFixed(2)})</strong> <small class="text-muted">(Schmickl 2022)</small>${lgAction ? `<ul class="mb-0 mt-1">${lgAction}</ul>` : ''}</div>`);
+    const lgLevel = lgEstimate >= T.loopGain.estimateHigh ? 'High' : lgEstimate >= T.loopGain.estimateBorderline ? 'Borderline' : 'Low';
+    const lgAction = lgEstimate >= T.loopGain.estimateHigh ? '<li>Consider O₂ or acetazolamide</li><li>Monitor for treatment-emergent centrals</li>' : lgEstimate >= T.loopGain.estimateBorderline ? '<li>Monitor for residual events on therapy</li>' : '';
+    clinAnalysisParts.push(`<div class="alert alert-${lgEstimate >= T.loopGain.estimateHigh ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Loop Gain: ${lgLevel} (LG ≈ ${lgEstimate.toFixed(2)})</strong> <small class="text-muted">(Schmickl 2022)</small>${lgAction ? `<ul class="mb-0 mt-1">${lgAction}</ul>` : ''}</div>`);
   }
   if (hbTreatmentNote) clinAnalysisParts.push(hbTreatmentNote.replace(/mt-2/g, 'mb-2'));
   if (atsTriage) clinAnalysisParts.push(atsTriage.replace(/mt-2/g, 'mb-2'));
@@ -1428,8 +1467,13 @@ document.getElementById('form').addEventListener('submit', e => {
   const txCandidacyParts = [];
   if (friedmanStage)
     txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
-  if (hnsStage)
-    txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+  if (hnsStage) {
+    if (hnsStage.insufficient) {
+      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based response estimate.${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+    } else {
+      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+    }
+  }
   txCandidacyParts.push(`<div class="alert alert-${priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMAD ? ' — <em>Prior MAD trial; score reflects profile suitability only</em>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
   if (surgHelper) txCandidacyParts.push(surgHelper);
   if (hgnsHTML) txCandidacyParts.push(`<div class="mt-2">${hgnsHTML}</div>`);
@@ -1445,7 +1489,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const candidacyBadges = [
     friedmanStage ? `Friedman ${friedmanStage}` : null,
     priorMAD ? `MAD: ${madScore.tier} (prior trial)` : `MAD: ${madScore.tier}`,
-    hnsStage ? `Inspire: ${hnsStage.responseRate}% response (Stage ${hnsStage.stage})` : null,
+    hnsStage && !hnsStage.insufficient ? `Inspire: ${hnsStage.responseRate}% response (Stage ${hnsStage.stage})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
   ].filter(Boolean);
 
   let cHTML = `
@@ -1567,7 +1611,8 @@ document.getElementById('form').addEventListener('submit', e => {
     patientName: (document.getElementById('patientName')?.value || '').trim(),
     reportDate: new Date().toISOString().split('T')[0],
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
-    lowHypoxicBurden: !out.phen.includes('High Hypoxic Burden'),
+    lowHypoxicBurden: oxygenMetricsAvailable && !out.phen.includes('High Hypoxic Burden'),
+    oxygenMetricsAvailable,
     apneaIndex,
     hypopneaIndex,
     fHypopneas,

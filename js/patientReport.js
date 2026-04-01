@@ -519,7 +519,7 @@ ${subtypeHtml}`;
 
       'High Loop Gain': `Your body's breathing control system may be set to a hair-trigger sensitivity — like a thermostat that overreacts to small changes. When your breathing slows slightly during sleep, your body may over-correct by breathing too fast, then too slow, creating an unstable cycle. This pattern is sometimes associated with a history of heart or lung conditions. Treatments that stabilize breathing rhythms, including certain CPAP settings, positional therapy, or medications in some cases, can help regulate this cycle.`,
 
-      'Poor Muscle Responsiveness': `The muscles around your airway are not responding as strongly as expected when breathing gets difficult. Normally, when the airway starts to close, a reflex tightens the throat muscles to hold it open. In your case, this reflex may be weaker, especially during dream (REM) sleep when muscles are naturally more relaxed. Inspire therapy — a small implant that stimulates the airway nerve — is specifically designed to address this pattern and can be very effective.`,
+      'Poor Muscle Responsiveness': `The muscles around your airway may not be responding as strongly as expected when breathing gets difficult. Normally, when the airway starts to close, a reflex tightens the throat muscles to help hold it open. In your case, that response may be weaker, especially during dream (REM) sleep when muscles are naturally more relaxed. This pattern can matter when we discuss treatment options, including whether therapies that physically support the airway might be a better fit.`,
 
       'Positional OSA': `Your sleep apnea is significantly worse when you sleep on your back. Gravity pulls the tongue and throat tissue backward when you are in the supine (back-sleeping) position, narrowing or blocking the airway. When you sleep on your side, the airway stays more open and breathing is easier. Positional therapy — using a device or pillow to encourage side-sleeping — can reduce your sleep apnea events substantially and may be one of the most straightforward parts of your treatment plan.`,
 
@@ -571,7 +571,7 @@ ${items}`;
     'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
     'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
-    'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources including dietitians, structured programs, or medical weight loss medications such as GLP-1 agonists (e.g., Zepbound/tirzepatide), which have shown significant results for weight loss in sleep apnea patients.`,
+    'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
     'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
     'NASAL-SURG': null,  // Merged into NASAL-OPT
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
@@ -623,6 +623,12 @@ ${items}`;
     /* Inspire with BMI >40 context */
     if (tag === 'HNS' && data && data.bmi > 40) {
       return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. <strong>Important:</strong> Inspire currently requires a BMI of 40 or below (some insurance plans require an even lower BMI). Since your BMI is currently above this threshold, reaching a BMI under 40 through weight management would be the first step toward Inspire candidacy. This is a goal worth discussing with your care team.`;
+    }
+    if (tag === 'INSPIRE-EVAL' && data && data.bmi > 40) {
+      return `<strong>Inspire Candidacy Evaluation</strong> — You are interested in Inspire therapy. Inspire is generally considered only after CPAP has not worked well enough and after a sleep endoscopy (DISE) confirms the right airway pattern. <strong>Important:</strong> your current BMI is above the FDA-supported range for Inspire, so the first step would be bringing your BMI below 40 and then reviewing candidacy with your ENT surgeon and insurer.`;
+    }
+    if (tag === 'WEIGHT' && data && data.bmi >= 30) {
+      return `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).`;
     }
 
     /* Mild + Low HB: de-emphasized CPAP description — alternatives are equally effective */
@@ -869,7 +875,12 @@ ${items}`;
     /* Weight */
     if (tags.has('WEIGHT')) {
       checkItems.push({ text: 'Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.', group: 'everyone' });
-      checkItems.push({ text: 'Ask your doctor about a referral to a registered dietitian, a structured weight management program, or medical weight loss options such as GLP-1 medications (e.g., Zepbound/tirzepatide), which have shown significant results for weight loss in sleep apnea patients.', group: 'everyone' });
+      checkItems.push({
+        text: data.bmi >= 30
+          ? 'Ask your doctor about a referral to a registered dietitian, a structured weight management program, or medical weight loss options such as GLP-1 medications (for eligible patients).'
+          : 'Ask your doctor about a referral to a registered dietitian or a structured weight management program for added support.',
+        group: 'everyone'
+      });
     }
 
     /* Nasal */

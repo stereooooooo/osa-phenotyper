@@ -20,27 +20,31 @@ const OSA_CONFIG = {
     },
 
     arousal: {
-      isi:            15,       // ISI ≥15 → possible low arousal threshold
-      isiHigh:        22,       // ISI ≥22 → high confidence
-      arRatio:        1.3,      // Arousal Index / AHI; Eckert 2013
-      arRatioHigh:    1.8
+      ahiMax:         30,       // Edwards 2014: AHI <30
+      nadirMin:       82.5,     // Edwards 2014: nadir SpO2 >82.5%
+      hypFraction:    58.3,     // Edwards 2014: hypopnea fraction >58.3%
+      scoreLikely:    2         // Score >=2 indicates likely low arousal threshold
     },
 
     loopGain: {
-      csr:            10,       // % Cheyne–Stokes ≥10; Javaheri 2017
+      estimateHigh:   0.7,      // Schmickl 2022: LG >0.7 = high
+      estimateBorderline: 0.6,  // borderline instability
+      csr:            10,       // supportive periodic-breathing signal only
       csrHigh:        20,
-      pahic3:         10,       // central pAHI (3% desat criterion)
+      pahic3:         10,       // supportive central-event signal only
       pahic3High:     20,
-      pahic4:         5,        // central pAHI (4% desat criterion)
+      pahic4:         5,        // supportive central-event signal only
       pahic4High:     10
-      // NOTE: CVD is a confidence modifier only — NOT a standalone trigger
+      // NOTE: CVD and central-event metrics are confidence modifiers only — not primary triggers
     },
 
     muscleResponse: {
       ahiMin:             15,   // Lowered from 30; Eckert 2013 PALM IQR 19-56, Sands 2018 validated at AHI≥15
       ahiHigh:            30,   // High confidence only at AHI≥30 (original PALM severe range)
       remNremRatio:       2.0,
-      remNremRatioHigh:   2.5
+      remNremRatioHigh:   2.5,
+      nremFloor:          15,   // Avoid co-firing with REM-predominant OSA (NREM AHI <15)
+      nremFloorHigh:      20
     },
 
     positional: {
