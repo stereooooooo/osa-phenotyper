@@ -132,3 +132,13 @@
 | 73 | Staging CORS allow/deny | Allowed origin should receive `Access-Control-Allow-Origin` on GET/preflight, while a disallowed origin should receive no permissive ACAO header |
 | 74 | Staging audit trail evidence | Real staging requests should appear in the API Gateway access-log group, and CloudTrail audit objects should contain DynamoDB data-plane events for patient/intake activity |
 | 75 | Staging patient PDF export | Live staging-backed UI should generate a patient report PDF with the patient-based filename and a non-empty multi-page document |
+
+### Group 15: Remaining Audit Follow-Up Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 76 | Compact visit audit entries | Create, update, and snapshot-save events should append visit summaries with changed-field metadata instead of embedding a full `formSnapshot` copy on every visit |
+| 77 | Review queue filter | Enabling `Review queue only` in the patient list should show only `review-needed` / `received` / `pending` intake statuses, sorted with actionable review items first |
+| 78 | Clinician insufficient-data warning | OSA patient missing oxygen metrics, anatomy detail, or complete HNS workup should display a clinician alert that names the incomplete decision domains |
+| 79 | Patient-facing data limitations callout | The patient report should render `What may still be refined` only when insufficient-data domains are present, and hide it otherwise |
+| 80 | Weight-readiness personalization | When `weightLossReadiness` is `ready`, `considering`, or `not-ready`, the weight recommendation/checklist wording should adapt accordingly without leaking GLP-1 language below BMI 30 |
+| 81 | Exact full-name search fast path | Searching by an exact normalized patient name should hit the `name-index` exact-match path before the broader scan fallback |

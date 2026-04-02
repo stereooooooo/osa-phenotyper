@@ -123,6 +123,47 @@ function ahiSeverity(ahi) {
   return 'Mild';
 }
 
+function buildInsufficientDataAssessment(ctx) {
+  if (!ctx || !ctx.osaConfirmed) return [];
+
+  const domains = [];
+
+  if (!ctx.oxygenMetricsAvailable) {
+    domains.push({
+      key: 'oxygen',
+      clinician: 'No oxygen-burden metrics entered (ODI, T90, nadir, or hypoxic burden area). Cardiovascular risk stratification and low-hypoxic-burden treatment de-emphasis should be treated as unavailable.',
+      patient: 'We still need fuller overnight oxygen information to judge how strongly your sleep apnea affected oxygen levels and long-term risk.',
+    });
+  }
+
+  const anatomyMissing = [];
+  if (!exists(ctx.bmi)) anatomyMissing.push('BMI');
+  if (!exists(ctx.tons)) anatomyMissing.push('tonsil size');
+  if (!exists(ctx.mall)) anatomyMissing.push('Friedman tongue position');
+  if (anatomyMissing.length >= 2) {
+    domains.push({
+      key: 'anatomy',
+      clinician: `Upper-airway anatomy is incompletely documented (${anatomyMissing.join(', ')} missing). Anatomy-driven phenotypes and surgery/MAD matching should be treated as preliminary.`,
+      patient: 'Some parts of your throat exam are still missing, so anatomy-based treatment options may be refined after a more complete exam.',
+    });
+  }
+
+  const hnsReferenced = ctx.prefInspire || ctx.prefSurgery || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
+  if (hnsReferenced && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
+    const hnsMissing = [];
+    if (!ctx.hasDISEData) hnsMissing.push('DISE');
+    if (ctx.hnsStage?.insufficient) hnsMissing.push(...(ctx.hnsStage.missing || []));
+    const deduped = [...new Set(hnsMissing)];
+    domains.push({
+      key: 'hns-workup',
+      clinician: `Inspire/HGNS workup is incomplete (${deduped.join(', ')} missing). Candidacy and expected response should not be treated as final until the workup is completed.`,
+      patient: 'If Inspire or other airway procedures are being considered, more evaluation may still be needed before those options can be judged accurately.',
+    });
+  }
+
+  return domains;
+}
+
 /* ── Print CSS injection ──────────────────────────────────────── */
 (function ensurePrintStyles(){
   const style = document.createElement('style');
@@ -539,6 +580,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const prefAvoidCpap = yes(f,'prefAvoidCpap');
   const prefSurgery   = yes(f,'prefSurgery');
   const prefInspire   = yes(f,'prefInspire');
+  const weightLossReadiness = f.get('weightLossReadiness') || '';
 
   // Derived flags
   const cpapFailed    = priorCpap && !cpapCurrent;
@@ -1238,6 +1280,15 @@ document.getElementById('form').addEventListener('submit', e => {
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');
+  if (recTagMap.some(r => r.tag === 'WEIGHT')) {
+    if (weightLossReadiness === 'ready') {
+      followUps.push('Weight-management follow-up in 4\u20136 weeks to reinforce current motivation, review early progress, and escalate support if needed.');
+    } else if (weightLossReadiness === 'considering') {
+      followUps.push('Revisit weight-management readiness at follow-up and use shared decision-making to choose between lifestyle, dietitian, and medication-supported options.');
+    } else if (weightLossReadiness === 'not-ready') {
+      followUps.push('Weight management remains clinically relevant, but revisit it briefly and without pressure at follow-up rather than making it the sole focus today.');
+    }
+  }
   followUps.push('Therapy effectiveness check (adherence, residual AHI/ODI, symptoms) at 4\u20138 weeks.');
 
   /* ─── HGNS (Inspire) Candidacy Assessment ───────────────────── */
@@ -1256,6 +1307,23 @@ document.getElementById('form').addEventListener('submit', e => {
   };
   const hgnsResult = buildHGNSAssessment(hgnsCtx);
   const hgnsHTML = renderHGNSHTML(hgnsResult);
+  const insufficientDataDomains = buildInsufficientDataAssessment({
+    osaConfirmed,
+    oxygenMetricsAvailable,
+    bmi,
+    tons,
+    mall,
+    prefInspire,
+    prefSurgery,
+    recTags: recTagMap,
+    hasDISEData,
+    hnsStage,
+  });
+  const insufficientDataHTML = insufficientDataDomains.length ? `
+    <div class="alert alert-warning mt-2 mb-3">
+      <strong><i class="bi bi-exclamation-triangle me-1"></i>Insufficient Data Caveats</strong>
+      <ul class="mb-0 mt-1">${insufficientDataDomains.map(domain => `<li>${domain.clinician}</li>`).join('')}</ul>
+    </div>` : '';
 
   /* ── Key numbers with color coding ─────────────────────────── */
   const keyNumItems = [];
@@ -1445,6 +1513,9 @@ document.getElementById('form').addEventListener('submit', e => {
   if (priorMAD) careSummaryParts.push('Prior MAD');
   if (priorUPPP) careSummaryParts.push('Prior UPPP');
   if (priorInspire) careSummaryParts.push('Prior Inspire');
+  if (weightLossReadiness === 'ready') careSummaryParts.push('Ready for weight management');
+  else if (weightLossReadiness === 'considering') careSummaryParts.push('Considering weight management');
+  else if (weightLossReadiness === 'not-ready') careSummaryParts.push('Not ready for weight management');
   if (hasCOMISA) careSummaryParts.push('COMISA');
   if (milestones.length) careSummaryParts.push(`Stage: ${milestones[milestones.length - 1]}`);
 
@@ -1508,6 +1579,7 @@ document.getElementById('form').addEventListener('submit', e => {
     ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => ({cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'inefficacy',cpapTravel:'travel'}[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
+    ${insufficientDataHTML}
     ${out.phen.length ? `
       <div class="table-responsive mt-3">
         <table class="table table-sm align-middle osa-report-table">
@@ -1619,6 +1691,7 @@ document.getElementById('form').addEventListener('submit', e => {
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
     lowHypoxicBurden: oxygenMetricsAvailable && !out.phen.includes('High Hypoxic Burden'),
     oxygenMetricsAvailable,
+    insufficientDataDomains,
     apneaIndex,
     hypopneaIndex,
     fHypopneas,
@@ -1628,6 +1701,7 @@ document.getElementById('form').addEventListener('submit', e => {
     milestones: [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value),
     studyType: document.querySelector('input[name="studyType"]:checked')?.value || null,
     cpapPressure: n(f.get('cpapPressure')),
+    weightLossReadiness,
     age: n(f.get('age')),
   };
 

@@ -65,3 +65,12 @@ Why: the prior matrix covered clinical logic more heavily than report rendering,
 
 ## Remaining Follow-Up
 - Browser-level re-check of archive/restore remains separate, but the patient-report PDF pagination fix has now been re-exported and visually confirmed locally.
+
+## April 2, 2026 Follow-Up
+
+### `js/patientReport.js`
+- Added a patient-facing `What may still be refined` alert when the clinician analysis flags missing oxygen data, incomplete anatomy documentation, or incomplete HNS workup.
+Why: the report needed a visible caution layer so incomplete inputs do not read like fully settled conclusions.
+
+- Personalized weight-management recommendation and checklist wording based on `weightLossReadiness`, while preserving GLP-1 language only for BMI `>= 30`.
+Why: the intake collected readiness data, but the report was still ignoring it and giving the same weight-management framing to ready, ambivalent, and not-ready patients.

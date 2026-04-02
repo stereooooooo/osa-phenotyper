@@ -111,3 +111,9 @@ Why: the matrix previously covered clinical logic, reporting, and intake integri
 - First-login MFA bootstrap test against the real Cognito user pool to confirm the `MFA_SETUP` callback behavior matches the deployed library/runtime combination.
 - Decide whether archive/restore should get a dedicated admin-only UI instead of the current one-way archive action.
 - Reintroduce WAF protection through a supported edge layer for the intake/API surface, likely by moving to API Gateway REST or fronting the app/API with CloudFront.
+
+## April 2, 2026 Follow-Up
+
+### `infrastructure/lambda/index.mjs`
+- Added an exact full-name lookup on the existing `name-index` before falling back to the slower `contains(nameLower, :q)` scan path.
+Why: the original patient search ignored the existing `name-index` entirely. This does not fix partial-name scalability, but it removes unnecessary full-table scans for exact full-name searches while a broader search redesign remains pending.

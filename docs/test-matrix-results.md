@@ -544,3 +544,36 @@
 6. **Tests 1, 2, 14: Pre-study patients could benefit from clearer "next step is a sleep study" framing** rather than treatment plans.
 
 7. **Some pre-study edge cases** around when treatment sections should/shouldn't render need tightening.
+
+---
+
+## April 2, 2026 Follow-Up Targeted Checks
+
+- `node --check js/app.js` ✅
+- `node --check js/patientReport.js` ✅
+- `node --check infrastructure/lambda/index.mjs` ✅
+- Inline script extraction + `node --check` for `index.html` ✅
+
+### Group 15 Spot Checks
+
+### Test 78: Clinician insufficient-data warning
+**Status:** targeted code-path verification complete
+**Result:** `js/app.js` now emits insufficient-data domains for:
+- missing oxygen metrics
+- incomplete anatomy documentation (BMI / tonsils / FTP)
+- incomplete HNS workup (missing DISE and/or Ji staging inputs)
+
+### Test 79: Patient-facing data limitations callout
+**Status:** targeted render probe complete
+**Result:** generated patient-report HTML rendered `What may still be refined` only when `insufficientDataDomains` were present ✅
+
+### Test 80: Weight-readiness personalization
+**Status:** targeted render probes complete
+**Ready now case:** patient-report HTML included `feel ready to work on weight management now` ✅
+**Considering case:** patient-report HTML included `you are considering weight management` ✅
+**BMI guardrail:** BMI 29 render did **not** include `GLP-1 therapies` ✅
+
+### Open From This Follow-Up
+- Review-queue behavior still needs one browser-level walkthrough of the new `Review queue only` toggle.
+- Compact visit-audit entries still need one live save/load inspection against a real patient row to confirm the stored visit payload shape end to end.
+- Exact full-name `name-index` search is now implemented, but it still needs one exercised request against a populated dataset to confirm the exact-match fast path before scan fallback.

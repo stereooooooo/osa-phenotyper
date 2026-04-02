@@ -51,3 +51,19 @@ This pass focused on the highest-value production-hardening gaps that remained a
 - There is still no full per-field source history timeline; provenance currently reflects latest known source, not every prior source transition.
 - There is still no dedicated "insufficient data" operating mode that systematically downgrades all phenotype/treatment outputs when key domains are missing.
 - Report snapshots are stored on the patient item with capped retention; a future production design may still warrant a dedicated snapshot table if record volume or artifact size grows.
+
+## April 2, 2026 Follow-Up Hardening
+
+### 5. Added a lightweight intake review queue filter
+- Updated `index.html` so the patient-list modal can switch into `Review queue only` mode and sort actionable intake statuses (`review-needed`, `received`, `pending`) to the top.
+- Surfaced pending-field counts directly in the patient list by expanding the list/search projections in `infrastructure/lambda/index.mjs`.
+- Why: pending intake conflicts existed in the data model, but clinicians still lacked a fast way to focus on charts that needed review.
+
+### 6. Added explicit insufficient-data warnings
+- Updated `js/app.js` to generate clinician-facing insufficient-data alerts when oxygen metrics are missing, anatomy is incompletely documented, or HNS workup remains incomplete.
+- Updated `js/patientReport.js` to add a patient-facing `What may still be refined` callout when those limitations affect interpretation.
+- Why: the app still needed a clear warning layer so missing data no longer feels like a silent green light for fully confident phenotype-driven decisions.
+
+## Remaining Gaps After Follow-Up
+- This is still a warning/callout layer, not a full system-wide insufficient-data mode with automatic suppression or downgrading of all downstream recommendations.
+- The review queue currently lives inside the patient list modal; it is not yet a full standalone dashboard with assignment, resolution workflow, or audit analytics.

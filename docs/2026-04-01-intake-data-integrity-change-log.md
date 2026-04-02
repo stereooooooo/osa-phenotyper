@@ -114,3 +114,19 @@ Why: the repository should preserve not just the pass state, but also the root c
   - API Gateway access-log presence
   - CloudTrail DynamoDB data-event presence
   - patient PDF export to `~/Downloads`
+
+## April 2, 2026 Follow-Up Hardening
+
+### `infrastructure/lambda/index.mjs`
+- Replaced per-visit full `formSnapshot` storage with compact visit-audit summaries (`changedFields`, counts, record-field changes, and snapshot-save flags).
+Why: appending the entire chart on every save was the remaining storage-bloat finding from the audit and created avoidable PHI duplication inside visit history.
+
+- Added `intakePendingFieldCount` to patient list/search projections.
+Why: the UI needs lightweight review-queue metadata without loading full charts just to find intake conflicts.
+
+### `index.html`
+- Added a `Review queue only` patient-list filter with intake-status sorting so `review-needed`, `received`, and `pending` charts surface first.
+Why: pending intake overrides existed in the backend, but clinicians still needed a practical front-end way to focus on charts awaiting intake review.
+
+## Verification
+- `node --check infrastructure/lambda/index.mjs`

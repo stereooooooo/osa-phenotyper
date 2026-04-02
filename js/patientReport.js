@@ -44,6 +44,20 @@ var PatientReport = (() => {
     return val !== null && val !== undefined && val !== '';
   }
 
+  function weightReadinessLead(data) {
+    if (!data) return '';
+    if (data.weightLossReadiness === 'ready') {
+      return 'You indicated that you feel ready to work on weight management now, which gives us a good opportunity to turn that motivation into a concrete plan. ';
+    }
+    if (data.weightLossReadiness === 'considering') {
+      return 'You indicated that you are considering weight management, so the goal is to make the next step feel realistic and supported rather than overwhelming. ';
+    }
+    if (data.weightLossReadiness === 'not-ready') {
+      return 'You indicated that weight management is not your main focus right now, which is okay — this can stay in the background while we work on other parts of your treatment plan. ';
+    }
+    return '';
+  }
+
   function normalizeFtp(ftp) {
     if (!exists(ftp)) return null;
     if (typeof ftp === 'number') return Number.isFinite(ftp) ? ftp : null;
@@ -528,6 +542,25 @@ ${subtypeHtml}`;
     return `\n<h2>What Your Sleep Study Found</h2>\n${parts.join('')}`;
   }
 
+  function renderDataLimitations(data) {
+    if (getReportStage(data) !== 'post-study') return '';
+    const domains = Array.isArray(data.insufficientDataDomains) ? data.insufficientDataDomains : [];
+    const patientNotes = domains
+      .map(domain => exists(domain?.patient) ? domain.patient : '')
+      .filter(Boolean);
+
+    if (!patientNotes.length) return '';
+
+    return `
+<div class="alert alert-warning">
+  <strong>What may still be refined</strong>
+  <p style="margin:0.4rem 0 0;">Some parts of your treatment discussion may be refined as more information is gathered.</p>
+  <ul style="margin:0.5rem 0 0;">
+    ${patientNotes.map(note => `<li>${esc(note)}</li>`).join('')}
+  </ul>
+</div>`;
+  }
+
   /* ══════════════════════════════════════════════════════════════════════════
      SECTION C — What's Contributing to Your Sleep Apnea
      ══════════════════════════════════════════════════════════════════════════ */
@@ -670,8 +703,12 @@ ${items}`;
     if (tag === 'INSPIRE-EVAL' && data && data.bmi > 40) {
       return `<strong>Inspire Candidacy Evaluation</strong> — You are interested in Inspire therapy. Inspire is generally considered only after CPAP has not worked well enough and after a sleep endoscopy (DISE) confirms the right airway pattern. <strong>Important:</strong> your current BMI is above the FDA-supported range for Inspire, so the first step would be bringing your BMI below 40 and then reviewing candidacy with your ENT surgeon and insurer.`;
     }
-    if (tag === 'WEIGHT' && data && data.bmi >= 30) {
-      return `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).`;
+    if (tag === 'WEIGHT' && data) {
+      const lead = weightReadinessLead(data);
+      const support = data.bmi >= 30
+        ? 'Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).'
+        : 'Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.';
+      return `<strong>Weight Management</strong> — ${lead}Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. ${support}`;
     }
 
     /* Mild + Low HB: de-emphasized CPAP description with uncertainty-aware language */
@@ -935,7 +972,14 @@ ${items}`;
 
     /* Weight */
     if (tags.has('WEIGHT')) {
-      checkItems.push({ text: 'Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.', group: 'everyone' });
+      const firstWeightStep = data.weightLossReadiness === 'ready'
+        ? 'Choose one concrete weight-management step to start this week — for example, setting a 5–10 pound short-term goal, planning meals, or starting a regular walking routine.'
+        : data.weightLossReadiness === 'considering'
+          ? 'Spend a few minutes deciding what feels most realistic right now: a small nutrition change, a walking goal, or a conversation with your doctor about structured support.'
+          : data.weightLossReadiness === 'not-ready'
+            ? 'Write down one reason weight change could matter for your sleep or health, and one barrier you want your care team to help you work around when you are ready.'
+            : 'Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.';
+      checkItems.push({ text: firstWeightStep, group: 'everyone' });
       checkItems.push({
         text: data.bmi >= 30
           ? 'Ask your doctor about a referral to a registered dietitian, a structured weight management program, or medical weight loss options such as GLP-1 medications (for eligible patients).'
@@ -1205,6 +1249,7 @@ ${items.join('')}`;
       renderSectionA(data),
       renderSectionB(data),
       renderSectionB2(data),
+      renderDataLimitations(data),
       renderSectionC(data),
       renderSectionD(data),
       renderSectionE(data),

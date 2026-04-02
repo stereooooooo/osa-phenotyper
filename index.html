@@ -108,6 +108,10 @@
             <input class="form-check-input" type="checkbox" role="switch" id="toggleArchivedPatients">
             <label class="form-check-label" for="toggleArchivedPatients">Show archived</label>
           </div>
+          <div class="form-check form-switch small mb-0" id="reviewQueueToggleWrap">
+            <input class="form-check-input" type="checkbox" role="switch" id="toggleReviewQueuePatients">
+            <label class="form-check-label" for="toggleReviewQueuePatients">Review queue only</label>
+          </div>
           <div style="width:250px;">
           <input type="text" id="patientSearch" class="form-control form-control-sm" placeholder="Search by name or MRN...">
           </div>
@@ -987,6 +991,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   let currentUserGroups = [];
   let currentUserIsAdmin = false;
   let showArchivedPatients = false;
+  let showReviewQueuePatients = false;
   const adminGroupName = (typeof AWS_CONFIG !== 'undefined' && AWS_CONFIG.adminGroupName) || 'osa-admin';
   const workflowMilestones = [
     'Initial Eval',
@@ -1064,10 +1069,12 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     currentUserGroups = [];
     currentUserIsAdmin = false;
     showArchivedPatients = false;
+    showReviewQueuePatients = false;
     document.getElementById('mfaCode').value = '';
     document.getElementById('mfaSetupCode').value = '';
     document.getElementById('mfaSetupSecret').textContent = '';
     document.getElementById('toggleArchivedPatients').checked = false;
+    document.getElementById('toggleReviewQueuePatients').checked = false;
     document.getElementById('archivedToggleWrap').classList.add('d-none');
   }
 
@@ -1190,6 +1197,11 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     await loadPatientList(document.getElementById('patientSearch').value.trim() || undefined);
   });
 
+  document.getElementById('toggleReviewQueuePatients').addEventListener('change', async (e) => {
+    showReviewQueuePatients = e.target.checked;
+    await loadPatientList(document.getElementById('patientSearch').value.trim() || undefined);
+  });
+
   async function loadPatientList(query) {
     const loading = document.getElementById('patientListLoading');
     const empty = document.getElementById('patientListEmpty');
@@ -1202,19 +1214,38 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     tbody.innerHTML = '';
 
     try {
+      const queueStatuses = new Set(['review-needed', 'received', 'pending']);
+      const queueRank = (patient) => {
+        if (patient.intakeStatus === 'review-needed') return 0;
+        if (patient.intakeStatus === 'received') return 1;
+        if (patient.intakeStatus === 'pending') return 2;
+        return 3;
+      };
+
       const patients = query
         ? await OSADatabase.searchPatients(query, showArchivedPatients)
         : await OSADatabase.listPatients(showArchivedPatients);
+      const filteredPatients = showReviewQueuePatients
+        ? patients.filter(patient => queueStatuses.has(patient.intakeStatus))
+        : patients;
+      filteredPatients.sort((a, b) => {
+        const queueDiff = queueRank(a) - queueRank(b);
+        if (queueDiff !== 0) return queueDiff;
+        return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+      });
 
       loading.classList.add('d-none');
 
-      if (!patients.length) {
+      if (!filteredPatients.length) {
         empty.classList.remove('d-none');
+        empty.querySelector('p').textContent = showReviewQueuePatients
+          ? 'No patients currently need intake review.'
+          : 'No patients yet. Click New Patient to add one.';
         return;
       }
 
       table.classList.remove('d-none');
-      patients.forEach(p => {
+      filteredPatients.forEach(p => {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         const statusColors = {
@@ -1238,6 +1269,13 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         const displayStatus = isArchived ? 'Archived' : latestMs;
         const color = isArchived ? 'dark' : (statusColors[latestMs] || 'secondary');
         const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : '';
+        const reviewBadge = p.intakeStatus === 'review-needed'
+          ? `<div class="small mt-1"><span class="badge bg-warning-subtle text-warning">${p.intakePendingFieldCount ? `Intake Review (${p.intakePendingFieldCount})` : 'Intake Review Needed'}</span></div>`
+          : p.intakeStatus === 'received'
+            ? '<div class="small mt-1"><span class="badge bg-success-subtle text-success">Intake Received</span></div>'
+            : p.intakeStatus === 'pending'
+              ? '<div class="small mt-1"><span class="badge bg-warning-subtle text-warning">Intake Pending</span></div>'
+              : '';
         const archiveButton = currentUserIsAdmin && !isArchived
           ? `<button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Archive">
               <i class="bi bi-archive"></i>
@@ -1253,7 +1291,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
           <td><strong>${escHtml(p.name || '')}</strong></td>
           <td>${escHtml(p.dob || '')}</td>
           <td><code>${escHtml(p.mrn || '—')}</code></td>
-          <td><span class="badge bg-${color}">${escHtml(displayStatus)}</span></td>
+          <td><span class="badge bg-${color}">${escHtml(displayStatus)}</span>${reviewBadge}</td>
           <td class="text-muted small">${updated}</td>
           <td class="text-end">${restoreButton || archiveButton}</td>`;
 

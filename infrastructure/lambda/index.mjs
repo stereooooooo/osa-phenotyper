@@ -24,6 +24,7 @@ const ADMIN_GROUP_NAME = process.env.ADMIN_GROUP_NAME || 'osa-admin';
 const CLINICIAN_GROUP_NAME = process.env.CLINICIAN_GROUP_NAME || 'osa-clinician';
 const USER_POOL_ID = process.env.USER_POOL_ID || '';
 const REPORT_SNAPSHOT_LIMIT = 5;
+const VISIT_FIELD_PREVIEW_LIMIT = 12;
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
 
@@ -145,6 +146,69 @@ function buildReportSnapshots(existingSnapshots, payload, user, timestamp) {
   const snapshots = Array.isArray(existingSnapshots) ? existingSnapshots.slice() : [];
   snapshots.push(snapshot);
   return snapshots.slice(-REPORT_SNAPSHOT_LIMIT);
+}
+
+function getMeaningfulChangedFields(previousFormData, nextFormData) {
+  const previous = (previousFormData && typeof previousFormData === 'object' && !Array.isArray(previousFormData))
+    ? previousFormData
+    : {};
+  const next = (nextFormData && typeof nextFormData === 'object' && !Array.isArray(nextFormData))
+    ? nextFormData
+    : {};
+  const keys = Array.from(new Set([...Object.keys(previous), ...Object.keys(next)]));
+
+  return keys.filter((key) => {
+    const prev = previous[key];
+    const curr = next[key];
+    if (isEmptyLike(prev) && isEmptyLike(curr)) return false;
+    return !formValuesEqual(prev, curr);
+  });
+}
+
+function buildVisitEntry({
+  action,
+  user,
+  timestamp,
+  previousFormData,
+  nextFormData,
+  changedRecordFields = [],
+  reportSnapshotSaved = false,
+}) {
+  const visit = {
+    date: timestamp,
+    user,
+    action,
+  };
+
+  const changedFields = getMeaningfulChangedFields(previousFormData, nextFormData);
+  if (changedFields.length) {
+    visit.changedFieldCount = changedFields.length;
+    visit.changedFields = changedFields.slice(0, VISIT_FIELD_PREVIEW_LIMIT);
+    if (changedFields.length > VISIT_FIELD_PREVIEW_LIMIT) {
+      visit.changedFieldsTruncated = true;
+    }
+  }
+
+  const meaningfulNextValues = Object.entries(
+    (nextFormData && typeof nextFormData === 'object' && !Array.isArray(nextFormData)) ? nextFormData : {}
+  ).filter(([, value]) => !isEmptyLike(value));
+  if (action === 'Created') {
+    visit.initialFieldCount = meaningfulNextValues.length;
+  }
+
+  if (changedRecordFields.length) {
+    visit.changedRecordFieldCount = changedRecordFields.length;
+    visit.changedRecordFields = changedRecordFields.slice(0, VISIT_FIELD_PREVIEW_LIMIT);
+    if (changedRecordFields.length > VISIT_FIELD_PREVIEW_LIMIT) {
+      visit.changedRecordFieldsTruncated = true;
+    }
+  }
+
+  if (reportSnapshotSaved) {
+    visit.reportSnapshotSaved = true;
+  }
+
+  return visit;
 }
 
 const WORKFLOW_MILESTONES = [
@@ -339,12 +403,14 @@ async function createPatient(event, body, user) {
     milestones: normalizedMilestones,
     formData: normalizedFormData,
     fieldProvenance: buildFieldProvenance({}, normalizedFormData, 'clinician', user, now),
-    visits: [{
-      date: now,
-      user,
+    visits: [buildVisitEntry({
       action: 'Created',
-      formSnapshot: normalizedFormData,
-    }],
+      user,
+      timestamp: now,
+      previousFormData: {},
+      nextFormData: normalizedFormData,
+      changedRecordFields: ['name', 'dob', ...((mrn || '').trim() ? ['mrn'] : [])],
+    })],
     createdAt: now,
     updatedAt: now,
     createdBy: user,
@@ -370,7 +436,7 @@ async function listPatients(event, params, userGroups) {
   const showArchived = ['1', 'true', 'yes'].includes(includeArchived) && hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME]);
   const scanParams = {
     TableName: TABLE,
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
     ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
   };
 
@@ -459,13 +525,25 @@ async function updatePatient(event, id, body, user, userGroups) {
   let remainingPendingOverrides = currentPendingOverrides;
   let remainingPendingProvenance = currentPendingProvenance;
 
-  // Build visit entry
-  const visit = {
-    date: now,
-    user,
+  const changedRecordFields = [];
+  if (name !== undefined && name.trim() !== (Item.name || '')) changedRecordFields.push('name');
+  if (dob !== undefined && dob !== (Item.dob || '')) changedRecordFields.push('dob');
+  if (mrn !== undefined && (mrn || '').trim() !== (Item.mrn || '')) changedRecordFields.push('mrn');
+  if (normalizedMilestones && JSON.stringify(normalizedMilestones) !== JSON.stringify(Array.isArray(Item.milestones) ? Item.milestones : [])) {
+    changedRecordFields.push('milestones');
+  } else if (status !== undefined && status !== (Item.status || '')) {
+    changedRecordFields.push('status');
+  }
+
+  const visit = buildVisitEntry({
     action: body.visitAction || 'Updated',
-    formSnapshot: formData || Item.formData || {},
-  };
+    user,
+    timestamp: now,
+    previousFormData: Item.formData || {},
+    nextFormData: formData !== undefined ? formData : (Item.formData || {}),
+    changedRecordFields,
+    reportSnapshotSaved: body.reportSnapshot !== undefined,
+  });
 
   const updates = {
     ':now': now,
@@ -636,7 +714,7 @@ async function searchPatients(event, params, userGroups) {
   const mrnQuery = {
     TableName: TABLE,
     IndexName: 'mrn-index',
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
     KeyConditionExpression: 'mrn = :mrn',
     ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
     ExpressionAttributeValues: { ':mrn': q, ':isDeletedFalse': false },
@@ -647,10 +725,25 @@ async function searchPatients(event, params, userGroups) {
   const { Items: mrnItems } = await ddb.send(new QueryCommand(mrnQuery));
   if (mrnItems?.length) return ok(event, mrnItems);
 
+  // Try exact full-name match via existing nameLower GSI before scanning
+  const nameQuery = {
+    TableName: TABLE,
+    IndexName: 'name-index',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
+    KeyConditionExpression: 'nameLower = :nameLower',
+    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
+    ExpressionAttributeValues: { ':nameLower': q, ':isDeletedFalse': false },
+  };
+  if (!showArchived) {
+    nameQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+  }
+  const { Items: exactNameItems } = await ddb.send(new QueryCommand(nameQuery));
+  if (exactNameItems?.length) return ok(event, exactNameItems);
+
   // Fall back to name scan (fine for small datasets)
   const nameScan = {
     TableName: TABLE,
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
     ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
     ExpressionAttributeValues: { ':q': q, ':isDeletedFalse': false },
   };
