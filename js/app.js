@@ -209,6 +209,22 @@ function buildTreatmentSafetyAssessment(ctx) {
     });
   }
 
+  // WatchPAT-derived central/CSR signals can raise suspicion for central instability,
+  // but PSG remains the confirmation step before central-apnea-directed therapy is finalized.
+  const hasHomeStudyCentralSignals =
+    (ctx.studyType === 'watchpat' || ctx.studyType === 'both') &&
+    [ctx.csr, ctx.pahic3, ctx.pahic4].some(exists);
+  const hasPSGCentralConfirmation =
+    ctx.studyType === 'psg' ||
+    ((ctx.studyType === 'both' || ctx.studyType === 'psg') && exists(ctx.cai));
+  if (tags.has('HLG-ADV') && hasHomeStudyCentralSignals && !hasPSGCentralConfirmation) {
+    alerts.push({
+      key: 'central-psg-workup',
+      clinician: 'WatchPAT-derived central or periodic-breathing signals should be confirmed with in-lab PSG before choosing central-apnea-directed therapy such as ASV, oxygen, or acetazolamide.',
+      patient: 'Your home sleep study suggested some breathing-instability patterns that may need a full in-lab sleep study before advanced central-apnea treatments are chosen.',
+    });
+  }
+
   // DISE remains the planning prerequisite before final site-directed airway surgery selection.
   const surgeryReferenced = ctx.prefSurgery || [
     'SURG',
@@ -350,6 +366,14 @@ function applyTreatmentSafetyGuardrails(recEntries, safetyAlerts) {
     prependedEntries.push({
       text: 'Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.',
       tag: 'MAD-WORKUP',
+    });
+  }
+
+  if (safetyKeys.has('central-psg-workup')) {
+    suppressedTags.add('HLG-ADV');
+    prependedEntries.push({
+      text: 'Because the central-breathing instability was inferred from a home sleep test, confirm it on in-lab PSG before finalizing ASV or other central-directed therapy.',
+      tag: 'CENTRAL-PSG-WORKUP',
     });
   }
 
@@ -1553,6 +1577,11 @@ document.getElementById('form').addEventListener('submit', e => {
     priorJaw,
     prefSurgery,
     hasDISEData,
+    studyType: f.get('studyType') || null,
+    csr,
+    pahic3,
+    pahic4,
+    cai,
   });
   const treatmentSafetyHTML = treatmentSafetyChecks.length ? `
     <div class="alert alert-warning mt-2 mb-3">

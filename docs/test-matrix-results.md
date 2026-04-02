@@ -1,10 +1,25 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit 4a9f90a (`fix: close more audit gaps`) + local intake-review workflow changes
+**Latest app version:** commit 876b1e1 (`feat: add intake review dashboard`) + local central-confirmation guardrail changes
 
 ---
 
 ## April 2, 2026 Executable Harness Expansion
+
+### Home-Test Central Confirmation Follow-Up
+- Added source/syntax verification for the new WatchPAT central-confirmation guardrail in:
+  - `js/app.js`
+  - `js/patientReport.js`
+  - `docs/citations.md`
+- Added executable patient-report coverage for:
+  - `CENTRAL-PSG-WORKUP` explanation rendering
+  - `CENTRAL-PSG-WORKUP` checklist step generation
+- Result: **130 passed, 0 failed** of 130 assertions.
+- Verification method:
+  - `node --check js/app.js`
+  - `node --check js/patientReport.js`
+  - headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`
+- Conclusion: WatchPAT-derived central / CSR signals now behave as a PSG-confirmation prerequisite before advanced central-directed therapy is finalized, and the patient-report regression harness covers the new guardrail.
 
 ### Intake Review Workflow Follow-Up
 - Added source/syntax verification for the new intake-review workflow and provenance timeline changes in:
@@ -45,7 +60,7 @@
 - Re-ran it again after widening the insufficient-data guardrails to cover:
   - missing positional tracking
   - missing REM/NREM staging
-- Result: **128 passed, 0 failed** of 128 assertions.
+- Result at that stage: **128 passed, 0 failed** of 128 assertions.
 - Execution method: headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`.
 - Added executable assertions for:
   - `MAD-WORKUP` patient explanation + checklist step

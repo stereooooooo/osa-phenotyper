@@ -631,6 +631,7 @@ ${items}`;
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
     'HNS-WORKUP': `<strong>Complete the Inspire Evaluation First</strong> — Inspire can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, Inspire should stay in the “possible option” category rather than a finalized recommendation.`,
     'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
+    'CENTRAL-PSG-WORKUP': `<strong>Confirm Central-Breathing Findings With a Lab Sleep Study</strong> — Your home sleep study showed breathing-instability signals that can suggest central sleep apnea or periodic breathing, but those findings are usually confirmed with a full in-lab sleep study before advanced treatments such as ASV are chosen. That extra step helps your care team make sure the pattern is truly central and that the treatment is matched safely.`,
     'ASV-SAFETY': `<strong>Confirm Heart-Function Safety Before ASV</strong> — Some advanced PAP devices, especially ASV, are only appropriate after your care team confirms that your heart function is in a safe range. If ASV comes up as an option, your sleep specialist may review a recent echocardiogram or ask for heart-function testing first.`,
     'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
     'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
@@ -930,6 +931,14 @@ ${items}`;
     if (tags.has('SLEEP-STAGE-WORKUP')) {
       checkItems.push({
         text: 'Ask your care team whether the REM versus non-REM portion of your study was complete enough to judge if your sleep apnea is worse during dream sleep.',
+        group: 'treatment'
+      });
+    }
+
+    if (tags.has('CENTRAL-PSG-WORKUP')) {
+      const studyLabel = data.studyType === 'watchpat' ? 'home sleep study' : 'sleep study';
+      checkItems.push({
+        text: `Ask whether the central-breathing signals seen on your ${studyLabel} should be confirmed with an in-lab sleep study before advanced PAP options such as ASV are considered.`,
         group: 'treatment'
       });
     }

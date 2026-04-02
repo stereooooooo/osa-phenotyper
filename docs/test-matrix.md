@@ -186,3 +186,8 @@
 |---|------|-------------|
 | 104 | Dedicated review dashboard surface | Clinician navbar should expose a standalone `Review Queue` dashboard that loads without using the patient-list toggle and summarizes `review-needed`, `received`, and `pending` counts |
 | 105 | Dashboard queue actions | Review dashboard rows should support `Open` and `Review` actions that load the chart and, for actionable conflicts, open the intake-review modal directly |
+
+### Group 21: Home-Test Central Confirmation Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 106 | WatchPAT central-confirmation prerequisite | When advanced central-directed therapy would be inferred from WatchPAT central/CSR signals, the plan should prepend a PSG confirmation step and suppress the advanced central-treatment recommendation until lab confirmation is available |

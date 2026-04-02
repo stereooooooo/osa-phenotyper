@@ -615,6 +615,13 @@ assert(reportHtml.includes('Confirm Heart-Function Safety Before ASV'), 'ASV saf
 assert(reportHtml.includes('echocardiogram') || reportHtml.includes('heart-function result'), 'ASV safety tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  studyType: 'watchpat',
+  recTags: [{ tag: 'CENTRAL-PSG-WORKUP', text: 'Because the central-breathing instability was inferred from a home sleep test, confirm it on in-lab PSG before finalizing ASV or other central-directed therapy.' }],
+}));
+assert(reportHtml.includes('Confirm Central-Breathing Findings With a Lab Sleep Study'), 'Central-PSG workup tag renders a patient-friendly confirmation explanation');
+assert(reportHtml.includes('central-breathing signals seen on your home sleep study') && reportHtml.includes('ASV'), 'Central-PSG workup tag adds a practical checklist step before advanced PAP decisions');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' }],
 }));
 assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'Surgery workup tag renders a patient-friendly safety explanation');

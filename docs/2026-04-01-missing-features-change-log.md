@@ -130,3 +130,18 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Intake-Dashboard Follow-Up
 - The app now has a standalone intake review dashboard, but it still does not support assignment, escalation, SLA tracking, or cross-clinician audit analytics.
 - `fieldProvenanceHistory` still focuses on chart-form fields rather than every chart attribute as one unified longitudinal record.
+
+## April 2, 2026 Central-Confirmation Follow-Up
+
+### 13. Added a WatchPAT central-confirmation safety guardrail
+- Updated `js/app.js` so WatchPAT- or mixed-study central/CSR signals no longer let the advanced central-directed pathway (`HLG-ADV`) stand on their own when PSG confirmation is still missing.
+- Added a new `CENTRAL-PSG-WORKUP` treatment-safety tag that:
+  - prepends an in-lab PSG confirmation step
+  - suppresses premature ASV / central-directed treatment routing until confirmation is available
+- Updated `js/patientReport.js` so the patient plan explains why a lab sleep study may still be needed before advanced PAP such as ASV is chosen.
+- Updated `docs/citations.md`, `tests/tests.html`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` so the protocol and regression coverage reflect the new guardrail.
+- Why: the audit still had a structural safety gap around advanced central-apnea-directed treatment being inferred too directly from home-test central signals. This pass makes WatchPAT central data behave like a screening/workup trigger rather than a final routing decision.
+
+## Remaining Gaps After Central-Confirmation Follow-Up
+- The app now guards one important home-test central-instability pathway, but it still does not provide a universal contraindication/safety data model across every surgery, HGNS, PAP-alternative, and central-apnea scenario.
+- `fieldProvenanceHistory` still focuses on chart-form fields rather than every chart attribute as one unified longitudinal record.
