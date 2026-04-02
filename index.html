@@ -474,9 +474,45 @@
           </div>
         </fieldset>
       </div>
+      <div class="col-12">
+        <div class="border rounded p-2 mt-1">
+          <div class="small fw-semibold text-muted text-uppercase mb-2">Treatment Safety Inputs</div>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small mb-1">LVEF % <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="If ASV is being considered, documented LVEF ≤45% makes ASV unsafe in systolic heart failure."></i></label>
+              <input type="number" step="1" name="lvef" class="form-control form-control-sm" min="5" max="90" placeholder="e.g. 55">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1" for="madDentition">MAD tooth support</label>
+              <select class="form-select form-select-sm" name="madDentition" id="madDentition">
+                <option value="">—</option>
+                <option value="adequate">Adequate tooth support</option>
+                <option value="limited">Limited / poor support</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1" for="madProtrusion">MAD protrusion</label>
+              <select class="form-select form-select-sm" name="madProtrusion" id="madProtrusion">
+                <option value="">—</option>
+                <option value="adequate">Adequate protrusion (≥6 mm)</option>
+                <option value="limited">Limited protrusion (&lt;6 mm)</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1" for="madTmj">TMJ status</label>
+              <select class="form-select form-select-sm" name="madTmj" id="madTmj">
+                <option value="">—</option>
+                <option value="none">No major TMJ issue</option>
+                <option value="mild">Mild / history only</option>
+                <option value="severe">Active / severe TMJ problem</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  </div>
+</div>
 </div>
 
 <!-- ===== Physical Exam & DISE (side by side) ===== -->
@@ -1021,7 +1057,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','cpapPressure'],
+    treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','cpapPressure','lvef','madDentition','madProtrusion','madTmj'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -1719,6 +1755,10 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     cpapNoImprove: 'CPAP no improvement',
     cpapTravel: 'CPAP travel difficulty',
     weightLossReadiness: 'Weight-management interest',
+    lvef: 'LVEF',
+    madDentition: 'MAD tooth support',
+    madProtrusion: 'MAD protrusion',
+    madTmj: 'TMJ status',
   };
 
   function getChartFieldLabel(key) {

@@ -145,3 +145,25 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Central-Confirmation Follow-Up
 - The app now guards one important home-test central-instability pathway, but it still does not provide a universal contraindication/safety data model across every surgery, HGNS, PAP-alternative, and central-apnea scenario.
 - `fieldProvenanceHistory` still focuses on chart-form fields rather than every chart attribute as one unified longitudinal record.
+
+## April 2, 2026 Explicit Safety-Input Follow-Up
+
+### 14. Added clinician-entered MAD and ASV safety inputs
+- Updated `index.html` so the treatment-history card now captures:
+  - documented LVEF
+  - MAD tooth-support status
+  - MAD protrusion adequacy
+  - TMJ status
+- Updated `js/app.js` so these inputs change the recommendation layer in a data-aware way:
+  - documented poor dentition / limited protrusion / severe TMJ suppresses MAD as a live option and replaces it with `MAD-SAFETY-LIMIT`
+  - documented LVEF ≤45 suppresses ASV-specific routing and replaces it with `ASV-CONTRA`
+  - missing or cautionary findings still use prerequisite-style workup alerts instead of false certainty
+- Updated `js/patientReport.js` so the patient plan distinguishes between:
+  - “needs more safety review”
+  - “currently a poor / unsafe fit”
+- Updated `docs/citations.md`, `tests/tests.html`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` to track the new safety-capture rules and executable regression coverage.
+- Why: the audit gap was no longer just missing reminder text. The app needed a way to represent documented safety limitations separately from unreviewed prerequisites so treatment options could be suppressed when they are explicitly unsafe or poor fits.
+
+## Remaining Gaps After Explicit Safety-Input Follow-Up
+- Safety capture is broader now, but it still is not a universal contraindication model across every surgery, HGNS, and PAP-alternative workflow.
+- The app still needs a fuller CI-grade end-to-end suite beyond the current report-layer/browser harness.

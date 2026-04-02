@@ -191,3 +191,9 @@
 | # | Name | Key Features |
 |---|------|-------------|
 | 106 | WatchPAT central-confirmation prerequisite | When advanced central-directed therapy would be inferred from WatchPAT central/CSR signals, the plan should prepend a PSG confirmation step and suppress the advanced central-treatment recommendation until lab confirmation is available |
+
+### Group 22: Explicit Safety Inputs
+| # | Name | Key Features |
+|---|------|-------------|
+| 107 | Documented MAD safety limitation | When tooth support is poor, protrusion is limited, or TMJ disease is severe, MAD should be suppressed as a live option and replaced with a limitation/safety explanation rather than a generic workup note |
+| 108 | Documented ASV contraindication | When LVEF is documented at 45% or below, ASV-specific routing should be suppressed and replaced with a contraindication-style alert rather than a generic “check LVEF” reminder |

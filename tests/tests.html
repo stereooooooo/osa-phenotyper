@@ -609,10 +609,22 @@ assert(reportHtml.includes('Confirm Oral Appliance Safety First'), 'MAD workup t
 assert(reportHtml.includes('Ask the sleep dentist to confirm'), 'MAD workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'MAD-SAFETY-LIMIT', text: 'Current dental or jaw findings make an oral appliance a limited or potentially unsafe option until a sleep-dentist review says otherwise.' }],
+}));
+assert(reportHtml.includes('Oral Appliance May Not Be a Safe Fit Right Now'), 'MAD safety-limit tag renders a patient-friendly contraindication explanation');
+assert(reportHtml.includes('poor fit before treating it as a real option'), 'MAD safety-limit tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ASV-SAFETY', text: 'If ASV is being considered, confirm LVEF is above 45% first.' }],
 }));
 assert(reportHtml.includes('Confirm Heart-Function Safety Before ASV'), 'ASV safety tag renders a patient-friendly safety explanation');
 assert(reportHtml.includes('echocardiogram') || reportHtml.includes('heart-function result'), 'ASV safety tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'ASV-CONTRA', text: 'Documented reduced ejection fraction makes ASV unsafe right now.' }],
+}));
+assert(reportHtml.includes('Reduced Heart Function Makes ASV Unsafe Right Now'), 'ASV contraindication tag renders a patient-friendly safety explanation');
+assert(reportHtml.includes('non-ASV options') || reportHtml.includes('cardiology review'), 'ASV contraindication tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   studyType: 'watchpat',

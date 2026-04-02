@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit 876b1e1 (`feat: add intake review dashboard`) + local central-confirmation guardrail changes
+**Latest app version:** commit cccfb8f (`fix: require psg confirmation for central routing`) + local explicit safety-input changes
 
 ---
 
@@ -20,6 +20,25 @@
   - `node --check js/patientReport.js`
   - headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`
 - Conclusion: WatchPAT-derived central / CSR signals now behave as a PSG-confirmation prerequisite before advanced central-directed therapy is finalized, and the patient-report regression harness covers the new guardrail.
+
+### Explicit Safety-Input Follow-Up
+- Added source/syntax verification for the new clinician-entered safety inputs and their downstream guardrails in:
+  - `index.html`
+  - `js/app.js`
+  - `js/patientReport.js`
+  - `docs/citations.md`
+- Added executable patient-report coverage for:
+  - `MAD-SAFETY-LIMIT` explanation rendering
+  - `MAD-SAFETY-LIMIT` checklist step generation
+  - `ASV-CONTRA` explanation rendering
+  - `ASV-CONTRA` checklist step generation
+- Result: **134 passed, 0 failed** of 134 assertions.
+- Verification method:
+  - `node --check js/app.js`
+  - `node --check js/patientReport.js`
+  - extracted inline script parse check via `node --check /tmp/osa-index-inline.js`
+  - headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`
+- Conclusion: the app now distinguishes explicit safety limitations from unresolved workup for MAD and ASV pathways, and the patient-report regression harness covers the new guardrails.
 
 ### Intake Review Workflow Follow-Up
 - Added source/syntax verification for the new intake-review workflow and provenance timeline changes in:

@@ -193,20 +193,45 @@ function buildTreatmentSafetyAssessment(ctx) {
   // MAD safety checks remain clinician prerequisites even when phenotype matching is favorable.
   const madReferenced = ['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'REM-MAD'].some(tag => tags.has(tag));
   if (madReferenced && !ctx.priorMAD) {
-    alerts.push({
-      key: 'mad-workup',
-      clinician: `Before finalizing oral appliance therapy, confirm adequate dentition, adequate mandibular protrusion, and absence of severe TMJ dysfunction${ctx.priorJaw ? '; prior jaw surgery also warrants occlusal review' : ''}.`,
-      patient: 'If an oral appliance is being considered, a sleep-dentist exam is still needed to confirm that your teeth, jaw movement, and jaw joints make it a safe fit.',
-    });
+    const madContraReasons = [];
+    const madCautionNotes = [];
+
+    if (ctx.madDentition === 'limited') madContraReasons.push('limited tooth support / dentition');
+    if (ctx.madProtrusion === 'limited') madContraReasons.push('limited mandibular protrusion');
+    if (ctx.madTmj === 'severe') madContraReasons.push('active or severe TMJ dysfunction');
+    if (ctx.madTmj === 'mild') madCautionNotes.push('a history of TMJ symptoms still warrants sleep-dentist review');
+    if (ctx.priorJaw) madCautionNotes.push('prior jaw surgery still warrants occlusal review');
+
+    if (madContraReasons.length) {
+      alerts.push({
+        key: 'mad-safety-limit',
+        clinician: `Oral appliance therapy is currently a poor or potentially unsafe fit because of ${madContraReasons.join(', ')}. Reframe MAD as limited/unfavorable unless a sleep-dentist evaluation changes that assessment.`,
+        patient: 'Your current jaw or dental findings make an oral appliance less likely to be a safe or practical fit right now, so your care team should not treat it as a finalized option until that is reviewed carefully.',
+      });
+    } else if (!ctx.madDentition || !ctx.madProtrusion || !ctx.madTmj || madCautionNotes.length) {
+      alerts.push({
+        key: 'mad-workup',
+        clinician: `Before finalizing oral appliance therapy, confirm adequate dentition, adequate mandibular protrusion, and absence of severe TMJ dysfunction${madCautionNotes.length ? `; ${madCautionNotes.join('; ')}` : ''}.`,
+        patient: 'If an oral appliance is being considered, a sleep-dentist exam is still needed to confirm that your teeth, jaw movement, and jaw joints make it a safe fit.',
+      });
+    }
   }
 
   // ASV requires preserved or documented-safe systolic function (SERVE-HF guardrail).
   if (tags.has('HLG-ADV')) {
-    alerts.push({
-      key: 'asv-safety',
-      clinician: 'If ASV is being considered, document LVEF >45% first. ASV is contraindicated in HFrEF with LVEF \u226445%.',
-      patient: 'If an advanced PAP device such as ASV is being considered, your care team may need to confirm your heart function first because not every PAP device is safe for every heart condition.',
-    });
+    if (exists(ctx.lvef) && ctx.lvef <= 45) {
+      alerts.push({
+        key: 'asv-contra',
+        clinician: `Documented LVEF ${ctx.lvef}% is at or below the SERVE-HF safety threshold. Suppress ASV-specific routing and treat persistent central-instability management as specialist review territory instead.`,
+        patient: 'Your documented heart-pumping function is below the safety range for ASV, so that device should not be treated as a routine option in your plan unless a specialist says otherwise.',
+      });
+    } else if (!exists(ctx.lvef)) {
+      alerts.push({
+        key: 'asv-safety',
+        clinician: 'If ASV is being considered, document LVEF >45% first. ASV is contraindicated in HFrEF with LVEF \u226445%.',
+        patient: 'If an advanced PAP device such as ASV is being considered, your care team may need to confirm your heart function first because not every PAP device is safe for every heart condition.',
+      });
+    }
   }
 
   // WatchPAT-derived central/CSR signals can raise suspicion for central instability,
@@ -369,6 +394,14 @@ function applyTreatmentSafetyGuardrails(recEntries, safetyAlerts) {
     });
   }
 
+  if (safetyKeys.has('mad-safety-limit')) {
+    ['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'REM-MAD'].forEach(tag => suppressedTags.add(tag));
+    prependedEntries.push({
+      text: 'Current dental or jaw findings make an oral appliance a limited or potentially unsafe option until a sleep-dentist review says otherwise.',
+      tag: 'MAD-SAFETY-LIMIT',
+    });
+  }
+
   if (safetyKeys.has('central-psg-workup')) {
     suppressedTags.add('HLG-ADV');
     prependedEntries.push({
@@ -381,6 +414,14 @@ function applyTreatmentSafetyGuardrails(recEntries, safetyAlerts) {
     prependedEntries.push({
       text: 'If ASV is being considered, confirm LVEF is above 45% first because ASV is contraindicated in reduced ejection fraction heart failure.',
       tag: 'ASV-SAFETY',
+    });
+  }
+
+  if (safetyKeys.has('asv-contra')) {
+    suppressedTags.add('HLG-ADV');
+    prependedEntries.push({
+      text: 'Documented reduced ejection fraction makes ASV unsafe right now, so persistent central-breathing treatment should stay in specialist-review territory rather than a routine recommendation.',
+      tag: 'ASV-CONTRA',
     });
   }
 
@@ -825,6 +866,10 @@ document.getElementById('form').addEventListener('submit', e => {
   const prefSurgery   = yes(f,'prefSurgery');
   const prefInspire   = yes(f,'prefInspire');
   const weightLossReadiness = f.get('weightLossReadiness') || '';
+  const lvef = n(f.get('lvef'));
+  const madDentition = f.get('madDentition') || '';
+  const madProtrusion = f.get('madProtrusion') || '';
+  const madTmj = f.get('madTmj') || '';
 
   // Derived flags
   const cpapFailed    = priorCpap && !cpapCurrent;
@@ -1582,6 +1627,10 @@ document.getElementById('form').addEventListener('submit', e => {
     pahic3,
     pahic4,
     cai,
+    lvef,
+    madDentition,
+    madProtrusion,
+    madTmj,
   });
   const treatmentSafetyHTML = treatmentSafetyChecks.length ? `
     <div class="alert alert-warning mt-2 mb-3">
@@ -1932,6 +1981,10 @@ document.getElementById('form').addEventListener('submit', e => {
     priorUPPP,
     prefSurgery,
     hasCOMISA,
+    lvef,
+    madDentition,
+    madProtrusion,
+    madTmj,
     madScore,
     friedmanStage,
     hnsStage,
