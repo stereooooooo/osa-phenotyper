@@ -128,6 +128,19 @@ async function runClinicianWorkflow() {
   await waitFor(() => doc.getElementById('patientNameDisplay').textContent.trim() === 'Workflow QA Patient', 'patient saved to bar');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false).length, 1, 'Saving through the real UI persists one patient in the workflow test store');
 
+  clickSelector(win, '#btnIntakeLink');
+  await waitFor(() => doc.getElementById('intakeLinkModal').classList.contains('show'), 'intake link modal opens');
+  clickSelector(win, '#btnGenerateIntakeLink');
+  await waitFor(() => Boolean(doc.getElementById('intakeLinkUrl').value), 'intake link generated');
+  const generatedIntakeLink = doc.getElementById('intakeLinkUrl').value;
+  const expectedLocalPrefix = `${win.location.origin}/intake?t=workflow-token-`;
+  assert(generatedIntakeLink.startsWith(expectedLocalPrefix), 'Workflow intake-link generation keeps localhost-friendly path in test mode');
+  const intakeModal = doc.getElementById('intakeLinkModal');
+  intakeModal.classList.remove('show');
+  intakeModal.style.display = 'none';
+  intakeModal.setAttribute('aria-hidden', 'true');
+  await waitFor(() => !doc.getElementById('intakeLinkModal').classList.contains('show'), 'intake link modal closes');
+
   clickSelector(win, '#form button[type="submit"]');
   await waitFor(() => win.OSAReportState && win.OSAReportState.getLastAnalysisData(), 'analysis available');
   assertEqual(win.OSAReportState.getLastAnalysisData().primaryAHI, 28, 'Generate Reports populates analysis data from the form');

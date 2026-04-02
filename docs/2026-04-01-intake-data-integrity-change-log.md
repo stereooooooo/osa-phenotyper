@@ -82,6 +82,20 @@ Why: the old matrix had strong clinical and report coverage but not enough aroun
 
 ## Verification
 - `node --check infrastructure/lambda/index.mjs`
+
+## April 2, 2026 Hosted Intake-Link URL Fix
+
+### `index.html`
+- Replaced the intake-link base-url logic so real generated links now prefer the configured public app URL and use `/intake.html` on hosted environments, while preserving `/intake` for localhost workflow-test mode.
+Why: the prior link builder always used `window.location.origin + '/intake'`, which worked on local `serve` but generated a broken extensionless path on CloudFront/S3 and surfaced a patient-facing `AccessDenied` page.
+
+### `tests/workflow-smoke.html`
+- Added workflow smoke coverage for intake-link generation and asserted that workflow-test mode still emits a localhost-friendly `/intake?t=...` URL.
+Why: the local workflow suite should keep protecting the original localhost behavior even after the hosted-path fix, so future refactors do not silently break one side while repairing the other.
+
+## Verification
+- `bash tests/run-headless-suite.sh`
+- Result: `Headless suite passed: 178 assertions`
 - `node --check infrastructure/lambda/intake.mjs`
 - Inline script syntax parse for `index.html` and `intake.html`
 

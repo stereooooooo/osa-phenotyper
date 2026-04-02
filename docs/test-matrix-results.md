@@ -1,8 +1,55 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit `ecea9bb` (`fix: validate hosted intake review flow`) + local runtime-labeling follow-up
+**Latest app version:** commit `1a11170` (`feat: add runtime environment labeling`)
 
 ---
+
+## April 2, 2026 Hosted Intake-Link Follow-Up
+
+### Intake-Link URL Regression
+- Found during real staging validation: clinician-generated intake links were using `/intake` on the hosted CloudFront app.
+- Symptom: patients opening the copied intake link saw an S3/XML `AccessDenied` page instead of the intake questionnaire.
+- Root cause: the clinician app always built links from `window.location.origin + '/intake'`, which was correct for local `serve` testing but wrong for the CloudFront/S3 front door.
+- Fix:
+  - hosted / public links now use the configured app URL and `/intake.html`
+  - workflow-test mode still uses localhost-friendly `/intake`
+- Verification:
+  - `bash tests/run-headless-suite.sh`
+  - result: **178 passed, 0 failed** of 178 assertions
+- Follow-up still required: redeploy staging so newly generated clinician intake links use the repaired hosted path.
+
+## April 2, 2026 CloudFront Staging Redeploy And Hosted Pilot Smoke
+
+### Redeploy
+- Re-ran `./infrastructure/deploy.sh raymondbrown@gmail.com us-east-2 capital-ent-stg-20260401b https://dk259m1syu2bu.cloudfront.net,http://127.0.0.1:3000,http://localhost:3000`.
+- CloudFormation reported no template drift and refreshed the static app publish plus CloudFront invalidation.
+- Verified live runtime config at `https://dk259m1syu2bu.cloudfront.net/js/aws-config.js`:
+  - `deploymentEnvironment: staging`
+  - `deploymentLabel: STAGING`
+  - `buildId: 1a11170`
+  - `deployedAt: 2026-04-02T20:22:42Z`
+
+### Hosted Smoke Checklist
+- Passed: clinician sign-in on CloudFront staging with MFA challenge.
+- Passed: visible runtime label, non-production banner, and runtime footer metadata after sign-in.
+- Passed: exact-name patient search on the hosted patient-list modal for `CloudFront QA, Staging`.
+- Passed: hosted patient load correctly repopulated `patientName`, `patientDob`, and `patientMrn`.
+- Passed: hosted patient save persisted a chart change (`weightLossReadiness = considering`) and refreshed the `Last saved` timestamp.
+- Passed: hosted clinician analysis submit regenerated the clinician report and restored the `Generate Patient Report` trigger.
+- Passed: hosted patient-report overlay rendered real report content for `CloudFront QA, Staging` including the uncertainty callout section.
+- Passed: hosted `Save Snapshot` persisted to DynamoDB on the live staging record:
+  - `reportSnapshotCount` increased to `3`
+  - patient `version` increased to `10`
+  - new snapshot `createdAt = 2026-04-02T20:30:02.044Z`
+- Confirmed on the same staged chart that prior intake-review history and field-provenance history remain present after the redeploy.
+
+### Remaining Manual Validation
+- Hosted PDF export still needs one trusted manual browser click after the `1a11170` redeploy. Browser automation can focus/click the control, but it is not reliable evidence that Chrome treated the action as a true user download gesture.
+- Hosted intake-link generation and public intake submit were already live-validated on the current ancestry before this runtime-labeling deploy, and the `1a11170` change set did not modify the intake backend path. Even so, re-running one manual hosted intake-link/send/submit cycle is still recommended before the first live patient pilot day.
+
+### Conclusion
+- The current CloudFront staging surface is on the intended `1a11170` build and passed the core hosted clinician workflow needed for a supervised clinical pilot: auth, save/load/search, analysis, patient-report preview, and snapshot persistence.
+- The remaining pre-pilot runtime checks are now operational rather than code-driven: one trusted manual PDF download confirmation and one final hosted intake-link cycle.
 
 ## April 2, 2026 Executable Harness Expansion
 

@@ -210,3 +210,23 @@ Why: the upgraded staging stack already had existing patient rows, and they need
 - Run a browser-level clinician sign-in and CRUD pass through `https://dk259m1syu2bu.cloudfront.net` now that the CloudFront front door is live.
 - Re-run the patient intake and report-export staging checks through the CloudFront-hosted app surface rather than the prior localhost-hosted frontend.
 - Hosted snapshot persistence has now been reverified successfully after the WAF body-rule override expansion.
+
+## April 2, 2026 Pilot-Readiness Deploy Validation
+
+### `docs/test-matrix-results.md`
+- Recorded the hosted CloudFront smoke pass against build `1a11170`, including:
+  - runtime/footer label confirmation
+  - hosted sign-in with MFA
+  - hosted save/load/search
+  - hosted clinician analysis
+  - hosted patient-report preview
+  - hosted snapshot persistence with DynamoDB confirmation
+- Why: once the app moved from audit remediation into pilot preparation, the most important remaining proof was that the real hosted surface worked on the exact build that would be shown to clinicians.
+
+### `docs/pilot-go-live-checklist.md`
+- Added a concrete pre-patient pilot checklist covering hosted smoke gates, access, fallback workflow, stop conditions, and day-of-pilot operations.
+- Why: a tool can be technically improved yet still not be operationally safe to put in front of patients. The clinic needed a concrete go/no-go checklist, not just code-level changes.
+
+### `docs/production-hosting-plan.md`
+- Added a production-hosting plan covering the target CloudFront/WAF/S3/API/Cognito topology, domain/TLS work, production rollout steps, monitoring, recovery, and rollback.
+- Why: staging validation is not the same as production readiness. The remaining work needed to be written down as an execution plan instead of staying implicit in prior audit notes.

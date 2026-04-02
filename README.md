@@ -29,3 +29,7 @@
 ### Pilot-readiness safeguards
 * **Visible runtime labeling:** the clinician app and intake page now render environment/build metadata plus a non-production banner so staging, pilot, workflow-test, and local sessions are clearly distinguishable from production.
 * **Deploy-time metadata injection:** `infrastructure/deploy.sh` now writes environment label, build ID, deploy time, and stack context into the runtime config / intake page during deployment.
+
+### Pilot launch docs
+* **Pilot checklist:** `docs/pilot-go-live-checklist.md` is the concrete pre-patient checklist for the first supervised live pilot day.
+* **Production hosting plan:** `docs/production-hosting-plan.md` maps the AWS / CloudFront / WAF / domain work needed to move from staging validation to a real production-hosted deployment.

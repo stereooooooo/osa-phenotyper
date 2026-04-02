@@ -2312,9 +2312,23 @@ function applyRuntimeMeta(meta) {
   // ── Intake Link Management ──────────────────────────────────
   const intakeModal = new bootstrap.Modal(document.getElementById('intakeLinkModal'));
   const apiBaseUrl = typeof AWS_CONFIG !== 'undefined' ? AWS_CONFIG.apiUrl : '';
-  // Use /intake (not /intake.html) — the serve static server's clean-URL
-  // feature redirects .html → extensionless, stripping query strings.
-  const intakeBaseUrl = window.location.origin + '/intake';
+  const runtimeParams = new URLSearchParams(window.location.search);
+  const configuredAppBaseUrl = (typeof AWS_CONFIG !== 'undefined' && AWS_CONFIG.appUrl)
+    ? String(AWS_CONFIG.appUrl).replace(/\/+$/, '')
+    : window.location.origin;
+  const forceLocalWorkflowLinks = runtimeParams.get('testMode') === 'workflow';
+  const intakeLinkBaseOrigin = forceLocalWorkflowLinks ? window.location.origin : configuredAppBaseUrl;
+  const intakeLinkHost = (() => {
+    try {
+      return new URL(intakeLinkBaseOrigin).hostname;
+    } catch (_) {
+      return window.location.hostname;
+    }
+  })();
+  const intakeLinkPath = (intakeLinkHost === '127.0.0.1' || intakeLinkHost === 'localhost')
+    ? '/intake'
+    : '/intake.html';
+  const intakeBaseUrl = new URL(intakeLinkPath, `${intakeLinkBaseOrigin}/`).toString();
 
   document.getElementById('btnIntakeLink').addEventListener('click', async () => {
     if (!currentPatientId) {
