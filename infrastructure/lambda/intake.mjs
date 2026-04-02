@@ -27,6 +27,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
 const ddb           = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const MAX_TOKEN_ATTEMPTS = 5;
+const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
 
 /* ── CORS + security response headers ────────────────────── */
 
@@ -254,6 +255,10 @@ function formValuesEqual(a, b) {
   return canonicalFormValue(a) === canonicalFormValue(b);
 }
 
+function cloneJson(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
 function updateFieldProvenance(existing, fields, source, user, timestamp) {
   const provenance = (existing && typeof existing === 'object' && !Array.isArray(existing))
     ? { ...existing }
@@ -268,6 +273,38 @@ function updateFieldProvenance(existing, fields, source, user, timestamp) {
   });
 
   return provenance;
+}
+
+function appendFieldProvenanceHistoryEntry(existingHistory, field, entry) {
+  const nextHistory = (existingHistory && typeof existingHistory === 'object' && !Array.isArray(existingHistory))
+    ? cloneJson(existingHistory)
+    : {};
+  const entries = Array.isArray(nextHistory[field]) ? nextHistory[field].slice() : [];
+  entries.push(entry);
+  nextHistory[field] = entries.slice(-FIELD_PROVENANCE_HISTORY_LIMIT);
+  return nextHistory;
+}
+
+function appendFieldProvenanceHistory(existingHistory, fields, source, user, timestamp, valueSource, extraFactory = null) {
+  let nextHistory = (existingHistory && typeof existingHistory === 'object' && !Array.isArray(existingHistory))
+    ? cloneJson(existingHistory)
+    : {};
+
+  fields.forEach((field) => {
+    const value = valueSource && typeof valueSource === 'object'
+      ? cloneJson(valueSource[field])
+      : undefined;
+    const extra = typeof extraFactory === 'function' ? (extraFactory(field) || {}) : {};
+    nextHistory = appendFieldProvenanceHistoryEntry(nextHistory, field, {
+      source,
+      updatedAt: timestamp,
+      updatedBy: user,
+      value,
+      ...extra,
+    });
+  });
+
+  return nextHistory;
 }
 
 function filterPendingMetadata(existing, pendingKeys) {
@@ -693,7 +730,7 @@ async function handlePostIntake(event, rawToken, rawBody) {
   const { Item: patient } = await ddb.send(new GetCommand({
     TableName: PATIENT_TABLE,
     Key: { patientId: tokenRecord.patientId },
-    ProjectionExpression: 'patientId, formData, fieldProvenance, intakePendingOverrides, intakePendingProvenance, isDeleted, #v',
+    ProjectionExpression: 'patientId, formData, fieldProvenance, fieldProvenanceHistory, intakePendingOverrides, intakePendingProvenance, isDeleted, #v',
     ExpressionAttributeNames: { '#v': 'version' },
   }));
 
@@ -719,12 +756,35 @@ async function handlePostIntake(event, rawToken, rawBody) {
     'patient-intake',
     now
   );
+  let nextFieldHistory = appendFieldProvenanceHistory(
+    patient.fieldProvenanceHistory,
+    mergeResult.appliedFields,
+    'patient-intake',
+    'patient-intake',
+    now,
+    mergeResult.mergedFormData,
+    () => ({
+      event: 'intake-applied',
+    })
+  );
   const nextPendingProvenance = updateFieldProvenance(
     filterPendingMetadata(patient.intakePendingProvenance, pendingOverrideKeys),
     pendingOverrideKeys,
     'patient-intake-pending',
     'patient-intake',
     now
+  );
+  nextFieldHistory = appendFieldProvenanceHistory(
+    nextFieldHistory,
+    pendingOverrideKeys,
+    'patient-intake-pending',
+    'patient-intake',
+    now,
+    mergeResult.pendingOverrides,
+    (field) => ({
+      event: 'pending-review',
+      currentChartValue: cloneJson((patient.formData && typeof patient.formData === 'object') ? patient.formData[field] : undefined),
+    })
   );
   const currentVersion = Number.isInteger(patient.version) ? patient.version : 1;
   const nextVersion = currentVersion + 1;
@@ -742,6 +802,7 @@ async function handlePostIntake(event, rawToken, rawBody) {
     '#visits': 'visits',
     '#version': 'version',
     '#fieldProvenance': 'fieldProvenance',
+    '#fieldProvenanceHistory': 'fieldProvenanceHistory',
     '#intakeAppliedFieldCount': 'intakeAppliedFieldCount',
     '#intakePendingFieldCount': 'intakePendingFieldCount',
     '#intakePendingOverrides': 'intakePendingOverrides',
@@ -751,6 +812,7 @@ async function handlePostIntake(event, rawToken, rawBody) {
     ':now': now,
     ':fd': mergeResult.mergedFormData,
     ':fieldProvenance': nextFieldProvenance,
+    ':fieldProvenanceHistory': nextFieldHistory,
     ':updatedBy': 'patient-intake',
     ':intakeStatus': pendingOverrideKeys.length ? 'review-needed' : 'received',
     ':visit': [visitEntry],
@@ -764,7 +826,7 @@ async function handlePostIntake(event, rawToken, rawBody) {
     ? 'attribute_exists(patientId) AND #version = :expectedVersion'
     : 'attribute_exists(patientId) AND attribute_not_exists(#version)';
   let patientUpdateExpression =
-    'SET #fd = :fd, #fieldProvenance = :fieldProvenance, #updatedAt = :now, #updatedBy = :updatedBy, #intakeStatus = :intakeStatus, ' +
+    'SET #fd = :fd, #fieldProvenance = :fieldProvenance, #fieldProvenanceHistory = :fieldProvenanceHistory, #updatedAt = :now, #updatedBy = :updatedBy, #intakeStatus = :intakeStatus, ' +
     '#intakeReceivedAt = :now, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), ' +
     '#version = :nextVersion, #intakeAppliedFieldCount = :appliedCount, #intakePendingFieldCount = :pendingCount';
 

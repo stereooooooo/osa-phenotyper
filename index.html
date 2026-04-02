@@ -203,6 +203,9 @@
       <span class="text-muted small" id="patientMrnDisplay"></span>
       <span id="intakeStatusBadge" class="d-none"></span>
       <span class="ms-auto d-flex align-items-center gap-2 flex-wrap justify-content-end">
+        <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnReviewIntake" title="Review patient intake fields that conflict with the chart">
+          <i class="bi bi-clipboard2-check"></i> Review Intake
+        </button>
         <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnFieldProvenance" title="View where current chart fields came from">
           <i class="bi bi-journal-medical"></i> Provenance
         </button>
@@ -654,7 +657,7 @@
 
 <!-- Field Provenance Modal -->
 <div class="modal fade" id="fieldProvenanceModal" tabindex="-1" aria-labelledby="fieldProvenanceLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="fieldProvenanceLabel"><i class="bi bi-journal-medical"></i> Field Provenance</h5>
@@ -667,14 +670,60 @@
             <thead class="table-light">
               <tr>
                 <th>Field</th>
-                <th>Value</th>
+                <th>Current Chart</th>
+                <th>Pending Intake</th>
                 <th>Source</th>
                 <th>Updated</th>
                 <th>By</th>
+                <th>History</th>
               </tr>
             </thead>
             <tbody id="fieldProvenanceBody"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Intake Review Modal -->
+<div class="modal fade" id="intakeReviewModal" tabindex="-1" aria-labelledby="intakeReviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="intakeReviewLabel"><i class="bi bi-clipboard2-check"></i> Review Intake Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Choose whether to accept the patient's intake value into the chart or keep the existing clinician-entered value for each conflicting field.</p>
+        <div id="intakeReviewEmpty" class="text-muted small">There are no pending intake conflicts to review for this chart.</div>
+        <div class="table-responsive d-none" id="intakeReviewTableWrap">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Field</th>
+                <th>Current Chart</th>
+                <th>Patient Intake</th>
+                <th>Pending Since</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody id="intakeReviewBody"></tbody>
+          </table>
+        </div>
+        <div class="mt-3">
+          <label class="form-label small" for="intakeReviewNote">Review note (optional)</label>
+          <textarea class="form-control" id="intakeReviewNote" rows="3" maxlength="1000" placeholder="Optional note about why you accepted or kept specific fields."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-outline-success btn-sm" id="btnAcceptAllIntake">Accept All Intake Values</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnKeepAllChart">Keep All Current Chart Values</button>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="btnApplyIntakeReview"><i class="bi bi-check2-circle"></i> Apply Review Decisions</button>
         </div>
       </div>
     </div>
@@ -1185,8 +1234,18 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   // ── Patient list ────────────────────────────────────────────
   const patientListModal = new bootstrap.Modal(document.getElementById('patientListModal'));
   const fieldProvenanceModal = new bootstrap.Modal(document.getElementById('fieldProvenanceModal'));
+  const intakeReviewModal = new bootstrap.Modal(document.getElementById('intakeReviewModal'));
   const reportSnapshotsModal = new bootstrap.Modal(document.getElementById('reportSnapshotsModal'));
   let patientListDebounce = null;
+
+  function hasPendingIntakeConflicts(patient) {
+    return !!(
+      patient &&
+      patient.intakePendingOverrides &&
+      typeof patient.intakePendingOverrides === 'object' &&
+      Object.keys(patient.intakePendingOverrides).length
+    );
+  }
 
   document.getElementById('btnPatientList').addEventListener('click', async () => {
     patientListModal.show();
@@ -1277,6 +1336,11 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
             : p.intakeStatus === 'pending'
               ? '<div class="small mt-1"><span class="badge bg-warning-subtle text-warning">Intake Pending</span></div>'
               : '';
+        const reviewButton = !isArchived && p.intakeStatus === 'review-needed'
+          ? `<button class="btn btn-sm btn-outline-warning btn-review-patient" data-id="${p.patientId}" title="Review intake conflicts">
+              <i class="bi bi-clipboard2-check"></i>
+            </button>`
+          : '';
         const archiveButton = currentUserIsAdmin && !isArchived
           ? `<button class="btn btn-sm btn-outline-danger btn-delete-patient" data-id="${p.patientId}" title="Archive">
               <i class="bi bi-archive"></i>
@@ -1294,7 +1358,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
           <td><code>${escHtml(p.mrn || '—')}</code></td>
           <td><span class="badge bg-${color}">${escHtml(displayStatus)}</span>${reviewBadge}</td>
           <td class="text-muted small">${updated}</td>
-          <td class="text-end">${restoreButton || archiveButton}</td>`;
+          <td class="text-end"><div class="d-inline-flex gap-1">${reviewButton}${restoreButton || archiveButton}</div></td>`;
 
         // Click row to load patient (but not if clicking delete)
         tr.addEventListener('click', (e) => {
@@ -1319,6 +1383,15 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
           } catch (err) {
             alert('Failed to archive: ' + err.message);
           }
+        });
+      });
+      tbody.querySelectorAll('.btn-review-patient').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          await loadPatient(id);
+          patientListModal.hide();
+          openIntakeReviewModal();
         });
       });
       tbody.querySelectorAll('.btn-restore-patient').forEach(btn => {
@@ -1356,43 +1429,44 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     }, 300);
   });
 
+  function hydrateLoadedPatient(patient, { clearReports = true, scrollToTop = true } = {}) {
+    currentPatientId = patient.patientId;
+    currentPatientVersion = Number.isInteger(patient.version) ? patient.version : 1;
+    currentPatientRecord = patient;
+
+    const form = document.getElementById('form');
+    form.reset();
+    if (patient.formData) {
+      OSADatabase.populateForm(form, patient.formData);
+    }
+
+    document.getElementById('patientName').value = patient.name || '';
+    document.getElementById('patientDob').value = patient.dob || '';
+    document.getElementById('patientMrn').value = patient.mrn || '';
+
+    const milestones = getPatientMilestones(patient);
+    document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => {
+      cb.checked = milestones.includes(cb.value);
+    });
+
+    updatePatientBar(patient);
+    renderIntakeReviewAlert(patient);
+
+    if (clearReports) {
+      document.getElementById('patientSummary').innerHTML = '';
+      document.getElementById('clinicianReport').innerHTML = '';
+    }
+
+    if (scrollToTop) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   // ── Load patient into form ──────────────────────────────────
   async function loadPatient(id) {
     try {
       const patient = await OSADatabase.getPatient(id);
-      currentPatientId = patient.patientId;
-      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : 1;
-      currentPatientRecord = patient;
-
-      // Reset first so chart-identity fields do not get wiped back out.
-      const form = document.getElementById('form');
-      form.reset();
-      if (patient.formData) {
-        OSADatabase.populateForm(form, patient.formData);
-      }
-
-      // Fill patient info fields after reset/populate because they are not
-      // part of the saved formData payload.
-      document.getElementById('patientName').value = patient.name || '';
-      document.getElementById('patientDob').value = patient.dob || '';
-      document.getElementById('patientMrn').value = patient.mrn || '';
-
-      // Load milestones after reset so the form reset does not clear them.
-      const milestones = getPatientMilestones(patient);
-      document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => {
-        cb.checked = milestones.includes(cb.value);
-      });
-
-      // Update identifier bar
-      updatePatientBar(patient);
-      renderIntakeReviewAlert(patient);
-
-      // Clear reports
-      document.getElementById('patientSummary').innerHTML = '';
-      document.getElementById('clinicianReport').innerHTML = '';
-
-      // Scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      hydrateLoadedPatient(patient);
     } catch (err) {
       alert('Error loading patient: ' + err.message);
     }
@@ -1408,8 +1482,10 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     document.getElementById('patientLastSaved').textContent = patient.updatedAt
       ? 'Last saved: ' + new Date(patient.updatedAt).toLocaleString()
       : '';
+    const reviewButton = document.getElementById('btnReviewIntake');
     const provenanceButton = document.getElementById('btnFieldProvenance');
     const snapshotButton = document.getElementById('btnReportSnapshots');
+    reviewButton.classList.toggle('d-none', !hasPendingIntakeConflicts(patient));
     provenanceButton.classList.toggle('d-none', !patient.patientId);
     snapshotButton.classList.toggle('d-none', !patient.patientId);
     const snapshotCount = Number.isInteger(patient.reportSnapshotCount)
@@ -1470,7 +1546,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     return ({
       clinician: 'Clinician entry',
       'patient-intake': 'Patient intake',
+      'patient-intake-reviewed': 'Patient intake (reviewed)',
       'patient-intake-pending': 'Pending intake change',
+      'clinician-review': 'Clinician review',
     })[source] || source || 'Unknown';
   }
 
@@ -1478,6 +1556,36 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     if (!value) return '—';
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  }
+
+  function formatStoredFieldValue(obj, field) {
+    if (!obj || typeof obj !== 'object' || !Object.prototype.hasOwnProperty.call(obj, field)) return '—';
+    return formatPendingIntakeValue(obj[field]);
+  }
+
+  function formatHistoryTimeline(historyEntries) {
+    if (!Array.isArray(historyEntries) || !historyEntries.length) {
+      return '<span class="text-muted small">—</span>';
+    }
+
+    return `<ul class="list-unstyled small mb-0">${
+      historyEntries.slice().reverse().slice(0, 4).map((entry) => {
+        const summaryParts = [formatDateTime(entry.updatedAt), formatSourceLabel(entry.source)];
+        if (entry.event === 'created') summaryParts.push('initial chart value');
+        if (entry.event === 'chart-save') summaryParts.push('chart save');
+        if (entry.event === 'intake-applied') summaryParts.push('applied from intake');
+        if (entry.event === 'pending-review') summaryParts.push('pending review');
+        if (entry.resolution === 'accepted') summaryParts.push('accepted');
+        if (entry.resolution === 'kept-chart') summaryParts.push('kept chart value');
+        const valueLine = Object.prototype.hasOwnProperty.call(entry, 'value')
+          ? `<div class="text-muted">Value: ${escHtml(formatPendingIntakeValue(entry.value))}</div>`
+          : '';
+        return `<li class="mb-2">
+          <div>${escHtml(summaryParts.filter(Boolean).join(' • '))}</div>
+          ${valueLine}
+        </li>`;
+      }).join('')
+    }</ul>`;
   }
 
   function renderFieldProvenanceModal(patient) {
@@ -1490,7 +1598,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     const provenance = (patient && patient.fieldProvenance && typeof patient.fieldProvenance === 'object') ? patient.fieldProvenance : {};
     const pending = (patient && patient.intakePendingOverrides && typeof patient.intakePendingOverrides === 'object') ? patient.intakePendingOverrides : {};
     const pendingProvenance = (patient && patient.intakePendingProvenance && typeof patient.intakePendingProvenance === 'object') ? patient.intakePendingProvenance : {};
-    const fields = [...new Set([...Object.keys(formData), ...Object.keys(provenance), ...Object.keys(pending)])].sort((a, b) => getChartFieldLabel(a).localeCompare(getChartFieldLabel(b)));
+    const history = (patient && patient.fieldProvenanceHistory && typeof patient.fieldProvenanceHistory === 'object') ? patient.fieldProvenanceHistory : {};
+    const fields = [...new Set([...Object.keys(formData), ...Object.keys(provenance), ...Object.keys(pending), ...Object.keys(history)])]
+      .sort((a, b) => getChartFieldLabel(a).localeCompare(getChartFieldLabel(b)));
 
     if (!fields.length) {
       empty.classList.remove('d-none');
@@ -1501,19 +1611,88 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     fields.forEach((field) => {
       const tr = document.createElement('tr');
       const isPending = Object.prototype.hasOwnProperty.call(pending, field);
-      const meta = isPending ? pendingProvenance[field] : provenance[field];
-      const value = isPending ? pending[field] : formData[field];
+      const meta = provenance[field];
+      const pendingMeta = pendingProvenance[field];
+      const currentValue = formData[field];
+      const pendingValue = isPending ? pending[field] : undefined;
+      const pendingCell = isPending
+        ? `${escHtml(formatPendingIntakeValue(pendingValue))}<div class="small text-warning mt-1">Pending since ${escHtml(formatDateTime(pendingMeta && pendingMeta.updatedAt))}</div>`
+        : '<span class="text-muted">—</span>';
       tr.innerHTML = `
         <td><strong>${escHtml(getChartFieldLabel(field))}</strong>${isPending ? '<div class="small text-warning">Pending clinician review</div>' : ''}</td>
-        <td>${escHtml(formatPendingIntakeValue(value))}</td>
-        <td>${escHtml(formatSourceLabel(meta && meta.source))}</td>
+        <td>${escHtml(formatStoredFieldValue(formData, field))}</td>
+        <td>${pendingCell}</td>
+        <td>${escHtml(meta ? formatSourceLabel(meta.source) : '—')}</td>
         <td>${escHtml(formatDateTime(meta && meta.updatedAt))}</td>
-        <td>${escHtml((meta && meta.updatedBy) || '—')}</td>`;
+        <td>${escHtml((meta && meta.updatedBy) || '—')}</td>
+        <td>${formatHistoryTimeline(history[field])}</td>`;
       body.appendChild(tr);
     });
 
     empty.classList.add('d-none');
     wrap.classList.remove('d-none');
+  }
+
+  function renderIntakeReviewModal(patient) {
+    const body = document.getElementById('intakeReviewBody');
+    const empty = document.getElementById('intakeReviewEmpty');
+    const wrap = document.getElementById('intakeReviewTableWrap');
+    const note = document.getElementById('intakeReviewNote');
+    body.innerHTML = '';
+    note.value = '';
+
+    const formData = (patient && patient.formData && typeof patient.formData === 'object') ? patient.formData : {};
+    const pending = (patient && patient.intakePendingOverrides && typeof patient.intakePendingOverrides === 'object') ? patient.intakePendingOverrides : {};
+    const pendingProvenance = (patient && patient.intakePendingProvenance && typeof patient.intakePendingProvenance === 'object') ? patient.intakePendingProvenance : {};
+    const fields = Object.keys(pending).sort((a, b) => getChartFieldLabel(a).localeCompare(getChartFieldLabel(b)));
+
+    if (!fields.length) {
+      empty.classList.remove('d-none');
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    fields.forEach((field) => {
+      const tr = document.createElement('tr');
+      tr.dataset.field = field;
+      tr.innerHTML = `
+        <td><strong>${escHtml(getChartFieldLabel(field))}</strong></td>
+        <td>${escHtml(formatStoredFieldValue(formData, field))}</td>
+        <td>${escHtml(formatPendingIntakeValue(pending[field]))}</td>
+        <td class="small text-muted">${escHtml(formatDateTime(pendingProvenance[field] && pendingProvenance[field].updatedAt))}</td>
+        <td>
+          <div class="d-flex flex-column gap-1">
+            <label class="form-check small mb-0">
+              <input class="form-check-input" type="radio" name="intakeReviewDecision-${field}" value="accept-intake">
+              <span class="form-check-label">Accept patient intake value</span>
+            </label>
+            <label class="form-check small mb-0">
+              <input class="form-check-input" type="radio" name="intakeReviewDecision-${field}" value="keep-chart">
+              <span class="form-check-label">Keep current chart value</span>
+            </label>
+          </div>
+        </td>`;
+      body.appendChild(tr);
+    });
+
+    empty.classList.add('d-none');
+    wrap.classList.remove('d-none');
+  }
+
+  function setAllIntakeReviewDecisions(action) {
+    document.querySelectorAll('#intakeReviewBody tr[data-field]').forEach((row) => {
+      const input = row.querySelector(`input[type="radio"][value="${action}"]`);
+      if (input) input.checked = true;
+    });
+  }
+
+  async function openIntakeReviewModal() {
+    if (!currentPatientRecord || !hasPendingIntakeConflicts(currentPatientRecord)) {
+      alert('There are no pending intake conflicts to review for this chart.');
+      return;
+    }
+    renderIntakeReviewModal(currentPatientRecord);
+    intakeReviewModal.show();
   }
 
   function buildSnapshotSummary(snapshot) {
@@ -1584,8 +1763,17 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       <div class="alert alert-warning mb-0">
         <strong>Patient intake needs review.</strong> The most recent intake submission conflicts with saved chart values for ${pending.length} field${pending.length !== 1 ? 's' : ''}. Review and reconcile these before saving:
         <ul class="mb-0 mt-2">${items}</ul>
+        <div class="mt-3">
+          <button type="button" class="btn btn-sm btn-outline-warning" id="btnReviewPendingAlert">
+            <i class="bi bi-clipboard2-check"></i> Review Intake Changes
+          </button>
+        </div>
       </div>
     `;
+
+    document.getElementById('btnReviewPendingAlert')?.addEventListener('click', () => {
+      openIntakeReviewModal();
+    });
   }
 
   function clearCurrentPatient() {
@@ -1593,6 +1781,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     currentPatientVersion = null;
     currentPatientRecord = null;
     document.getElementById('patientIdBar').style.display = 'none';
+    document.getElementById('btnReviewIntake').classList.add('d-none');
     document.getElementById('btnFieldProvenance').classList.add('d-none');
     document.getElementById('btnReportSnapshots').classList.add('d-none');
     document.getElementById('patientName').value = '';
@@ -1639,8 +1828,8 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         patient = await OSADatabase.createPatient({
           name, dob, mrn, status, milestones, formData,
         });
-        currentPatientId = patient.patientId;
       }
+      currentPatientId = patient.patientId;
       currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
       currentPatientRecord = patient;
       updatePatientBar(patient);
@@ -1655,6 +1844,70 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       }
       btn.innerHTML = origText;
       btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btnReviewIntake').addEventListener('click', () => {
+    openIntakeReviewModal();
+  });
+
+  document.getElementById('btnAcceptAllIntake').addEventListener('click', () => {
+    setAllIntakeReviewDecisions('accept-intake');
+  });
+
+  document.getElementById('btnKeepAllChart').addEventListener('click', () => {
+    setAllIntakeReviewDecisions('keep-chart');
+  });
+
+  document.getElementById('btnApplyIntakeReview').addEventListener('click', async () => {
+    if (!currentPatientId || !currentPatientRecord) return;
+
+    const rows = [...document.querySelectorAll('#intakeReviewBody tr[data-field]')];
+    const missing = [];
+    const resolutions = rows.map((row) => {
+      const field = row.dataset.field;
+      const selected = row.querySelector('input[type="radio"]:checked');
+      if (!selected) {
+        missing.push(getChartFieldLabel(field));
+        return null;
+      }
+      return {
+        field,
+        action: selected.value,
+      };
+    }).filter(Boolean);
+
+    if (missing.length) {
+      alert(`Choose a review decision for: ${missing.join(', ')}`);
+      return;
+    }
+
+    const note = document.getElementById('intakeReviewNote').value.trim();
+    const btn = document.getElementById('btnApplyIntakeReview');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Applying...';
+
+    try {
+      const patient = await OSADatabase.reviewIntakeChanges(currentPatientId, currentPatientVersion, {
+        note,
+        resolutions,
+      });
+      hydrateLoadedPatient(patient, { clearReports: true, scrollToTop: false });
+      renderFieldProvenanceModal(patient);
+      intakeReviewModal.hide();
+      alert(hasPendingIntakeConflicts(patient)
+        ? 'Intake review decisions saved. Remaining conflicts still need review.'
+        : 'Intake review completed and chart updated.');
+    } catch (err) {
+      if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
+        alert('This chart changed before the intake review could be saved. Reload the patient and try again.');
+      } else {
+        alert('Could not apply intake review decisions: ' + err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
     }
   });
 

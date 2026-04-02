@@ -173,3 +173,10 @@
 |---|------|-------------|
 | 99 | Positional-data limitation guardrail | OSA reports without positional tracking should state that positional relevance is still unresolved rather than implying side-sleeping has been ruled out |
 | 100 | REM-stage limitation guardrail | OSA reports without REM/NREM staging should state that REM-specific worsening is still unresolved rather than implying REM predominance has been ruled out |
+
+### Group 19: Intake Review Workflow & Provenance Timeline
+| # | Name | Key Features |
+|---|------|-------------|
+| 101 | Explicit intake review modal | A chart with `intakePendingOverrides` should expose a dedicated `Review Intake` workflow from the patient bar, alert banner, and review-queue patient list actions instead of relying on implicit manual form edits |
+| 102 | Intake accept/keep persistence | Applying field-by-field review decisions should require an explicit decision per pending field, persist accepted values into `formData`, clear or retain the remaining pending set appropriately, increment `version`, and stamp `intakeReviewHistory` |
+| 103 | Field provenance timeline history | Field provenance view should show current chart value, pending intake value, and a compact timeline sourced from durable `fieldProvenanceHistory` entries rather than only the latest source stamp |

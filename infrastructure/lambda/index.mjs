@@ -25,6 +25,10 @@ const CLINICIAN_GROUP_NAME = process.env.CLINICIAN_GROUP_NAME || 'osa-clinician'
 const USER_POOL_ID = process.env.USER_POOL_ID || '';
 const REPORT_SNAPSHOT_LIMIT = 5;
 const VISIT_FIELD_PREVIEW_LIMIT = 12;
+const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
+const INTAKE_REVIEW_HISTORY_LIMIT = 20;
+const INTAKE_REVIEW_FIELD_PREVIEW_LIMIT = 20;
+const ALLOWED_INTAKE_REVIEW_ACTIONS = new Set(['accept-intake', 'keep-chart']);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
 
@@ -80,16 +84,16 @@ function cloneJson(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 }
 
-function buildFieldProvenance(existing, formData, source, user, timestamp) {
+function updateFieldProvenance(existing, fields, source, user, timestamp) {
   const provenance = (existing && typeof existing === 'object' && !Array.isArray(existing))
     ? { ...existing }
     : {};
 
-  if (!formData || typeof formData !== 'object' || Array.isArray(formData)) {
+  if (!Array.isArray(fields) || !fields.length) {
     return provenance;
   }
 
-  Object.keys(formData).forEach((field) => {
+  fields.forEach((field) => {
     provenance[field] = {
       source,
       updatedAt: timestamp,
@@ -98,6 +102,74 @@ function buildFieldProvenance(existing, formData, source, user, timestamp) {
   });
 
   return provenance;
+}
+
+function appendFieldProvenanceHistoryEntry(existingHistory, field, entry) {
+  const nextHistory = (existingHistory && typeof existingHistory === 'object' && !Array.isArray(existingHistory))
+    ? cloneJson(existingHistory)
+    : {};
+
+  const entries = Array.isArray(nextHistory[field]) ? nextHistory[field].slice() : [];
+  entries.push(entry);
+  nextHistory[field] = entries.slice(-FIELD_PROVENANCE_HISTORY_LIMIT);
+  return nextHistory;
+}
+
+function appendFieldProvenanceHistory(existingHistory, fields, source, user, timestamp, valueSource, extraFactory = null) {
+  let nextHistory = (existingHistory && typeof existingHistory === 'object' && !Array.isArray(existingHistory))
+    ? cloneJson(existingHistory)
+    : {};
+
+  if (!Array.isArray(fields) || !fields.length) {
+    return nextHistory;
+  }
+
+  fields.forEach((field) => {
+    const value = valueSource && typeof valueSource === 'object'
+      ? cloneJson(valueSource[field])
+      : undefined;
+    const extra = typeof extraFactory === 'function' ? (extraFactory(field) || {}) : {};
+    nextHistory = appendFieldProvenanceHistoryEntry(nextHistory, field, {
+      source,
+      updatedAt: timestamp,
+      updatedBy: user,
+      value,
+      ...extra,
+    });
+  });
+
+  return nextHistory;
+}
+
+function appendIntakeReviewHistory(existingHistory, reviewEntry) {
+  const history = Array.isArray(existingHistory) ? cloneJson(existingHistory) : [];
+  history.push(reviewEntry);
+  return history.slice(-INTAKE_REVIEW_HISTORY_LIMIT);
+}
+
+function sanitizeIntakeReview(rawReview, currentPendingOverrides) {
+  const pendingOverrides = (currentPendingOverrides && typeof currentPendingOverrides === 'object' && !Array.isArray(currentPendingOverrides))
+    ? currentPendingOverrides
+    : {};
+  const review = (rawReview && typeof rawReview === 'object' && !Array.isArray(rawReview))
+    ? rawReview
+    : {};
+  const note = typeof review.note === 'string' ? review.note.trim().slice(0, 1000) : '';
+  const rawResolutions = Array.isArray(review.resolutions) ? review.resolutions : [];
+  const seen = new Set();
+  const resolutions = [];
+
+  rawResolutions.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const field = String(item.field || '').trim();
+    const action = String(item.action || '').trim();
+    if (!field || seen.has(field) || !Object.prototype.hasOwnProperty.call(pendingOverrides, field)) return;
+    if (!ALLOWED_INTAKE_REVIEW_ACTIONS.has(action)) return;
+    seen.add(field);
+    resolutions.push({ field, action });
+  });
+
+  return { note, resolutions };
 }
 
 function filterPendingMetadata(existing, pendingKeys) {
@@ -405,6 +477,7 @@ async function createPatient(event, body, user) {
   const now = new Date().toISOString();
   const normalizedMilestones = normalizeMilestones(milestones, status || 'Initial Eval');
   const normalizedFormData = formData || {};
+  const initialFormFields = Object.keys(normalizedFormData);
   const item = {
     patientId: randomUUID(),
     name: name.trim(),
@@ -415,7 +488,10 @@ async function createPatient(event, body, user) {
     status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
     milestones: normalizedMilestones,
     formData: normalizedFormData,
-    fieldProvenance: buildFieldProvenance({}, normalizedFormData, 'clinician', user, now),
+    fieldProvenance: updateFieldProvenance({}, initialFormFields, 'clinician', user, now),
+    fieldProvenanceHistory: appendFieldProvenanceHistory({}, initialFormFields, 'clinician', user, now, normalizedFormData, () => ({
+      event: 'created',
+    })),
     visits: [buildVisitEntry({
       action: 'Created',
       user,
@@ -535,8 +611,176 @@ async function updatePatient(event, id, body, user, userGroups) {
   const currentPendingProvenance = (Item.intakePendingProvenance && typeof Item.intakePendingProvenance === 'object')
     ? Item.intakePendingProvenance
     : {};
+  const currentFormData = (Item.formData && typeof Item.formData === 'object' && !Array.isArray(Item.formData))
+    ? cloneJson(Item.formData)
+    : {};
+  const currentFieldProvenance = (Item.fieldProvenance && typeof Item.fieldProvenance === 'object' && !Array.isArray(Item.fieldProvenance))
+    ? cloneJson(Item.fieldProvenance)
+    : {};
+  const currentFieldHistory = (Item.fieldProvenanceHistory && typeof Item.fieldProvenanceHistory === 'object' && !Array.isArray(Item.fieldProvenanceHistory))
+    ? cloneJson(Item.fieldProvenanceHistory)
+    : {};
   let remainingPendingOverrides = currentPendingOverrides;
   let remainingPendingProvenance = currentPendingProvenance;
+
+  if (body.intakeReview !== undefined) {
+    const { note, resolutions } = sanitizeIntakeReview(body.intakeReview, currentPendingOverrides);
+    if (!resolutions.length) {
+      return fail(event, 'Select at least one intake field to review.');
+    }
+
+    const nextFormData = cloneJson(currentFormData);
+    const nextFieldProvenance = cloneJson(currentFieldProvenance);
+    let nextFieldHistory = cloneJson(currentFieldHistory);
+    const nextPendingOverrides = cloneJson(currentPendingOverrides);
+    const nextPendingProvenance = cloneJson(currentPendingProvenance);
+    const acceptedFields = [];
+    const keptChartFields = [];
+    const resolvedFields = [];
+
+    resolutions.forEach(({ field, action }) => {
+      const intakeValue = cloneJson(currentPendingOverrides[field]);
+      const chartValue = cloneJson(currentFormData[field]);
+      const pendingMeta = currentPendingProvenance[field] || {};
+
+      if (action === 'accept-intake') {
+        nextFormData[field] = intakeValue;
+        nextFieldProvenance[field] = {
+          source: 'patient-intake-reviewed',
+          updatedAt: now,
+          updatedBy: user,
+        };
+        nextFieldHistory = appendFieldProvenanceHistoryEntry(nextFieldHistory, field, {
+          source: 'patient-intake-reviewed',
+          updatedAt: now,
+          updatedBy: user,
+          value: intakeValue,
+          resolution: 'accepted',
+          previousValue: chartValue,
+          pendingSubmittedAt: pendingMeta.updatedAt || null,
+          pendingSubmittedBy: pendingMeta.updatedBy || null,
+        });
+        acceptedFields.push(field);
+      } else {
+        nextFieldHistory = appendFieldProvenanceHistoryEntry(nextFieldHistory, field, {
+          source: 'clinician-review',
+          updatedAt: now,
+          updatedBy: user,
+          value: chartValue,
+          resolution: 'kept-chart',
+          pendingValue: intakeValue,
+          pendingSubmittedAt: pendingMeta.updatedAt || null,
+          pendingSubmittedBy: pendingMeta.updatedBy || null,
+        });
+        keptChartFields.push(field);
+      }
+
+      delete nextPendingOverrides[field];
+      delete nextPendingProvenance[field];
+      resolvedFields.push({
+        field,
+        action,
+        chartValue,
+        intakeValue,
+      });
+    });
+
+    const remainingPendingKeys = Object.keys(nextPendingOverrides);
+    const reviewEntry = {
+      reviewedAt: now,
+      reviewedBy: user,
+      acceptedFields,
+      keptChartFields,
+      remainingPendingFieldCount: remainingPendingKeys.length,
+      resolvedFields: resolvedFields.slice(0, INTAKE_REVIEW_FIELD_PREVIEW_LIMIT),
+      resolvedFieldCount: resolvedFields.length,
+    };
+    if (note) {
+      reviewEntry.note = note;
+    }
+    if (resolvedFields.length > INTAKE_REVIEW_FIELD_PREVIEW_LIMIT) {
+      reviewEntry.resolvedFieldsTruncated = true;
+    }
+    const reviewVisit = buildVisitEntry({
+      action: remainingPendingKeys.length ? 'Intake review updated' : 'Intake review completed',
+      user,
+      timestamp: now,
+      previousFormData: currentFormData,
+      nextFormData,
+      changedRecordFields: ['intakeReview'],
+    });
+    const nextReviewHistory = appendIntakeReviewHistory(Item.intakeReviewHistory, reviewEntry);
+
+    const reviewNames = {
+      '#u': 'updatedAt',
+      '#ub': 'updatedBy',
+      '#visits': 'visits',
+      '#ver': 'version',
+      '#fd': 'formData',
+      '#fp': 'fieldProvenance',
+      '#fph': 'fieldProvenanceHistory',
+      '#irh': 'intakeReviewHistory',
+      '#ipfc': 'intakePendingFieldCount',
+      '#ipp': 'intakePendingProvenance',
+      '#ipo': 'intakePendingOverrides',
+      '#is': 'intakeStatus',
+      '#irby': 'intakeLastReviewedBy',
+    };
+    const reviewUpdates = {
+      ':now': now,
+      ':user': user,
+      ':visit': [reviewVisit],
+      ':emptyList': [],
+      ':expectedVersion': expectedVersion,
+      ':legacyVersion': 1,
+      ':nextVersion': expectedVersion + 1,
+      ':fd': nextFormData,
+      ':fp': nextFieldProvenance,
+      ':fph': nextFieldHistory,
+      ':irh': nextReviewHistory,
+      ':pendingCount': remainingPendingKeys.length,
+      ':reviewedBy': user,
+      ':reviewNeeded': 'review-needed',
+      ':reviewed': 'reviewed',
+    };
+    let reviewExpr =
+      'SET #u = :now, #ub = :user, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), #ver = :nextVersion, ' +
+      '#fd = :fd, #fp = :fp, #fph = :fph, #irh = :irh, #ipfc = :pendingCount, intakeReviewedAt = :now, #irby = :reviewedBy';
+    const reviewRemove = [];
+
+    if (remainingPendingKeys.length) {
+      reviewExpr += ', #ipo = :ipo, #ipp = :ipp, #is = :reviewNeeded';
+      reviewUpdates[':ipo'] = nextPendingOverrides;
+      reviewUpdates[':ipp'] = nextPendingProvenance;
+    } else {
+      reviewExpr += ', #is = :reviewed';
+      reviewRemove.push('#ipo', '#ipp');
+    }
+
+    if (reviewRemove.length) {
+      reviewExpr += ' REMOVE ' + reviewRemove.join(', ');
+    }
+
+    let Attributes;
+    try {
+      ({ Attributes } = await ddb.send(new UpdateCommand({
+        TableName: TABLE,
+        Key: { patientId: id },
+        UpdateExpression: reviewExpr,
+        ExpressionAttributeValues: reviewUpdates,
+        ExpressionAttributeNames: reviewNames,
+        ConditionExpression: 'attribute_exists(patientId) AND ((attribute_not_exists(#ver) AND :expectedVersion = :legacyVersion) OR #ver = :expectedVersion)',
+        ReturnValues: 'ALL_NEW',
+      })));
+    } catch (err) {
+      if (err.name === 'ConditionalCheckFailedException') {
+        return fail(event, 'This patient record was updated elsewhere. Reload before saving again.', 409);
+      }
+      throw err;
+    }
+
+    return ok(event, Attributes);
+  }
 
   const changedRecordFields = [];
   if (name !== undefined && name.trim() !== (Item.name || '')) changedRecordFields.push('name');
@@ -547,13 +791,16 @@ async function updatePatient(event, id, body, user, userGroups) {
   } else if (status !== undefined && status !== (Item.status || '')) {
     changedRecordFields.push('status');
   }
+  const changedFormFields = formData !== undefined
+    ? getMeaningfulChangedFields(currentFormData, formData)
+    : [];
 
   const visit = buildVisitEntry({
     action: body.visitAction || 'Updated',
     user,
     timestamp: now,
-    previousFormData: Item.formData || {},
-    nextFormData: formData !== undefined ? formData : (Item.formData || {}),
+    previousFormData: currentFormData,
+    nextFormData: formData !== undefined ? formData : currentFormData,
     changedRecordFields,
     reportSnapshotSaved: body.reportSnapshot !== undefined,
   });
@@ -596,9 +843,13 @@ async function updatePatient(event, id, body, user, userGroups) {
   if (formData !== undefined) {
     expr += ', formData = :fd';
     updates[':fd'] = formData;
-    expr += ', #fp = :fp';
+    expr += ', #fp = :fp, #fph = :fph';
     names['#fp'] = 'fieldProvenance';
-    updates[':fp'] = buildFieldProvenance(Item.fieldProvenance, formData, 'clinician', user, now);
+    names['#fph'] = 'fieldProvenanceHistory';
+    updates[':fp'] = updateFieldProvenance(currentFieldProvenance, changedFormFields, 'clinician', user, now);
+    updates[':fph'] = appendFieldProvenanceHistory(currentFieldHistory, changedFormFields, 'clinician', user, now, formData, () => ({
+      event: 'chart-save',
+    }));
 
     if (Object.keys(currentPendingOverrides).length) {
       remainingPendingOverrides = {};

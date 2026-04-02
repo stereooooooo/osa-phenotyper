@@ -70,6 +70,16 @@ const OSADatabase = (function () {
     });
   }
 
+  async function reviewIntakeChanges(id, version, review) {
+    return apiFetch(`/patients/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        version,
+        intakeReview: review,
+      }),
+    });
+  }
+
   async function restorePatient(id) {
     return apiFetch(`/patients/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -183,6 +193,7 @@ const OSADatabase = (function () {
     getPatient,
     createPatient,
     updatePatient,
+    reviewIntakeChanges,
     restorePatient,
     deletePatient,
     searchPatients,

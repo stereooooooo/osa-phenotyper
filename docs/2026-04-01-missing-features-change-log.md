@@ -97,3 +97,21 @@ This pass focused on the highest-value production-hardening gaps that remained a
 - Updated `js/patientReport.js` so those gaps appear as clear `POSITION-WORKUP` and `SLEEP-STAGE-WORKUP` explanations plus checklist steps.
 - Expanded `tests/tests.html`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` to cover the new positional and REM-stage guardrails.
 - Why: the audit correctly called out that missing data was still too easy to interpret as an absent phenotype. This pushes the app further toward a true insufficient-data operating mode by making “not measured” read differently from “not present.”
+
+### 11. Added explicit intake-review resolution workflow and provenance timeline
+- Updated `infrastructure/lambda/index.mjs` so clinician chart updates can now process a dedicated `intakeReview` payload with explicit per-field decisions:
+  - accept patient intake value into the chart
+  - keep the existing clinician-entered chart value
+- Added durable `fieldProvenanceHistory` storage across create, clinician save, patient intake merge, and clinician intake-review resolution paths.
+- Added capped `intakeReviewHistory` entries so the chart records who reviewed pending intake changes, when, and which fields were accepted vs kept.
+- Updated `index.html` with:
+  - a dedicated `Review Intake` button in the patient bar
+  - review actions directly from the patient-list review queue
+  - a dedicated intake-review modal with per-field accept/keep decisions
+  - a richer provenance modal that now shows current chart value, pending intake value, and a compact field timeline
+- Updated `js/db.js` with a dedicated `reviewIntakeChanges()` API wrapper for the new clinician review path.
+- Why: the previous workflow still required clinicians to infer resolution by editing form fields and re-saving. The audit called for a real review workflow and durable provenance, so this pass makes review decisions explicit, persistent, and inspectable later.
+
+## Remaining Gaps After Intake-Review Follow-Up
+- The review workflow is now explicit and persistent, but it still is not a full standalone dashboard with assignment, escalation, or audit analytics across multiple clinicians.
+- `fieldProvenanceHistory` now captures durable field timelines for chart-form fields, but it does not yet cover every non-form chart attribute (for example, patient identity fields or derived report metadata) as a unified longitudinal history.

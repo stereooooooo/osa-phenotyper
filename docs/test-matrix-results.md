@@ -1,10 +1,29 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit 994b10d (`fix: validate cloudfront staging flow`) + local audit follow-up changes
+**Latest app version:** commit 4a9f90a (`fix: close more audit gaps`) + local intake-review workflow changes
 
 ---
 
 ## April 2, 2026 Executable Harness Expansion
+
+### Intake Review Workflow Follow-Up
+- Added source/syntax verification for the new intake-review workflow and provenance timeline changes in:
+  - `infrastructure/lambda/index.mjs`
+  - `infrastructure/lambda/intake.mjs`
+  - `js/db.js`
+  - `index.html`
+- Result: backend and inline-frontend syntax checks passed ✅
+- Verification method:
+  - `node --check infrastructure/lambda/index.mjs`
+  - `node --check infrastructure/lambda/intake.mjs`
+  - extracted inline script parse check via `node --check /tmp/osa-index-inline.js`
+- Verified behaviors in source:
+  - dedicated `Review Intake` entry points from the patient bar, alert banner, and review-queue patient list action
+  - dedicated `OSADatabase.reviewIntakeChanges()` API path
+  - explicit per-field `accept-intake` / `keep-chart` resolution payloads
+  - persistent `fieldProvenanceHistory` and `intakeReviewHistory`
+  - provenance modal now renders current chart value, pending intake value, and compact timeline history
+- Conclusion: the explicit intake-review resolution workflow and durable field-timeline plumbing are implemented and syntax-clean. Live browser/AWS validation of this new review path is still pending.
 
 ### Treatment Safety Guardrails Follow-Up
 - Re-ran the local browser harness after adding executable coverage for:
