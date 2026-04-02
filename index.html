@@ -87,6 +87,7 @@
     <a class="navbar-brand d-flex align-items-center gap-2" href="#">
       <img src="capentlogo.svg" alt="Capital ENT logo" style="height:40px;">
       <span class="osa-nav-title d-none d-md-inline">OSA Phenotyper</span>
+      <span class="osa-runtime-badge d-none" id="runtimeEnvBadge"></span>
     </a>
     <div class="d-flex align-items-center gap-2">
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnReviewDashboard"><i class="bi bi-clipboard-data"></i> Review Queue</button>
@@ -97,6 +98,8 @@
     </div>
   </div>
 </header>
+
+<div class="osa-runtime-banner d-none" id="runtimeEnvironmentBanner" role="status" aria-live="polite"></div>
 
 <!-- ===== Patient List Modal ===== -->
 <div class="modal fade" id="patientListModal" tabindex="-1" aria-labelledby="patientListLabel" aria-hidden="true">
@@ -696,6 +699,7 @@
   <div class="container text-center">
     <p class="mb-1">Capital ENT &amp; Sinus Center</p>
     <p class="small osa-footer-muted mb-0">&copy; 2025 &bull; OSA Phenotyper is a clinical decision-support tool and does not replace professional judgment.</p>
+    <p class="small osa-footer-meta mb-0" id="runtimeFooterMeta"></p>
   </div>
 </footer>
 
@@ -1126,12 +1130,101 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 /* ══════════════════════════════════════════════════════════════
    Authentication & Patient Database Orchestration
    ══════════════════════════════════════════════════════════════ */
+function inferRuntimeEnvironment(config, workflowTestMode) {
+  if (workflowTestMode) {
+    return { code: 'workflow-test', label: 'WORKFLOW TEST', tone: 'secondary' };
+  }
+  const configured = !!(config && config.userPoolId && config.userPoolClientId);
+  if (!configured) {
+    return { code: 'local', label: 'LOCAL', tone: 'secondary' };
+  }
+  const explicit = String(config.deploymentEnvironment || '').trim().toLowerCase();
+  const searchable = `${explicit} ${config.deploymentLabel || ''} ${config.stackName || ''} ${config.apiUrl || ''}`.toLowerCase();
+  if (explicit === 'production' || /\bprod(uction)?\b/.test(searchable)) {
+    return { code: 'production', label: config.deploymentLabel || 'PRODUCTION', tone: 'success' };
+  }
+  if (explicit === 'pilot' || /\bpilot\b/.test(searchable)) {
+    return { code: 'pilot', label: config.deploymentLabel || 'CLINICAL PILOT', tone: 'info' };
+  }
+  if (explicit === 'staging' || /\bstg\b|\bstage\b|\bstaging\b|\bqa\b|\btest\b/.test(searchable)) {
+    return { code: 'staging', label: config.deploymentLabel || 'STAGING', tone: 'warning' };
+  }
+  return { code: explicit || 'configured', label: config.deploymentLabel || 'CONFIGURED', tone: 'info' };
+}
+
+function formatRuntimeDeployTime(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return isoString;
+  return date.toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+}
+
+function buildRuntimeMeta(config, workflowTestMode) {
+  const environment = inferRuntimeEnvironment(config, workflowTestMode);
+  const configured = !!(config && config.userPoolId && config.userPoolClientId);
+  const footerParts = [environment.label];
+  if (config && config.buildId) footerParts.push(`build ${config.buildId}`);
+  if (config && config.deployedAt) footerParts.push(`deployed ${formatRuntimeDeployTime(config.deployedAt)}`);
+  if (config && config.region) footerParts.push(config.region);
+
+  let bannerText = '';
+  if (environment.code === 'workflow-test') {
+    bannerText = 'Workflow test mode — clinician and intake actions stay in browser memory only.';
+  } else if (environment.code === 'local') {
+    bannerText = 'Local mode — AWS auth and patient database are not configured in this session.';
+  } else if (environment.code === 'staging') {
+    bannerText = 'Staging environment — use only for validation or approved clinical pilot testing.';
+  } else if (environment.code === 'pilot') {
+    bannerText = 'Clinical pilot environment — verify workflow changes carefully before routine use.';
+  }
+
+  return {
+    label: environment.label,
+    tone: environment.tone,
+    bannerText,
+    footerText: footerParts.join(' • '),
+    showBadge: true,
+    showBanner: Boolean(bannerText),
+  };
+}
+
+function applyRuntimeMeta(meta) {
+  const badge = document.getElementById('runtimeEnvBadge');
+  const banner = document.getElementById('runtimeEnvironmentBanner');
+  const footerMeta = document.getElementById('runtimeFooterMeta');
+
+  if (badge) {
+    badge.textContent = meta.label || '';
+    badge.dataset.tone = meta.tone || 'secondary';
+    badge.classList.toggle('d-none', !meta.showBadge);
+  }
+
+  if (banner) {
+    banner.textContent = meta.bannerText || '';
+    banner.dataset.tone = meta.tone || 'secondary';
+    banner.classList.toggle('d-none', !meta.showBanner);
+  }
+
+  if (footerMeta) {
+    footerMeta.textContent = meta.footerText || '';
+  }
+}
+
 (function initAuthAndDb() {
   const loginScreen = document.getElementById('loginScreen');
   const appContainer = document.getElementById('appContainer');
   const loginError = document.getElementById('loginError');
   const workflowTestMode = !!(window.__OSA_WORKFLOW_TEST__ && window.__OSA_WORKFLOW_TEST__.active);
+  const runtimeMeta = buildRuntimeMeta(typeof AWS_CONFIG !== 'undefined' ? AWS_CONFIG : {}, workflowTestMode);
   const isConfigured = workflowTestMode || (AWS_CONFIG.userPoolId && AWS_CONFIG.userPoolClientId);
+  applyRuntimeMeta(runtimeMeta);
 
   // ── If AWS is not configured, skip auth and show app directly ──
   if (!isConfigured) {

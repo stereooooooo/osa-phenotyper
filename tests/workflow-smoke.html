@@ -103,6 +103,8 @@ async function runClinicianWorkflow() {
   await waitFor(() => !doc.getElementById('appContainer').classList.contains('d-none'), 'app visible');
   await waitFor(() => doc.getElementById('userEmail').textContent.trim() === 'workflow-test@localhost', 'workflow user label');
   assertEqual(doc.getElementById('userEmail').textContent.trim(), 'workflow-test@localhost', 'Workflow app bypasses auth on localhost test mode');
+  assertEqual(doc.getElementById('runtimeEnvBadge').textContent.trim(), 'WORKFLOW TEST', 'Workflow app shows a visible runtime environment badge');
+  assert(doc.getElementById('runtimeEnvironmentBanner').textContent.includes('browser memory only'), 'Workflow app shows the non-production runtime banner');
 
   setValue(win, '#patientName', 'Workflow QA Patient');
   setValue(win, '#patientDob', '1984-03-12');
@@ -243,6 +245,8 @@ async function runIntakeWorkflow() {
 
   await waitFor(() => doc.getElementById('stateForm').classList.contains('intake-form-view--active'), 'intake form visible');
   assert(doc.getElementById('greetingName').textContent.includes('Workflow Test'), 'Workflow intake mode renders the validated token greeting');
+  assertEqual(doc.getElementById('intakeRuntimeMeta').textContent.trim().startsWith('WORKFLOW TEST'), true, 'Workflow intake shows runtime environment metadata');
+  assert(doc.getElementById('intakeRuntimeBanner').textContent.includes('browser memory only'), 'Workflow intake shows the non-production runtime banner');
 
   setValue(win, '#age', '44');
   setValue(win, '#sex', 'F');

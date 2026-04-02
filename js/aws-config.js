@@ -8,6 +8,12 @@ const AWS_CONFIG = {
   userPoolId: 'us-east-2_ohn6HsKt7',
   userPoolClientId: '3im58l76lemm01smregfnk59uc',
   apiUrl: 'https://dk259m1syu2bu.cloudfront.net',
+  appUrl: 'https://dk259m1syu2bu.cloudfront.net',
   adminGroupName: 'osa-admin',
   clinicianGroupName: 'osa-clinician',
+  deploymentEnvironment: 'staging',
+  deploymentLabel: 'STAGING',
+  buildId: 'ecea9bb',
+  deployedAt: '2026-04-02T14:50:10Z',
+  stackName: 'osa-phenotyper-capital-ent-stg-20260401b',
 };

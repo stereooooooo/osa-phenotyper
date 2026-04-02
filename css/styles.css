@@ -225,6 +225,61 @@ fieldset legend {
   border-color: #fff;
   color: #fff;
 }
+.osa-runtime-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.45rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.osa-runtime-badge[data-tone="success"] {
+  background: rgba(25,135,84,0.16);
+  color: #d8f3e5;
+  border-color: rgba(25,135,84,0.45);
+}
+.osa-runtime-badge[data-tone="warning"] {
+  background: rgba(255,193,7,0.18);
+  color: #ffe7a3;
+  border-color: rgba(255,193,7,0.45);
+}
+.osa-runtime-badge[data-tone="info"] {
+  background: rgba(13,202,240,0.18);
+  color: #bfefff;
+  border-color: rgba(13,202,240,0.45);
+}
+.osa-runtime-badge[data-tone="secondary"] {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(255,255,255,0.3);
+}
+.osa-runtime-banner {
+  padding: 0.55rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid transparent;
+}
+.osa-runtime-banner[data-tone="warning"] {
+  background: #fff3cd;
+  color: #7a5300;
+  border-color: #f1d58a;
+}
+.osa-runtime-banner[data-tone="info"] {
+  background: #e7f5ff;
+  color: #0c5460;
+  border-color: #b6e1ef;
+}
+.osa-runtime-banner[data-tone="secondary"] {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
 
 /* ── Footer ──────────────────────────────────────────────────── */
 .osa-footer {
@@ -236,6 +291,10 @@ fieldset legend {
 }
 .osa-footer .osa-footer-muted {
   color: rgba(255,255,255,0.5);
+}
+.osa-footer .osa-footer-meta {
+  color: rgba(255,255,255,0.68);
+  margin-top: 0.35rem;
 }
 
 /* ── PDF Drop Zone (compact) ─────────────────────────────────── */

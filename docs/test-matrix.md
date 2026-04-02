@@ -235,3 +235,9 @@
 |---|------|-------------|
 | 121 | Hosted exact-name search fast path | Authenticated CloudFront search should return the expected migrated staging patient via the exact-name path after `nameSearchBucket` backfill, without falling back to a broken or empty result |
 | 122 | Hosted intake-review completion | Completing the final pending intake-review decision through the hosted API path should clear pending overrides, append review/provenance history, increment `version`, and avoid DynamoDB expression-value failures |
+
+### Group 29: Runtime Environment Labeling
+| # | Name | Key Features |
+|---|------|-------------|
+| 123 | Clinician runtime labeling | The main app should visibly label the current environment and build metadata, and show a non-production banner in workflow-test / local / staging / pilot modes so staging cannot be mistaken for production during clinical validation |
+| 124 | Intake runtime labeling | The patient intake surface should show matching runtime metadata and a non-production banner outside production so pilot/staging intake links are visibly distinguishable from the production patient-facing flow |

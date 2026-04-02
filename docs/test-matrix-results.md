@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit `e85f35f` (`fix: expand unresolved phenotype guardrails`) + local hosted-validation follow-up
+**Latest app version:** commit `ecea9bb` (`fix: validate hosted intake review flow`) + local runtime-labeling follow-up
 
 ---
 
@@ -25,16 +25,41 @@
   - clear-form + patient-list reload continuity
   - exact-name patient search through the real patient-list modal
   - archive + archived-list restore through the real patient-list modal
-  - review-dashboard surfacing of a pending intake chart
-  - explicit intake-review accept/keep persistence + provenance/review-history checks
-  - public intake form token validation + submit-to-thank-you transition
-- Result: **173 passed, 0 failed** of 173 assertions.
+- review-dashboard surfacing of a pending intake chart
+- explicit intake-review accept/keep persistence + provenance/review-history checks
+- public intake form token validation + submit-to-thank-you transition
+- clinician runtime badge + non-production banner visibility
+- intake runtime metadata + non-production banner visibility
+- Result: **177 passed, 0 failed** of 177 assertions.
 - Verification method:
   - `node --check js/workflow-test-app.js`
   - extracted inline script parse checks for `index.html` and `intake.html`
   - `bash -n tests/run-headless-suite.sh`
   - `bash tests/run-headless-suite.sh`
-- Conclusion: the regression harness is no longer limited to report-layer/browser assertions. It now executes real multi-step clinician and intake journeys on localhost using the production UI surfaces with a safe in-memory backend, including an end-to-end insufficient-data resubmit scenario that matches the hosted staging validation path.
+- Conclusion: the regression harness is no longer limited to report-layer/browser assertions. It now executes real multi-step clinician and intake journeys on localhost using the production UI surfaces with a safe in-memory backend, including end-to-end insufficient-data resubmits and runtime-environment labeling checks that match pilot-safety expectations.
+
+### Runtime Environment Labeling Follow-Up
+- Added deploy-time runtime metadata fields in:
+  - `js/aws-config.js`
+  - `infrastructure/deploy.sh`
+  - `intake.html`
+- Added visible clinician runtime UI in:
+  - `index.html`
+  - `css/styles.css`
+- Added visible intake runtime UI in:
+  - `intake.html`
+  - `css/intake.css`
+- Added executable workflow assertions for:
+  - main-app `WORKFLOW TEST` runtime badge
+  - main-app non-production banner
+  - intake runtime metadata
+  - intake non-production banner
+- Verification method:
+  - `node --check /tmp/osa-index-inline.js`
+  - `node --check /tmp/osa-intake-inline.js`
+  - `bash -n infrastructure/deploy.sh`
+  - `bash tests/run-headless-suite.sh`
+- Conclusion: staging, pilot, local, and workflow-test sessions now have explicit runtime labeling on both clinician and patient-facing surfaces, which materially reduces the risk of confusing a validation environment with production during clinical pilot work.
 
 ### Universal Phenotype-Uncertainty Follow-Up
 - Expanded the insufficient-data assessment in:

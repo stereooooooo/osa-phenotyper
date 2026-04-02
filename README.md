@@ -25,3 +25,7 @@
 * **Source-of-truth matrix:** scenario coverage is tracked in `docs/test-matrix.md`, with the latest smoke-test outcomes in `docs/test-matrix-results.md`.
 * **CI hook:** `.github/workflows/regression-harness.yml` runs the same headless browser harness on `main`, pull requests, and manual workflow dispatches.
 * **Local workflow test mode:** `tests/workflow-smoke.html` drives the real `index.html` and `intake.html` surfaces on localhost using a safe in-memory auth/DB shim, so save/load/review/snapshot/intake-submit paths can be exercised without AWS.
+
+### Pilot-readiness safeguards
+* **Visible runtime labeling:** the clinician app and intake page now render environment/build metadata plus a non-production banner so staging, pilot, workflow-test, and local sessions are clearly distinguishable from production.
+* **Deploy-time metadata injection:** `infrastructure/deploy.sh` now writes environment label, build ID, deploy time, and stack context into the runtime config / intake page during deployment.

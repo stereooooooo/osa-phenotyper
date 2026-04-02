@@ -282,3 +282,25 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Hosted Intake-Review Completion Follow-Up
 - The hosted exact-name search path and hosted intake-review completion path are now proven on staging, but broader live-AWS clinician journeys still need periodic reruns as production hardening continues.
 - The insufficient-data mode is broader now, but it is still not literally universal across every phenotype and every downstream recommendation path.
+
+## April 2, 2026 Pilot Runtime Labeling Follow-Up
+
+### 22. Added visible environment/build labeling to clinician and intake surfaces
+- Updated `index.html` and `css/styles.css` so the clinician app now shows:
+  - a runtime environment badge in the navbar
+  - a non-production banner for local / workflow-test / staging / pilot sessions
+  - footer metadata with environment, build ID, deploy time, and region
+- Updated `intake.html` and `css/intake.css` so the patient intake page now shows matching runtime metadata and a non-production banner outside production.
+- Updated `infrastructure/deploy.sh` and `js/aws-config.js` so deployment now injects:
+  - `deploymentEnvironment`
+  - `deploymentLabel`
+  - `buildId`
+  - `deployedAt`
+  - `stackName`
+  into the runtime config and intake page metadata.
+- Expanded `tests/workflow-smoke.html` so the executable suite now asserts runtime labeling on both the clinician and intake surfaces.
+- Why: once real pilot users enter the loop, staging/production confusion becomes a safety issue, not just an ops annoyance. The app needs to make its environment obvious in screenshots, walkthroughs, and live use.
+
+## Remaining Gaps After Pilot Runtime Labeling Follow-Up
+- The app now clearly identifies staging/pilot/local surfaces, but it still needs the final production-hosting pass before it can be called a finished HIPAA-ready production deployment.
+- The insufficient-data mode is broader now, but it is still not literally universal across every phenotype and every downstream recommendation path.
