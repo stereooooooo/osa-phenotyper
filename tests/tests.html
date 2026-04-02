@@ -572,6 +572,24 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('GLP-1 therapies'), 'BMI 30+ keeps GLP-1 language available in weight rec');
 
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'OXYGEN-WORKUP', text: 'Review full oxygen metrics before finalizing cardiovascular risk.' }],
+}));
+assert(reportHtml.includes('Complete Oxygen-Risk Review'), 'Oxygen workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('review the full oxygen portion of your sleep study report'), 'Oxygen workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'ANATOMY-WORKUP', text: 'Complete the upper-airway anatomy exam before finalizing anatomy-based treatments.' }],
+}));
+assert(reportHtml.includes('Complete Airway Exam Before Finalizing Anatomy-Based Treatments'), 'Anatomy workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('Schedule or complete a full airway exam'), 'Anatomy workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'HNS-WORKUP', text: 'Complete the Inspire/HGNS workup before finalizing candidacy.' }],
+}));
+assert(reportHtml.includes('Complete the Inspire Evaluation First'), 'HNS workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('Schedule the remaining Inspire workup steps'), 'HNS workup tag adds a practical checklist step when DISE is not yet scheduled');
+
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');
 let html = `<div class="summary ${failed ? 'has-fail' : 'all-pass'}">

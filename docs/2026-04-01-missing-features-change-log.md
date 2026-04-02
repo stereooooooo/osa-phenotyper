@@ -72,6 +72,11 @@ This pass focused on the highest-value production-hardening gaps that remained a
 - Re-ran the local browser harness and recorded the new `103 passed / 0 failed` result in `docs/test-matrix-results.md`.
 - Why: the audit correctly called out that docs-only matrices were not enough for a daily clinical decision-support tool. This still is not a full end-to-end CI suite, but it materially improves executable coverage of recent audit fixes.
 
+### 8. Upgraded insufficient-data handling from warning-only to guardrails
+- Updated `js/app.js` so missing oxygen data, incomplete anatomy documentation, and incomplete HNS workup now prepend prerequisite workup recommendations and suppress premature anatomy/HNS treatment matching in the displayed plan.
+- Added new patient-facing workup recommendation tags in `js/patientReport.js` so the patient plan explains what still needs to be completed before those options are finalized.
+- Why: a warning banner alone still left the plan reading as more final than the underlying data justified. The audit asked for a real operating mode, not just caution text.
+
 ## Remaining Gaps After Follow-Up
-- This is still a warning/callout layer, not a full system-wide insufficient-data mode with automatic suppression or downgrading of all downstream recommendations.
+- This is now a partial system-wide insufficient-data mode for oxygen/anatomy/HNS decision domains, but it still is not a universal guardrail across every phenotype and every downstream recommendation.
 - The review queue currently lives inside the patient list modal; it is not yet a full standalone dashboard with assignment, resolution workflow, or audit analytics.

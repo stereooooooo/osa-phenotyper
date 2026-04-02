@@ -211,6 +211,18 @@ function buildVisitEntry({
   return visit;
 }
 
+function normalizeNameForSearch(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase();
+}
+
+function buildNameSearchBucket(name) {
+  const normalized = normalizeNameForSearch(name);
+  const firstSearchChar = normalized.match(/[a-z0-9]/)?.[0];
+  return firstSearchChar || '#';
+}
+
 const WORKFLOW_MILESTONES = [
   'Initial Eval',
   'Study Ordered',
@@ -396,7 +408,8 @@ async function createPatient(event, body, user) {
   const item = {
     patientId: randomUUID(),
     name: name.trim(),
-    nameLower: name.trim().toLowerCase(),
+    nameLower: normalizeNameForSearch(name),
+    nameSearchBucket: buildNameSearchBucket(name),
     dob,
     mrn: (mrn || '').trim(),
     status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
@@ -564,11 +577,13 @@ async function updatePatient(event, id, body, user, userGroups) {
   const removeExpr = [];
 
   if (name !== undefined) {
-    expr += ', #n = :name, #nl = :nameLower';
+    expr += ', #n = :name, #nl = :nameLower, #nsb = :nameSearchBucket';
     updates[':name'] = name.trim();
-    updates[':nameLower'] = name.trim().toLowerCase();
+    updates[':nameLower'] = normalizeNameForSearch(name);
+    updates[':nameSearchBucket'] = buildNameSearchBucket(name);
     names['#n'] = 'name';
     names['#nl'] = 'nameLower';
+    names['#nsb'] = 'nameSearchBucket';
   }
   if (dob !== undefined) {
     expr += ', dob = :dob';
@@ -739,6 +754,27 @@ async function searchPatients(event, params, userGroups) {
   }
   const { Items: exactNameItems } = await ddb.send(new QueryCommand(nameQuery));
   if (exactNameItems?.length) return ok(event, exactNameItems);
+
+  // Try scalable prefix search for common last-name / chart-label lookups
+  const prefixQuery = {
+    TableName: TABLE,
+    IndexName: 'name-prefix-index',
+    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
+    KeyConditionExpression: 'nameSearchBucket = :bucket AND begins_with(nameLower, :prefix)',
+    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
+    ExpressionAttributeValues: {
+      ':bucket': buildNameSearchBucket(q),
+      ':prefix': q,
+      ':isDeletedFalse': false,
+    },
+  };
+  if (!showArchived) {
+    prefixQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+  }
+  const { Items: prefixItems } = await ddb.send(new QueryCommand(prefixQuery));
+  if (prefixItems?.length) {
+    return ok(event, prefixItems.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+  }
 
   // Fall back to name scan (fine for small datasets)
   const nameScan = {

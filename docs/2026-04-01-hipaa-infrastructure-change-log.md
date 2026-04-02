@@ -125,3 +125,15 @@ Why: the stack should reference the actual application code instead of creating 
 ### `infrastructure/deploy.sh`
 - Reworked deployment to create/reuse an artifact bucket, run `aws cloudformation package`, and deploy the packaged template instead of calling `aws lambda update-function-code` after stack creation.
 Why: the old flow left the deployed stack in a partially real / partially placeholder state until a second imperative patch step completed. Packaging real Lambda artifacts into the CloudFormation deploy path closes that audit gap and makes deployments more reproducible.
+
+### `infrastructure/template.yaml`
+- Added a `name-prefix-index` GSI on `nameSearchBucket + nameLower`.
+Why: exact-name lookups alone still left common last-name prefix searches falling back to a table scan. The new index gives the app a scalable prefix path before the broad fallback scan.
+
+### `infrastructure/lambda/index.mjs`
+- Added `nameSearchBucket` persistence on patient create/update and routed prefix searches through the new `name-prefix-index` before the legacy `contains(nameLower, :q)` scan.
+Why: the audit item was not fully closed while partial searches still depended on a full scan. This keeps the old fallback for compatibility, but makes normal chart search substantially less expensive for new and updated records.
+
+### `infrastructure/backfill-name-search-bucket.sh`
+- Added an operator backfill script to populate `nameSearchBucket` and normalized `nameLower` on existing patient rows after the new prefix-search index is deployed.
+Why: new and edited rows will pick up the prefix index automatically, but older rows otherwise would not benefit until they happened to be touched again.

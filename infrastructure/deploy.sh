@@ -130,6 +130,12 @@ CLINICIAN_GROUP=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='ClinicianGroup'].OutputValue" \
   --output text)
 
+PATIENT_TABLE=$(aws cloudformation describe-stacks \
+  --stack-name "${STACK_NAME}" \
+  --region "${REGION}" \
+  --query "Stacks[0].Outputs[?OutputKey=='TableName'].OutputValue" \
+  --output text)
+
 echo ""
 echo "[5/5] Writing runtime configuration..."
 
@@ -166,17 +172,21 @@ echo "  Client ID    : ${CLIENT_ID}"
 echo "  Allowed CORS : ${ALLOWED_ORIGINS}"
 echo "  Artifacts    : ${ARTIFACT_BUCKET}"
 echo "  Intake page  : Served from your web server at /intake.html"
+echo "  Patient table: ${PATIENT_TABLE}"
 echo ""
 echo "  Config written to: js/aws-config.js"
 echo ""
 echo "  A temporary password has been sent to: ${ADMIN_EMAIL}"
 echo "  Use it to sign in — you'll be prompted to set a new password and configure MFA."
+echo "  If this is an upgrade of an existing environment, run:"
+echo "    ./infrastructure/backfill-name-search-bucket.sh ${PATIENT_TABLE} ${REGION}"
 echo ""
 echo "  Next steps:"
 echo "  1. Open the app in your browser"
 echo "  2. Sign in with your email and the temporary password"
 echo "  3. Set your new password"
-echo "  4. Start adding patients!"
+echo "  4. Backfill search metadata if needed"
+echo "  5. Start adding patients!"
 echo ""
 
 # Cleanup

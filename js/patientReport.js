@@ -625,6 +625,9 @@ ${items}`;
     'MAD-POOR': `<strong>Oral Appliance Therapy</strong> — An oral appliance is a custom-fitted mouthguard worn during sleep that repositions the lower jaw forward to help keep the airway open. While oral appliances can help many patients, your profile suggests this treatment <strong>may not be sufficient on its own</strong> for your level of sleep apnea. Patients with more severe OSA, higher BMI, or certain breathing patterns tend to have a lower success rate with oral appliances alone. That said, an oral appliance can still play a role as part of a combined treatment approach — for example, alongside positional therapy or after weight loss. This is worth discussing with your doctor if other options are not tolerated.`,
     'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
+    'OXYGEN-WORKUP': `<strong>Complete Oxygen-Risk Review</strong> — Part of your sleep-study oxygen data is still incomplete or has not yet been reviewed in full. Before we call your oxygen-related risk low or move CPAP lower on the list, your care team should confirm your oxygen desaturation index (ODI), time below 90%, lowest oxygen level, and any available hypoxic-burden metrics from the full report.`,
+    'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
+    'HNS-WORKUP': `<strong>Complete the Inspire Evaluation First</strong> — Inspire can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, Inspire should stay in the “possible option” category rather than a finalized recommendation.`,
     'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
     'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
@@ -905,6 +908,20 @@ ${items}`;
       checkItems.push({ text: `Schedule your ${studyLabel} and complete it as soon as you can so we can confirm whether sleep apnea is present and choose the right treatment.`, group: 'treatment' });
     }
 
+    if (tags.has('OXYGEN-WORKUP')) {
+      checkItems.push({
+        text: 'Ask your care team to review the full oxygen portion of your sleep study report so your overnight oxygen burden and cardiovascular-risk discussion can be finalized accurately.',
+        group: 'treatment'
+      });
+    }
+
+    if (tags.has('ANATOMY-WORKUP')) {
+      checkItems.push({
+        text: 'Schedule or complete a full airway exam with your ENT team so tonsil size, Friedman tongue position, and other anatomy findings are documented before surgery-based decisions are finalized.',
+        group: 'treatment'
+      });
+    }
+
     /* CBT-I first for COMISA patients */
     if (data.hasCOMISA && tags.has('CBTI')) {
       checkItems.push({ text: 'Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away. Starting CBT-I early can also make it easier to use CPAP or other treatments later.', group: 'everyone' });
@@ -989,6 +1006,19 @@ ${items}`;
       } else {
         /* Not on surgical pathway yet — schedule evaluation */
         checkItems.push({ text: 'Schedule an Inspire candidacy evaluation with your ENT surgeon, which includes a sleep endoscopy (DISE) to assess your airway anatomy and determine whether you qualify for the implant procedure.', group: 'treatment' });
+      }
+    }
+
+    if (tags.has('HNS-WORKUP') && !tags.has('HNS') && !tags.has('INSPIRE-EVAL')) {
+      if (data.bmi && data.bmi > 40) {
+        checkItems.push({ text: 'If Inspire remains an interest, start by discussing weight-management support with your care team because BMI needs to be below 40 before formal candidacy can be finalized.', group: 'treatment' });
+      }
+      if (diseCompleted) {
+        checkItems.push({ text: 'Review your completed DISE and staging results with your ENT surgeon before deciding whether Inspire is truly a good fit.', group: 'treatment' });
+      } else if (diseScheduled) {
+        checkItems.push({ text: 'Attend your upcoming DISE appointment so your airway pattern can be documented before any Inspire decision is made.', group: 'treatment' });
+      } else {
+        checkItems.push({ text: 'Schedule the remaining Inspire workup steps, including DISE and any missing staging measurements, before treating Inspire as a finalized option.', group: 'treatment' });
       }
     }
 

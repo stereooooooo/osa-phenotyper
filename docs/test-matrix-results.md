@@ -610,4 +610,22 @@
 ### Test 83: Shared pathway/UARS helper
 **Status:** executable harness coverage complete
 **Result:** browser harness assertions now verify shared UARS detection and shared care-pathway generation through `js/report-shared.js` ✅
-**Verification:** local headless Chrome run of `tests/tests.html` returned `112 passed / 0 failed`.
+**Verification:** local headless Chrome run of `tests/tests.html` returned `118 passed / 0 failed`.
+
+### Test 84: Insufficient-data recommendation guardrails
+**Status:** targeted local verification complete
+**Result:** `js/app.js` now converts incomplete oxygen/anatomy/HNS decision domains into prerequisite workup steps (`OXYGEN-WORKUP`, `ANATOMY-WORKUP`, `HNS-WORKUP`) and suppresses premature HNS / anatomy-matched treatment output in the displayed plan ✅
+**Verification:**
+- `node --check js/app.js` passed
+- static source verification confirms `applyInsufficientDataGuardrails()` and the new workup tags are present in `js/app.js`
+- local browser harness assertions confirm the patient-report layer renders patient-friendly explanations and checklist steps for all three workup tags
+**Still open:** this has not yet been exercised through a full browser submit on a live chart to confirm the end-to-end recommendation substitution path after analysis.
+
+### Test 85: Prefix-name search fast path
+**Status:** static verification complete
+**Result:** patient create/update now persist `nameSearchBucket`, `infrastructure/template.yaml` now defines `name-prefix-index`, `searchPatients()` now queries that index before falling back to a broad scan, and `infrastructure/backfill-name-search-bucket.sh` provides an operator path to migrate older rows ✅
+**Verification:**
+- `node --check infrastructure/lambda/index.mjs` passed
+- `bash -n infrastructure/backfill-name-search-bucket.sh` passed
+- static source verification confirms the new `name-prefix-index` GSI and prefix query path
+**Still open:** this needs one deployed-stack migration/apply plus a real exercised query against populated data.

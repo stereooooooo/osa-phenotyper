@@ -144,3 +144,5 @@
 | 81 | Exact full-name search fast path | Searching by an exact normalized patient name should hit the `name-index` exact-match path before the broader scan fallback |
 | 82 | Packaged deploy path | `deploy.sh` should package real Lambda artifacts into CloudFormation and should no longer depend on post-deploy `aws lambda update-function-code` patching |
 | 83 | Shared pathway/UARS helper | Care-pathway stage generation and UARS detection should come from shared helpers consumed by both `app.js` and `patientReport.js`, with no drift between clinician and patient layers |
+| 84 | Insufficient-data recommendation guardrails | Missing oxygen metrics, incomplete anatomy documentation, or incomplete HNS workup should replace premature treatment matching with prerequisite workup steps in the clinician and patient plan |
+| 85 | Prefix-name search fast path | Common last-name prefix searches should use a DynamoDB prefix index before falling back to a full `contains(nameLower, :q)` scan, with an operator backfill path for older patient rows |

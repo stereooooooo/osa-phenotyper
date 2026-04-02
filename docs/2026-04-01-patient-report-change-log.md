@@ -74,3 +74,6 @@ Why: the report needed a visible caution layer so incomplete inputs do not read 
 
 - Personalized weight-management recommendation and checklist wording based on `weightLossReadiness`, while preserving GLP-1 language only for BMI `>= 30`.
 Why: the intake collected readiness data, but the report was still ignoring it and giving the same weight-management framing to ready, ambivalent, and not-ready patients.
+
+- Added patient-facing workup descriptions and checklist items for `OXYGEN-WORKUP`, `ANATOMY-WORKUP`, and `HNS-WORKUP`.
+Why: once the clinician layer started deferring incomplete workups instead of emitting premature treatment matches, the patient report needed equally clear next-step language rather than silent tag fallbacks.

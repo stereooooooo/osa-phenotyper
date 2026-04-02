@@ -95,6 +95,8 @@ Resources:
           AttributeType: S
         - AttributeName: nameLower
           AttributeType: S
+        - AttributeName: nameSearchBucket
+          AttributeType: S
       KeySchema:
         - AttributeName: patientId
           KeyType: HASH
@@ -109,6 +111,14 @@ Resources:
           KeySchema:
             - AttributeName: nameLower
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: name-prefix-index
+          KeySchema:
+            - AttributeName: nameSearchBucket
+              KeyType: HASH
+            - AttributeName: nameLower
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
 

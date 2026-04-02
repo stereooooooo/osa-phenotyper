@@ -143,8 +143,8 @@ function buildInsufficientDataAssessment(ctx) {
   if (anatomyMissing.length >= 2) {
     domains.push({
       key: 'anatomy',
-      clinician: `Upper-airway anatomy is incompletely documented (${anatomyMissing.join(', ')} missing). Anatomy-driven phenotypes and surgery/MAD matching should be treated as preliminary.`,
-      patient: 'Some parts of your throat exam are still missing, so anatomy-based treatment options may be refined after a more complete exam.',
+      clinician: `Upper-airway anatomy is incompletely documented (${anatomyMissing.join(', ')} missing). Anatomy-driven phenotypes and surgery/MAD matching should be deferred until the exam is completed.`,
+      patient: 'Some parts of your throat exam are still missing, so anatomy-based treatment options should stay provisional until your airway exam is completed.',
     });
   }
 
@@ -156,12 +156,96 @@ function buildInsufficientDataAssessment(ctx) {
     const deduped = [...new Set(hnsMissing)];
     domains.push({
       key: 'hns-workup',
-      clinician: `Inspire/HGNS workup is incomplete (${deduped.join(', ')} missing). Candidacy and expected response should not be treated as final until the workup is completed.`,
-      patient: 'If Inspire or other airway procedures are being considered, more evaluation may still be needed before those options can be judged accurately.',
+      clinician: `Inspire/HGNS workup is incomplete (${deduped.join(', ')} missing). HNS candidacy and expected response should be deferred until the workup is completed.`,
+      patient: 'If Inspire or other airway procedures are being considered, more evaluation is still needed before those options can be judged accurately.',
     });
   }
 
   return domains;
+}
+
+function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
+  const entries = Array.isArray(recEntries) ? recEntries.map(entry => ({
+    text: entry?.text || '',
+    tag: entry?.tag || '',
+  })) : [];
+  if (!entries.length || !Array.isArray(insufficientDataDomains) || !insufficientDataDomains.length) {
+    return entries;
+  }
+
+  const domainKeys = new Set(
+    insufficientDataDomains
+      .map(domain => domain?.key)
+      .filter(Boolean)
+  );
+  const suppressedTags = new Set();
+  const prependedEntries = [];
+  const guardedEntries = [];
+
+  if (domainKeys.has('oxygen')) {
+    prependedEntries.push({
+      text: 'Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.',
+      tag: 'OXYGEN-WORKUP',
+    });
+  }
+
+  if (domainKeys.has('anatomy')) {
+    [
+      'TONSIL',
+      'SURG',
+      'SURGALT',
+      'SURG-PREF',
+      'FRIEDMAN-III-ALT',
+      'SOFT-TISSUE-REVISION',
+      'SOFT-TISSUE-STRONG',
+      'SOFT-TISSUE-CONSIDER',
+      'SOFT-TISSUE-GENERAL',
+      'HNS',
+      'INSPIRE-EVAL',
+    ].forEach(tag => suppressedTags.add(tag));
+
+    prependedEntries.push({
+      text: 'Complete the upper-airway anatomy exam (BMI, tonsil size, and Friedman tongue position) before finalizing surgery- or anatomy-matched therapy recommendations.',
+      tag: 'ANATOMY-WORKUP',
+    });
+  }
+
+  if (domainKeys.has('hns-workup')) {
+    ['HNS', 'INSPIRE-EVAL'].forEach(tag => suppressedTags.add(tag));
+    prependedEntries.push({
+      text: 'Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.',
+      tag: 'HNS-WORKUP',
+    });
+  }
+
+  const hasGenericMad = entries.some(entry => entry.tag === 'MAD');
+  let addedGuardedMad = false;
+
+  entries.forEach((entry) => {
+    if (!entry.text || !entry.tag) return;
+
+    if (domainKeys.has('anatomy') && (entry.tag === 'MAD-FAVORABLE' || entry.tag === 'MAD-POOR')) {
+      if (!hasGenericMad && !addedGuardedMad) {
+        guardedEntries.push({
+          text: 'Custom oral appliance (MAD) remains a possible option, but candidacy should be finalized after a complete airway exam.',
+          tag: 'MAD',
+        });
+        addedGuardedMad = true;
+      }
+      return;
+    }
+
+    if (suppressedTags.has(entry.tag)) return;
+    guardedEntries.push(entry);
+  });
+
+  const seen = new Set();
+  return [...prependedEntries, ...guardedEntries].filter((entry) => {
+    const key = `${entry.tag}::${entry.text}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /* ── Print CSS injection ──────────────────────────────────────── */
@@ -1322,6 +1406,11 @@ document.getElementById('form').addEventListener('submit', e => {
       <strong><i class="bi bi-exclamation-triangle me-1"></i>Insufficient Data Caveats</strong>
       <ul class="mb-0 mt-1">${insufficientDataDomains.map(domain => `<li>${domain.clinician}</li>`).join('')}</ul>
     </div>` : '';
+  const guardedRecEntries = applyInsufficientDataGuardrails(
+    recTagMap.map(r => ({ text: r.text, tag: r.tag })),
+    insufficientDataDomains
+  );
+  const guardedRecTexts = guardedRecEntries.map(entry => entry.text);
 
   /* ── Key numbers with color coding ─────────────────────────── */
   const keyNumItems = [];
@@ -1429,7 +1518,7 @@ document.getElementById('form').addEventListener('submit', e => {
   })();
 
   /* ── Treatment plan with numbered badges ─────────────────── */
-  const rankedPlan = recs.map((r, i) => {
+  const rankedPlan = guardedRecTexts.map((r, i) => {
     const priority = i === 0 ? ' osa-rec-priority' : '';
     return `<div class="osa-clin-rec${priority}"><span class="osa-clin-rec-num">${i+1}</span><span>${r}</span></div>`;
   }).join('');
@@ -1616,8 +1705,8 @@ document.getElementById('form').addEventListener('submit', e => {
   lastAnalysisData = {
     phen: out.phen,
     why: out.why,
-    recs,
-    recTags: recTagMap.map(r => ({ text: r.text, tag: r.tag })),
+    recs: guardedRecTexts,
+    recTags: guardedRecEntries,
     sex, bmi, neck,
     tonsils: tons,
     ftp: mall || null,
