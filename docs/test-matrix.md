@@ -229,3 +229,9 @@
 |---|------|-------------|
 | 119 | Zero-phenotype with unresolved contributors | When OSA is confirmed but phenotype-relevant inputs such as nasal assessment or delta-heart-rate entry are still missing, Section C should say contributors are still being clarified instead of implying the common patterns were ruled out |
 | 120 | Nasal workup from missing nasal assessment | When nasal contribution has not actually been assessed, the plan should prepend a `NASAL-WORKUP` step with a patient-friendly explanation and checklist reminder instead of silently treating the nasal phenotype as absent |
+
+### Group 28: Hosted Search And Intake Review Validation
+| # | Name | Key Features |
+|---|------|-------------|
+| 121 | Hosted exact-name search fast path | Authenticated CloudFront search should return the expected migrated staging patient via the exact-name path after `nameSearchBucket` backfill, without falling back to a broken or empty result |
+| 122 | Hosted intake-review completion | Completing the final pending intake-review decision through the hosted API path should clear pending overrides, append review/provenance history, increment `version`, and avoid DynamoDB expression-value failures |

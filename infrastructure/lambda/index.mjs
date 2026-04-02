@@ -754,7 +754,6 @@ async function updatePatient(event, id, body, user, userGroups) {
       ':irh': nextReviewHistory,
       ':pendingCount': remainingPendingKeys.length,
       ':reviewedBy': user,
-      ':reviewNeeded': 'review-needed',
       ':reviewed': 'reviewed',
     };
     let reviewExpr =
@@ -766,6 +765,7 @@ async function updatePatient(event, id, body, user, userGroups) {
       reviewExpr += ', #ipo = :ipo, #ipp = :ipp, #is = :reviewNeeded';
       reviewUpdates[':ipo'] = nextPendingOverrides;
       reviewUpdates[':ipp'] = nextPendingProvenance;
+      reviewUpdates[':reviewNeeded'] = 'review-needed';
     } else {
       reviewExpr += ', #is = :reviewed';
       reviewRemove.push('#ipo', '#ipp');

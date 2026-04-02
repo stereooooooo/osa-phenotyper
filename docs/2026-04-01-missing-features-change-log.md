@@ -265,3 +265,20 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Universal-Phenotype Uncertainty Follow-Up
 - The insufficient-data mode is broader now, but it is still not literally universal across every phenotype and every downstream recommendation path.
 - The automated suite is strong locally, but it still is not a full live-AWS production-grade end-to-end suite.
+
+## April 2, 2026 Hosted Intake-Review Completion Follow-Up
+
+### 21. Fixed final-step hosted intake review completion
+- Updated `infrastructure/lambda/index.mjs` so the intake-review completion path no longer includes an unused `:reviewNeeded` expression value when the final pending field is resolved and the record transitions to `reviewed`.
+- This bug surfaced only during live CloudFront staging validation: the last pending-field review request returned `500`, and CloudWatch showed a DynamoDB `ValidationException`.
+- After the fix and redeploy, the same hosted review-completion request succeeded, cleared pending overrides, incremented `version`, appended `intakeReviewHistory`, and stamped `fieldProvenanceHistory` with the clinician-review resolution.
+- The same hosted-validation pass also closed the last open insufficient-data staging check: after a full CloudFront reload, the live patient report correctly rendered `OXYGEN-WORKUP`, `ANATOMY-WORKUP`, and `HNS-WORKUP` together on a real re-analysis scenario, confirming the earlier missing oxygen workup was a stale-tab artifact rather than a code defect.
+- Updated `docs/test-matrix.md` and `docs/test-matrix-results.md` to track:
+  - hosted exact-name search validation on migrated staging data
+  - hosted intake-review completion after the DynamoDB expression fix
+  - live end-to-end insufficient-data recommendation substitution on the hosted app
+- Why: the intake review workflow was implemented and locally covered, but a real staging chart still found a last-mile failure exactly where clinicians would expect to finalize patient-submitted conflicts.
+
+## Remaining Gaps After Hosted Intake-Review Completion Follow-Up
+- The hosted exact-name search path and hosted intake-review completion path are now proven on staging, but broader live-AWS clinician journeys still need periodic reruns as production hardening continues.
+- The insufficient-data mode is broader now, but it is still not literally universal across every phenotype and every downstream recommendation path.

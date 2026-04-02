@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit `2d18699` (`test: add workflow smoke journeys`) + local universal-phenotype uncertainty follow-up
+**Latest app version:** commit `e85f35f` (`fix: expand unresolved phenotype guardrails`) + local hosted-validation follow-up
 
 ---
 
@@ -21,19 +21,20 @@
   - clinician save through the real patient bar + in-memory chart backend
   - clinician analysis through the real `Generate Reports` submit path
   - patient-report overlay open + snapshot save
+  - live-form insufficient-data resubmit coverage for `ANATOMY-WORKUP`, `HNS-WORKUP`, and `OXYGEN-WORKUP`
   - clear-form + patient-list reload continuity
   - exact-name patient search through the real patient-list modal
   - archive + archived-list restore through the real patient-list modal
   - review-dashboard surfacing of a pending intake chart
   - explicit intake-review accept/keep persistence + provenance/review-history checks
   - public intake form token validation + submit-to-thank-you transition
-- Result: **162 passed, 0 failed** of 162 assertions.
+- Result: **173 passed, 0 failed** of 173 assertions.
 - Verification method:
   - `node --check js/workflow-test-app.js`
   - extracted inline script parse checks for `index.html` and `intake.html`
   - `bash -n tests/run-headless-suite.sh`
   - `bash tests/run-headless-suite.sh`
-- Conclusion: the regression harness is no longer limited to report-layer/browser assertions. It now executes real multi-step clinician and intake journeys on localhost using the production UI surfaces with a safe in-memory backend.
+- Conclusion: the regression harness is no longer limited to report-layer/browser assertions. It now executes real multi-step clinician and intake journeys on localhost using the production UI surfaces with a safe in-memory backend, including an end-to-end insufficient-data resubmit scenario that matches the hosted staging validation path.
 
 ### Universal Phenotype-Uncertainty Follow-Up
 - Expanded the insufficient-data assessment in:
@@ -780,8 +781,7 @@
 **BMI guardrail:** BMI 29 render did **not** include `GLP-1 therapies` ✅
 
 ### Open From This Follow-Up
-- Compact visit-audit entries still need one live save/load inspection against a real patient row to confirm the stored visit payload shape end to end.
-- Exact full-name search is now covered through the localhost workflow smoke suite, but the live DynamoDB exact-match fast path still needs one exercised request against a populated hosted dataset to confirm it is beating the scan fallback in practice.
+- Compact visit-audit payload shape was later confirmed through live hosted `GET /patients/:id` inspection on staging patient `9e4ba353-ba4f-464c-8bf1-af765748451a`, which returned compact visit entries plus the expected provenance/review metadata.
 
 ### Test 82: Packaged deploy path
 **Status:** static verification complete
@@ -795,22 +795,31 @@
 **Verification:** local headless Chrome run of `tests/tests.html` returned `118 passed / 0 failed`.
 
 ### Test 84: Insufficient-data recommendation guardrails
-**Status:** targeted local verification complete
+**Status:** local + live browser verification complete
 **Result:** `js/app.js` now converts incomplete oxygen/anatomy/HNS decision domains into prerequisite workup steps (`OXYGEN-WORKUP`, `ANATOMY-WORKUP`, `HNS-WORKUP`) and suppresses premature HNS / anatomy-matched treatment output in the displayed plan ✅
 **Verification:**
 - `node --check js/app.js` passed
 - static source verification confirms `applyInsufficientDataGuardrails()` and the new workup tags are present in `js/app.js`
 - local browser harness assertions confirm the patient-report layer renders patient-friendly explanations and checklist steps for all three workup tags
-**Still open:** this has not yet been exercised through a full browser submit on a live chart to confirm the end-to-end recommendation substitution path after analysis.
+- localhost workflow smoke suite now drives a real form resubmit and asserts `ANATOMY-WORKUP`, `HNS-WORKUP`, and `OXYGEN-WORKUP` through `OSAReportState`
+- fresh hosted CloudFront browser verification on patient `CloudFront QA, Staging` confirmed that, after a full page reload and re-login, a live resubmit with:
+  - incomplete airway exam (`tonsils`, `ftp` blank)
+  - Inspire interest enabled
+  - only one oxygen metric remaining (`nadir = 82`, ODI/T90/HB blank)
+  rendered all three patient-facing workup substitutions:
+  - `Complete Airway Exam Before Finalizing Anatomy-Based Treatments`
+  - `Complete the Inspire Evaluation First`
+  - `Complete Oxygen-Risk Review`
+**Finding:** none. The earlier hosted oxygen miss was a stale-tab artifact rather than a code-path failure.
 
 ### Test 85: Prefix-name search fast path
-**Status:** static verification complete
+**Status:** static + live hosted verification complete
 **Result:** patient create/update now persist `nameSearchBucket`, `infrastructure/template.yaml` now defines `name-prefix-index`, `searchPatients()` now queries that index before falling back to a broad scan, and `infrastructure/backfill-name-search-bucket.sh` provides an operator path to migrate older rows ✅
 **Verification:**
 - `node --check infrastructure/lambda/index.mjs` passed
 - `bash -n infrastructure/backfill-name-search-bucket.sh` passed
 - static source verification confirms the new `name-prefix-index` GSI and prefix query path
-**Still open:** this needs one deployed-stack migration/apply plus a real exercised query against populated data.
+- later live hosted verification in Test 121 confirmed `GET /patients/search?q=CloudFront%20QA%2C%20Staging` returned the expected migrated staging chart after backfill
 
 ### Test 86: CloudFront app front door
 **Status:** live staging verification complete
@@ -929,3 +938,35 @@
 - authenticated `PUT /patients/:id` with a snapshot-sized HTML body now passes through CloudFront instead of returning a WAF `403`
 - real hosted snapshot-save UI now persists through the same edge path
 **Finding:** none.
+
+### Test 121: Hosted exact-name search fast path
+**Status:** live hosted API verification complete
+**Result:** passed ✅
+**Verification:**
+- extracted a real CloudFront-hosted clinician `idToken` from the authenticated browser session for staging user `staging.qa.20260402@example.com`
+- `GET https://dk259m1syu2bu.cloudfront.net/patients/search?q=CloudFront%20QA%2C%20Staging` returned the expected single chart:
+  - `patientId = 9e4ba353-ba4f-464c-8bf1-af765748451a`
+  - `mrn = CF-STG-20260402`
+  - `intakeStatus = review-needed`
+  - `intakePendingFieldCount = 1`
+  - `reportSnapshotCount = 2`
+- direct `GET /patients/9e4ba353-ba4f-464c-8bf1-af765748451a` confirmed the same row also carries migrated search metadata (`nameSearchBucket`) and the compact visit/provenance payload expected after the audit refactors
+**Finding:** none. This closes the remaining live proof for the exact-name hosted search path on upgraded staging data.
+
+### Test 122: Hosted intake-review completion
+**Status:** live hosted API verification complete
+**Result:** passed after fix ✅
+**Verification:**
+- authenticated `PUT https://dk259m1syu2bu.cloudfront.net/patients/9e4ba353-ba4f-464c-8bf1-af765748451a` with body:
+  - `{"version":7,"intakeReview":{"note":"Staging validation keep-chart decision","resolutions":[{"field":"bmi","action":"keep-chart"}]}}`
+- initial live request returned `500 {"error":"Internal server error"}`
+- CloudWatch tail of `/aws/lambda/osa-patients-api-capital-ent-stg-20260401b` showed a DynamoDB `ValidationException`
+- source fix in `infrastructure/lambda/index.mjs` stopped sending `:reviewNeeded` in `ExpressionAttributeValues` when the final pending field is resolved and the record is transitioning to `reviewed`
+- after redeploy, the same hosted request succeeded and returned:
+  - `intakeStatus = reviewed`
+  - `intakePendingFieldCount = 0`
+  - `version = 8`
+  - appended `intakeReviewHistory`
+  - appended `fieldProvenanceHistory.bmi` entry with `source = clinician-review` and `resolution = kept-chart`
+  - appended compact visit entry `action = Intake review completed`
+**Finding:** fixed. The hosted intake-review path now completes cleanly when the last pending field is resolved instead of failing on an unused DynamoDB expression value.

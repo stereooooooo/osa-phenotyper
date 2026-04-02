@@ -154,6 +154,32 @@ async function runClinicianWorkflow() {
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'patient loaded from list');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Loading from the patient list rehydrates identity fields');
 
+  setValue(win, '[name="tonsils"]', '');
+  setValue(win, '[name="ftp"]', '');
+  setValue(win, '[name="odi"]', '');
+  setValue(win, '[name="nadir"]', '84');
+  setValue(win, '[name="weightLossReadiness"]', 'not-ready');
+  clickSelector(win, '#prefInspire');
+  clickSelector(win, '#form button[type="submit"]');
+  await waitFor(() => {
+    const tags = (win.OSAReportState.getLastAnalysisData()?.recTags || []).map(rec => rec.tag);
+    return tags.includes('ANATOMY-WORKUP') && tags.includes('HNS-WORKUP');
+  }, 'insufficient-data analysis available');
+
+  const insufficientTags = (win.OSAReportState.getLastAnalysisData()?.recTags || []).map(rec => rec.tag);
+  assert(insufficientTags.includes('ANATOMY-WORKUP'), 'Live form submit prepends anatomy workup when the airway exam is incomplete');
+  assert(insufficientTags.includes('HNS-WORKUP'), 'Live form submit prepends HNS workup when Inspire is being considered without full workup');
+  assert(insufficientTags.includes('OXYGEN-WORKUP'), 'Live form submit prepends oxygen workup when only one oxygen metric is available');
+
+  clickSelector(win, '#btnGenerateReport');
+  await waitFor(() => doc.getElementById('reportOverlay').classList.contains('active'), 'report overlay active for insufficient-data case');
+  const insufficientReportText = doc.getElementById('reportPreviewContent').innerText;
+  assert(insufficientReportText.includes('Complete Airway Exam Before Finalizing Anatomy-Based Treatments'), 'Patient report explains anatomy workup after live insufficient-data submit');
+  assert(insufficientReportText.includes('Complete the Inspire Evaluation First'), 'Patient report explains HNS workup after live insufficient-data submit');
+  assert(insufficientReportText.includes('Complete Oxygen-Risk Review'), 'Patient report explains oxygen workup after live insufficient-data submit');
+  assert(insufficientReportText.includes('not your main focus right now'), 'Live resubmit updates patient-facing weight-readiness wording');
+  clickSelector(win, '#btnCloseReport');
+
   const patientId = win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].patientId;
   win.__OSA_WORKFLOW_TEST__.injectPendingIntake(patientId, {
     weightLossReadiness: 'ready',
