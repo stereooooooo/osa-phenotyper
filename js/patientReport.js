@@ -626,8 +626,13 @@ ${items}`;
     'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
     'OXYGEN-WORKUP': `<strong>Complete Oxygen-Risk Review</strong> — Part of your sleep-study oxygen data is still incomplete or has not yet been reviewed in full. Before we call your oxygen-related risk low or move CPAP lower on the list, your care team should confirm your oxygen desaturation index (ODI), time below 90%, lowest oxygen level, and any available hypoxic-burden metrics from the full report.`,
+    'POSITION-WORKUP': `<strong>Review Positional Data Before Ruling Position In or Out</strong> — Your available sleep-study report does not clearly show how your breathing changed on your back compared with your side. Before we decide that positional therapy is irrelevant, your care team may need to review the full study or repeat testing with better positional tracking.`,
+    'SLEEP-STAGE-WORKUP': `<strong>Review REM-Sleep Data Before Ruling Out REM Worsening</strong> — Some patients breathe much worse during REM (dream) sleep than during the rest of the night. Your available data do not clearly separate REM from non-REM breathing yet, so REM-specific treatment decisions should stay flexible until that part of the study is confirmed.`,
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
     'HNS-WORKUP': `<strong>Complete the Inspire Evaluation First</strong> — Inspire can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, Inspire should stay in the “possible option” category rather than a finalized recommendation.`,
+    'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
+    'ASV-SAFETY': `<strong>Confirm Heart-Function Safety Before ASV</strong> — Some advanced PAP devices, especially ASV, are only appropriate after your care team confirms that your heart function is in a safe range. If ASV comes up as an option, your sleep specialist may review a recent echocardiogram or ask for heart-function testing first.`,
+    'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
     'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
     'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
@@ -636,7 +641,7 @@ ${items}`;
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`,
     'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the gold-standard, non-medication treatment for insomnia. It works by changing the thoughts and habits that interfere with sleep — things like irregular sleep schedules, spending too much time in bed, or anxiety about sleep. CBT-I is highly effective and its benefits last long-term, unlike sleep medications. It can be done with a therapist in-person or through a validated digital program.`,
     'SURGALT': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. A sleep endoscopy (DISE) — a brief procedure performed under light sedation — allows your ENT surgeon to see exactly where and how your airway collapses during sleep, and is used to determine which surgical approach is most appropriate for you.`,
-    'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you.`,
+    'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you, and if ASV is being considered they may need to confirm that your heart function is in a safe range first.`,
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
     'HB-URG': null,  // Urgency note — woven into Why This Matters
@@ -915,6 +920,20 @@ ${items}`;
       });
     }
 
+    if (tags.has('POSITION-WORKUP')) {
+      checkItems.push({
+        text: 'Ask whether the full sleep-study report captured enough back-sleeping versus side-sleeping data, and whether repeat positional tracking would change your treatment options.',
+        group: 'treatment'
+      });
+    }
+
+    if (tags.has('SLEEP-STAGE-WORKUP')) {
+      checkItems.push({
+        text: 'Ask your care team whether the REM versus non-REM portion of your study was complete enough to judge if your sleep apnea is worse during dream sleep.',
+        group: 'treatment'
+      });
+    }
+
     if (tags.has('ANATOMY-WORKUP')) {
       checkItems.push({
         text: 'Schedule or complete a full airway exam with your ENT team so tonsil size, Friedman tongue position, and other anatomy findings are documented before surgery-based decisions are finalized.',
@@ -958,6 +977,9 @@ ${items}`;
     const hasMADFromText = recTags.some(r => r.text.toLowerCase().includes('mandibular'));
     if (!data.priorMAD && (hasMADTag || hasMADFromText) && !isSurgicalPathway) {
       checkItems.push({ text: 'Schedule a consultation with a sleep dentist to begin the process of fitting your custom oral appliance.', group: 'treatment' });
+    }
+    if (tags.has('MAD-WORKUP')) {
+      checkItems.push({ text: 'Ask the sleep dentist to confirm that you have enough healthy tooth support, enough jaw movement, and no major TMJ issue before finalizing an oral appliance.', group: 'treatment' });
     }
 
     /* Positional */
@@ -1020,6 +1042,14 @@ ${items}`;
       } else {
         checkItems.push({ text: 'Schedule the remaining Inspire workup steps, including DISE and any missing staging measurements, before treating Inspire as a finalized option.', group: 'treatment' });
       }
+    }
+
+    if (tags.has('SURGERY-WORKUP') && !tags.has('HNS-WORKUP')) {
+      checkItems.push({ text: 'Schedule or complete a sleep endoscopy (DISE) before choosing a specific airway surgery, so the procedure can be matched to the exact collapse pattern.', group: 'treatment' });
+    }
+
+    if (tags.has('ASV-SAFETY')) {
+      checkItems.push({ text: 'If advanced PAP such as ASV is discussed, ask whether a recent echocardiogram or other heart-function result is needed before that option is considered safe.', group: 'treatment' });
     }
 
     /* UARS */

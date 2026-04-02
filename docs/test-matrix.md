@@ -159,3 +159,17 @@
 | 92 | Hosted snapshot save persistence | Clicking `Save Snapshot` from the hosted patient-report overlay should persist `reportSnapshots` / `reportSnapshotCount` on the patient row |
 | 93 | Hosted intake thank-you flow | Public intake page should progress from valid token → active form → successful submission → thank-you state after the backend merge completes |
 | 94 | Hosted PDF export gesture | Hosted patient-report preview should produce a downloaded PDF from a real browser gesture on the CloudFront app surface |
+| 95 | Hosted snapshot WAF body-size allowance | CloudFront WAF should allow authenticated clinician snapshot `PUT /patients/:id` requests that carry patient-report HTML payloads large enough for normal saved reports |
+
+### Group 17: Treatment Safety Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 96 | Oral appliance prerequisite guardrail | OSA reports that surface MAD should also surface sleep-dentist / dentition / TMJ prerequisite messaging rather than presenting MAD as fully finalized |
+| 97 | ASV heart-function guardrail | Alternative PAP / ASV messaging should explicitly require heart-function review before ASV is treated as safe to pursue |
+| 98 | DISE surgery-planning guardrail | Surgery-forward plans without DISE should add a DISE planning prerequisite before site-directed surgery is treated as finalized |
+
+### Group 18: Expanded Insufficient-Data Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 99 | Positional-data limitation guardrail | OSA reports without positional tracking should state that positional relevance is still unresolved rather than implying side-sleeping has been ruled out |
+| 100 | REM-stage limitation guardrail | OSA reports without REM/NREM staging should state that REM-specific worsening is still unresolved rather than implying REM predominance has been ruled out |

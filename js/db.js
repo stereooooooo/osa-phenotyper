@@ -27,9 +27,20 @@ const OSADatabase = (function () {
         ...(options.headers || {}),
       },
     });
-    const data = await res.json();
+    const raw = await res.text();
+    let data = {};
+    if (raw) {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = { raw };
+      }
+    }
     if (!res.ok) {
-      throw new Error(data.error || `API error ${res.status}`);
+      const fallback = (data.raw && !/^\s*</.test(data.raw))
+        ? data.raw.trim().slice(0, 200)
+        : '';
+      throw new Error(data.error || data.message || fallback || `API error ${res.status}`);
     }
     return data;
   }

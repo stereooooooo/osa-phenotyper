@@ -1364,22 +1364,24 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       currentPatientVersion = Number.isInteger(patient.version) ? patient.version : 1;
       currentPatientRecord = patient;
 
-      // Fill patient info fields
-      document.getElementById('patientName').value = patient.name || '';
-      document.getElementById('patientDob').value = patient.dob || '';
-      document.getElementById('patientMrn').value = patient.mrn || '';
-      // Load milestones (checkboxes)
-      const milestones = getPatientMilestones(patient);
-      document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => {
-        cb.checked = milestones.includes(cb.value);
-      });
-
-      // Fill clinical form
+      // Reset first so chart-identity fields do not get wiped back out.
       const form = document.getElementById('form');
       form.reset();
       if (patient.formData) {
         OSADatabase.populateForm(form, patient.formData);
       }
+
+      // Fill patient info fields after reset/populate because they are not
+      // part of the saved formData payload.
+      document.getElementById('patientName').value = patient.name || '';
+      document.getElementById('patientDob').value = patient.dob || '';
+      document.getElementById('patientMrn').value = patient.mrn || '';
+
+      // Load milestones after reset so the form reset does not clear them.
+      const milestones = getPatientMilestones(patient);
+      document.querySelectorAll('#patientMilestones input[type="checkbox"]').forEach(cb => {
+        cb.checked = milestones.includes(cb.value);
+      });
 
       // Update identifier bar
       updatePatientBar(patient);

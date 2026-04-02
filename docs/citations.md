@@ -2,7 +2,7 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-04-01
+**Last updated:** 2026-04-02
 
 ---
 
@@ -40,7 +40,7 @@
 | JACC state-of-the-art: MAD for OSA across all severities | Javaheri S, et al. "Treatment of OSA and Its Impact on CV Disease, Part 2." *J Am Coll Cardiol.* 2024;84(13):1224-1240. | AASM suggests MADs across severity range; CPAP remains more efficacious at AHI reduction |
 | ERS non-CPAP therapies: MAD for mild-moderate (Level A) | Marklund M, et al. "Non-CPAP Therapies in OSA: MAD Therapy." *Eur Respir J.* 2012;39(5):1241-7. | MAD recommended for mild-to-moderate; custom titratable device, start at 50% max advancement |
 | ACP clinical guideline: MAD alternative to CPAP | Qaseem A, et al. "Management of OSA in Adults." *Ann Intern Med.* 2013;159(7):471-83. | MAD as alternative for CPAP-averse patients (weak recommendation, low-quality evidence) |
-| MAD side effects and monitoring | Mohammadieh AM, et al. "Mandibular Advancement Splint Therapy." *Adv Exp Med Biol.* 2022;1384:373-385. | TMJ discomfort, hypersalivation, tooth pain, occlusal changes — dental monitoring required |
+| MAD side effects and monitoring | Mohammadieh AM, et al. "Mandibular Advancement Splint Therapy." *Adv Exp Med Biol.* 2022;1384:373-385. | TMJ discomfort, hypersalivation, tooth pain, occlusal changes — supports explicit sleep-dentist / TMJ / dentition prerequisite messaging before finalizing MAD |
 
 ## Friedman Staging System
 
@@ -190,6 +190,7 @@
 | TECSA pathophysiology and risk factors | Zeineddine S, Badr MS. "Treatment-Emergent Central Apnea: Physiologic Mechanisms." *Chest.* 2021;159(6):2449-2457. | Reference for TECSA risk in high loop gain patients |
 | TECSA trajectories on CPAP (resolves in most, persists in ~5%) | Liu D, et al. "Trajectories of Emergent Central Sleep Apnea During CPAP Therapy." *Chest.* 2017;152(4):751-760. | Guardrail: monitor for treatment-emergent centrals on CPAP |
 | TECSA management (ASV, adaptive servo) | Morgenthaler TI, et al. "NIV Medicare Access: Central Sleep Apnea Technical Expert Panel." *Chest.* 2021;160(5):e419-e425. | Reference: CSA/TECSA treatment pathways |
+| ASV contraindication in HFrEF with reduced LVEF | Cowie MR, et al. "Adaptive Servo-Ventilation for Central Sleep Apnea in Systolic Heart Failure." *N Engl J Med.* 2015;373(12):1095-1105. | Safety guardrail: require documented LVEF >45% before treating ASV as an option in high-loop-gain / TECSA pathways |
 | TECSA review and classification | Zhang J, et al. "Treatment-Emergent Central Sleep Apnea: A Unique Sleep-Disordered Breathing." *Chin Med J.* 2020;133(22):2721-2730. | Reference: TECSA phenotyping |
 | AHA scientific statement: OSA and CV disease | Yeghiazarians Y, et al. "OSA and Cardiovascular Disease." *Circulation.* 2021;144(3):e56-e67. | CV risk framing; HB should be incorporated into trial designs |
 | ATS/AHA consensus: CPAP for CV risk benefit controversy | Cohen O, et al. "The Great Controversy of OSA Treatment for CV Risk Benefit." *Ann Am Thorac Soc.* 2024. | Context for nuanced CPAP recommendation; HB-guided treatment allocation |

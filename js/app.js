@@ -136,6 +136,22 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
+  if (!exists(ctx.sup) && !exists(ctx.nons)) {
+    domains.push({
+      key: 'position',
+      clinician: 'Positional tracking is unavailable. Do not treat the absence of a positional phenotype as evidence that side-sleeping will not matter.',
+      patient: 'Your sleep study did not clearly compare back-sleeping with side-sleeping, so we cannot yet tell how much body position changes your sleep apnea.',
+    });
+  }
+
+  if (!exists(ctx.remAhi) && !exists(ctx.nremAhi)) {
+    domains.push({
+      key: 'sleep-stage',
+      clinician: 'REM/NREM staging data are unavailable. REM-predominant OSA and REM-specific treatment needs cannot be assessed.',
+      patient: 'Your available sleep-study data did not clearly separate dream sleep from non-dream sleep, so we cannot yet tell whether your breathing is especially worse during REM sleep.',
+    });
+  }
+
   const anatomyMissing = [];
   if (!exists(ctx.bmi)) anatomyMissing.push('BMI');
   if (!exists(ctx.tons)) anatomyMissing.push('tonsil size');
@@ -164,6 +180,57 @@ function buildInsufficientDataAssessment(ctx) {
   return domains;
 }
 
+function buildTreatmentSafetyAssessment(ctx) {
+  if (!ctx || !ctx.osaConfirmed) return [];
+
+  const tags = new Set(
+    (Array.isArray(ctx.recTags) ? ctx.recTags : [])
+      .map(rec => rec?.tag)
+      .filter(Boolean)
+  );
+  const alerts = [];
+
+  // MAD safety checks remain clinician prerequisites even when phenotype matching is favorable.
+  const madReferenced = ['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'REM-MAD'].some(tag => tags.has(tag));
+  if (madReferenced && !ctx.priorMAD) {
+    alerts.push({
+      key: 'mad-workup',
+      clinician: `Before finalizing oral appliance therapy, confirm adequate dentition, adequate mandibular protrusion, and absence of severe TMJ dysfunction${ctx.priorJaw ? '; prior jaw surgery also warrants occlusal review' : ''}.`,
+      patient: 'If an oral appliance is being considered, a sleep-dentist exam is still needed to confirm that your teeth, jaw movement, and jaw joints make it a safe fit.',
+    });
+  }
+
+  // ASV requires preserved or documented-safe systolic function (SERVE-HF guardrail).
+  if (tags.has('HLG-ADV')) {
+    alerts.push({
+      key: 'asv-safety',
+      clinician: 'If ASV is being considered, document LVEF >45% first. ASV is contraindicated in HFrEF with LVEF \u226445%.',
+      patient: 'If an advanced PAP device such as ASV is being considered, your care team may need to confirm your heart function first because not every PAP device is safe for every heart condition.',
+    });
+  }
+
+  // DISE remains the planning prerequisite before final site-directed airway surgery selection.
+  const surgeryReferenced = ctx.prefSurgery || [
+    'SURG',
+    'SURGALT',
+    'SURG-PREF',
+    'SOFT-TISSUE-REVISION',
+    'SOFT-TISSUE-STRONG',
+    'SOFT-TISSUE-CONSIDER',
+    'SOFT-TISSUE-GENERAL',
+    'FRIEDMAN-III-ALT',
+  ].some(tag => tags.has(tag));
+  if (surgeryReferenced && !ctx.hasDISEData) {
+    alerts.push({
+      key: 'surgery-workup',
+      clinician: 'Before finalizing site-directed airway surgery, complete DISE to map the collapse pattern and target levels.',
+      patient: 'If surgery is being considered, a sleep endoscopy (DISE) may still be needed to show exactly where your airway collapses before choosing the procedure.',
+    });
+  }
+
+  return alerts;
+}
+
 function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
   const entries = Array.isArray(recEntries) ? recEntries.map(entry => ({
     text: entry?.text || '',
@@ -186,6 +253,20 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
     prependedEntries.push({
       text: 'Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.',
       tag: 'OXYGEN-WORKUP',
+    });
+  }
+
+  if (domainKeys.has('position')) {
+    prependedEntries.push({
+      text: 'Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.',
+      tag: 'POSITION-WORKUP',
+    });
+  }
+
+  if (domainKeys.has('sleep-stage')) {
+    prependedEntries.push({
+      text: 'Review REM/NREM staging data before concluding that REM-specific worsening is absent.',
+      tag: 'SLEEP-STAGE-WORKUP',
     });
   }
 
@@ -241,6 +322,61 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
 
   const seen = new Set();
   return [...prependedEntries, ...guardedEntries].filter((entry) => {
+    const key = `${entry.tag}::${entry.text}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function applyTreatmentSafetyGuardrails(recEntries, safetyAlerts) {
+  const entries = Array.isArray(recEntries) ? recEntries.map(entry => ({
+    text: entry?.text || '',
+    tag: entry?.tag || '',
+  })) : [];
+  if (!entries.length || !Array.isArray(safetyAlerts) || !safetyAlerts.length) {
+    return entries;
+  }
+
+  const safetyKeys = new Set(
+    safetyAlerts
+      .map(alert => alert?.key)
+      .filter(Boolean)
+  );
+  const prependedEntries = [];
+  const suppressedTags = new Set();
+
+  if (safetyKeys.has('mad-workup')) {
+    prependedEntries.push({
+      text: 'Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.',
+      tag: 'MAD-WORKUP',
+    });
+  }
+
+  if (safetyKeys.has('asv-safety')) {
+    prependedEntries.push({
+      text: 'If ASV is being considered, confirm LVEF is above 45% first because ASV is contraindicated in reduced ejection fraction heart failure.',
+      tag: 'ASV-SAFETY',
+    });
+  }
+
+  if (safetyKeys.has('surgery-workup')) {
+    [
+      'SOFT-TISSUE-REVISION',
+      'SOFT-TISSUE-STRONG',
+      'SOFT-TISSUE-CONSIDER',
+      'SOFT-TISSUE-GENERAL',
+      'FRIEDMAN-III-ALT',
+    ].forEach(tag => suppressedTags.add(tag));
+
+    prependedEntries.push({
+      text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.',
+      tag: 'SURGERY-WORKUP',
+    });
+  }
+
+  const seen = new Set();
+  return [...prependedEntries, ...entries.filter(entry => !suppressedTags.has(entry.tag))].filter((entry) => {
     const key = `${entry.tag}::${entry.text}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -1392,6 +1528,10 @@ document.getElementById('form').addEventListener('submit', e => {
   const insufficientDataDomains = buildInsufficientDataAssessment({
     osaConfirmed,
     oxygenMetricsAvailable,
+    sup,
+    nons,
+    remAhi,
+    nremAhi,
     bmi,
     tons,
     mall,
@@ -1406,9 +1546,26 @@ document.getElementById('form').addEventListener('submit', e => {
       <strong><i class="bi bi-exclamation-triangle me-1"></i>Insufficient Data Caveats</strong>
       <ul class="mb-0 mt-1">${insufficientDataDomains.map(domain => `<li>${domain.clinician}</li>`).join('')}</ul>
     </div>` : '';
-  const guardedRecEntries = applyInsufficientDataGuardrails(
+  const treatmentSafetyChecks = buildTreatmentSafetyAssessment({
+    osaConfirmed,
+    recTags: recTagMap,
+    priorMAD,
+    priorJaw,
+    prefSurgery,
+    hasDISEData,
+  });
+  const treatmentSafetyHTML = treatmentSafetyChecks.length ? `
+    <div class="alert alert-warning mt-2 mb-3">
+      <strong><i class="bi bi-shield-exclamation me-1"></i>Treatment Safety Checks</strong>
+      <ul class="mb-0 mt-1">${treatmentSafetyChecks.map(alert => `<li>${alert.clinician}</li>`).join('')}</ul>
+    </div>` : '';
+  const insufficientGuardedRecEntries = applyInsufficientDataGuardrails(
     recTagMap.map(r => ({ text: r.text, tag: r.tag })),
     insufficientDataDomains
+  );
+  const guardedRecEntries = applyTreatmentSafetyGuardrails(
+    insufficientGuardedRecEntries,
+    treatmentSafetyChecks
   );
   const guardedRecTexts = guardedRecEntries.map(entry => entry.text);
 
@@ -1648,6 +1805,7 @@ document.getElementById('form').addEventListener('submit', e => {
     ${keyNumsGrid}
     ${hstValidityHTML}
     ${insufficientDataHTML}
+    ${treatmentSafetyHTML}
     ${out.phen.length ? `
       <div class="table-responsive mt-3">
         <table class="table table-sm align-middle osa-report-table">
@@ -1760,6 +1918,7 @@ document.getElementById('form').addEventListener('submit', e => {
     lowHypoxicBurden: oxygenMetricsAvailable && !out.phen.includes('High Hypoxic Burden'),
     oxygenMetricsAvailable,
     insufficientDataDomains,
+    treatmentSafetyChecks,
     apneaIndex,
     hypopneaIndex,
     fHypopneas,

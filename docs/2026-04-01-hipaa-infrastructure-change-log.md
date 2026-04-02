@@ -177,6 +177,9 @@ Why: the first live packaged deploy failed because the generated S3 artifact buc
 - Added `--cli-binary-format raw-in-base64-out` to CloudFront WAF create/update calls and simplified the generated WAF description text.
 Why: the first live WAF create/update attempts failed because the CLI treated JSON `SearchString` fields as binary without the raw mode flag, and the original description string violated the WAF description regex.
 
+- Added `RuleActionOverride`s that downgrade `AWSManagedRulesCommonRuleSet` `SizeRestrictions_BODY` and `CrossSiteScripting_BODY` from block to count for the CloudFront API-path WAF.
+Why: clinician report snapshots send legitimate patient-report HTML in authenticated `PUT /patients/:id` requests, and the managed body-size plus HTML/XSS body rules were falsely blocking those saves at the edge before the request could ever reach the Lambda/API layer.
+
 ### `infrastructure/template.yaml`
 - Removed the explicit `WebAppBucket` name.
 Why: repeated rollback retries were leaving retained app buckets behind, which made redeployments fragile and increased the chance of bucket-name collisions during cleanup.
@@ -206,3 +209,4 @@ Why: the upgraded staging stack already had existing patient rows, and they need
 ## Remaining Follow-Up
 - Run a browser-level clinician sign-in and CRUD pass through `https://dk259m1syu2bu.cloudfront.net` now that the CloudFront front door is live.
 - Re-run the patient intake and report-export staging checks through the CloudFront-hosted app surface rather than the prior localhost-hosted frontend.
+- Hosted snapshot persistence has now been reverified successfully after the WAF body-rule override expansion.

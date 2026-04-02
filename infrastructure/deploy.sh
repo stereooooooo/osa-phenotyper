@@ -128,6 +128,16 @@ write_cloudfront_waf_rules() {
       "ManagedRuleGroupStatement": {
         "VendorName": "AWS",
         "Name": "AWSManagedRulesCommonRuleSet",
+        "RuleActionOverrides": [
+          {
+            "Name": "SizeRestrictions_BODY",
+            "ActionToUse": { "Count": {} }
+          },
+          {
+            "Name": "CrossSiteScripting_BODY",
+            "ActionToUse": { "Count": {} }
+          }
+        ],
         "ScopeDownStatement": {
           "OrStatement": {
             "Statements": [

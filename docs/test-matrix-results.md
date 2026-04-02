@@ -1,10 +1,28 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit c30da98 (`fix: harden remaining audit follow-ups`)
+**Latest app version:** commit 994b10d (`fix: validate cloudfront staging flow`) + local audit follow-up changes
 
 ---
 
 ## April 2, 2026 Executable Harness Expansion
+
+### Treatment Safety Guardrails Follow-Up
+- Re-ran the local browser harness after adding executable coverage for:
+  - oral-appliance prerequisite messaging
+  - ASV heart-function safety messaging
+  - DISE-before-surgery prerequisite messaging
+- Re-ran it again after widening the insufficient-data guardrails to cover:
+  - missing positional tracking
+  - missing REM/NREM staging
+- Result: **128 passed, 0 failed** of 128 assertions.
+- Execution method: headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`.
+- Added executable assertions for:
+  - `MAD-WORKUP` patient explanation + checklist step
+  - `ASV-SAFETY` patient explanation + checklist step
+  - `SURGERY-WORKUP` patient explanation + checklist step
+  - `POSITION-WORKUP` patient explanation + checklist step
+  - `SLEEP-STAGE-WORKUP` patient explanation + checklist step
+- Conclusion: the report-layer regression harness now covers both the new treatment-prerequisite guardrails and the broader missing-data guardrails, and remains green.
 
 ### Scope
 - Re-ran the local browser harness at `tests/tests.html` after adding executable patient-report regression coverage for:
@@ -688,44 +706,62 @@
 
 ### Test 91: Hosted patient load + re-analyze
 **Status:** live browser verification complete
-**Result:** mixed — save/list round-trip passed, but patient reload exposed a real regression ⚠️
+**Result:** passed after fix ✅
 **Verification:**
 - hosted save succeeded for patient `CloudFront QA, Staging` / MRN `CF-STG-20260402`
 - hosted patient list showed the saved chart and allowed it to be reloaded
-- after reload, the patient bar still showed the correct patient name, but the required `patientName` and `patientDob` form inputs were blank
-- hosted re-analysis was blocked until those two fields were manually re-entered
-**Finding:** loading a saved patient from the hosted patient list does not fully repopulate the required patient-info inputs, which creates a hidden workflow break for re-analysis and re-save.
+- initial hosted regression was traced to `loadPatient()` setting chart-identity fields before `form.reset()`
+- after moving reset/populate ahead of those fields and redeploying, hosted reload repopulated `patientName`, `patientDob`, `patientMrn`, and the clinical fields together
+- hosted re-analysis then ran without manual re-entry
+**Finding:** none.
 
 ### Test 92: Hosted snapshot save persistence
 **Status:** live browser verification complete
-**Result:** failed ⚠️
+**Result:** passed after edge-rule fix ✅
 **Verification:**
 - hosted patient-report overlay opened successfully for `CloudFront QA, Staging`
-- clicking `Save Snapshot` from the hosted overlay did not produce `reportSnapshotCount` or `reportSnapshots` on the staging patient row
-- direct DynamoDB check on patient `9e4ba353-ba4f-464c-8bf1-af765748451a` after the hosted click returned only `patientId` with no snapshot fields
-**Finding:** hosted snapshot-save UI is not persisting report snapshots to the patient record.
+- initial failure was narrowed to CloudFront WAF managed body inspection on legitimate patient-report HTML
+- direct authenticated snapshot-sized `PUT` verified the backend update path itself was healthy once the edge block was removed
+- after downgrading both `SizeRestrictions_BODY` and `CrossSiteScripting_BODY` to count and redeploying, the real hosted `Save Snapshot` button succeeded
+- direct DynamoDB check on patient `9e4ba353-ba4f-464c-8bf1-af765748451a` after the hosted click showed `reportSnapshotCount = 2` and `version = 7`
+**Finding:** none.
 
 ### Test 93: Hosted intake thank-you flow
 **Status:** live browser verification complete
-**Result:** failed frontend completion, succeeded backend merge ⚠️
+**Result:** passed ✅
 **Verification:**
 - valid staging token endpoint check passed through CloudFront: `GET /intake/<token>` returned `{\"valid\":true,\"firstName\":\"Staging\",...}`
 - hosted intake page loaded correctly when opened with the expected `?t=` query parameter and rendered the active form with greeting name `Staging`
 - demographics and all required ESS / ISI / NOSE / nasal / snoring / weight-interest inputs were successfully filled in the hosted form
-- after submit, the hosted page remained stuck on `Submitting…` and never transitioned into the thank-you state
-- despite the stuck UI, the backend transaction succeeded:
+- backend transaction succeeded:
   - token status changed to `used`
   - `usedAt` was populated
   - patient `intakeStatus` became `review-needed`
   - staging patient row received `formData.ess = 8`, `formData.isi = 7`, `formData.noseScore = 50`, `formData.weightLossReadiness = ready`
   - `intakePendingOverrides.bmi = 31.6` was staged as expected
-**Finding:** hosted intake submission completes server-side but the public CloudFront intake page never exits the loading/submitting state, so patients would not see the thank-you confirmation even though their submission is already committed.
+- instrumented rerun confirmed the page transitions into `stateThankYou` and strips the token from the URL after success
+**Finding:** none. The earlier “stuck on submitting” read was a false negative caused by observing the hidden submit button state instead of the active state screen.
 
 ### Test 94: Hosted PDF export gesture
-**Status:** live browser verification attempted
-**Result:** unresolved / still needs manual human click verification ⚠️
+**Status:** live browser verification complete
+**Result:** passed ✅
 **Verification:**
 - hosted patient-report preview opened successfully from the CloudFront app
-- synthetic DOM clicks on `Download PDF` did not produce a file, which may be expected because Chrome can block non-user-gesture downloads
-- follow-up attempt using keyboard events also did not produce a new `Sleep_Report*.pdf` in `~/Downloads`
-**Interpretation:** this is not strong enough evidence to call the hosted PDF path broken, but it is also not strong enough to mark it passed. A real manual click in the browser is still needed.
+- synthetic DOM clicks on `Download PDF` did not produce a file, which appears to be expected because Chrome can block non-user-gesture downloads
+- final verification used a native OS-level mouse click on the hosted `Download PDF` button in the live CloudFront report overlay
+- Chrome saved a fresh duplicate-named artifact at `/Users/raymondbrown/Downloads/Sleep_Report_CloudFront_QA_Staging_2026-04-02 (1).pdf`
+- `pdfinfo` on that artifact confirmed:
+  - producer `jsPDF 2.5.1`
+  - creation date `Thu Apr 2 09:57:16 2026 CDT`
+  - `4` pages
+  - `2243993` bytes
+  - letter-sized pages
+**Finding:** none.
+
+### Test 95: Hosted snapshot WAF body-size allowance
+**Status:** live browser + direct API verification complete
+**Result:** passed ✅
+**Verification:**
+- authenticated `PUT /patients/:id` with a snapshot-sized HTML body now passes through CloudFront instead of returning a WAF `403`
+- real hosted snapshot-save UI now persists through the same edge path
+**Finding:** none.

@@ -80,3 +80,20 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Follow-Up
 - This is now a partial system-wide insufficient-data mode for oxygen/anatomy/HNS decision domains, but it still is not a universal guardrail across every phenotype and every downstream recommendation.
 - The review queue currently lives inside the patient list modal; it is not yet a full standalone dashboard with assignment, resolution workflow, or audit analytics.
+
+## April 2, 2026 Treatment-Safety Follow-Up
+
+### 9. Added explicit treatment-prerequisite guardrails
+- Updated `js/app.js` so OSA plans now generate explicit safety/prerequisite checks when:
+  - MAD is being considered and still needs sleep-dentist / dentition / TMJ confirmation
+  - ASV is being mentioned as part of high-loop-gain / central-instability routing and still needs documented safe LVEF
+  - surgery is being considered without DISE-guided target mapping
+- Updated `js/patientReport.js` so those prerequisites appear as patient-facing plan items and checklist steps instead of remaining buried in clinician-only caveats.
+- Updated `docs/citations.md` to explicitly track the ASV HFrEF safety guardrail and the MAD monitoring evidence already being used for dental/TMJ prerequisite messaging.
+- Why: one of the remaining audit gaps was that the app still surfaced some advanced or anatomy-specific options more confidently than the underlying prerequisite workup justified. This pass makes those dependencies visible in both clinician and patient outputs.
+
+### 10. Expanded insufficient-data guardrails beyond oxygen / anatomy / HNS
+- Updated `js/app.js` so missing positional tracking and missing REM/NREM staging now generate explicit clinician caveats and patient-facing workup recommendation tags.
+- Updated `js/patientReport.js` so those gaps appear as clear `POSITION-WORKUP` and `SLEEP-STAGE-WORKUP` explanations plus checklist steps.
+- Expanded `tests/tests.html`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` to cover the new positional and REM-stage guardrails.
+- Why: the audit correctly called out that missing data was still too easy to interpret as an absent phenotype. This pushes the app further toward a true insufficient-data operating mode by making “not measured” read differently from “not present.”

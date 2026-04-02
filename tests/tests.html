@@ -579,6 +579,18 @@ assert(reportHtml.includes('Complete Oxygen-Risk Review'), 'Oxygen workup tag re
 assert(reportHtml.includes('review the full oxygen portion of your sleep study report'), 'Oxygen workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'POSITION-WORKUP', text: 'Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.' }],
+}));
+assert(reportHtml.includes('Review Positional Data Before Ruling Position In or Out'), 'Positional workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('back-sleeping versus side-sleeping data'), 'Positional workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'SLEEP-STAGE-WORKUP', text: 'Review REM/NREM staging data before concluding that REM-specific worsening is absent.' }],
+}));
+assert(reportHtml.includes('Review REM-Sleep Data Before Ruling Out REM Worsening'), 'Sleep-stage workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('REM versus non-REM portion of your study'), 'Sleep-stage workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ANATOMY-WORKUP', text: 'Complete the upper-airway anatomy exam before finalizing anatomy-based treatments.' }],
 }));
 assert(reportHtml.includes('Complete Airway Exam Before Finalizing Anatomy-Based Treatments'), 'Anatomy workup tag renders a patient-friendly treatment explanation');
@@ -589,6 +601,24 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Complete the Inspire Evaluation First'), 'HNS workup tag renders a patient-friendly treatment explanation');
 assert(reportHtml.includes('Schedule the remaining Inspire workup steps'), 'HNS workup tag adds a practical checklist step when DISE is not yet scheduled');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'MAD-WORKUP', text: 'Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw protrusion, and TMJ safety.' }],
+}));
+assert(reportHtml.includes('Confirm Oral Appliance Safety First'), 'MAD workup tag renders a patient-friendly safety explanation');
+assert(reportHtml.includes('Ask the sleep dentist to confirm'), 'MAD workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'ASV-SAFETY', text: 'If ASV is being considered, confirm LVEF is above 45% first.' }],
+}));
+assert(reportHtml.includes('Confirm Heart-Function Safety Before ASV'), 'ASV safety tag renders a patient-friendly safety explanation');
+assert(reportHtml.includes('echocardiogram') || reportHtml.includes('heart-function result'), 'ASV safety tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' }],
+}));
+assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'Surgery workup tag renders a patient-friendly safety explanation');
+assert(reportHtml.includes('sleep endoscopy (DISE) before choosing a specific airway surgery'), 'Surgery workup tag adds a practical checklist step');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');

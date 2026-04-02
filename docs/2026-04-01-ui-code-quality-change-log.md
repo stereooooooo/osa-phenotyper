@@ -54,6 +54,14 @@ This pass addressed the remaining clinician-facing workflow and maintainability 
 - Updated script load order in `index.html` and `tests/tests.html` so the shared helper loads before the report and clinician logic.
 - Why: the audit correctly identified drift risk between the clinician engine and patient-report layer. Pulling the duplicated pathway/UARS logic into one shared file reduces the chance of future behavior diverging silently.
 
+### 10. Fixed patient reload field ordering
+- Updated `index.html` so `loadPatient()` resets and repopulates the form before reapplying the saved chart identity fields (`patientName`, `patientDob`, `patientMrn`) and milestones.
+- Why: the hosted CloudFront regression came from setting those fields before `form.reset()`, which silently cleared them again and blocked re-analysis after loading a saved chart.
+
+### 11. Hardened non-JSON API error handling
+- Updated `js/db.js` so the shared API wrapper reads response text first, parses JSON when available, and falls back to sane error messages when CloudFront or another proxy returns HTML instead of JSON.
+- Why: the snapshot-save investigation hit real edge-generated HTML error pages, and the old `res.json()` path turned those into misleading `Unexpected token '<'` parse errors instead of surfacing the underlying HTTP failure.
+
 ## Follow-Up Still Recommended
 - Run a browser walkthrough for desktop and mobile layouts, especially the progress track and action-row stacking.
 - Run keyboard-only testing across the clinician workflow and report preview.
