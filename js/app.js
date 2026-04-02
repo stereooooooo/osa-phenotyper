@@ -193,6 +193,33 @@ function buildInsufficientDataAssessment(ctx) {
       clinician: `Upper-airway anatomy is incompletely documented (${anatomyMissing.join(', ')} missing). Anatomy-driven phenotypes and surgery/MAD matching should be deferred until the exam is completed.`,
       patient: 'Some parts of your throat exam are still missing, so anatomy-based treatment options should stay provisional until your airway exam is completed.',
     });
+  } else if (anatomyMissing.length === 1) {
+    domains.push({
+      key: 'anatomy-partial',
+      clinician: `Upper-airway anatomy documentation is still missing ${anatomyMissing[0]}. Do not treat the absence of an anatomy-driven phenotype as exclusion until the airway exam is completed.`,
+      patient: 'One part of your throat exam is still missing, so anatomy-based treatment matching may still be refined after the rest of your airway exam is documented.',
+    });
+  }
+
+  const hasNasalAssessment =
+    exists(ctx.noseScore) ||
+    Boolean(ctx.nasalObs) ||
+    Boolean(ctx.ctSeptum) ||
+    Boolean(ctx.ctTurbs);
+  if (!hasNasalAssessment) {
+    domains.push({
+      key: 'nasal',
+      clinician: 'Nasal symptom/exam data are absent (NOSE score, nasal-obstruction history, or nasal anatomy findings). Do not treat the absence of a nasal-resistance phenotype as exclusion.',
+      patient: 'We do not yet have a full nasal symptom or exam assessment entered, so we cannot yet tell how much your nose may be contributing to sleep-related breathing problems or treatment tolerance.',
+    });
+  }
+
+  if (ctx.cvd && !exists(ctx.dhr)) {
+    domains.push({
+      key: 'delta-heart-rate',
+      clinician: 'Manual delta heart rate has not been entered. If cardiovascular-stress phenotyping matters for this patient, do not treat the absence of elevated delta heart rate as exclusion.',
+      patient: 'We have not yet entered the extra overnight heart-rate reactivity measure we sometimes use to estimate cardiovascular stress from sleep apnea, so that part of your risk picture may still be refined.',
+    });
   }
 
   const hnsReferenced = ctx.prefInspire || ctx.prefSurgery || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
@@ -375,6 +402,13 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
     prependedEntries.push({
       text: 'Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.',
       tag: 'HNS-WORKUP',
+    });
+  }
+
+  if (domainKeys.has('nasal')) {
+    prependedEntries.push({
+      text: 'Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.',
+      tag: 'NASAL-WORKUP',
     });
   }
 
@@ -1655,6 +1689,12 @@ document.getElementById('form').addEventListener('submit', e => {
     bmi,
     tons,
     mall,
+    noseScore,
+    nasalObs,
+    ctSeptum,
+    ctTurbs,
+    dhr,
+    cvd,
     prefInspire,
     prefSurgery,
     recTags: recTagMap,

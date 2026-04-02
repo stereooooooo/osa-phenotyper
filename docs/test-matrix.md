@@ -223,3 +223,9 @@
 | 116 | Local patient reload via list modal | After clearing the form, reopening the saved chart through the patient-list modal should repopulate patient identity fields and allow chart continuity checks without AWS |
 | 117 | Local intake review dashboard journey | Injected pending intake conflicts should surface in the standalone `Review Queue` dashboard, open the intake-review modal, and persist explicit accept/keep decisions into chart state and provenance history |
 | 118 | Local patient intake thank-you journey | On localhost workflow test mode, the real `intake.html` UI should validate a workflow token, accept a full questionnaire submission, persist the mapped payload, and transition to the thank-you state |
+
+### Group 27: Universal Phenotype-Uncertainty Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 119 | Zero-phenotype with unresolved contributors | When OSA is confirmed but phenotype-relevant inputs such as nasal assessment or delta-heart-rate entry are still missing, Section C should say contributors are still being clarified instead of implying the common patterns were ruled out |
+| 120 | Nasal workup from missing nasal assessment | When nasal contribution has not actually been assessed, the plan should prepend a `NASAL-WORKUP` step with a patient-friendly explanation and checklist reminder instead of silently treating the nasal phenotype as absent |

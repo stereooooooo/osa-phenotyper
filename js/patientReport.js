@@ -540,6 +540,39 @@ ${subtypeHtml}`;
 </div>`;
   }
 
+  function getUnresolvedPhenotypeNotes(data) {
+    if (getReportStage(data) !== 'post-study') return [];
+
+    const domains = Array.isArray(data.insufficientDataDomains) ? data.insufficientDataDomains : [];
+    const noteMap = {
+      'position': 'Back-sleeping versus side-sleeping effects are not fully assessed yet because the positional data were incomplete.',
+      'sleep-stage': 'Dream-sleep versus non-dream-sleep worsening is not fully assessed yet because the REM/NREM breakdown was incomplete.',
+      'endotyping': 'Some of the finer breathing-control patterns still need the full apnea-versus-hypopnea breakdown before they can be interpreted confidently.',
+      'anatomy': 'A fuller airway exam is still needed before anatomy-based contributors can be considered fully assessed.',
+      'anatomy-partial': 'One part of the airway exam is still missing, so anatomy-based contributors may still be refined.',
+      'nasal': 'Nasal contribution has not been fully assessed yet because the nasal symptom and exam data are incomplete.',
+      'delta-heart-rate': 'The extra overnight heart-rate reactivity measure we sometimes use for cardiovascular-stress patterning has not been entered yet.',
+    };
+
+    return domains
+      .map(domain => noteMap[domain?.key])
+      .filter(Boolean);
+  }
+
+  function renderUnresolvedPhenotypeCallout(data) {
+    const notes = getUnresolvedPhenotypeNotes(data);
+    if (!notes.length) return '';
+
+    return `
+<div class="alert alert-warning">
+  <strong>Contributing factors still being clarified</strong>
+  <p style="margin:0.4rem 0 0;">Some patterns that can influence treatment choice still need fuller assessment before they should be treated as ruled in or ruled out.</p>
+  <ul style="margin:0.5rem 0 0;">
+    ${notes.map(note => `<li>${esc(note)}</li>`).join('')}
+  </ul>
+</div>`;
+  }
+
   /* ══════════════════════════════════════════════════════════════════════════
      SECTION C — What's Contributing to Your Sleep Apnea
      ══════════════════════════════════════════════════════════════════════════ */
@@ -547,12 +580,18 @@ ${subtypeHtml}`;
     const phen = data.phen || [];
     if (getReportStage(data) !== 'post-study') return '';
     if (data.primaryAHI < 5) return '';  // Normal AHI handled by Section B2
+    const unresolvedCallout = renderUnresolvedPhenotypeCallout(data);
 
     /* Zero phenotypes — provide context instead of blank gap */
     if (phen.length === 0) {
+      const unresolvedNotes = getUnresolvedPhenotypeNotes(data);
+      const summary = unresolvedNotes.length
+        ? 'Your sleep study confirmed obstructive sleep apnea. The data we have so far do not show one single dominant pattern, and a few possible contributing factors still need fuller assessment before they should be treated as absent.'
+        : 'Your sleep study confirmed obstructive sleep apnea, but your results did not show a strong pattern in the common contributing factors we test for (such as anatomical narrowing, positional dependence, or breathing instability). This is not unusual — many patients have sleep apnea caused by a combination of subtle factors rather than one dominant pattern. Your treatment plan is still tailored to your severity level and personal circumstances, and your doctor will work with you to find the most effective approach.';
       return `
 <h2>About Your Sleep Apnea</h2>
-<p>Your sleep study confirmed obstructive sleep apnea, but your results did not show a strong pattern in the common contributing factors we test for (such as anatomical narrowing, positional dependence, or breathing instability). This is not unusual — many patients have sleep apnea caused by a combination of subtle factors rather than one dominant pattern. Your treatment plan is still tailored to your severity level and personal circumstances, and your doctor will work with you to find the most effective approach.</p>`;
+<p>${summary}</p>
+${unresolvedCallout}`;
     }
 
     const iconMap = {
@@ -603,6 +642,7 @@ ${subtypeHtml}`;
     return `
 <h2>What's Contributing to Your Sleep Apnea</h2>
 <p>Sleep apnea is not one-size-fits-all. Your results show specific patterns that help explain why your airway has trouble staying open during sleep. Understanding these patterns allows us to choose treatments that are most likely to work for you.</p>
+${unresolvedCallout}
 ${items}`;
   }
 
@@ -631,6 +671,7 @@ ${items}`;
     'ENDOTYPE-WORKUP': `<strong>Complete the Detailed Event Breakdown Before Final Endotype Matching</strong> — Some of the more advanced breathing-pattern estimates in sleep apnea depend on knowing how many events were full apneas versus partial obstructions (hypopneas). That breakdown is not fully available yet, so some of the finer endotype-based treatment matching still needs the detailed scoring report before it should be treated as complete.`,
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
     'HNS-WORKUP': `<strong>Complete the Inspire Evaluation First</strong> — Inspire can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, Inspire should stay in the “possible option” category rather than a finalized recommendation.`,
+    'NASAL-WORKUP': `<strong>Complete Nasal Assessment Before Ruling Nasal Treatment In or Out</strong> — A blocked or narrow nose can worsen mouth breathing and make CPAP, oral appliances, and surgery recovery harder. Because your nasal symptom and exam data are still incomplete, your ENT team should finish documenting nasal symptoms and anatomy before treating nasal contribution as absent.`,
     'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
     'MAD-SAFETY-LIMIT': `<strong>Oral Appliance May Not Be a Safe Fit Right Now</strong> — Your current dental or jaw findings make an oral appliance less likely to be a safe or practical treatment at this stage. Problems such as limited tooth support, limited jaw movement, or significant TMJ disease can make a mandibular advancement device hard to fit or hard to tolerate. Your care team may still revisit it later if a sleep dentist feels those concerns can be addressed safely.`,
     'CENTRAL-PSG-WORKUP': `<strong>Confirm Central-Breathing Findings With a Lab Sleep Study</strong> — Your home sleep study showed breathing-instability signals that can suggest central sleep apnea or periodic breathing, but those findings are usually confirmed with a full in-lab sleep study before advanced treatments such as ASV are chosen. That extra step helps your care team make sure the pattern is truly central and that the treatment is matched safely.`,
@@ -956,6 +997,13 @@ ${items}`;
     if (tags.has('ANATOMY-WORKUP')) {
       checkItems.push({
         text: 'Schedule or complete a full airway exam with your ENT team so tonsil size, Friedman tongue position, and other anatomy findings are documented before surgery-based decisions are finalized.',
+        group: 'treatment'
+      });
+    }
+
+    if (tags.has('NASAL-WORKUP')) {
+      checkItems.push({
+        text: 'Review nasal blockage symptoms and complete a nasal exam so your team can tell whether nasal treatment could improve breathing or treatment comfort.',
         group: 'treatment'
       });
     }

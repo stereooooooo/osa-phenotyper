@@ -577,6 +577,16 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 assert(!reportHtml.includes('What may still be refined'), 'Data limitations callout stays hidden when insufficient-data domains are absent');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  phen: [],
+  insufficientDataDomains: [
+    { key: 'nasal', patient: 'We do not yet have a full nasal symptom or exam assessment entered.' },
+    { key: 'delta-heart-rate', patient: 'We have not yet entered the extra overnight heart-rate reactivity measure.' }
+  ],
+}));
+assert(reportHtml.includes('Contributing factors still being clarified'), 'Section C shows unresolved-phenotype callout when phenotype inputs are incomplete');
+assert(reportHtml.includes('do not show one single dominant pattern'), 'Zero-phenotype summary avoids implying that unresolved contributors were ruled out');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   weightLossReadiness: 'ready',
 }));
 assert(reportHtml.includes('feel ready to work on weight management now'), 'Weight rec is personalized for ready patients');
@@ -634,6 +644,12 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Complete the Inspire Evaluation First'), 'HNS workup tag renders a patient-friendly treatment explanation');
 assert(reportHtml.includes('Schedule the remaining Inspire workup steps'), 'HNS workup tag adds a practical checklist step when DISE is not yet scheduled');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'NASAL-WORKUP', text: 'Complete a nasal symptom and airway review before ruling nasal treatment in or out.' }],
+}));
+assert(reportHtml.includes('Complete Nasal Assessment Before Ruling Nasal Treatment In or Out'), 'Nasal workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('Review nasal blockage symptoms and complete a nasal exam'), 'Nasal workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'MAD-WORKUP', text: 'Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw protrusion, and TMJ safety.' }],

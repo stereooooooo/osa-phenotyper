@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit `37840e3` (`fix: harden pilot readiness safeguards`) + local workflow smoke-suite expansion
+**Latest app version:** commit `2d18699` (`test: add workflow smoke journeys`) + local universal-phenotype uncertainty follow-up
 
 ---
 
@@ -34,6 +34,25 @@
   - `bash -n tests/run-headless-suite.sh`
   - `bash tests/run-headless-suite.sh`
 - Conclusion: the regression harness is no longer limited to report-layer/browser assertions. It now executes real multi-step clinician and intake journeys on localhost using the production UI surfaces with a safe in-memory backend.
+
+### Universal Phenotype-Uncertainty Follow-Up
+- Expanded the insufficient-data assessment in:
+  - `js/app.js`
+- Expanded the patient-facing phenotype uncertainty handling in:
+  - `js/patientReport.js`
+- Expanded executable regression coverage in:
+  - `tests/tests.html`
+- Added verification for:
+  - unresolved phenotype callout rendering in Section C
+  - safer zero-phenotype summary wording when nasal or autonomic-stress inputs are still missing
+  - `NASAL-WORKUP` patient-plan explanation and checklist step
+- Result: **166 passed, 0 failed** of 166 assertions.
+- Verification method:
+  - `node --check js/app.js`
+  - `node --check js/patientReport.js`
+  - `bash -n tests/run-headless-suite.sh`
+  - `bash tests/run-headless-suite.sh`
+- Conclusion: this pass stops incomplete nasal, partial-airway-exam, and missing delta-heart-rate inputs from sounding like negative phenotype findings in the patient report, while keeping the full clinician/intake smoke harness green.
 
 ### Home-Test Central Confirmation Follow-Up
 - Added source/syntax verification for the new WatchPAT central-confirmation guardrail in:

@@ -244,3 +244,24 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Workflow Smoke Suite Follow-Up
 - The automated coverage is broader now, but it still is not a full production-grade end-to-end suite against the live AWS environment.
 - The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.
+
+## April 2, 2026 Universal-Phenotype Uncertainty Follow-Up
+
+### 20. Stopped unresolved phenotype inputs from reading like negative findings
+- Updated `js/app.js` so `buildInsufficientDataAssessment()` now also tracks:
+  - `anatomy-partial` when one key airway-exam field is still missing
+  - `nasal` when no nasal symptom/exam data are documented
+  - `delta-heart-rate` when cardiovascular disease is present but manual delta heart rate has not been entered
+- Updated `js/app.js` so the insufficient-data guardrail layer now prepends a `NASAL-WORKUP` item when nasal contribution has not actually been assessed.
+- Updated `js/patientReport.js` so Section C now renders a dedicated `Contributing factors still being clarified` callout whenever phenotype-relevant domains remain unresolved, instead of letting the report read like those patterns were ruled out.
+- Updated the Section C zero-phenotype branch in `js/patientReport.js` so it no longer says the common contributing patterns were simply absent when some of them were never fully assessed.
+- Updated `tests/tests.html` with executable assertions covering:
+  - unresolved-phenotype callout rendering in Section C
+  - safer zero-phenotype summary wording
+  - the new `NASAL-WORKUP` patient-plan + checklist behavior
+- Updated `docs/test-matrix.md` and `docs/test-matrix-results.md` so the new uncertainty behavior is part of the tracked audit/test surface.
+- Why: one of the remaining clinical-testing risks was that incomplete nasal, anatomy, or autonomic-stress inputs could still sound like reassuring negatives in the patient-facing phenotype explanation. This pass pushes the tool farther toward “not assessed means unresolved,” which is much safer for real pilot use.
+
+## Remaining Gaps After Universal-Phenotype Uncertainty Follow-Up
+- The insufficient-data mode is broader now, but it is still not literally universal across every phenotype and every downstream recommendation path.
+- The automated suite is strong locally, but it still is not a full live-AWS production-grade end-to-end suite.
