@@ -89,6 +89,7 @@
       <span class="osa-nav-title d-none d-md-inline">OSA Phenotyper</span>
     </a>
     <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnReviewDashboard"><i class="bi bi-clipboard-data"></i> Review Queue</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-people"></i> Patients</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New Patient</button>
       <span class="text-light small d-none d-md-inline ms-2" id="userEmail"></span>
@@ -188,6 +189,78 @@
           </div>
           <div id="questionnaireStatus" class="small mt-1"></div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Intake Review Dashboard Modal ===== -->
+<div class="modal fade" id="reviewDashboardModal" tabindex="-1" aria-labelledby="reviewDashboardLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reviewDashboardLabel"><i class="bi bi-clipboard-data"></i> Intake Review Dashboard</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div id="reviewDashboardLoading" class="text-center py-4">
+          <div class="spinner-border text-primary"></div>
+          <p class="small text-muted mt-2">Loading review queue...</p>
+        </div>
+        <div id="reviewDashboardEmpty" class="text-center py-4 d-none">
+          <i class="bi bi-check2-circle text-success" style="font-size:2rem;"></i>
+          <p class="text-muted mt-2 mb-0">No intake charts currently need review.</p>
+        </div>
+        <div id="reviewDashboardContent" class="d-none">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <div class="card border-warning h-100">
+                <div class="card-body">
+                  <div class="text-muted small text-uppercase">Needs Review</div>
+                  <div class="display-6 mb-1" id="reviewDashboardCountNeeded">0</div>
+                  <div class="small text-muted">Charts with pending intake conflicts that need a clinician decision.</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card border-success h-100">
+                <div class="card-body">
+                  <div class="text-muted small text-uppercase">Intake Received</div>
+                  <div class="display-6 mb-1" id="reviewDashboardCountReceived">0</div>
+                  <div class="small text-muted">Completed intake submissions with no pending chart conflicts.</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card border-secondary h-100">
+                <div class="card-body">
+                  <div class="text-muted small text-uppercase">Pending Intake Links</div>
+                  <div class="display-6 mb-1" id="reviewDashboardCountPending">0</div>
+                  <div class="small text-muted">Patients who still have an intake link outstanding or incomplete.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Patient</th>
+                  <th>MRN</th>
+                  <th>Intake Status</th>
+                  <th>Pending Fields</th>
+                  <th>Received</th>
+                  <th>Last Updated</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reviewDashboardBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -1024,6 +1097,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     appContainer.classList.remove('d-none');
     // Hide DB-dependent buttons
     document.getElementById('btnSavePatient').style.display = 'none';
+    document.getElementById('btnReviewDashboard').style.display = 'none';
     document.getElementById('btnPatientList').style.display = 'none';
     document.getElementById('btnSignOut').style.display = 'none';
     document.getElementById('cardPatientInfo').style.display = 'none';
@@ -1232,7 +1306,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   });
 
   // ── Patient list ────────────────────────────────────────────
+  const REVIEW_QUEUE_STATUSES = new Set(['review-needed', 'received', 'pending']);
   const patientListModal = new bootstrap.Modal(document.getElementById('patientListModal'));
+  const reviewDashboardModal = new bootstrap.Modal(document.getElementById('reviewDashboardModal'));
   const fieldProvenanceModal = new bootstrap.Modal(document.getElementById('fieldProvenanceModal'));
   const intakeReviewModal = new bootstrap.Modal(document.getElementById('intakeReviewModal'));
   const reportSnapshotsModal = new bootstrap.Modal(document.getElementById('reportSnapshotsModal'));
@@ -1247,9 +1323,31 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     );
   }
 
+  function queueRank(patient) {
+    if (patient.intakeStatus === 'review-needed') return 0;
+    if (patient.intakeStatus === 'received') return 1;
+    if (patient.intakeStatus === 'pending') return 2;
+    return 3;
+  }
+
+  function getReviewQueuePatients(patients) {
+    return (Array.isArray(patients) ? patients : [])
+      .filter(patient => REVIEW_QUEUE_STATUSES.has(patient.intakeStatus))
+      .sort((a, b) => {
+        const queueDiff = queueRank(a) - queueRank(b);
+        if (queueDiff !== 0) return queueDiff;
+        return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+      });
+  }
+
   document.getElementById('btnPatientList').addEventListener('click', async () => {
     patientListModal.show();
     await loadPatientList();
+  });
+
+  document.getElementById('btnReviewDashboard').addEventListener('click', async () => {
+    reviewDashboardModal.show();
+    await loadReviewDashboard();
   });
 
   document.getElementById('toggleArchivedPatients').addEventListener('change', async (e) => {
@@ -1274,25 +1372,16 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     tbody.innerHTML = '';
 
     try {
-      const queueStatuses = new Set(['review-needed', 'received', 'pending']);
-      const queueRank = (patient) => {
-        if (patient.intakeStatus === 'review-needed') return 0;
-        if (patient.intakeStatus === 'received') return 1;
-        if (patient.intakeStatus === 'pending') return 2;
-        return 3;
-      };
-
       const patients = query
         ? await OSADatabase.searchPatients(query, showArchivedPatients)
         : await OSADatabase.listPatients(showArchivedPatients);
       const filteredPatients = showReviewQueuePatients
-        ? patients.filter(patient => queueStatuses.has(patient.intakeStatus))
-        : patients;
-      filteredPatients.sort((a, b) => {
-        const queueDiff = queueRank(a) - queueRank(b);
-        if (queueDiff !== 0) return queueDiff;
-        return (b.updatedAt || '').localeCompare(a.updatedAt || '');
-      });
+        ? getReviewQueuePatients(patients)
+        : patients.sort((a, b) => {
+            const queueDiff = queueRank(a) - queueRank(b);
+            if (queueDiff !== 0) return queueDiff;
+            return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+          });
 
       loading.classList.add('d-none');
 
@@ -1411,6 +1500,100 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       loading.classList.add('d-none');
       empty.classList.remove('d-none');
       empty.querySelector('p').textContent = 'Error loading patients: ' + err.message;
+    }
+  }
+
+  async function loadReviewDashboard() {
+    const loading = document.getElementById('reviewDashboardLoading');
+    const empty = document.getElementById('reviewDashboardEmpty');
+    const content = document.getElementById('reviewDashboardContent');
+    const body = document.getElementById('reviewDashboardBody');
+    const countNeeded = document.getElementById('reviewDashboardCountNeeded');
+    const countReceived = document.getElementById('reviewDashboardCountReceived');
+    const countPending = document.getElementById('reviewDashboardCountPending');
+
+    loading.classList.remove('d-none');
+    empty.classList.add('d-none');
+    content.classList.add('d-none');
+    body.innerHTML = '';
+
+    try {
+      const patients = await OSADatabase.listPatients(false);
+      const reviewPatients = getReviewQueuePatients(patients);
+      const needed = reviewPatients.filter(patient => patient.intakeStatus === 'review-needed');
+      const received = reviewPatients.filter(patient => patient.intakeStatus === 'received');
+      const pending = reviewPatients.filter(patient => patient.intakeStatus === 'pending');
+
+      countNeeded.textContent = String(needed.length);
+      countReceived.textContent = String(received.length);
+      countPending.textContent = String(pending.length);
+
+      loading.classList.add('d-none');
+
+      if (!reviewPatients.length) {
+        empty.classList.remove('d-none');
+        return;
+      }
+
+      reviewPatients.forEach((patient) => {
+        const tr = document.createElement('tr');
+        const badgeClass = patient.intakeStatus === 'review-needed'
+          ? 'bg-warning-subtle text-warning'
+          : patient.intakeStatus === 'received'
+            ? 'bg-success-subtle text-success'
+            : 'bg-secondary-subtle text-secondary';
+        const statusLabel = patient.intakeStatus === 'review-needed'
+          ? 'Needs Review'
+          : patient.intakeStatus === 'received'
+            ? 'Intake Received'
+            : 'Intake Pending';
+        const pendingCount = Number.isInteger(patient.intakePendingFieldCount) ? patient.intakePendingFieldCount : 0;
+        const reviewAction = patient.intakeStatus === 'review-needed'
+          ? `<button type="button" class="btn btn-sm btn-outline-warning btn-dashboard-review" data-id="${patient.patientId}">
+              <i class="bi bi-clipboard2-check"></i> Review
+            </button>`
+          : '';
+        tr.innerHTML = `
+          <td>
+            <strong>${escHtml(patient.name || '')}</strong>
+            <div class="small text-muted">${escHtml(patient.dob || '')}</div>
+          </td>
+          <td><code>${escHtml(patient.mrn || '—')}</code></td>
+          <td><span class="badge ${badgeClass}">${statusLabel}</span></td>
+          <td>${pendingCount ? `<span class="badge bg-warning-subtle text-warning">${pendingCount}</span>` : '<span class="text-muted">—</span>'}</td>
+          <td class="small text-muted">${escHtml(formatDateTime(patient.intakeReceivedAt))}</td>
+          <td class="small text-muted">${escHtml(formatDateTime(patient.updatedAt))}</td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <button type="button" class="btn btn-sm btn-outline-primary btn-dashboard-open" data-id="${patient.patientId}">
+                <i class="bi bi-box-arrow-in-right"></i> Open
+              </button>
+              ${reviewAction}
+            </div>
+          </td>`;
+        body.appendChild(tr);
+      });
+
+      body.querySelectorAll('.btn-dashboard-open').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await loadPatient(btn.dataset.id);
+          reviewDashboardModal.hide();
+        });
+      });
+
+      body.querySelectorAll('.btn-dashboard-review').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await loadPatient(btn.dataset.id);
+          reviewDashboardModal.hide();
+          openIntakeReviewModal();
+        });
+      });
+
+      content.classList.remove('d-none');
+    } catch (err) {
+      loading.classList.add('d-none');
+      empty.classList.remove('d-none');
+      empty.querySelector('p').textContent = 'Could not load the intake review dashboard: ' + err.message;
     }
   }
 

@@ -25,6 +25,18 @@
   - provenance modal now renders current chart value, pending intake value, and compact timeline history
 - Conclusion: the explicit intake-review resolution workflow and durable field-timeline plumbing are implemented and syntax-clean. Live browser/AWS validation of this new review path is still pending.
 
+### Intake Review Dashboard Follow-Up
+- Added source/syntax verification for the new dedicated review-dashboard surface in `index.html`.
+- Verified behaviors in source:
+  - dedicated navbar `Review Queue` entry point
+  - standalone dashboard summary counts for `review-needed`, `received`, and `pending`
+  - direct `Open` and `Review` row actions from the dashboard
+  - local-mode hide behavior for the dashboard when AWS auth/DB is not configured
+- Verification method:
+  - extracted inline script parse check via `node --check /tmp/osa-index-inline.js`
+  - source review of `loadReviewDashboard()` and shared queue-ranking helpers
+- Conclusion: the intake review queue is no longer limited to the patient-list toggle. Live browser validation of the new dashboard actions is still pending.
+
 ### Treatment Safety Guardrails Follow-Up
 - Re-ran the local browser harness after adding executable coverage for:
   - oral-appliance prerequisite messaging

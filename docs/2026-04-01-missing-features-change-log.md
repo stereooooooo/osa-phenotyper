@@ -113,5 +113,20 @@ This pass focused on the highest-value production-hardening gaps that remained a
 - Why: the previous workflow still required clinicians to infer resolution by editing form fields and re-saving. The audit called for a real review workflow and durable provenance, so this pass makes review decisions explicit, persistent, and inspectable later.
 
 ## Remaining Gaps After Intake-Review Follow-Up
-- The review workflow is now explicit and persistent, but it still is not a full standalone dashboard with assignment, escalation, or audit analytics across multiple clinicians.
+- The review workflow is now explicit and persistent, but it still does not have assignment, escalation, or audit analytics across multiple clinicians.
 - `fieldProvenanceHistory` now captures durable field timelines for chart-form fields, but it does not yet cover every non-form chart attribute (for example, patient identity fields or derived report metadata) as a unified longitudinal history.
+
+## April 2, 2026 Intake-Dashboard Follow-Up
+
+### 12. Added a dedicated intake review dashboard
+- Updated `index.html` so the clinician navbar now exposes a dedicated `Review Queue` dashboard separate from the patient-list modal.
+- Added a standalone review-dashboard modal with:
+  - queue summary counts for `review-needed`, `received`, and `pending`
+  - a dedicated list of actionable intake charts
+  - one-click `Open` and `Review` actions for each queue item
+- Reused the queue-ranking logic so the dedicated dashboard and patient-list filter stay aligned on which charts are most actionable first.
+- Why: the audit gap was no longer just “can clinicians review a single pending chart,” but “can they reliably find all intake work that needs attention.” Pulling this into its own surface reduces hunting through the patient list and makes the workflow feel like a real operational queue instead of a hidden toggle.
+
+## Remaining Gaps After Intake-Dashboard Follow-Up
+- The app now has a standalone intake review dashboard, but it still does not support assignment, escalation, SLA tracking, or cross-clinician audit analytics.
+- `fieldProvenanceHistory` still focuses on chart-form fields rather than every chart attribute as one unified longitudinal record.
