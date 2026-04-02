@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # OSA Phenotyper – AWS Deployment Script
-# Usage: ./deploy.sh <admin-email> [region] [clinic-name] <allowed-origins>
+# Usage: ./deploy.sh <admin-email> [region] [clinic-name] <allowed-origins> [artifact-bucket]
 #
 # Prerequisites:
 #   - AWS CLI installed and configured (aws configure)
@@ -10,13 +10,53 @@
 #
 set -euo pipefail
 
-USAGE="Usage: ./deploy.sh <admin-email> [region] [clinic-name] <allowed-origins>"
+USAGE="Usage: ./deploy.sh <admin-email> [region] [clinic-name] <allowed-origins> [artifact-bucket]"
 
 ADMIN_EMAIL="${1:?${USAGE}}"
 REGION="${2:-us-east-1}"
 CLINIC="${3:-capital-ent}"
 ALLOWED_ORIGINS="${4:?${USAGE}}"
 STACK_NAME="osa-phenotyper-${CLINIC}"
+ARTIFACT_BUCKET="${5:-}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TEMPLATE_FILE="${SCRIPT_DIR}/template.yaml"
+PACKAGED_TEMPLATE="/tmp/osa-phenotyper-${CLINIC}-packaged.yaml"
+
+ensure_artifact_bucket_name() {
+  if [ -n "${ARTIFACT_BUCKET}" ]; then
+    return
+  fi
+  local account_id
+  account_id=$(aws sts get-caller-identity --query Account --output text --region "${REGION}")
+  ARTIFACT_BUCKET="osa-phenotyper-artifacts-${CLINIC}-${account_id}-${REGION}"
+}
+
+create_artifact_bucket_if_needed() {
+  if aws s3api head-bucket --bucket "${ARTIFACT_BUCKET}" >/dev/null 2>&1; then
+    echo "  Artifact bucket: ${ARTIFACT_BUCKET}"
+    return
+  fi
+
+  echo "  Creating artifact bucket: ${ARTIFACT_BUCKET}"
+  if [ "${REGION}" = "us-east-1" ]; then
+    aws s3api create-bucket \
+      --bucket "${ARTIFACT_BUCKET}" \
+      --region "${REGION}" > /dev/null
+  else
+    aws s3api create-bucket \
+      --bucket "${ARTIFACT_BUCKET}" \
+      --region "${REGION}" \
+      --create-bucket-configuration "LocationConstraint=${REGION}" > /dev/null
+  fi
+
+  aws s3api put-public-access-block \
+    --bucket "${ARTIFACT_BUCKET}" \
+    --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true > /dev/null
+
+  aws s3api put-bucket-encryption \
+    --bucket "${ARTIFACT_BUCKET}" \
+    --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' > /dev/null
+}
 
 echo "═══════════════════════════════════════════════════"
 echo "  OSA Phenotyper – Deploying to AWS"
@@ -26,13 +66,27 @@ echo "  Region      : ${REGION}"
 echo "  Clinic      : ${CLINIC}"
 echo "  Origins     : ${ALLOWED_ORIGINS}"
 echo "  Stack       : ${STACK_NAME}"
+ensure_artifact_bucket_name
+echo "  Artifacts   : ${ARTIFACT_BUCKET}"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
-# Step 1: Deploy CloudFormation stack
-echo "[1/4] Deploying CloudFormation stack..."
+# Step 1: Create/reuse artifact bucket
+echo "[1/5] Preparing artifact bucket..."
+create_artifact_bucket_if_needed
+
+echo ""
+echo "[2/5] Packaging CloudFormation template..."
+aws cloudformation package \
+  --template-file "${TEMPLATE_FILE}" \
+  --s3-bucket "${ARTIFACT_BUCKET}" \
+  --output-template-file "${PACKAGED_TEMPLATE}" \
+  --region "${REGION}" > /dev/null
+
+echo ""
+echo "[3/5] Deploying packaged CloudFormation stack..."
 aws cloudformation deploy \
-  --template-file "$(dirname "$0")/template.yaml" \
+  --template-file "${PACKAGED_TEMPLATE}" \
   --stack-name "${STACK_NAME}" \
   --parameter-overrides \
     ClinicName="${CLINIC}" \
@@ -43,34 +97,7 @@ aws cloudformation deploy \
   --no-fail-on-empty-changeset
 
 echo ""
-echo "[2/4] Deploying Lambda function code..."
-
-# Package and deploy Lambdas
-LAMBDA_DIR="$(dirname "$0")/lambda"
-LAMBDA_ZIP="/tmp/osa-lambda-${CLINIC}.zip"
-INTAKE_ZIP="/tmp/osa-intake-lambda-${CLINIC}.zip"
-FUNCTION_NAME="osa-patients-api-${CLINIC}"
-INTAKE_FUNCTION_NAME="osa-intake-api-${CLINIC}"
-
-# Create and deploy main Lambda
-(cd "${LAMBDA_DIR}" && zip -r "${LAMBDA_ZIP}" index.mjs)
-aws lambda update-function-code \
-  --function-name "${FUNCTION_NAME}" \
-  --zip-file "fileb://${LAMBDA_ZIP}" \
-  --region "${REGION}" > /dev/null
-
-echo ""
-echo "[3/4] Deploying Intake Lambda function code..."
-
-# Create and deploy intake Lambda
-(cd "${LAMBDA_DIR}" && zip -r "${INTAKE_ZIP}" intake.mjs)
-aws lambda update-function-code \
-  --function-name "${INTAKE_FUNCTION_NAME}" \
-  --zip-file "fileb://${INTAKE_ZIP}" \
-  --region "${REGION}" > /dev/null
-
-echo ""
-echo "[4/4] Retrieving configuration..."
+echo "[4/5] Retrieving configuration..."
 
 # Get outputs
 API_URL=$(aws cloudformation describe-stacks \
@@ -103,8 +130,11 @@ CLINICIAN_GROUP=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='ClinicianGroup'].OutputValue" \
   --output text)
 
+echo ""
+echo "[5/5] Writing runtime configuration..."
+
 # Update aws-config.js
-CONFIG_FILE="$(dirname "$0")/../js/aws-config.js"
+CONFIG_FILE="${SCRIPT_DIR}/../js/aws-config.js"
 cat > "${CONFIG_FILE}" << EOF
 /**
  * OSA Phenotyper – AWS Configuration
@@ -122,10 +152,9 @@ const AWS_CONFIG = {
 EOF
 
 # Update intake page runtime URL + CSP connect-src origin
-INTAKE_FILE="$(dirname "$0")/../intake.html"
+INTAKE_FILE="${SCRIPT_DIR}/../intake.html"
 perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${API_URL}#g" "${INTAKE_FILE}"
 perl -0pi -e "s#data-api-url=\"[^\"]*\"#data-api-url=\"${API_URL}\"#g" "${INTAKE_FILE}"
-
 echo ""
 echo "═══════════════════════════════════════════════════"
 echo "  Deployment complete!"
@@ -135,6 +164,7 @@ echo "  API URL      : ${API_URL}"
 echo "  User Pool    : ${POOL_ID}"
 echo "  Client ID    : ${CLIENT_ID}"
 echo "  Allowed CORS : ${ALLOWED_ORIGINS}"
+echo "  Artifacts    : ${ARTIFACT_BUCKET}"
 echo "  Intake page  : Served from your web server at /intake.html"
 echo ""
 echo "  Config written to: js/aws-config.js"
@@ -150,4 +180,4 @@ echo "  4. Start adding patients!"
 echo ""
 
 # Cleanup
-rm -f "${LAMBDA_ZIP}" "${INTAKE_ZIP}"
+rm -f "${PACKAGED_TEMPLATE}"

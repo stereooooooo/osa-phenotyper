@@ -1,5 +1,5 @@
 /*  OSA Phenotyper – PALM + extras (US-English)
-    Depends on: js/config.js, js/validate.js (loaded before this file)
+    Depends on: js/config.js, js/validate.js, js/report-shared.js (loaded before this file)
     ─────────────────────────────────────────────────────────────────
     WHAT'S NEW in this refactor:
     • All thresholds now sourced from OSA_CONFIG (config.js)
@@ -988,11 +988,9 @@ document.getElementById('form').addEventListener('submit', e => {
     /* NORMAL AHI: Check for snoring pathway and UARS */
     const hasSnoring = exists(n(f.get('snoreIdx'))) && n(f.get('snoreIdx')) > 0;
     const rdi = n(f.get('patRdi'));
-    const rdiElevated = exists(rdi) && exists(ahi) && rdi > ahi * 1.5 && rdi >= 10;
-    const symptomatic = (exists(ess) && ess >= 10) || (exists(isi) && isi >= 10);
-    const isUARS = symptomatic && (rdiElevated || (exists(arInd) && arInd >= 15));
+    const uars = OSAReportShared.detectUARS({ ahi, rdi, arInd, ess, isi });
 
-    if (isUARS) {
+    if (uars.isUARS) {
       pushRec(recs,'Possible UARS (upper airway resistance syndrome) — consider in-lab polysomnography with esophageal pressure monitoring for definitive evaluation.','UARS-EVAL');
     }
     if (hasSnoring || (exists(n(f.get('snoringReported'))) || yes(f,'snoringReported'))) {
@@ -1439,61 +1437,42 @@ document.getElementById('form').addEventListener('submit', e => {
   /* ── Care Pathway Bar (clinician report) ──────────────── */
   const milestones = [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value);
 
-  // Dynamic study label based on form's study type selector
   const studyTypeVal = document.querySelector('input[name="studyType"]:checked')?.value;
-  const studyLabel = studyTypeVal === 'psg' ? 'Lab Sleep Study' : studyTypeVal === 'watchpat' ? 'Home Sleep Test' : 'Sleep Study';
-
-  // Detect which pathway based on checked milestones (priority: Surgical > CPAP > MAD > Generic)
-  const surgicalKeys = ['DISE Scheduled', 'DISE Completed', 'Surgery Scheduled', 'Post-Op'];
-  const cpapKeys = ['CPAP Trial', 'CPAP Follow-up'];
-  const madKeys = ['MAD Referred', 'MAD Follow-up'];
-
-  let detectedPath = 'generic';
-  if (surgicalKeys.some(k => milestones.includes(k))) detectedPath = 'surgical';
-  else if (cpapKeys.some(k => milestones.includes(k))) detectedPath = 'cpap';
-  else if (madKeys.some(k => milestones.includes(k))) detectedPath = 'mad';
-
-  // Build stages for the detected pathway
-  const careStages = [
-    { id: 'eval', label: 'Evaluation', keys: ['Initial Eval'] },
-    { id: 'study', label: studyLabel, keys: ['Study Ordered', 'Study Reviewed'] },
-  ];
-  if (detectedPath === 'cpap') {
-    careStages.push({ id: 'cpap-trial', label: 'CPAP Trial', keys: ['CPAP Trial'] });
-    careStages.push({ id: 'cpap-followup', label: 'CPAP Follow-up', keys: ['CPAP Follow-up'] });
-    careStages.push({ id: 'ongoing', label: 'Ongoing', keys: [] });
-  } else if (detectedPath === 'surgical') {
-    careStages.push({ id: 'planning', label: 'Treatment Planning', keys: ['Treatment Plan'] });
-    if (milestones.includes('DISE Scheduled') || milestones.includes('DISE Completed'))
-      careStages.push({ id: 'dise', label: 'DISE', keys: ['DISE Scheduled', 'DISE Completed'] });
-    careStages.push({ id: 'surgery', label: 'Surgery', keys: ['Surgery Scheduled'] });
-    careStages.push({ id: 'postop', label: 'Post-Op', keys: ['Post-Op'] });
-    if (milestones.includes('Efficacy Study'))
-      careStages.push({ id: 'efficacy', label: 'Efficacy Study', keys: ['Efficacy Study'] });
-  } else if (detectedPath === 'mad') {
-    careStages.push({ id: 'mad-referral', label: 'MAD Referral', keys: ['MAD Referred'] });
-    careStages.push({ id: 'mad-followup', label: 'MAD Follow-up', keys: ['MAD Follow-up'] });
-    if (milestones.includes('Efficacy Study'))
-      careStages.push({ id: 'efficacy', label: 'Efficacy Study', keys: ['Efficacy Study'] });
-  } else {
-    careStages.push({ id: 'planning', label: 'Treatment Planning', keys: ['Treatment Plan'] });
-    careStages.push({ id: 'treatment', label: 'Treatment', keys: [] });
-  }
-
-  // Determine current stage index (last stage with a matching milestone)
-  let currentStageIdx = -1;
-  careStages.forEach((stage, i) => {
-    if (stage.keys.some(k => milestones.includes(k))) currentStageIdx = i;
+  const { stages: careStages, currentIdx: currentStageIdx } = OSAReportShared.buildCarePathway({
+    milestones,
+    studyType: studyTypeVal,
+    hasStudyData: exists(ahi),
+    hasPatientContext: Boolean(document.getElementById('patientName')?.value),
+    labels: {
+      eval: 'Evaluation',
+      study: {
+        psg: 'Lab Sleep Study',
+        watchpat: 'Home Sleep Test',
+        default: 'Sleep Study',
+      },
+      cpap: {
+        trial: 'CPAP Trial',
+        followup: 'CPAP Follow-up',
+        ongoing: 'Ongoing',
+      },
+      surgical: {
+        planning: 'Treatment Planning',
+        dise: 'DISE',
+        surgery: 'Surgery',
+        postop: 'Post-Op',
+        efficacy: 'Efficacy Study',
+      },
+      mad: {
+        referral: 'MAD Referral',
+        followup: 'MAD Follow-up',
+        efficacy: 'Efficacy Study',
+      },
+      generic: {
+        planning: 'Treatment Planning',
+        treatment: 'Treatment',
+      },
+    },
   });
-  // "New Sleep Study" override: patient is re-baselining — reset to study stage
-  if (milestones.includes('New Sleep Study')) currentStageIdx = 1;
-  // Infer minimum progress from data: if AHI exists, study is completed
-  const studyStageIdx = careStages.findIndex(s => s.id === 'study');
-  if (exists(ahi) && studyStageIdx >= 0 && currentStageIdx <= studyStageIdx) {
-    currentStageIdx = Math.min(studyStageIdx + 1, careStages.length - 1);
-  }
-  // If patient loaded but no milestones and no data, default to eval
-  if (currentStageIdx < 0 && document.getElementById('patientName')?.value) currentStageIdx = 0;
 
   const pathwayHTML = currentStageIdx >= 0 ? `<div class="osa-care-pathway mb-3">${careStages.map((s, i) => {
     const state = i < currentStageIdx ? 'completed' : i === currentStageIdx ? 'active' : 'upcoming';

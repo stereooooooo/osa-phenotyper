@@ -48,6 +48,12 @@ This pass addressed the remaining clinician-facing workflow and maintainability 
 - Updated `index.html` so the generic DOM reset logic lives in `resetWorkspaceUiState()`, while the patient-state reset lives inside the auth/database orchestration scope and is exposed through `window.OSAChartActions.resetWorkspaceForNewPatient`.
 - Why: the archived-patient browser flow was calling a top-level reset helper that referenced `clearCurrentPatient()` from the wrong scope, which caused the real staging UI error `Failed to archive: clearCurrentPatient is not defined`.
 
+### 9. Centralized shared report logic
+- Added `js/report-shared.js` with shared helpers for care-pathway generation and UARS detection.
+- Updated `js/app.js` and `js/patientReport.js` to consume those shared helpers instead of maintaining duplicate pathway/UARS rule implementations.
+- Updated script load order in `index.html` and `tests/tests.html` so the shared helper loads before the report and clinician logic.
+- Why: the audit correctly identified drift risk between the clinician engine and patient-report layer. Pulling the duplicated pathway/UARS logic into one shared file reduces the chance of future behavior diverging silently.
+
 ## Follow-Up Still Recommended
 - Run a browser walkthrough for desktop and mobile layouts, especially the progress track and action-row stacking.
 - Run keyboard-only testing across the clinician workflow and report preview.

@@ -2,7 +2,7 @@
 /* ── Patient Report Generator ──────────────────────────────────────────────
    Generates patient-facing sleep report HTML.
    Exposes: PatientReport.generateReportHTML(data), PatientReport.getReportStage(data)
-   Depends on: Bootstrap 5.3.3, Bootstrap Icons, Inter font
+   Depends on: Bootstrap 5.3.3, Bootstrap Icons, Inter font, js/report-shared.js
    ─────────────────────────────────────────────────────────────────────────*/
 
 var PatientReport = (() => {
@@ -113,65 +113,41 @@ var PatientReport = (() => {
 
   /* ── Dynamic Care Pathway Detection (patient-friendly labels) ─────── */
   function detectPatientPathway(data) {
-    const ms = Array.isArray(data.milestones) ? data.milestones : [];
-    const st = data.studyType;
-    const studyLabel = st === 'psg' ? 'Lab Sleep Study' : st === 'watchpat' ? 'Home Sleep Test' : 'Sleep Study';
-
-    const surgicalKeys = ['DISE Scheduled', 'DISE Completed', 'Surgery Scheduled', 'Post-Op'];
-    const cpapKeys = ['CPAP Trial', 'CPAP Follow-up'];
-    const madKeys = ['MAD Referred', 'MAD Follow-up'];
-
-    let path = 'generic';
-    if (surgicalKeys.some(k => ms.includes(k))) path = 'surgical';
-    else if (cpapKeys.some(k => ms.includes(k))) path = 'cpap';
-    else if (madKeys.some(k => ms.includes(k))) path = 'mad';
-
-    const stages = [
-      { id: 'eval',  label: 'Your Evaluation', keys: ['Initial Eval'] },
-      { id: 'study', label: studyLabel,         keys: ['Study Ordered', 'Study Reviewed'] },
-    ];
-
-    if (path === 'cpap') {
-      stages.push({ id: 'cpap-trial',    label: 'Starting CPAP',  keys: ['CPAP Trial'] });
-      stages.push({ id: 'cpap-followup', label: 'CPAP Check-in',  keys: ['CPAP Follow-up'] });
-      stages.push({ id: 'ongoing',       label: 'Ongoing Care',   keys: [] });
-    } else if (path === 'surgical') {
-      stages.push({ id: 'planning', label: 'Planning Your Treatment', keys: ['Treatment Plan'] });
-      if (ms.includes('DISE Scheduled') || ms.includes('DISE Completed'))
-        stages.push({ id: 'dise', label: 'Sleep Endoscopy', keys: ['DISE Scheduled', 'DISE Completed'] });
-      stages.push({ id: 'surgery', label: 'Your Procedure', keys: ['Surgery Scheduled'] });
-      stages.push({ id: 'postop',  label: 'Recovery',       keys: ['Post-Op'] });
-      if (ms.includes('Efficacy Study'))
-        stages.push({ id: 'efficacy', label: 'Follow-up Study', keys: ['Efficacy Study'] });
-    } else if (path === 'mad') {
-      stages.push({ id: 'mad-referral',  label: 'Oral Appliance Referral', keys: ['MAD Referred'] });
-      stages.push({ id: 'mad-followup',  label: 'Follow-up',              keys: ['MAD Follow-up'] });
-      if (ms.includes('Efficacy Study'))
-        stages.push({ id: 'efficacy', label: 'Follow-up Study', keys: ['Efficacy Study'] });
-    } else {
-      stages.push({ id: 'planning',  label: 'Next Steps',      keys: ['Treatment Plan'] });
-      stages.push({ id: 'treatment', label: 'Your Treatment',  keys: [] });
-    }
-
-    // Determine current stage (last stage with a matching milestone)
-    let currentIdx = -1;
-    stages.forEach((stage, i) => {
-      if (stage.keys.some(k => ms.includes(k))) currentIdx = i;
+    return OSAReportShared.buildCarePathway({
+      milestones: data.milestones,
+      studyType: data.studyType,
+      hasStudyData: data.primaryAHI !== null && data.primaryAHI !== undefined,
+      hasPatientContext: true,
+      labels: {
+        eval: 'Your Evaluation',
+        study: {
+          psg: 'Lab Sleep Study',
+          watchpat: 'Home Sleep Test',
+          default: 'Sleep Study',
+        },
+        cpap: {
+          trial: 'Starting CPAP',
+          followup: 'CPAP Check-in',
+          ongoing: 'Ongoing Care',
+        },
+        surgical: {
+          planning: 'Planning Your Treatment',
+          dise: 'Sleep Endoscopy',
+          surgery: 'Your Procedure',
+          postop: 'Recovery',
+          efficacy: 'Follow-up Study',
+        },
+        mad: {
+          referral: 'Oral Appliance Referral',
+          followup: 'Follow-up',
+          efficacy: 'Follow-up Study',
+        },
+        generic: {
+          planning: 'Next Steps',
+          treatment: 'Your Treatment',
+        },
+      },
     });
-    // "New Sleep Study" override: re-baselining resets to study stage
-    if (ms.includes('New Sleep Study')) currentIdx = 1;
-    // Infer minimum progress from data when milestones aren't set:
-    // If we have study results, the study is at least completed → advance past study stage
-    const hasStudyData = data.primaryAHI !== null && data.primaryAHI !== undefined;
-    const studyStageIdx = stages.findIndex(s => s.id === 'study');
-    if (hasStudyData && studyStageIdx >= 0 && currentIdx <= studyStageIdx) {
-      // Place them at the stage after the study (planning/next steps)
-      currentIdx = Math.min(studyStageIdx + 1, stages.length - 1);
-    }
-    // Default to first stage if patient exists but no milestones and no data
-    if (currentIdx < 0) currentIdx = 0;
-
-    return { stages, currentIdx };
   }
 
   /* ── Helper: format ISO date ──────────────────────────────────────────── */
@@ -524,16 +500,19 @@ ${subtypeHtml}`;
     }
 
     /* UARS detection */
-    const rdi = data.patRdi;
-    const rdiElevated = rdi && data.primaryAHI != null && rdi > data.primaryAHI * 1.5 && rdi >= 10;
-    const symptomatic = (data.ess && data.ess >= 10) || (data.isi && data.isi >= 10);
-    const isUARS = symptomatic && (rdiElevated || (data.arInd && data.arInd >= 15));
+    const uars = OSAReportShared.detectUARS({
+      ahi: data.primaryAHI,
+      rdi: data.patRdi,
+      arInd: data.arInd,
+      ess: data.ess,
+      isi: data.isi,
+    });
 
-    if (isUARS) {
+    if (uars.isUARS) {
       parts.push(`
 <div class="comisa-callout">
   <strong>Possible Upper Airway Resistance Syndrome (UARS)</strong>
-  <p style="margin:0.4rem 0 0;">Although your AHI is normal, your symptoms and some patterns in your study suggest a possible condition called <strong>upper airway resistance syndrome (UARS)</strong>. In UARS, the airway narrows during sleep enough to disrupt sleep quality — causing daytime tiredness, difficulty concentrating, or poor sleep — without fully blocking airflow the way sleep apnea does. Home sleep tests can sometimes miss UARS because it requires more detailed monitoring to detect. Your doctor may recommend an in-lab sleep study for a more thorough evaluation.${rdiElevated ? ` Notably, your RDI (${Math.round(rdi)}) is significantly higher than your AHI (${Math.round(data.primaryAHI)}), which suggests your airway was causing partial breathing disruptions that did not meet the threshold for apnea.` : ''}</p>
+  <p style="margin:0.4rem 0 0;">Although your AHI is normal, your symptoms and some patterns in your study suggest a possible condition called <strong>upper airway resistance syndrome (UARS)</strong>. In UARS, the airway narrows during sleep enough to disrupt sleep quality — causing daytime tiredness, difficulty concentrating, or poor sleep — without fully blocking airflow the way sleep apnea does. Home sleep tests can sometimes miss UARS because it requires more detailed monitoring to detect. Your doctor may recommend an in-lab sleep study for a more thorough evaluation.${uars.rdiElevated ? ` Notably, your RDI (${Math.round(uars.rdi)}) is significantly higher than your AHI (${Math.round(data.primaryAHI)}), which suggests your airway was causing partial breathing disruptions that did not meet the threshold for apnea.` : ''}</p>
 </div>`);
     }
 

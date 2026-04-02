@@ -20,6 +20,8 @@
 <!-- Load app modules (no DOM form needed for unit tests) -->
 <script src="../js/config.js"></script>
 <script src="../js/validate.js"></script>
+<script src="../js/report-shared.js"></script>
+<script src="../js/patientReport.js"></script>
 <script>
 // ── Minimal test framework ──────────────────────────────────────
 let passed = 0, failed = 0;
@@ -164,6 +166,36 @@ assertEqual(exists(undefined), false, 'exists(undefined) is false');
 assertEqual(exists(''), false, 'exists("") is false');
 assertEqual(exists(0), true, 'exists(0) is true');
 assertEqual(exists(42), true, 'exists(42) is true');
+
+group('Shared Report Helpers');
+assert(typeof OSAReportShared === 'object', 'OSAReportShared exists');
+assert(typeof OSAReportShared.buildCarePathway === 'function', 'buildCarePathway helper exists');
+assert(typeof OSAReportShared.detectUARS === 'function', 'detectUARS helper exists');
+
+let sharedUars = OSAReportShared.detectUARS({ ahi: 3, rdi: 12, arInd: 8, ess: 12, isi: 4 });
+assert(sharedUars.isUARS, 'Shared UARS helper detects symptomatic normal-AHI patient with elevated RDI');
+assert(sharedUars.rdiElevated, 'Shared UARS helper flags elevated RDI pattern');
+
+sharedUars = OSAReportShared.detectUARS({ ahi: 8, rdi: 20, arInd: 20, ess: 14, isi: 10 });
+assert(!sharedUars.isUARS, 'Shared UARS helper suppresses UARS once AHI reaches OSA range');
+
+const patientPathway = OSAReportShared.buildCarePathway({
+  milestones: ['Initial Eval', 'Study Ordered', 'Study Reviewed', 'CPAP Trial'],
+  studyType: 'watchpat',
+  hasStudyData: true,
+  hasPatientContext: true,
+  labels: {
+    eval: 'Your Evaluation',
+    study: { psg: 'Lab Sleep Study', watchpat: 'Home Sleep Test', default: 'Sleep Study' },
+    cpap: { trial: 'Starting CPAP', followup: 'CPAP Check-in', ongoing: 'Ongoing Care' },
+    surgical: { planning: 'Planning', dise: 'DISE', surgery: 'Procedure', postop: 'Recovery', efficacy: 'Follow-up Study' },
+    mad: { referral: 'Oral Appliance Referral', followup: 'Follow-up', efficacy: 'Follow-up Study' },
+    generic: { planning: 'Next Steps', treatment: 'Your Treatment' }
+  }
+});
+assertEqual(patientPathway.detectedPath, 'cpap', 'Shared pathway helper detects CPAP pathway');
+assertEqual(patientPathway.stages[1].label, 'Home Sleep Test', 'Shared pathway helper applies study-type-specific label');
+assert(patientPathway.currentIdx >= 2, 'Shared pathway helper advances beyond study stage once study data exists');
 
 // ── Validation ────────────────────────────────────────────────
 group('Field Validation');
@@ -472,6 +504,73 @@ assertEqual([4,4,4,4,4].reduce((s,v) => s+v, 0) * 5, 100, 'NOSE all fours = 100'
 // Validation range
 assert(OSA_CONFIG.validation.ranges.noseScore.min === 0, 'NOSE validation min is 0');
 assert(OSA_CONFIG.validation.ranges.noseScore.max === 100, 'NOSE validation max is 100');
+
+// ── Patient Report Regression Checks ───────────────────────────
+group('Patient Report Regression Checks');
+
+function buildReportData(overrides = {}) {
+  return Object.assign({
+    patientName: 'QA Patient',
+    reportDate: '2026-04-02',
+    primaryAHI: 18,
+    ahi: 18,
+    severity: 'moderate',
+    bmi: 32,
+    recTags: [{ tag: 'WEIGHT', text: 'Weight management' }],
+    recs: [],
+    phen: [],
+    why: {},
+    milestones: ['Initial Eval'],
+    insufficientDataDomains: [],
+    weightLossReadiness: '',
+    cpapFailed: false,
+    cpapWillRetry: false,
+    cpapCurrent: false,
+    cpapHelped: '',
+    prefAvoidCpap: false,
+    priorMAD: false,
+    priorUPPP: false,
+    priorInspire: false,
+    hasCOMISA: false,
+    lowHypoxicBurden: false,
+    hasConcentricCollapse: false,
+    friedmanStage: null,
+    subtype: 'OSA',
+  }, overrides);
+}
+
+let reportHtml = PatientReport.generateReportHTML(buildReportData({
+  insufficientDataDomains: [{ patient: 'Overnight oxygen measurements were incomplete, so the oxygen-risk part of the plan may change after more data is collected.' }],
+}));
+assert(reportHtml.includes('What may still be refined'), 'Data limitations callout renders when insufficient-data domains are present');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  insufficientDataDomains: [],
+}));
+assert(!reportHtml.includes('What may still be refined'), 'Data limitations callout stays hidden when insufficient-data domains are absent');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  weightLossReadiness: 'ready',
+}));
+assert(reportHtml.includes('feel ready to work on weight management now'), 'Weight rec is personalized for ready patients');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  weightLossReadiness: 'considering',
+  bmi: 29,
+}));
+assert(reportHtml.includes('you are considering weight management'), 'Weight rec is personalized for considering patients');
+assert(!reportHtml.includes('GLP-1 therapies'), 'BMI under 30 does not leak GLP-1 language into weight rec');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  weightLossReadiness: 'not-ready',
+}));
+assert(reportHtml.includes('not your main focus right now'), 'Weight rec is personalized for not-ready patients');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  weightLossReadiness: 'ready',
+  bmi: 32,
+}));
+assert(reportHtml.includes('GLP-1 therapies'), 'BMI 30+ keeps GLP-1 language available in weight rec');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');

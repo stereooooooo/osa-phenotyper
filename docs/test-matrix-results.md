@@ -1,6 +1,29 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** April 1, 2026
-**Latest app version:** commit 4b9856c (`fix: add chart governance safeguards`)
+**Latest smoke test:** April 2, 2026
+**Latest app version:** commit c30da98 (`fix: harden remaining audit follow-ups`)
+
+---
+
+## April 2, 2026 Executable Harness Expansion
+
+### Scope
+- Re-ran the local browser harness at `tests/tests.html` after adding executable patient-report regression coverage for:
+  - insufficient-data callout rendering
+  - weight-readiness personalization
+  - BMI-based GLP-1 language guardrails
+- Re-ran the harness again after extracting shared care-pathway / UARS helpers into `js/report-shared.js`.
+
+### Browser Harness
+- Result: **112 passed, 0 failed** of 112 assertions.
+- Execution method: headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`.
+- Added executable assertions for:
+  - `What may still be refined` rendering only when `insufficientDataDomains` exist
+  - readiness-specific weight language for `ready`, `considering`, and `not-ready`
+  - no GLP-1 language below BMI 30, with GLP-1 language preserved at BMI 30+
+- Added executable assertions for:
+  - shared UARS detection behavior
+  - shared care-pathway stage generation
+- Conclusion: the local executable harness now covers a wider slice of the recent audit follow-up work and remains green.
 
 ---
 
@@ -577,3 +600,14 @@
 - Review-queue behavior still needs one browser-level walkthrough of the new `Review queue only` toggle.
 - Compact visit-audit entries still need one live save/load inspection against a real patient row to confirm the stored visit payload shape end to end.
 - Exact full-name `name-index` search is now implemented, but it still needs one exercised request against a populated dataset to confirm the exact-match fast path before scan fallback.
+
+### Test 82: Packaged deploy path
+**Status:** static verification complete
+**Result:** `infrastructure/template.yaml` now references `lambda/index.mjs` and `lambda/intake.mjs` directly, and `infrastructure/deploy.sh` now uses `aws cloudformation package` instead of post-deploy `aws lambda update-function-code` patching ✅
+**Verification:** `bash -n infrastructure/deploy.sh` passed, and repo grep confirmed no remaining `ZipFile` placeholder Lambdas or `update-function-code` deploy step.
+**Still open:** this needs one real AWS deploy to confirm the packaged-template path works end to end in the target account.
+
+### Test 83: Shared pathway/UARS helper
+**Status:** executable harness coverage complete
+**Result:** browser harness assertions now verify shared UARS detection and shared care-pathway generation through `js/report-shared.js` ✅
+**Verification:** local headless Chrome run of `tests/tests.html` returned `112 passed / 0 failed`.

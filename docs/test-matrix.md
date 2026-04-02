@@ -142,3 +142,5 @@
 | 79 | Patient-facing data limitations callout | The patient report should render `What may still be refined` only when insufficient-data domains are present, and hide it otherwise |
 | 80 | Weight-readiness personalization | When `weightLossReadiness` is `ready`, `considering`, or `not-ready`, the weight recommendation/checklist wording should adapt accordingly without leaking GLP-1 language below BMI 30 |
 | 81 | Exact full-name search fast path | Searching by an exact normalized patient name should hit the `name-index` exact-match path before the broader scan fallback |
+| 82 | Packaged deploy path | `deploy.sh` should package real Lambda artifacts into CloudFormation and should no longer depend on post-deploy `aws lambda update-function-code` patching |
+| 83 | Shared pathway/UARS helper | Care-pathway stage generation and UARS detection should come from shared helpers consumed by both `app.js` and `patientReport.js`, with no drift between clinician and patient layers |

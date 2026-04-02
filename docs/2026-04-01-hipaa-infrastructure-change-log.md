@@ -117,3 +117,11 @@ Why: the matrix previously covered clinical logic, reporting, and intake integri
 ### `infrastructure/lambda/index.mjs`
 - Added an exact full-name lookup on the existing `name-index` before falling back to the slower `contains(nameLower, :q)` scan path.
 Why: the original patient search ignored the existing `name-index` entirely. This does not fix partial-name scalability, but it removes unnecessary full-table scans for exact full-name searches while a broader search redesign remains pending.
+
+### `infrastructure/template.yaml`
+- Replaced inline placeholder Lambda `ZipFile` stubs with real artifact paths for `lambda/index.mjs` and `lambda/intake.mjs`.
+Why: the stack should reference the actual application code instead of creating placeholder Lambdas that must be mutated afterward.
+
+### `infrastructure/deploy.sh`
+- Reworked deployment to create/reuse an artifact bucket, run `aws cloudformation package`, and deploy the packaged template instead of calling `aws lambda update-function-code` after stack creation.
+Why: the old flow left the deployed stack in a partially real / partially placeholder state until a second imperative patch step completed. Packaging real Lambda artifacts into the CloudFormation deploy path closes that audit gap and makes deployments more reproducible.

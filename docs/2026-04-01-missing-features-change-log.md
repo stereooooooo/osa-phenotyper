@@ -64,6 +64,14 @@ This pass focused on the highest-value production-hardening gaps that remained a
 - Updated `js/patientReport.js` to add a patient-facing `What may still be refined` callout when those limitations affect interpretation.
 - Why: the app still needed a clear warning layer so missing data no longer feels like a silent green light for fully confident phenotype-driven decisions.
 
+### 7. Expanded the executable regression harness
+- Updated `tests/tests.html` to load the real patient-report generator and assert:
+  - insufficient-data callout rendering
+  - weight-readiness personalization
+  - BMI-based GLP-1 wording guardrails
+- Re-ran the local browser harness and recorded the new `103 passed / 0 failed` result in `docs/test-matrix-results.md`.
+- Why: the audit correctly called out that docs-only matrices were not enough for a daily clinical decision-support tool. This still is not a full end-to-end CI suite, but it materially improves executable coverage of recent audit fixes.
+
 ## Remaining Gaps After Follow-Up
 - This is still a warning/callout layer, not a full system-wide insufficient-data mode with automatic suppression or downgrading of all downstream recommendations.
 - The review queue currently lives inside the patient list modal; it is not yet a full standalone dashboard with assignment, resolution workflow, or audit analytics.

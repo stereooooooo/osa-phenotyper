@@ -369,10 +369,7 @@ Resources:
           ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
           ADMIN_GROUP_NAME: !Ref AdminGroupName
           CLINICIAN_GROUP_NAME: !Ref ClinicianGroupName
-      Code:
-        ZipFile: |
-          // Placeholder - deploy real code via update
-          exports.handler = async () => ({ statusCode: 200, body: 'OK' });
+      Code: lambda/index.mjs
 
   IntakeLambda:
     Type: AWS::Lambda::Function
@@ -388,10 +385,7 @@ Resources:
           PATIENT_TABLE: !Ref PatientTable
           TOKEN_TABLE: !Ref IntakeTokenTable
           ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
-      Code:
-        ZipFile: |
-          // Placeholder - deploy real code via update
-          exports.handler = async () => ({ statusCode: 200, body: 'OK' });
+      Code: lambda/intake.mjs
 
   # ─── API Gateway (HTTP API) ─────────────────────────────────
   HttpApi:
