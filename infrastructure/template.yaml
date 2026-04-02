@@ -167,7 +167,6 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub 'osa-web-${ClinicName}-${AWS::AccountId}-${AWS::Region}'
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -235,25 +234,6 @@ Resources:
             HeaderBehavior: none
           QueryStringsConfig:
             QueryStringBehavior: none
-
-  WebAppApiCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub 'osa-api-no-cache-${ClinicName}'
-        Comment: Disable caching for clinician and intake API traffic
-        DefaultTTL: 0
-        MaxTTL: 0
-        MinTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
-          CookiesConfig:
-            CookieBehavior: none
-          HeadersConfig:
-            HeaderBehavior: none
-          QueryStringsConfig:
-            QueryStringBehavior: all
 
   WebAppApiOriginRequestPolicy:
     Type: AWS::CloudFront::OriginRequestPolicy
@@ -495,7 +475,7 @@ Resources:
           ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
           ADMIN_GROUP_NAME: !Ref AdminGroupName
           CLINICIAN_GROUP_NAME: !Ref ClinicianGroupName
-      Code: lambda/index.mjs
+      Code: lambda/
 
   IntakeLambda:
     Type: AWS::Lambda::Function
@@ -511,7 +491,7 @@ Resources:
           PATIENT_TABLE: !Ref PatientTable
           TOKEN_TABLE: !Ref IntakeTokenTable
           ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
-      Code: lambda/intake.mjs
+      Code: lambda/
 
   # ─── API Gateway (HTTP API) ─────────────────────────────────
   HttpApi:
@@ -745,7 +725,8 @@ Resources:
               - HEAD
               - OPTIONS
             Compress: true
-            CachePolicyId: !Ref WebAppApiCachePolicy
+            # AWS managed CachingDisabled policy
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
             OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
           - PathPattern: intake-tokens*
             TargetOriginId: ApiOrigin
@@ -763,7 +744,7 @@ Resources:
               - HEAD
               - OPTIONS
             Compress: true
-            CachePolicyId: !Ref WebAppApiCachePolicy
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
             OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
           - PathPattern: intake/*
             TargetOriginId: ApiOrigin
@@ -781,7 +762,7 @@ Resources:
               - HEAD
               - OPTIONS
             Compress: true
-            CachePolicyId: !Ref WebAppApiCachePolicy
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
             OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
 
   # ─── CloudWatch Log Groups (HIPAA: ~7-year retention) ───────

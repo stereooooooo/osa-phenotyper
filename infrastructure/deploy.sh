@@ -33,8 +33,15 @@ ensure_artifact_bucket_name() {
     return
   fi
   local account_id
+  local clinic_slug
+  local max_slug_len
   account_id=$(aws sts get-caller-identity --query Account --output text --region "${REGION}")
-  ARTIFACT_BUCKET="osa-phenotyper-artifacts-${CLINIC}-${account_id}-${REGION}"
+  clinic_slug=$(printf '%s' "${CLINIC}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+  max_slug_len=$((63 - ${#account_id} - ${#REGION} - 27))
+  if [ ${#clinic_slug} -gt ${max_slug_len} ]; then
+    clinic_slug="${clinic_slug:0:${max_slug_len}}"
+  fi
+  ARTIFACT_BUCKET="osa-artifacts-${clinic_slug}-${account_id}-${REGION}"
 }
 
 create_artifact_bucket_if_needed() {
@@ -222,10 +229,11 @@ ensure_cloudfront_waf() {
   if [[ -z "${existing_id}" || "${existing_id}" == "None" ]]; then
     echo "  Creating CloudFront WAF: ${WAF_NAME} (${WAF_REGION})"
     aws wafv2 create-web-acl \
+      --cli-binary-format raw-in-base64-out \
       --scope CLOUDFRONT \
       --region "${WAF_REGION}" \
       --name "${WAF_NAME}" \
-      --description "OSA Phenotyper CloudFront edge WAF (${CLINIC})" \
+      --description "OSA Phenotyper CloudFront edge WAF for ${CLINIC}" \
       --default-action '{"Allow":{}}' \
       --visibility-config "SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
       --rules "file://${WAF_RULES_FILE}" \
@@ -242,6 +250,7 @@ ensure_cloudfront_waf() {
       --output text)
 
     aws wafv2 update-web-acl \
+      --cli-binary-format raw-in-base64-out \
       --scope CLOUDFRONT \
       --region "${WAF_REGION}" \
       --id "${existing_id}" \

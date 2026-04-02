@@ -148,3 +148,14 @@
 | 85 | Prefix-name search fast path | Common last-name prefix searches should use a DynamoDB prefix index before falling back to a full `contains(nameLower, :q)` scan, with an operator backfill path for older patient rows |
 | 86 | CloudFront app front door | The stack should provision a private S3 + CloudFront front door for the static app, with API path behaviors for `/patients*`, `/intake-tokens*`, and `/intake/*` |
 | 87 | CloudFront-scoped WAF deployment | Deploy should create/update a CloudFront WAF in `us-east-1`, scope rules to API paths, pass the ARN into the stack, and publish the app behind that protected edge layer |
+| 88 | CloudFront deploy-path regression fixes | Real AWS deploy should succeed after validating artifact-bucket naming, WAF CLI payload handling, managed no-cache policy usage, and Lambda zip packaging |
+| 89 | Prefix-search backfill on upgraded staging data | Existing staging patient rows should receive `nameSearchBucket` metadata through the operator backfill script so prefix search works immediately after upgrade |
+
+### Group 16: Hosted CloudFront Browser Validation
+| # | Name | Key Features |
+|---|------|-------------|
+| 90 | Hosted clinician auth onboarding | CloudFront-hosted app should support first sign-in, new-password challenge, TOTP setup, and authenticated app entry without falling back to localhost behavior |
+| 91 | Hosted patient load + re-analyze | Loading a saved patient from the hosted patient list should repopulate required patient-info fields and allow immediate re-analysis without manual re-entry |
+| 92 | Hosted snapshot save persistence | Clicking `Save Snapshot` from the hosted patient-report overlay should persist `reportSnapshots` / `reportSnapshotCount` on the patient row |
+| 93 | Hosted intake thank-you flow | Public intake page should progress from valid token → active form → successful submission → thank-you state after the backend merge completes |
+| 94 | Hosted PDF export gesture | Hosted patient-report preview should produce a downloaded PDF from a real browser gesture on the CloudFront app surface |

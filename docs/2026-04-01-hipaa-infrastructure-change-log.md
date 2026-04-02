@@ -119,8 +119,8 @@ Why: the matrix previously covered clinical logic, reporting, and intake integri
 Why: the original patient search ignored the existing `name-index` entirely. This does not fix partial-name scalability, but it removes unnecessary full-table scans for exact full-name searches while a broader search redesign remains pending.
 
 ### `infrastructure/template.yaml`
-- Replaced inline placeholder Lambda `ZipFile` stubs with real artifact paths for `lambda/index.mjs` and `lambda/intake.mjs`.
-Why: the stack should reference the actual application code instead of creating placeholder Lambdas that must be mutated afterward.
+- Replaced inline placeholder Lambda `ZipFile` stubs with packageable `lambda/` source paths for both Lambda functions.
+Why: the stack should reference the actual application code instead of creating placeholder Lambdas that must be mutated afterward, and the packaged deploy path needs real zip archives instead of raw single-file uploads.
 
 ### `infrastructure/deploy.sh`
 - Reworked deployment to create/reuse an artifact bucket, run `aws cloudformation package`, and deploy the packaged template instead of calling `aws lambda update-function-code` after stack creation.
@@ -167,3 +167,42 @@ Why: the browser should go through the supported edge layer by default so WAF an
   - CloudFront associates with the provided WAF ARN
   - static asset publishing and invalidation succeed
   - the hosted app works through the CloudFront URL for sign-in, CRUD, intake, and report export
+
+## April 2, 2026 Live CloudFront Staging Deploy
+
+### `infrastructure/deploy.sh`
+- Shortened and normalized the generated artifact-bucket name.
+Why: the first live packaged deploy failed because the generated S3 artifact bucket name exceeded AWS naming limits.
+
+- Added `--cli-binary-format raw-in-base64-out` to CloudFront WAF create/update calls and simplified the generated WAF description text.
+Why: the first live WAF create/update attempts failed because the CLI treated JSON `SearchString` fields as binary without the raw mode flag, and the original description string violated the WAF description regex.
+
+### `infrastructure/template.yaml`
+- Removed the explicit `WebAppBucket` name.
+Why: repeated rollback retries were leaving retained app buckets behind, which made redeployments fragile and increased the chance of bucket-name collisions during cleanup.
+
+- Replaced the custom no-cache API cache policy with AWS managed CloudFront policy `CachingDisabled`.
+Why: live CloudFront deployment rejected the custom zero-TTL cache policy combinations during staging retries. Using the AWS-managed no-cache policy is simpler and matches the intent of the API path behaviors.
+
+- Switched both Lambda `Code` definitions from individual `.mjs` files to the packageable `lambda/` directory.
+Why: `aws cloudformation package` uploaded the single-file paths as raw objects, which caused live Lambda updates to fail with `Could not unzip uploaded file`.
+
+### `infrastructure/backfill-name-search-bucket.sh`
+- Ran the staging name-search metadata backfill against `osa-patients-capital-ent-stg-20260401b`.
+Why: the upgraded staging stack already had existing patient rows, and they needed `nameSearchBucket` populated before the new prefix-search path would work for older charts.
+
+## Verification
+- `aws cloudformation validate-template --template-body file://infrastructure/template.yaml --region us-east-2`
+- `aws cloudformation package --template-file infrastructure/template.yaml --s3-bucket osa-artifacts-capital-ent-stg-420551259537-us-east-2 --output-template-file /tmp/osa-phenotyper-package-check.yaml --region us-east-2`
+- Live staging deploy succeeded through `./infrastructure/deploy.sh raymondbrown@gmail.com us-east-2 capital-ent-stg-20260401b http://127.0.0.1:3000,http://localhost:3000`
+- CloudFront distribution created: `E1D4NMECBXWVX3`
+- App URL serving audited app: `https://dk259m1syu2bu.cloudfront.net`
+- `curl -sL https://dk259m1syu2bu.cloudfront.net/patients` returned `{"message":"Unauthorized"}` via the CloudFront API path
+- `curl -sL https://dk259m1syu2bu.cloudfront.net/js/aws-config.js` confirmed runtime `apiUrl` points to the CloudFront URL
+- `curl -sL https://dk259m1syu2bu.cloudfront.net/intake.html` confirmed `data-api-url` and CSP `connect-src` include the CloudFront URL
+- `./infrastructure/backfill-name-search-bucket.sh osa-patients-capital-ent-stg-20260401b us-east-2`
+- Direct DynamoDB verification confirmed `nameSearchBucket` was populated on the six existing staging rows
+
+## Remaining Follow-Up
+- Run a browser-level clinician sign-in and CRUD pass through `https://dk259m1syu2bu.cloudfront.net` now that the CloudFront front door is live.
+- Re-run the patient intake and report-export staging checks through the CloudFront-hosted app surface rather than the prior localhost-hosted frontend.

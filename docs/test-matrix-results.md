@@ -603,9 +603,9 @@
 
 ### Test 82: Packaged deploy path
 **Status:** static verification complete
-**Result:** `infrastructure/template.yaml` now references `lambda/index.mjs` and `lambda/intake.mjs` directly, and `infrastructure/deploy.sh` now uses `aws cloudformation package` instead of post-deploy `aws lambda update-function-code` patching ✅
+**Result:** `infrastructure/template.yaml` now packages the shared `infrastructure/lambda/` directory for both functions, and `infrastructure/deploy.sh` now uses `aws cloudformation package` instead of post-deploy `aws lambda update-function-code` patching ✅
 **Verification:** `bash -n infrastructure/deploy.sh` passed, and repo grep confirmed no remaining `ZipFile` placeholder Lambdas or `update-function-code` deploy step.
-**Still open:** this needs one real AWS deploy to confirm the packaged-template path works end to end in the target account.
+**Live follow-up:** real staging deploy confirmed the packaged-template path works end to end after switching away from single-file Lambda artifacts, which had failed with `Could not unzip uploaded file` during the first live attempt ✅
 
 ### Test 83: Shared pathway/UARS helper
 **Status:** executable harness coverage complete
@@ -631,19 +631,101 @@
 **Still open:** this needs one deployed-stack migration/apply plus a real exercised query against populated data.
 
 ### Test 86: CloudFront app front door
-**Status:** static verification complete
+**Status:** live staging verification complete
 **Result:** `infrastructure/template.yaml` now provisions a private app bucket, CloudFront origin access control, CloudFront distribution, and API path behaviors for `/patients*`, `/intake-tokens*`, and `/intake/*` ✅
 **Verification:**
-- static source verification confirms `WebAppBucket`, `WebAppOriginAccessControl`, `WebAppDistribution`, `WebAppApiCachePolicy`, and `WebAppApiOriginRequestPolicy`
-- static source verification confirms CloudFront outputs for app URL, distribution ID, and bucket name
+- static source verification confirms `WebAppBucket`, `WebAppOriginAccessControl`, `WebAppDistribution`, and `WebAppApiOriginRequestPolicy`
 - `aws cloudformation validate-template --template-body file://infrastructure/template.yaml --region us-east-2` passed
-**Still open:** this needs a live stack deploy to confirm CloudFront path-pattern matching and end-to-end static-hosting behavior.
+- live staging deploy created CloudFront distribution `E1D4NMECBXWVX3` with app URL `https://dk259m1syu2bu.cloudfront.net`
+- `curl -sIL https://dk259m1syu2bu.cloudfront.net` returned `200`
+- `curl -sL https://dk259m1syu2bu.cloudfront.net | rg -o "<title>[^<]+</title>" -m 1` returned `OSA Phenotyper • Capital ENT`
+- `curl -sL https://dk259m1syu2bu.cloudfront.net/patients` returned `{"message":"Unauthorized"}`, confirming the API path is routed through CloudFront to API Gateway
+- `curl -sL https://dk259m1syu2bu.cloudfront.net/js/aws-config.js` confirmed runtime `apiUrl` is the CloudFront URL
+- `curl -sL https://dk259m1syu2bu.cloudfront.net/intake.html` confirmed patient intake `data-api-url` points to CloudFront ✅
 
 ### Test 87: CloudFront-scoped WAF deployment
-**Status:** static verification complete
+**Status:** live staging verification complete
 **Result:** `infrastructure/deploy.sh` now creates or updates a CloudFront-scope WAF in `us-east-1`, scopes the rules down to API paths, passes the resulting ARN into CloudFormation, uploads the static app to S3, and invalidates the CloudFront distribution ✅
 **Verification:**
 - `bash -n infrastructure/deploy.sh` passed
 - static source verification confirms `ensure_cloudfront_waf()`, scoped `/patients` + `/intake-tokens` + `/intake/` WAF rules, stack parameter wiring, `aws s3 sync`, and CloudFront invalidation
 - `aws cloudformation validate-template --template-body file://infrastructure/template.yaml --region us-east-2` passed
-**Still open:** this needs one real AWS deploy to confirm the WAF create/update path, CloudFront association, and published static app all work together in staging.
+- real staging deploy updated the CloudFront-scope WAF in `us-east-1`, associated it to the new distribution, published the static app, and completed CloudFront invalidation ✅
+
+### Test 88: CloudFront deploy-path regression fixes
+**Status:** live staging verification complete
+**Result:** the first real CloudFront staging deploy exposed four deploy-path bugs, and all were remediated in source before the final successful deploy ✅
+**Fixes applied:**
+- artifact bucket naming was shortened to satisfy S3 bucket length rules
+- WAF CLI calls now use `--cli-binary-format raw-in-base64-out`, and the WAF description string was simplified to satisfy WAF validation
+- the explicit app-bucket name was removed to avoid retained-bucket collisions during rollback/retry cycles
+- API paths now use AWS managed CloudFront policy `CachingDisabled` instead of the rejected custom zero-TTL cache policy
+- Lambda packaging now zips the shared `infrastructure/lambda/` directory instead of uploading raw `.mjs` files
+**Verification:**
+- `aws cloudformation package --template-file infrastructure/template.yaml --s3-bucket osa-artifacts-capital-ent-stg-420551259537-us-east-2 --output-template-file /tmp/osa-phenotyper-package-check.yaml --region us-east-2` passed
+- final live deploy completed with stack status `UPDATE_COMPLETE`
+- final deploy outputs:
+  - app URL `https://dk259m1syu2bu.cloudfront.net`
+  - distribution `E1D4NMECBXWVX3`
+  - site bucket `osa-phenotyper-capital-ent-stg-202604-webappbucket-knm1r1oehkzt`
+
+### Test 89: Prefix-search backfill on upgraded staging data
+**Status:** live staging verification complete
+**Result:** existing staging rows were missing `nameSearchBucket`, and the operator backfill successfully populated the new prefix-search metadata on all six rows ✅
+**Verification:**
+- pre-backfill direct scan showed existing rows with `nameLower` but no `nameSearchBucket`
+- `./infrastructure/backfill-name-search-bucket.sh osa-patients-capital-ent-stg-20260401b us-east-2` completed with `Updated rows: 6`
+- post-backfill direct scan confirmed `nameSearchBucket = "s"` on all six existing staging rows
+
+### Test 90: Hosted clinician auth onboarding
+**Status:** live browser verification complete
+**Result:** CloudFront-hosted clinician auth passed ✅
+**Verification:**
+- created staging-only admin test user `staging.ui.test.20260402@example.com`
+- hosted login advanced through `NEW_PASSWORD_REQUIRED`
+- hosted login then advanced through `MFA_SETUP`
+- manual setup key was rendered in the browser, TOTP verification succeeded, and the authenticated app shell loaded with `userEmail = staging.ui.test.20260402@example.com`
+
+### Test 91: Hosted patient load + re-analyze
+**Status:** live browser verification complete
+**Result:** mixed — save/list round-trip passed, but patient reload exposed a real regression ⚠️
+**Verification:**
+- hosted save succeeded for patient `CloudFront QA, Staging` / MRN `CF-STG-20260402`
+- hosted patient list showed the saved chart and allowed it to be reloaded
+- after reload, the patient bar still showed the correct patient name, but the required `patientName` and `patientDob` form inputs were blank
+- hosted re-analysis was blocked until those two fields were manually re-entered
+**Finding:** loading a saved patient from the hosted patient list does not fully repopulate the required patient-info inputs, which creates a hidden workflow break for re-analysis and re-save.
+
+### Test 92: Hosted snapshot save persistence
+**Status:** live browser verification complete
+**Result:** failed ⚠️
+**Verification:**
+- hosted patient-report overlay opened successfully for `CloudFront QA, Staging`
+- clicking `Save Snapshot` from the hosted overlay did not produce `reportSnapshotCount` or `reportSnapshots` on the staging patient row
+- direct DynamoDB check on patient `9e4ba353-ba4f-464c-8bf1-af765748451a` after the hosted click returned only `patientId` with no snapshot fields
+**Finding:** hosted snapshot-save UI is not persisting report snapshots to the patient record.
+
+### Test 93: Hosted intake thank-you flow
+**Status:** live browser verification complete
+**Result:** failed frontend completion, succeeded backend merge ⚠️
+**Verification:**
+- valid staging token endpoint check passed through CloudFront: `GET /intake/<token>` returned `{\"valid\":true,\"firstName\":\"Staging\",...}`
+- hosted intake page loaded correctly when opened with the expected `?t=` query parameter and rendered the active form with greeting name `Staging`
+- demographics and all required ESS / ISI / NOSE / nasal / snoring / weight-interest inputs were successfully filled in the hosted form
+- after submit, the hosted page remained stuck on `Submitting…` and never transitioned into the thank-you state
+- despite the stuck UI, the backend transaction succeeded:
+  - token status changed to `used`
+  - `usedAt` was populated
+  - patient `intakeStatus` became `review-needed`
+  - staging patient row received `formData.ess = 8`, `formData.isi = 7`, `formData.noseScore = 50`, `formData.weightLossReadiness = ready`
+  - `intakePendingOverrides.bmi = 31.6` was staged as expected
+**Finding:** hosted intake submission completes server-side but the public CloudFront intake page never exits the loading/submitting state, so patients would not see the thank-you confirmation even though their submission is already committed.
+
+### Test 94: Hosted PDF export gesture
+**Status:** live browser verification attempted
+**Result:** unresolved / still needs manual human click verification ⚠️
+**Verification:**
+- hosted patient-report preview opened successfully from the CloudFront app
+- synthetic DOM clicks on `Download PDF` did not produce a file, which may be expected because Chrome can block non-user-gesture downloads
+- follow-up attempt using keyboard events also did not produce a new `Sleep_Report*.pdf` in `~/Downloads`
+**Interpretation:** this is not strong enough evidence to call the hosted PDF path broken, but it is also not strong enough to mark it passed. A real manual click in the browser is still needed.
