@@ -7,6 +7,7 @@
 #   - AWS CLI installed and configured (aws configure)
 #   - BAA signed in AWS Artifact
 #   - MFA enabled on root account
+#   - For CloudFront WAF resources, permission to manage WAF in us-east-1
 #
 set -euo pipefail
 
@@ -21,6 +22,11 @@ ARTIFACT_BUCKET="${5:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_FILE="${SCRIPT_DIR}/template.yaml"
 PACKAGED_TEMPLATE="/tmp/osa-phenotyper-${CLINIC}-packaged.yaml"
+WAF_RULES_FILE="/tmp/osa-phenotyper-${CLINIC}-cloudfront-waf-rules.json"
+WEB_ROOT="${SCRIPT_DIR}/.."
+WAF_REGION="us-east-1"
+WAF_NAME="osa-edge-waf-${CLINIC}"
+WAF_METRIC_PREFIX="osa-edge-${CLINIC}"
 
 ensure_artifact_bucket_name() {
   if [ -n "${ARTIFACT_BUCKET}" ]; then
@@ -58,6 +64,216 @@ create_artifact_bucket_if_needed() {
     --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' > /dev/null
 }
 
+write_cloudfront_waf_rules() {
+  cat > "${WAF_RULES_FILE}" <<EOF
+[
+  {
+    "Name": "RateLimitApiPaths",
+    "Priority": 1,
+    "Action": { "Block": {} },
+    "Statement": {
+      "RateBasedStatement": {
+        "Limit": 100,
+        "AggregateKeyType": "IP",
+        "ScopeDownStatement": {
+          "OrStatement": {
+            "Statements": [
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/patients",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/intake-tokens",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/intake/",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "ApiRateLimit"
+    }
+  },
+  {
+    "Name": "AWSCommonRulesApiPaths",
+    "Priority": 2,
+    "OverrideAction": { "None": {} },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesCommonRuleSet",
+        "ScopeDownStatement": {
+          "OrStatement": {
+            "Statements": [
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/patients",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/intake-tokens",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/intake/",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "AWSCommonRulesApi"
+    }
+  },
+  {
+    "Name": "AWSSQLiRulesApiPaths",
+    "Priority": 3,
+    "OverrideAction": { "None": {} },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesSQLiRuleSet",
+        "ScopeDownStatement": {
+          "OrStatement": {
+            "Statements": [
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/patients",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/intake-tokens",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/intake/",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "AWSSQLiRulesApi"
+    }
+  }
+]
+EOF
+}
+
+ensure_cloudfront_waf() {
+  write_cloudfront_waf_rules
+
+  local existing_id
+  existing_id=$(aws wafv2 list-web-acls \
+    --scope CLOUDFRONT \
+    --region "${WAF_REGION}" \
+    --query "WebACLs[?Name=='${WAF_NAME}']|[0].Id" \
+    --output text)
+
+  if [[ -z "${existing_id}" || "${existing_id}" == "None" ]]; then
+    echo "  Creating CloudFront WAF: ${WAF_NAME} (${WAF_REGION})"
+    aws wafv2 create-web-acl \
+      --scope CLOUDFRONT \
+      --region "${WAF_REGION}" \
+      --name "${WAF_NAME}" \
+      --description "OSA Phenotyper CloudFront edge WAF (${CLINIC})" \
+      --default-action '{"Allow":{}}' \
+      --visibility-config "SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
+      --rules "file://${WAF_RULES_FILE}" \
+      >/dev/null
+  else
+    echo "  Updating CloudFront WAF: ${WAF_NAME} (${WAF_REGION})"
+    local lock_token
+    lock_token=$(aws wafv2 get-web-acl \
+      --scope CLOUDFRONT \
+      --region "${WAF_REGION}" \
+      --id "${existing_id}" \
+      --name "${WAF_NAME}" \
+      --query 'LockToken' \
+      --output text)
+
+    aws wafv2 update-web-acl \
+      --scope CLOUDFRONT \
+      --region "${WAF_REGION}" \
+      --id "${existing_id}" \
+      --name "${WAF_NAME}" \
+      --lock-token "${lock_token}" \
+      --default-action '{"Allow":{}}' \
+      --visibility-config "SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
+      --rules "file://${WAF_RULES_FILE}" \
+      >/dev/null
+  fi
+
+  CLOUDFRONT_WAF_ARN=$(aws wafv2 list-web-acls \
+    --scope CLOUDFRONT \
+    --region "${WAF_REGION}" \
+    --query "WebACLs[?Name=='${WAF_NAME}']|[0].ARN" \
+    --output text)
+}
+
+sync_static_site() {
+  echo "  Syncing static app to s3://${WEB_APP_BUCKET}..."
+  aws s3 sync "${WEB_ROOT}" "s3://${WEB_APP_BUCKET}" \
+    --delete \
+    --exclude "*" \
+    --include "index.html" \
+    --include "intake.html" \
+    --include "css/*" \
+    --include "js/*" \
+    --include "img/*" \
+    --include "capentlogo.svg" \
+    >/dev/null
+}
+
 echo "═══════════════════════════════════════════════════"
 echo "  OSA Phenotyper – Deploying to AWS"
 echo "═══════════════════════════════════════════════════"
@@ -68,15 +284,20 @@ echo "  Origins     : ${ALLOWED_ORIGINS}"
 echo "  Stack       : ${STACK_NAME}"
 ensure_artifact_bucket_name
 echo "  Artifacts   : ${ARTIFACT_BUCKET}"
+echo "  Edge WAF    : ${WAF_NAME} (${WAF_REGION})"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
 # Step 1: Create/reuse artifact bucket
-echo "[1/5] Preparing artifact bucket..."
+echo "[1/7] Preparing artifact bucket..."
 create_artifact_bucket_if_needed
 
 echo ""
-echo "[2/5] Packaging CloudFormation template..."
+echo "[2/7] Ensuring CloudFront WAF..."
+ensure_cloudfront_waf
+
+echo ""
+echo "[3/7] Packaging CloudFormation template..."
 aws cloudformation package \
   --template-file "${TEMPLATE_FILE}" \
   --s3-bucket "${ARTIFACT_BUCKET}" \
@@ -84,7 +305,7 @@ aws cloudformation package \
   --region "${REGION}" > /dev/null
 
 echo ""
-echo "[3/5] Deploying packaged CloudFormation stack..."
+echo "[4/7] Deploying packaged CloudFormation stack..."
 aws cloudformation deploy \
   --template-file "${PACKAGED_TEMPLATE}" \
   --stack-name "${STACK_NAME}" \
@@ -92,18 +313,37 @@ aws cloudformation deploy \
     ClinicName="${CLINIC}" \
     AdminEmail="${ADMIN_EMAIL}" \
     AllowedOrigins="${ALLOWED_ORIGINS}" \
+    CloudFrontWebAclArn="${CLOUDFRONT_WAF_ARN}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "${REGION}" \
   --no-fail-on-empty-changeset
 
 echo ""
-echo "[4/5] Retrieving configuration..."
+echo "[5/7] Retrieving configuration..."
 
 # Get outputs
 API_URL=$(aws cloudformation describe-stacks \
   --stack-name "${STACK_NAME}" \
   --region "${REGION}" \
   --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+  --output text)
+
+APP_URL=$(aws cloudformation describe-stacks \
+  --stack-name "${STACK_NAME}" \
+  --region "${REGION}" \
+  --query "Stacks[0].Outputs[?OutputKey=='WebAppUrl'].OutputValue" \
+  --output text)
+
+WEB_APP_BUCKET=$(aws cloudformation describe-stacks \
+  --stack-name "${STACK_NAME}" \
+  --region "${REGION}" \
+  --query "Stacks[0].Outputs[?OutputKey=='WebAppBucketName'].OutputValue" \
+  --output text)
+
+WEB_APP_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+  --stack-name "${STACK_NAME}" \
+  --region "${REGION}" \
+  --query "Stacks[0].Outputs[?OutputKey=='WebAppDistributionId'].OutputValue" \
   --output text)
 
 POOL_ID=$(aws cloudformation describe-stacks \
@@ -137,7 +377,7 @@ PATIENT_TABLE=$(aws cloudformation describe-stacks \
   --output text)
 
 echo ""
-echo "[5/5] Writing runtime configuration..."
+echo "[6/7] Writing runtime configuration..."
 
 # Update aws-config.js
 CONFIG_FILE="${SCRIPT_DIR}/../js/aws-config.js"
@@ -151,7 +391,7 @@ const AWS_CONFIG = {
   region: '${REGION}',
   userPoolId: '${POOL_ID}',
   userPoolClientId: '${CLIENT_ID}',
-  apiUrl: '${API_URL}',
+  apiUrl: '${APP_URL}',
   adminGroupName: '${ADMIN_GROUP}',
   clinicianGroupName: '${CLINICIAN_GROUP}',
 };
@@ -159,19 +399,29 @@ EOF
 
 # Update intake page runtime URL + CSP connect-src origin
 INTAKE_FILE="${SCRIPT_DIR}/../intake.html"
-perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${API_URL}#g" "${INTAKE_FILE}"
-perl -0pi -e "s#data-api-url=\"[^\"]*\"#data-api-url=\"${API_URL}\"#g" "${INTAKE_FILE}"
+perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${APP_URL} ${API_URL}#g" "${INTAKE_FILE}"
+perl -0pi -e "s#data-api-url=\"[^\"]*\"#data-api-url=\"${APP_URL}\"#g" "${INTAKE_FILE}"
+
+echo ""
+echo "[7/7] Publishing static app to CloudFront..."
+sync_static_site
+aws cloudfront create-invalidation \
+  --distribution-id "${WEB_APP_DISTRIBUTION_ID}" \
+  --paths "/*" >/dev/null
+
 echo ""
 echo "═══════════════════════════════════════════════════"
 echo "  Deployment complete!"
 echo "═══════════════════════════════════════════════════"
 echo ""
-echo "  API URL      : ${API_URL}"
+echo "  App URL      : ${APP_URL}"
+echo "  API Origin   : ${API_URL}"
 echo "  User Pool    : ${POOL_ID}"
 echo "  Client ID    : ${CLIENT_ID}"
 echo "  Allowed CORS : ${ALLOWED_ORIGINS}"
 echo "  Artifacts    : ${ARTIFACT_BUCKET}"
-echo "  Intake page  : Served from your web server at /intake.html"
+echo "  Site bucket  : ${WEB_APP_BUCKET}"
+echo "  Distribution : ${WEB_APP_DISTRIBUTION_ID}"
 echo "  Patient table: ${PATIENT_TABLE}"
 echo ""
 echo "  Config written to: js/aws-config.js"
@@ -191,3 +441,4 @@ echo ""
 
 # Cleanup
 rm -f "${PACKAGED_TEMPLATE}"
+rm -f "${WAF_RULES_FILE}"

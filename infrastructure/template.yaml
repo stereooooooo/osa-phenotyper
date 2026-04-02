@@ -21,6 +21,13 @@ Parameters:
     Type: String
     Default: osa-clinician
     Description: Cognito group name for clinician users
+  CloudFrontWebAclArn:
+    Type: String
+    Default: ''
+    Description: Optional CloudFront-scope WAF Web ACL ARN (must be created in us-east-1)
+
+Conditions:
+  UseCloudFrontWebAcl: !Not [!Equals [!Ref CloudFrontWebAclArn, '']]
 
 Resources:
 
@@ -153,6 +160,115 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+
+  # ─── Static Web Hosting (private S3 + CloudFront) ──────────
+  WebAppBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub 'osa-web-${ClinicName}-${AWS::AccountId}-${AWS::Region}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  WebAppOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'osa-web-oac-${ClinicName}'
+        Description: !Sub 'CloudFront access control for OSA Phenotyper static app (${ClinicName})'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  WebAppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebAppBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: 's3:GetObject'
+            Resource: !Sub '${WebAppBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${WebAppDistribution}'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt WebAppBucket.Arn
+              - !Sub '${WebAppBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  WebAppStaticCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub 'osa-static-cache-${ClinicName}'
+        Comment: Cache policy for OSA Phenotyper static assets
+        DefaultTTL: 3600
+        MaxTTL: 86400
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  WebAppApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub 'osa-api-no-cache-${ClinicName}'
+        Comment: Disable caching for clinician and intake API traffic
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: all
+
+  WebAppApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub 'osa-api-origin-request-${ClinicName}'
+        Comment: Forward auth, query strings, and CORS headers to API Gateway without the viewer Host header
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: allExcept
+          Headers:
+            - Host
+        QueryStringsConfig:
+          QueryStringBehavior: all
 
   # ─── Cognito User Pool ──────────────────────────────────────
   UserPool:
@@ -574,6 +690,100 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
 
+  WebAppDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'OSA Phenotyper web app and API edge distribution (${ClinicName})'
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        WebACLId: !If [UseCloudFrontWebAcl, !Ref CloudFrontWebAclArn, !Ref 'AWS::NoValue']
+        Origins:
+          - Id: StaticOrigin
+            DomainName: !GetAtt WebAppBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !GetAtt WebAppOriginAccessControl.Id
+          - Id: ApiOrigin
+            DomainName: !Select [2, !Split ['/', !GetAtt HttpApi.ApiEndpoint]]
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+        DefaultCacheBehavior:
+          TargetOriginId: StaticOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          CachePolicyId: !Ref WebAppStaticCachePolicy
+        CacheBehaviors:
+          - PathPattern: patients*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            Compress: true
+            CachePolicyId: !Ref WebAppApiCachePolicy
+            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
+          - PathPattern: intake-tokens*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            Compress: true
+            CachePolicyId: !Ref WebAppApiCachePolicy
+            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
+          - PathPattern: intake/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            Compress: true
+            CachePolicyId: !Ref WebAppApiCachePolicy
+            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
+
   # ─── CloudWatch Log Groups (HIPAA: ~7-year retention) ───────
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
@@ -668,56 +878,6 @@ Resources:
                 - !GetAtt PatientTable.Arn
                 - !GetAtt IntakeTokenTable.Arn
 
-  # ─── WAF WebACL ────────────────────────────────────────────
-  IntakeWaf:
-    Type: AWS::WAFv2::WebACL
-    Properties:
-      Name: !Sub 'osa-intake-waf-${ClinicName}'
-      Scope: REGIONAL
-      DefaultAction:
-        Allow: {}
-      VisibilityConfig:
-        SampledRequestsEnabled: true
-        CloudWatchMetricsEnabled: true
-        MetricName: !Sub 'osa-intake-waf-${ClinicName}'
-      Rules:
-        - Name: RateLimitIntake
-          Priority: 1
-          Action:
-            Block: {}
-          Statement:
-            RateBasedStatement:
-              Limit: 100
-              AggregateKeyType: IP
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: IntakeRateLimit
-        - Name: AWSCommonRules
-          Priority: 2
-          OverrideAction:
-            None: {}
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesCommonRuleSet
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: AWSCommonRules
-        - Name: AWSSQLiRules
-          Priority: 3
-          OverrideAction:
-            None: {}
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesSQLiRuleSet
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: AWSSQLiRules
-
 Outputs:
   ApiUrl:
     Description: API endpoint URL
@@ -751,9 +911,25 @@ Outputs:
     Description: Intake Lambda function name
     Value: !Sub 'osa-intake-api-${ClinicName}'
 
-  WafWebAclArn:
-    Description: WAF WebACL ARN
-    Value: !GetAtt IntakeWaf.Arn
+  WebAppBucketName:
+    Description: Private S3 bucket that stores the CloudFront-hosted web app
+    Value: !Ref WebAppBucket
+
+  WebAppDistributionId:
+    Description: CloudFront distribution ID for the web app and API edge layer
+    Value: !Ref WebAppDistribution
+
+  WebAppDomainName:
+    Description: CloudFront domain name for the hosted app
+    Value: !GetAtt WebAppDistribution.DomainName
+
+  WebAppUrl:
+    Description: HTTPS URL for the CloudFront-hosted web app
+    Value: !Sub 'https://${WebAppDistribution.DomainName}'
+
+  CloudFrontWafArn:
+    Description: CloudFront-scope WAF ARN provided at deploy time
+    Value: !Ref CloudFrontWebAclArn
 
   AdminGroup:
     Description: Cognito admin group name

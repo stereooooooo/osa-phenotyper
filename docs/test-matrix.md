@@ -146,3 +146,5 @@
 | 83 | Shared pathway/UARS helper | Care-pathway stage generation and UARS detection should come from shared helpers consumed by both `app.js` and `patientReport.js`, with no drift between clinician and patient layers |
 | 84 | Insufficient-data recommendation guardrails | Missing oxygen metrics, incomplete anatomy documentation, or incomplete HNS workup should replace premature treatment matching with prerequisite workup steps in the clinician and patient plan |
 | 85 | Prefix-name search fast path | Common last-name prefix searches should use a DynamoDB prefix index before falling back to a full `contains(nameLower, :q)` scan, with an operator backfill path for older patient rows |
+| 86 | CloudFront app front door | The stack should provision a private S3 + CloudFront front door for the static app, with API path behaviors for `/patients*`, `/intake-tokens*`, and `/intake/*` |
+| 87 | CloudFront-scoped WAF deployment | Deploy should create/update a CloudFront WAF in `us-east-1`, scope rules to API paths, pass the ARN into the stack, and publish the app behind that protected edge layer |

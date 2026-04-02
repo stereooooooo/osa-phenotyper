@@ -137,3 +137,33 @@ Why: the audit item was not fully closed while partial searches still depended o
 ### `infrastructure/backfill-name-search-bucket.sh`
 - Added an operator backfill script to populate `nameSearchBucket` and normalized `nameLower` on existing patient rows after the new prefix-search index is deployed.
 Why: new and edited rows will pick up the prefix index automatically, but older rows otherwise would not benefit until they happened to be touched again.
+
+## April 2, 2026 CloudFront + WAF Front-Door Pass
+
+### `infrastructure/template.yaml`
+- Added a private `WebAppBucket`, CloudFront origin access control, CloudFront distribution, and API cache/origin-request policies so the static clinician app and intake page can be served through CloudFront while `/patients*`, `/intake-tokens*`, and `/intake/*` route to API Gateway.
+Why: the audited app needed a real AWS-hosted front door instead of relying on a local server or an outdated GitHub Pages demo, and the WAF story needed a supported edge layer rather than an unsupported HTTP API attachment.
+
+- Replaced the old unused regional WAF resource with a `CloudFrontWebAclArn` parameter and CloudFront `WebACLId` attachment point.
+Why: CloudFront-scoped WAFs must live in `us-east-1`, so the stack needed a clean way to accept the edge WAF ARN while keeping the application infrastructure in the clinic region.
+
+### `infrastructure/deploy.sh`
+- Added deploy-time creation/update of a CloudFront-scoped WAF in `us-east-1`, scoped its rules down to the dynamic API paths, and passed that ARN into the main stack deploy.
+Why: the original rate-limit rules were appropriate for intake/API endpoints but would have been too aggressive for every static asset on the site. Scoping the WAF to API paths preserves protection without throttling normal page loads.
+
+- Added static-site publishing to the private app bucket and CloudFront invalidation after deploy.
+Why: CloudFront hosting is only real once the static app actually gets uploaded to the origin and invalidated at the edge.
+
+- Changed generated runtime config and intake runtime wiring to use the CloudFront app URL instead of the direct API Gateway URL.
+Why: the browser should go through the supported edge layer by default so WAF and CloudFront behaviors actually protect the live app.
+
+## Verification
+- `bash -n infrastructure/deploy.sh`
+- `aws cloudformation validate-template --template-body file://infrastructure/template.yaml --region us-east-2`
+
+## Remaining Follow-Up
+- Run one real staging deploy through the new CloudFront/WAF path and confirm:
+  - WAF create/update succeeds in `us-east-1`
+  - CloudFront associates with the provided WAF ARN
+  - static asset publishing and invalidation succeed
+  - the hosted app works through the CloudFront URL for sign-in, CRUD, intake, and report export

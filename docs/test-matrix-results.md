@@ -629,3 +629,21 @@
 - `bash -n infrastructure/backfill-name-search-bucket.sh` passed
 - static source verification confirms the new `name-prefix-index` GSI and prefix query path
 **Still open:** this needs one deployed-stack migration/apply plus a real exercised query against populated data.
+
+### Test 86: CloudFront app front door
+**Status:** static verification complete
+**Result:** `infrastructure/template.yaml` now provisions a private app bucket, CloudFront origin access control, CloudFront distribution, and API path behaviors for `/patients*`, `/intake-tokens*`, and `/intake/*` ✅
+**Verification:**
+- static source verification confirms `WebAppBucket`, `WebAppOriginAccessControl`, `WebAppDistribution`, `WebAppApiCachePolicy`, and `WebAppApiOriginRequestPolicy`
+- static source verification confirms CloudFront outputs for app URL, distribution ID, and bucket name
+- `aws cloudformation validate-template --template-body file://infrastructure/template.yaml --region us-east-2` passed
+**Still open:** this needs a live stack deploy to confirm CloudFront path-pattern matching and end-to-end static-hosting behavior.
+
+### Test 87: CloudFront-scoped WAF deployment
+**Status:** static verification complete
+**Result:** `infrastructure/deploy.sh` now creates or updates a CloudFront-scope WAF in `us-east-1`, scopes the rules down to API paths, passes the resulting ARN into CloudFormation, uploads the static app to S3, and invalidates the CloudFront distribution ✅
+**Verification:**
+- `bash -n infrastructure/deploy.sh` passed
+- static source verification confirms `ensure_cloudfront_waf()`, scoped `/patients` + `/intake-tokens` + `/intake/` WAF rules, stack parameter wiring, `aws s3 sync`, and CloudFront invalidation
+- `aws cloudformation validate-template --template-body file://infrastructure/template.yaml --region us-east-2` passed
+**Still open:** this needs one real AWS deploy to confirm the WAF create/update path, CloudFront association, and published static app all work together in staging.
