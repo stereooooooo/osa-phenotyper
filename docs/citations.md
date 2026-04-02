@@ -10,7 +10,7 @@
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| HB area/hr thresholds (30/60 %min/hr) | Azarbarzin A, et al. "The Hypoxic Burden of Sleep Apnoea Is a Strong Determinant of Cardiovascular Risk." *Eur Heart J.* 2019;40(14):1055-1063. | HB tier cutoffs: <30 low, 30-60 moderate, >60 severe |
+| HB area/hr thresholds (30/60 %min/hr) | Azarbarzin A, et al. "The Hypoxic Burden of Sleep Apnoea Is a Strong Determinant of Cardiovascular Risk." *Eur Heart J.* 2019;40(14):1055-1063. | HB tier cutoffs: <30 low, 30-60 moderate, >60 severe; low-HB framing is withheld when only a thin oxygen dataset is available |
 | ODI as strongest HB correlator (r=0.73) | Same Azarbarzin 2019 + Zinchuk AV, et al. "Polysomnographic Phenotypes and Their Cardiovascular Implications." *Am J Respir Crit Care Med.* 2020;202(12):1701-1712. | ODI tier: <20 low, 20-50 moderate, >50 severe |
 | T90 and cardiovascular risk (OR 2.70 mortality) | Oldenburg O, et al. "Sleep-Disordered Breathing in Heart Failure." *Eur J Heart Fail.* 2016;18(11):1265-1277. | T90 tier: <5% low, 5-20% moderate, >20% severe |
 | Nadir SpO₂ (r=-0.70 with HB) | Azarbarzin 2019 | Nadir <75% = severe tier trigger |
@@ -78,9 +78,9 @@
 | Polysomnographic endotyping — muscle compensation validated at AHI ≥15 | Sands SA, et al. "Phenotyping Pharyngeal Pathophysiology using Polysomnography in Patients with OSA." *Am J Respir Crit Care Med.* 2018;197(9):1187-1197. | Supports lowering Poor Muscle Responsiveness threshold from AHI≥30 to AHI≥15 |
 | MAD response predicted by muscle compensation at moderate AHI | Bamagoos AA, et al. "Dose-dependent effects of mandibular advancement on upper airway collapsibility and muscle function in OSA." *Sleep.* 2019;42(6):zsz049. | Clinical relevance of muscle responsiveness at AHI≥20; weaker compensation → better MAD response |
 | Sleep-stage-dependent Pcrit and muscle activity | Carberry JC, et al. "Upper Airway Collapsibility and Pharyngeal Dilator Muscle Activity are Sleep Stage Dependent." *Sleep.* 2016;39(3):511-521. | Physiological basis for REM/NREM ratio as muscle responsiveness surrogate |
-| Low arousal threshold identification without invasive testing | Edwards BA, et al. "Clinical Predictors of the Respiratory Arousal Threshold in OSA." *Am J Respir Crit Care Med.* 2014;190(11):1293-1300. | Edwards score drives low-ArTH phenotype detection; WatchPAT uses partial score when hypopnea fraction unavailable, PSG uses full 3-variable score |
-| Positional OSA definition (supine/non-supine ratio >2, non-supine AHI <15) | Cartwright RD. "Effect of Sleep Position on Sleep Apnea Severity." *Sleep.* 1984;7(2):110-4. | Positional OSA phenotype criteria |
-| REM-predominant OSA (REM/NREM ratio >2, NREM AHI <15) | Mokhlesi B, et al. "REM-Related OSA: Prevalence and Clinical Significance." *Sleep.* 2014;37(11):1883-1891. | REM-predominant phenotype criteria |
+| Low arousal threshold identification without invasive testing | Edwards BA, et al. "Clinical Predictors of the Respiratory Arousal Threshold in OSA." *Am J Respir Crit Care Med.* 2014;190(11):1293-1300. | Edwards score drives low-ArTH phenotype detection; WatchPAT uses partial score when hypopnea fraction unavailable, PSG uses full 3-variable score; missing apnea/hypopnea breakdown is treated as unresolved endotyping rather than a negative endotype finding |
+| Positional OSA definition (supine/non-supine ratio >2, non-supine AHI <15) | Cartwright RD. "Effect of Sleep Position on Sleep Apnea Severity." *Sleep.* 1984;7(2):110-4. | Positional OSA phenotype criteria; if either supine or non-supine AHI is missing, positional status stays unresolved rather than reading negative |
+| REM-predominant OSA (REM/NREM ratio >2, NREM AHI <15) | Mokhlesi B, et al. "REM-Related OSA: Prevalence and Clinical Significance." *Sleep.* 2014;37(11):1883-1891. | REM-predominant phenotype criteria; if either REM or NREM AHI is missing, REM status stays unresolved rather than reading negative |
 
 ## Weight Management
 

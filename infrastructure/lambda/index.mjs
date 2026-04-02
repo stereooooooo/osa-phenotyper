@@ -478,18 +478,32 @@ async function createPatient(event, body, user) {
   const normalizedMilestones = normalizeMilestones(milestones, status || 'Initial Eval');
   const normalizedFormData = formData || {};
   const initialFormFields = Object.keys(normalizedFormData);
+  const initialIdentityValues = {
+    name: name.trim(),
+    dob,
+    mrn: (mrn || '').trim(),
+  };
+  const initialProvenanceFields = [...new Set([
+    ...initialFormFields,
+    'name',
+    'dob',
+    ...((mrn || '').trim() ? ['mrn'] : []),
+  ])];
   const item = {
     patientId: randomUUID(),
-    name: name.trim(),
+    name: initialIdentityValues.name,
     nameLower: normalizeNameForSearch(name),
     nameSearchBucket: buildNameSearchBucket(name),
     dob,
-    mrn: (mrn || '').trim(),
+    mrn: initialIdentityValues.mrn,
     status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
     milestones: normalizedMilestones,
     formData: normalizedFormData,
-    fieldProvenance: updateFieldProvenance({}, initialFormFields, 'clinician', user, now),
-    fieldProvenanceHistory: appendFieldProvenanceHistory({}, initialFormFields, 'clinician', user, now, normalizedFormData, () => ({
+    fieldProvenance: updateFieldProvenance({}, initialProvenanceFields, 'clinician', user, now),
+    fieldProvenanceHistory: appendFieldProvenanceHistory({}, initialProvenanceFields, 'clinician', user, now, {
+      ...normalizedFormData,
+      ...initialIdentityValues,
+    }, () => ({
       event: 'created',
     })),
     visits: [buildVisitEntry({
@@ -794,6 +808,13 @@ async function updatePatient(event, id, body, user, userGroups) {
   const changedFormFields = formData !== undefined
     ? getMeaningfulChangedFields(currentFormData, formData)
     : [];
+  const identityChangedFields = changedRecordFields.filter((field) => ['name', 'dob', 'mrn'].includes(field));
+  const nextProvenanceValues = {
+    ...(formData !== undefined ? formData : currentFormData),
+    name: name !== undefined ? name.trim() : (Item.name || ''),
+    dob: dob !== undefined ? dob : (Item.dob || ''),
+    mrn: mrn !== undefined ? (mrn || '').trim() : (Item.mrn || ''),
+  };
 
   const visit = buildVisitEntry({
     action: body.visitAction || 'Updated',
@@ -843,14 +864,6 @@ async function updatePatient(event, id, body, user, userGroups) {
   if (formData !== undefined) {
     expr += ', formData = :fd';
     updates[':fd'] = formData;
-    expr += ', #fp = :fp, #fph = :fph';
-    names['#fp'] = 'fieldProvenance';
-    names['#fph'] = 'fieldProvenanceHistory';
-    updates[':fp'] = updateFieldProvenance(currentFieldProvenance, changedFormFields, 'clinician', user, now);
-    updates[':fph'] = appendFieldProvenanceHistory(currentFieldHistory, changedFormFields, 'clinician', user, now, formData, () => ({
-      event: 'chart-save',
-    }));
-
     if (Object.keys(currentPendingOverrides).length) {
       remainingPendingOverrides = {};
       for (const [key, pendingValue] of Object.entries(currentPendingOverrides)) {
@@ -881,6 +894,16 @@ async function updatePatient(event, id, body, user, userGroups) {
         names['#ipp'] = 'intakePendingProvenance';
       }
     }
+  }
+  const provenanceFields = [...new Set([...changedFormFields, ...identityChangedFields])];
+  if (provenanceFields.length) {
+    expr += ', #fp = :fp, #fph = :fph';
+    names['#fp'] = 'fieldProvenance';
+    names['#fph'] = 'fieldProvenanceHistory';
+    updates[':fp'] = updateFieldProvenance(currentFieldProvenance, provenanceFields, 'clinician', user, now);
+    updates[':fph'] = appendFieldProvenanceHistory(currentFieldHistory, provenanceFields, 'clinician', user, now, nextProvenanceValues, () => ({
+      event: 'chart-save',
+    }));
   }
   if (normalizedMilestones) {
     expr += ', milestones = :ms, #s = :status';

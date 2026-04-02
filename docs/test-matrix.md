@@ -197,3 +197,21 @@
 |---|------|-------------|
 | 107 | Documented MAD safety limitation | When tooth support is poor, protrusion is limited, or TMJ disease is severe, MAD should be suppressed as a live option and replaced with a limitation/safety explanation rather than a generic workup note |
 | 108 | Documented ASV contraindication | When LVEF is documented at 45% or below, ASV-specific routing should be suppressed and replaced with a contraindication-style alert rather than a generic “check LVEF” reminder |
+
+### Group 23: Broader Insufficient-Data Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 109 | Missing apnea/hypopnea breakdown | When the detailed apnea-versus-hypopnea scoring is unavailable, the plan should surface an endotype-workup caveat rather than implying collapsibility, full arousal-threshold, or loop-gain interpretation is complete |
+
+### Group 24: Partial-Data And Zero-Value Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 110 | Partial positional dataset | If either supine AHI or non-supine AHI is missing, the app should treat positional status as unresolved and surface a positional-workup caveat rather than implying non-positional disease |
+| 111 | Partial REM/NREM dataset | If either REM AHI or NREM AHI is missing, the app should treat REM-specific worsening as unresolved and surface a sleep-stage workup caveat rather than implying it is absent |
+| 112 | Zero-value ratio handling | Legitimate `0` values in non-supine AHI or NREM AHI should still behave as real data rather than disappearing behind truthy checks |
+| 113 | Thin oxygen composite | Low-hypoxic-burden framing should require more than a single oxygen metric so one normal value does not read as low oxygen risk |
+
+### Group 25: Identity Provenance Timeline
+| # | Name | Key Features |
+|---|------|-------------|
+| 114 | Identity-field provenance | Name, DOB, and MRN edits should appear in the same provenance timeline as clinical form fields so demographic chart changes remain auditable during pilot testing |

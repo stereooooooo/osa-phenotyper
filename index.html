@@ -1720,6 +1720,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   }
 
   const chartFieldLabels = {
+    name: 'Patient name',
+    dob: 'Date of birth',
+    mrn: 'Medical record number',
     age: 'Age',
     sex: 'Sex',
     bmi: 'BMI',
@@ -1818,6 +1821,12 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     body.innerHTML = '';
 
     const formData = (patient && patient.formData && typeof patient.formData === 'object') ? patient.formData : {};
+    const chartValues = {
+      ...formData,
+      name: patient && typeof patient.name === 'string' ? patient.name : undefined,
+      dob: patient && typeof patient.dob === 'string' ? patient.dob : undefined,
+      mrn: patient && typeof patient.mrn === 'string' ? patient.mrn : undefined,
+    };
     const provenance = (patient && patient.fieldProvenance && typeof patient.fieldProvenance === 'object') ? patient.fieldProvenance : {};
     const pending = (patient && patient.intakePendingOverrides && typeof patient.intakePendingOverrides === 'object') ? patient.intakePendingOverrides : {};
     const pendingProvenance = (patient && patient.intakePendingProvenance && typeof patient.intakePendingProvenance === 'object') ? patient.intakePendingProvenance : {};
@@ -1836,14 +1845,14 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
       const isPending = Object.prototype.hasOwnProperty.call(pending, field);
       const meta = provenance[field];
       const pendingMeta = pendingProvenance[field];
-      const currentValue = formData[field];
+      const currentValue = chartValues[field];
       const pendingValue = isPending ? pending[field] : undefined;
       const pendingCell = isPending
         ? `${escHtml(formatPendingIntakeValue(pendingValue))}<div class="small text-warning mt-1">Pending since ${escHtml(formatDateTime(pendingMeta && pendingMeta.updatedAt))}</div>`
         : '<span class="text-muted">—</span>';
       tr.innerHTML = `
         <td><strong>${escHtml(getChartFieldLabel(field))}</strong>${isPending ? '<div class="small text-warning">Pending clinician review</div>' : ''}</td>
-        <td>${escHtml(formatStoredFieldValue(formData, field))}</td>
+        <td>${escHtml(formatStoredFieldValue(chartValues, field))}</td>
         <td>${pendingCell}</td>
         <td>${escHtml(meta ? formatSourceLabel(meta.source) : '—')}</td>
         <td>${escHtml(formatDateTime(meta && meta.updatedAt))}</td>

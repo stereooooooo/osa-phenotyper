@@ -167,3 +167,53 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Explicit Safety-Input Follow-Up
 - Safety capture is broader now, but it still is not a universal contraindication model across every surgery, HGNS, and PAP-alternative workflow.
 - The app still needs a fuller CI-grade end-to-end suite beyond the current report-layer/browser harness.
+
+## April 2, 2026 Endotype-Data Follow-Up
+
+### 15. Expanded insufficient-data handling into detailed endotyping
+- Updated `js/app.js` so missing apnea-versus-hypopnea breakdown now creates a dedicated insufficient-data domain instead of silently reading as “no endotype signal.”
+- Added `ENDOTYPE-WORKUP` guardrail text to the recommendation layer so the plan explicitly says that collapsibility, full Edwards arousal-threshold scoring, and point-of-care loop-gain estimation are not yet complete when detailed event scoring is absent.
+- Added a clinician-analysis caveat card in `js/app.js` that appears when detailed event scoring is missing.
+- Updated `js/patientReport.js`, `tests/tests.html`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` so the patient layer and executable coverage reflect that new endotype-data limitation.
+- Why: one of the last pre-patient-testing risks was that missing apnea/hypopnea scoring could quietly look like a negative endotype finding. This pass pushes the insufficient-data mode farther toward “not measured means unresolved,” not “not present.”
+
+## Remaining Gaps After Endotype-Data Follow-Up
+- The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.
+- The app still needs a fuller CI-grade end-to-end suite beyond the current browser/report harness.
+
+## April 2, 2026 Partial-Data And Zero-Value Follow-Up
+
+### 16. Expanded insufficient-data handling for partial staging and thin oxygen datasets
+- Updated `js/app.js` so positional and REM-specific decision support now treats partially missing datasets as unresolved, not just fully absent datasets.
+- Replaced several truthy ratio checks with explicit numeric handling so legitimate `0` values in non-supine AHI or NREM AHI no longer disappear and suppress strong positional or REM-predominant signals.
+- Tightened low-hypoxic-burden framing so a single normal oxygen metric no longer counts as enough evidence to de-emphasize CPAP or cardiovascular risk.
+- Updated `docs/citations.md`, `tests/tests.html`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` to track the new protocol and executable coverage.
+- Why: before patient testing, one of the last major chart-safety risks was that partial sleep-stage / positional / oxygen data could still look falsely reassuring. This pass pushes those areas farther toward “unresolved until adequately measured.”
+
+## Remaining Gaps After Partial-Data And Zero-Value Follow-Up
+- The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.
+- The app still needs a fuller CI-grade end-to-end suite beyond the current browser/report harness.
+
+## April 2, 2026 Executable Regression Runner Follow-Up
+
+### 17. Promoted the browser harness into a repeatable command and CI workflow
+- Added `tests/run-headless-suite.sh` so the browser harness can be run as a single command instead of a manual Chrome invocation.
+- Added `.github/workflows/regression-harness.yml` to execute the same headless suite on pushes, pull requests, and manual workflow dispatches.
+- Updated `README.md` and `docs/test-matrix-results.md` so the testing workflow is documented where future maintainers will actually look.
+- Why: the app already had meaningful regression assertions, but they still depended on ad hoc manual invocation. Before real patient testing, that needed to become a repeatable gate rather than tribal knowledge.
+
+## Remaining Gaps After Executable Regression Runner Follow-Up
+- The regression harness is now a repeatable command and CI workflow, but it is still centered on browser/report assertions rather than full multi-step clinician and intake journeys.
+- The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.
+
+## April 2, 2026 Identity-Provenance Follow-Up
+
+### 18. Extended provenance history into chart identity fields
+- Updated `infrastructure/lambda/index.mjs` so patient name, date of birth, and MRN are now written into `fieldProvenance` and `fieldProvenanceHistory` alongside the clinical form fields.
+- Updated `index.html` so the provenance modal renders identity-field labels and current values from the chart header, not just `formData`.
+- Updated `docs/test-matrix.md` and `docs/test-matrix-results.md` so identity provenance is now part of the tracked chart-governance surface.
+- Why: once real pilot charts are in play, demographic edits are just as important to audit as phenotype inputs. The provenance timeline needed to cover identity fields too, not only the clinical form payload.
+
+## Remaining Gaps After Identity-Provenance Follow-Up
+- The regression harness is now a repeatable command and CI workflow, but it is still centered on browser/report assertions rather than full multi-step clinician and intake journeys.
+- The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.

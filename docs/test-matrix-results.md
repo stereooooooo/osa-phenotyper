@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit cccfb8f (`fix: require psg confirmation for central routing`) + local explicit safety-input changes
+**Latest app version:** commit c0e52ee (`feat: add explicit treatment safety inputs`) + local partial-data / zero-value guardrail changes
 
 ---
 
@@ -39,6 +39,58 @@
   - extracted inline script parse check via `node --check /tmp/osa-index-inline.js`
   - headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`
 - Conclusion: the app now distinguishes explicit safety limitations from unresolved workup for MAD and ASV pathways, and the patient-report regression harness covers the new guardrails.
+
+### Endotype-Data Follow-Up
+- Added source/syntax verification for the expanded endotype-data limitation handling in:
+  - `js/app.js`
+  - `js/patientReport.js`
+- Result: **136 passed, 0 failed** of 136 assertions.
+- Added executable patient-report coverage for:
+  - `ENDOTYPE-WORKUP` explanation rendering
+  - `ENDOTYPE-WORKUP` checklist step generation
+- Verification method:
+  - `node --check js/app.js`
+  - `node --check js/patientReport.js`
+  - headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`
+- Conclusion: missing apnea-versus-hypopnea scoring now reads as incomplete endotyping rather than absent endotype signal, and the report-layer regression harness covers the new guardrail.
+
+### Partial-Data And Zero-Value Follow-Up
+- Added source/syntax verification for the broader partial-data and zero-value safety handling in:
+  - `js/app.js`
+  - `js/patientReport.js`
+  - `docs/citations.md`
+- Added executable coverage for:
+  - positional-confidence handling when non-supine AHI is `0`
+  - REM-predominant handling when NREM AHI is `0`
+  - oxygen-data sufficiency guardrails before low-hypoxic-burden framing
+- Result: **140 passed, 0 failed** of 140 assertions.
+- Verification method:
+  - `node --check js/app.js`
+  - `node --check js/patientReport.js`
+  - headless Chrome DOM run against `http://127.0.0.1:3000/tests/tests.html`
+- Conclusion: partial REM/positional datasets now read as unresolved rather than negative, legitimate `0` values are preserved as real phenotype data, and low-hypoxic-burden framing now requires more than a single oxygen metric.
+
+### Executable Regression Runner Follow-Up
+- Added a repeatable local runner at `tests/run-headless-suite.sh`.
+- Added CI workflow wiring in `.github/workflows/regression-harness.yml`.
+- Result: local runner passes against the current harness ✅
+- Verification method:
+  - `tests/run-headless-suite.sh`
+  - headless Chrome summary: **140 passed, 0 failed** of 140 assertions
+- Conclusion: the browser regression harness is now a runnable command and CI entrypoint instead of a manual one-off step.
+
+### Identity-Provenance Follow-Up
+- Added source/syntax verification for the expanded identity-field provenance handling in:
+  - `infrastructure/lambda/index.mjs`
+  - `index.html`
+- Verified behaviors in source:
+  - patient `name`, `dob`, and `mrn` now enter `fieldProvenance`
+  - patient `name`, `dob`, and `mrn` now append to `fieldProvenanceHistory`
+  - provenance modal now renders identity labels and current chart values alongside form fields
+- Verification method:
+  - `node --check infrastructure/lambda/index.mjs`
+  - extracted inline script parse check via `node --check /tmp/osa-index-inline.js`
+- Conclusion: demographic chart edits are now covered by the same provenance timeline used for clinical form fields, reducing one of the last chart-governance blind spots before pilot testing.
 
 ### Intake Review Workflow Follow-Up
 - Added source/syntax verification for the new intake-review workflow and provenance timeline changes in:

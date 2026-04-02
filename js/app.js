@@ -12,7 +12,18 @@
 
 /* ── Utility helpers ──────────────────────────────────────────── */
 function n(v){ if(v===null||v===undefined||v==='') return null; const x=+v; return (Number.isFinite(x)?x:null); }
-function ratio(a,b){ return (n(a)!==null && n(b)!==null && n(b)!==0) ? (n(a)/n(b)) : null; }
+function ratio(a,b){
+  const num = n(a);
+  const den = n(b);
+  if (num === null || den === null) return null;
+  if (den === 0) return num > 0 ? Infinity : null;
+  return num / den;
+}
+function formatRatio(val, digits=1){
+  if (val === null || val === undefined) return '—';
+  if (!Number.isFinite(val)) return '∞';
+  return val.toFixed(digits);
+}
 function yes(f,key){ return f.get(key)==='on' || f.get(key)==='Yes' || (f.getAll(key)||[]).includes('on') || (f.getAll(key)||[]).includes('Yes'); }
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
@@ -68,8 +79,8 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
-      const remNrem = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      const nrem = m.nremAhi || 0;
+      const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
+      const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
       /* High confidence: persistent NREM burden + strong REM/NREM skew */
       if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
       /* Moderate: AHI≥15 validated by Sands 2018, Bamagoos 2019 */
@@ -77,13 +88,13 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'Positional OSA': {
-      const pr = (m.sup && m.nons) ? (m.sup/m.nons) : 0;
+      const pr = ratio(m.sup, m.nons) ?? 0;
       if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return 'High';
       if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
       return 'Low';
     }
     case 'REM-Predominant OSA': {
-      const rr = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
+      const rr = ratio(m.remAhi, m.nremAhi) ?? 0;
       if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return 'High';
       if(rr >= T.remPredominant.remNremRatio && (m.nremAhi||0) < T.remPredominant.nremMax) return 'Moderate';
       return 'Low';
@@ -128,27 +139,47 @@ function buildInsufficientDataAssessment(ctx) {
 
   const domains = [];
 
-  if (!ctx.oxygenMetricsAvailable) {
+  if (!ctx.oxygenCompositeSufficient) {
+    const metricCount = ctx.oxygenMetricCount || 0;
+    const hasPartialOxygenData = metricCount > 0;
     domains.push({
       key: 'oxygen',
-      clinician: 'No oxygen-burden metrics entered (ODI, T90, nadir, or hypoxic burden area). Cardiovascular risk stratification and low-hypoxic-burden treatment de-emphasis should be treated as unavailable.',
-      patient: 'We still need fuller overnight oxygen information to judge how strongly your sleep apnea affected oxygen levels and long-term risk.',
+      clinician: hasPartialOxygenData
+        ? `Only ${metricCount} oxygen-burden metric${metricCount === 1 ? '' : 's'} entered (ODI, T90, nadir, or hypoxic burden area). Low-hypoxic-burden framing and cardiovascular-risk de-emphasis should stay unavailable until fuller oxygen data are reviewed.`
+        : 'No oxygen-burden metrics entered (ODI, T90, nadir, or hypoxic burden area). Cardiovascular risk stratification and low-hypoxic-burden treatment de-emphasis should be treated as unavailable.',
+      patient: hasPartialOxygenData
+        ? 'Only part of your overnight oxygen data is available so far, so we should not yet assume the oxygen-related risk is low or move CPAP lower on the list based on incomplete oxygen information.'
+        : 'We still need fuller overnight oxygen information to judge how strongly your sleep apnea affected oxygen levels and long-term risk.',
     });
   }
 
-  if (!exists(ctx.sup) && !exists(ctx.nons)) {
+  if (!exists(ctx.sup) || !exists(ctx.nons)) {
+    const positionalMissing = [];
+    if (!exists(ctx.sup)) positionalMissing.push('supine AHI');
+    if (!exists(ctx.nons)) positionalMissing.push('non-supine AHI');
     domains.push({
       key: 'position',
-      clinician: 'Positional tracking is unavailable. Do not treat the absence of a positional phenotype as evidence that side-sleeping will not matter.',
+      clinician: `Positional tracking is incomplete (${positionalMissing.join(', ')} missing). Do not treat the absence of a positional phenotype as evidence that side-sleeping will not matter.`,
       patient: 'Your sleep study did not clearly compare back-sleeping with side-sleeping, so we cannot yet tell how much body position changes your sleep apnea.',
     });
   }
 
-  if (!exists(ctx.remAhi) && !exists(ctx.nremAhi)) {
+  if (!exists(ctx.remAhi) || !exists(ctx.nremAhi)) {
+    const sleepStageMissing = [];
+    if (!exists(ctx.remAhi)) sleepStageMissing.push('REM AHI');
+    if (!exists(ctx.nremAhi)) sleepStageMissing.push('NREM AHI');
     domains.push({
       key: 'sleep-stage',
-      clinician: 'REM/NREM staging data are unavailable. REM-predominant OSA and REM-specific treatment needs cannot be assessed.',
+      clinician: `REM/NREM staging data are incomplete (${sleepStageMissing.join(', ')} missing). REM-predominant OSA and REM-specific treatment needs cannot be assessed reliably.`,
       patient: 'Your available sleep-study data did not clearly separate dream sleep from non-dream sleep, so we cannot yet tell whether your breathing is especially worse during REM sleep.',
+    });
+  }
+
+  if (!exists(ctx.fHypopneas)) {
+    domains.push({
+      key: 'endotyping',
+      clinician: 'Apnea/hypopnea breakdown is unavailable. Collapsibility estimate, full Edwards arousal-threshold scoring, and point-of-care loop-gain estimation are incomplete; do not treat the absence of those endotypes as exclusion.',
+      patient: 'Some of the more detailed breathing-pattern estimates still need a fuller breakdown of how many events were apneas versus hypopneas, so a few parts of your endotype-based treatment matching may still be refined.',
     });
   }
 
@@ -308,6 +339,13 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
     prependedEntries.push({
       text: 'Review REM/NREM staging data before concluding that REM-specific worsening is absent.',
       tag: 'SLEEP-STAGE-WORKUP',
+    });
+  }
+
+  if (domainKeys.has('endotyping')) {
+    prependedEntries.push({
+      text: 'Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.',
+      tag: 'ENDOTYPE-WORKUP',
     });
   }
 
@@ -942,7 +980,9 @@ document.getElementById('form').addEventListener('submit', e => {
   const ctSeptum  = yes(f,'ctDev');
   const ctTurbs   = yes(f,'ctTurbs');
 
-  const oxygenMetricsAvailable = [hbPH, hb90PH, odi, t90, nadir].some(exists);
+  const oxygenMetricCount = [hbPH, hb90PH, odi, t90, nadir].filter(exists).length;
+  const oxygenMetricsAvailable = oxygenMetricCount > 0;
+  const oxygenCompositeSufficient = oxygenMetricCount >= 2;
   const osaConfirmed = exists(ahi) && ahi >= 5;
 
   /* pack context for confidence meters */
@@ -995,6 +1035,8 @@ document.getElementById('form').addEventListener('submit', e => {
       (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateHigh) ||
       (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateBorderline && loopGainSupportCount >= 1) ||
       (!exists(lgEstimate) && loopGainSupportCount >= 2);
+    const remStageRatio = ratio(remAhi, nremAhi);
+    const supNonSupRatio = ratio(sup, nons);
     if(highLoopGainDetected){
       add('High Loop Gain',[
         exists(lgEstimate)?`LG≈${lgEstimate.toFixed(2)}`:'',
@@ -1007,18 +1049,19 @@ document.getElementById('form').addEventListener('submit', e => {
     }
 
     if( ahi >= T.muscleResponse.ahiMin &&
-        remAhi && nremAhi &&
+        exists(remStageRatio) &&
+        exists(nremAhi) &&
         nremAhi >= T.muscleResponse.nremFloor &&
-        (remAhi/nremAhi) > T.muscleResponse.remNremRatio ){
-      add('Poor Muscle Responsiveness',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`]);
+        remStageRatio > T.muscleResponse.remNremRatio ){
+      add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`]);
     }
 
-    if( sup && nons && (sup/nons) > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
-      add('Positional OSA',[`Sup/Non-sup ${(sup/nons).toFixed(1)}`, `Non-sup AHI ${nons}`]);
+    if( exists(supNonSupRatio) && exists(nons) && supNonSupRatio > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
+      add('Positional OSA',[`Sup/Non-sup ${formatRatio(supNonSupRatio)}`, `Non-sup AHI ${nons}`]);
     }
 
-    if( remAhi && nremAhi && (remAhi/nremAhi) > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
-      add('REM-Predominant OSA',[`REM/NREM ${(remAhi/nremAhi).toFixed(1)}`, `NREM AHI ${nremAhi}`]);
+    if( exists(remStageRatio) && exists(nremAhi) && remStageRatio > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
+      add('REM-Predominant OSA',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`]);
     }
 
     /* Composite HB: trigger if ANY metric is in moderate+ range.
@@ -1432,8 +1475,10 @@ document.getElementById('form').addEventListener('submit', e => {
 
   // 3. Missing REM data
   if (exists(ahi) && !exists(remAhi)) {
-    hstFlags.push({ severity: 'info', flag: 'No REM sleep data', detail: 'REM AHI not available. If TST was short, adequate REM may not have been captured. REM-predominant OSA cannot be assessed — consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
-  } else if (exists(tst) && exists(remAhi) && tst < 5 && remAhi === 0) {
+    hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'REM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported. Consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
+  } else if (exists(ahi) && !exists(nremAhi)) {
+    hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'NREM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported.' });
+  } else if (exists(tst) && exists(remAhi) && exists(nremAhi) && tst < 5 && remAhi === 0) {
     hstFlags.push({ severity: 'warning', flag: 'No REM sleep captured', detail: `REM AHI is 0 with TST of only ${tst} hrs. REM sleep may not have occurred during this short recording. AHI may underestimate true severity if OSA is REM-predominant. Consider repeat study.` });
   }
 
@@ -1458,8 +1503,11 @@ document.getElementById('form').addEventListener('submit', e => {
   }
 
   // 7. Missing positional data limits phenotyping
-  if (!exists(sup) && !exists(nons)) {
-    hstFlags.push({ severity: 'info', flag: 'No positional data', detail: 'Supine/non-supine AHI not available. Positional OSA cannot be assessed. If the patient reports position-dependent symptoms or snoring, consider repeat study with positional tracking.' });
+  if (!exists(sup) || !exists(nons)) {
+    const positionalMissing = [];
+    if (!exists(sup)) positionalMissing.push('supine AHI');
+    if (!exists(nons)) positionalMissing.push('non-supine AHI');
+    hstFlags.push({ severity: 'info', flag: 'Incomplete positional data', detail: `${positionalMissing.join(' and ')} ${positionalMissing.length === 1 ? 'is' : 'are'} not available. Positional OSA cannot be assessed reliably. If the patient reports position-dependent symptoms or snoring, consider repeat study with positional tracking.` });
   }
 
   // Build HST validity HTML
@@ -1543,7 +1591,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>${diseTable}` : '';
 
-  const supRatio = (sup && nons) ? (sup/nons).toFixed(1) : '\u2014';
+  const supRatio = formatRatio(ratio(sup, nons));
   const coreNums  = [
     `AHI: ${exists(ahi)?ahi:'\u2014'}${sevLabel ? ' ('+sevLabel+')' : ''}`,
     `REM AHI: ${exists(remAhi)?remAhi:'\u2014'}`,
@@ -1597,10 +1645,13 @@ document.getElementById('form').addEventListener('submit', e => {
   const insufficientDataDomains = buildInsufficientDataAssessment({
     osaConfirmed,
     oxygenMetricsAvailable,
+    oxygenMetricCount,
+    oxygenCompositeSufficient,
     sup,
     nons,
     remAhi,
     nremAhi,
+    fHypopneas,
     bmi,
     tons,
     mall,
@@ -1728,7 +1779,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ── Low HB — Alternatives Equally Effective / CPAP Caution (Pinilla 2023) ── */
   const mildLowHbNote = (() => {
-    const lowHB = oxygenMetricsAvailable && !out.phen.includes('High Hypoxic Burden');
+    const lowHB = oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden');
     if (!lowHB || !exists(ahi) || ahi < 5) return '';
 
     const isMild = ahi < 15;
@@ -1828,6 +1879,9 @@ document.getElementById('form').addEventListener('submit', e => {
   const clinAnalysisParts = [];
   if (edwardsArTH && out.phen.includes('Low Arousal Threshold'))
     clinAnalysisParts.push(`<div class="alert alert-info py-2 px-3 mb-2"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables. Enter Apnea Index + Hypopnea Index in Lab PSG section for full score.]</small>' : ''}</div>`);
+  if (!exists(fHypopneas)) {
+    clinAnalysisParts.push('<div class="alert alert-secondary py-2 px-3 mb-2"><strong>Detailed Endotyping Incomplete</strong> <small class="text-muted">(Vena 2022; Edwards 2014; Schmickl 2022)</small><ul class="mb-0 mt-1"><li>Apnea/hypopnea breakdown not entered</li><li>Collapsibility estimate and point-of-care loop gain estimate remain incomplete</li><li>Low-arousal-threshold scoring may be partial rather than fully scored</li></ul></div>');
+  }
   if (exists(fHypopneas)) {
     const collLabel = collapsibility === 'high' ? 'High' : collapsibility === 'moderate' ? 'Moderate' : 'Low';
     const collImplication = collapsibility === 'high' ? 'Anatomy-directed therapy (CPAP, surgery, HNS) prioritized' : collapsibility === 'low' ? 'Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed' : 'Mixed pattern — both anatomic and nonanatomic therapies may be effective';
@@ -1997,7 +2051,7 @@ document.getElementById('form').addEventListener('submit', e => {
     patientName: (document.getElementById('patientName')?.value || '').trim(),
     reportDate: new Date().toISOString().split('T')[0],
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
-    lowHypoxicBurden: oxygenMetricsAvailable && !out.phen.includes('High Hypoxic Burden'),
+    lowHypoxicBurden: oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden'),
     oxygenMetricsAvailable,
     insufficientDataDomains,
     treatmentSafetyChecks,

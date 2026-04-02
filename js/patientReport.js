@@ -628,6 +628,7 @@ ${items}`;
     'OXYGEN-WORKUP': `<strong>Complete Oxygen-Risk Review</strong> — Part of your sleep-study oxygen data is still incomplete or has not yet been reviewed in full. Before we call your oxygen-related risk low or move CPAP lower on the list, your care team should confirm your oxygen desaturation index (ODI), time below 90%, lowest oxygen level, and any available hypoxic-burden metrics from the full report.`,
     'POSITION-WORKUP': `<strong>Review Positional Data Before Ruling Position In or Out</strong> — Your available sleep-study report does not clearly show how your breathing changed on your back compared with your side. Before we decide that positional therapy is irrelevant, your care team may need to review the full study or repeat testing with better positional tracking.`,
     'SLEEP-STAGE-WORKUP': `<strong>Review REM-Sleep Data Before Ruling Out REM Worsening</strong> — Some patients breathe much worse during REM (dream) sleep than during the rest of the night. Your available data do not clearly separate REM from non-REM breathing yet, so REM-specific treatment decisions should stay flexible until that part of the study is confirmed.`,
+    'ENDOTYPE-WORKUP': `<strong>Complete the Detailed Event Breakdown Before Final Endotype Matching</strong> — Some of the more advanced breathing-pattern estimates in sleep apnea depend on knowing how many events were full apneas versus partial obstructions (hypopneas). That breakdown is not fully available yet, so some of the finer endotype-based treatment matching still needs the detailed scoring report before it should be treated as complete.`,
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
     'HNS-WORKUP': `<strong>Complete the Inspire Evaluation First</strong> — Inspire can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, Inspire should stay in the “possible option” category rather than a finalized recommendation.`,
     'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
@@ -933,6 +934,13 @@ ${items}`;
     if (tags.has('SLEEP-STAGE-WORKUP')) {
       checkItems.push({
         text: 'Ask your care team whether the REM versus non-REM portion of your study was complete enough to judge if your sleep apnea is worse during dream sleep.',
+        group: 'treatment'
+      });
+    }
+
+    if (tags.has('ENDOTYPE-WORKUP')) {
+      checkItems.push({
+        text: 'Ask whether the detailed scoring report includes the apnea-versus-hypopnea breakdown needed to fully interpret the more advanced breathing-pattern estimates in your plan.',
         group: 'treatment'
       });
     }

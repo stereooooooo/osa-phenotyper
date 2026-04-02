@@ -49,6 +49,13 @@ function group(name) {
 
 // ── Helpers from app.js (replicated for testing without DOM) ────
 function n(v){ if(v===null||v===undefined||v==='') return null; const x=+v; return (Number.isFinite(x)?x:null); }
+function ratio(a,b){
+  const num = n(a);
+  const den = n(b);
+  if (num === null || den === null) return null;
+  if (den === 0) return num > 0 ? Infinity : null;
+  return num / den;
+}
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
 const T = OSA_CONFIG.thresholds;
@@ -90,20 +97,20 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
-      const remNrem = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      const nrem = m.nremAhi || 0;
+      const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
+      const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
       if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
       if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
       return 'Low';
     }
     case 'Positional OSA': {
-      const pr = (m.sup && m.nons) ? (m.sup/m.nons) : 0;
+      const pr = ratio(m.sup, m.nons) ?? 0;
       if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return 'High';
       if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
       return 'Low';
     }
     case 'REM-Predominant OSA': {
-      const rr = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
+      const rr = ratio(m.remAhi, m.nremAhi) ?? 0;
       if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return 'High';
       if(rr >= T.remPredominant.remNremRatio && (m.nremAhi||0) < T.remPredominant.nremMax) return 'Moderate';
       return 'Low';
@@ -303,6 +310,10 @@ assertEqual(
   'High', 'Ratio 5.6, nonsup 8 (<10) → High'
 );
 assertEqual(
+  confidenceFor('Positional OSA', { metrics: { sup: 22, nons: 0 } }),
+  'High', 'Non-supine AHI 0 with persistent supine burden still counts as strong positional signal'
+);
+assertEqual(
   confidenceFor('Positional OSA', { metrics: { sup: 30, nons: 12 } }),
   'Moderate', 'Ratio 2.5, nonsup 12 (<15) → Moderate'
 );
@@ -318,8 +329,24 @@ assertEqual(
   'High', 'Ratio 4.4, NREM 8 (<10) → High'
 );
 assertEqual(
+  confidenceFor('REM-Predominant OSA', { metrics: { remAhi: 18, nremAhi: 0 } }),
+  'High', 'NREM AHI 0 with persistent REM burden still counts as strong REM-predominant signal'
+);
+assertEqual(
   confidenceFor('REM-Predominant OSA', { metrics: { remAhi: 25, nremAhi: 12 } }),
   'Moderate', 'Ratio 2.1, NREM 12 (<15) → Moderate'
+);
+
+group('Oxygen Data Sufficiency Guardrails');
+assertEqual(
+  [null, null, null, null, 86].filter(exists).length >= 2,
+  false,
+  'A single oxygen metric does not qualify for low-hypoxic-burden framing'
+);
+assertEqual(
+  [null, null, 14, null, 86].filter(exists).length >= 2,
+  true,
+  'At least two oxygen metrics are required before low-hypoxic-burden framing is allowed'
 );
 
 // ── Hypoxic Burden Confidence ─────────────────────────────────
@@ -589,6 +616,12 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Review REM-Sleep Data Before Ruling Out REM Worsening'), 'Sleep-stage workup tag renders a patient-friendly treatment explanation');
 assert(reportHtml.includes('REM versus non-REM portion of your study'), 'Sleep-stage workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [{ tag: 'ENDOTYPE-WORKUP', text: 'Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.' }],
+}));
+assert(reportHtml.includes('Complete the Detailed Event Breakdown Before Final Endotype Matching'), 'Endotype workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('apnea-versus-hypopnea breakdown needed to fully interpret'), 'Endotype workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ANATOMY-WORKUP', text: 'Complete the upper-airway anatomy exam before finalizing anatomy-based treatments.' }],
