@@ -63,32 +63,48 @@ if ! curl -sL "${URL}" >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! "${CHROME}" \
-  --headless \
-  --disable-gpu \
-  --no-sandbox \
-  --virtual-time-budget=5000 \
-  --dump-dom \
-  "${URL}" > "${DOM_FILE}" 2>"${CHROME_LOG}"; then
-  echo "Chrome failed while running the headless suite." >&2
-  cat "${CHROME_LOG}" >&2 || true
-  exit 1
-fi
+run_suite() {
+  local path="$1"
+  local label="$2"
+  local budget="$3"
+  local url="http://${HOST}:${PORT}/${path}"
 
-SUMMARY="$(grep -Eo '<strong>[0-9]+ passed</strong>, <strong>[0-9]+ failed</strong>' "${DOM_FILE}" | head -n 1 || true)"
+  if ! "${CHROME}" \
+    --headless \
+    --disable-gpu \
+    --no-sandbox \
+    --virtual-time-budget="${budget}" \
+    --dump-dom \
+    "${url}" > "${DOM_FILE}" 2>"${CHROME_LOG}"; then
+    echo "Chrome failed while running ${label}." >&2
+    cat "${CHROME_LOG}" >&2 || true
+    exit 1
+  fi
 
-if [[ -z "${SUMMARY}" ]]; then
-  echo "Could not find test summary in headless DOM output." >&2
-  cat "${DOM_FILE}" >&2
-  exit 1
-fi
+  local summary
+  summary="$(grep -Eo '<strong>[0-9]+ passed</strong>, <strong>[0-9]+ failed</strong>' "${DOM_FILE}" | head -n 1 || true)"
 
-if grep -Eq '<strong>[0-9]+ passed</strong>, <strong>0 failed</strong>' <<< "${SUMMARY}"; then
-  PASSED_COUNT="$(sed -E 's#<strong>([0-9]+) passed</strong>, <strong>0 failed</strong>#\1#' <<< "${SUMMARY}")"
-  echo "Headless suite passed: ${PASSED_COUNT} assertions"
-  exit 0
-fi
+  if [[ -z "${summary}" ]]; then
+    echo "Could not find test summary in ${label}." >&2
+    cat "${DOM_FILE}" >&2
+    exit 1
+  fi
 
-echo "Headless suite failed: ${SUMMARY}" >&2
-grep -n 'class="fail"' "${DOM_FILE}" >&2 || true
-exit 1
+  if ! grep -Eq '<strong>[0-9]+ passed</strong>, <strong>0 failed</strong>' <<< "${summary}"; then
+    echo "${label} failed: ${summary}" >&2
+    grep -n 'class="fail"' "${DOM_FILE}" >&2 || true
+    exit 1
+  fi
+
+  sed -E 's#<strong>([0-9]+) passed</strong>, <strong>0 failed</strong>#\1#' <<< "${summary}"
+}
+
+TOTAL_PASSED=0
+
+CORE_PASSED="$(run_suite "tests/tests.html" "core regression suite" 5000)"
+TOTAL_PASSED=$((TOTAL_PASSED + CORE_PASSED))
+
+WORKFLOW_PASSED="$(run_suite "tests/workflow-smoke.html" "workflow smoke suite" 15000)"
+TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
+
+echo "Headless suite passed: ${TOTAL_PASSED} assertions"

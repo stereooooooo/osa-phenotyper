@@ -217,3 +217,30 @@ This pass focused on the highest-value production-hardening gaps that remained a
 ## Remaining Gaps After Identity-Provenance Follow-Up
 - The regression harness is now a repeatable command and CI workflow, but it is still centered on browser/report assertions rather than full multi-step clinician and intake journeys.
 - The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.
+
+## April 2, 2026 Workflow Smoke Suite Follow-Up
+
+### 19. Added localhost multi-step clinician and intake smoke journeys
+- Added `js/workflow-test-app.js`, a localhost-only auth/DB shim that patches `OSAAuth` and `OSADatabase` into a safe in-memory test backend when `index.html?testMode=workflow` is opened on `localhost` or `127.0.0.1`.
+- Updated `index.html` to load that shim before the auth/database orchestration runs, and to treat workflow test mode as a valid configured environment even if runtime AWS config is blank.
+- Guarded the inline `pdfjsLib` worker setup in `index.html` so local headless runs do not crash when the pdf.js CDN is unavailable.
+- Updated `intake.html` with a localhost-only workflow mode that:
+  - validates a synthetic test token without hitting AWS
+  - records the mapped submission payload in memory
+  - still drives the real form validation and thank-you transition
+- Added `tests/workflow-smoke.html` to exercise real UI journeys:
+  - clinician save
+  - clinician analyze + report preview
+  - snapshot save
+  - patient-list reload
+  - exact-name patient search
+  - archive + restore through the patient-list modal
+  - review-dashboard / intake-review resolution
+  - public intake submit-to-thank-you
+- Expanded `tests/run-headless-suite.sh` so the repeatable command and CI workflow now execute both the core regression harness and the new workflow smoke harness.
+- Updated `README.md`, `docs/test-matrix.md`, and `docs/test-matrix-results.md` so the broader automated coverage is documented where future maintainers will look.
+- Why: one of the last major pilot-readiness gaps was that the automated suite still proved mostly rules and report rendering, not actual clinician/patient journeys. This pass turns the real UI surfaces into executable smoke paths without requiring live AWS for every regression run.
+
+## Remaining Gaps After Workflow Smoke Suite Follow-Up
+- The automated coverage is broader now, but it still is not a full production-grade end-to-end suite against the live AWS environment.
+- The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.

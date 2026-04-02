@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OSA Phenotyper – Workflow Smoke Suite</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
+  h1 { color: #354A5F; }
+  .pass { color: #198754; }
+  .fail { color: #dc3545; }
+  .summary { font-size: 1.2rem; margin: 1rem 0; padding: 1rem; border-radius: 8px; }
+  .summary.all-pass { background: #d1e7dd; }
+  .summary.has-fail { background: #f8d7da; }
+  pre { background: #fff; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; margin: 0.25rem 0; font-size: 0.85rem; }
+  iframe { position: absolute; left: -9999px; width: 1440px; height: 2400px; border: 0; }
+</style>
+</head>
+<body>
+<h1>OSA Phenotyper Workflow Smoke Suite</h1>
+<div id="results"></div>
+
+<iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
+<iframe id="intakeFrame" src="../intake.html?testMode=workflow&amp;t=workflow-token"></iframe>
+
+<script>
+let passed = 0;
+let failed = 0;
+const results = [];
+
+function assert(condition, message) {
+  if (condition) {
+    passed++;
+    results.push({ pass: true, message });
+  } else {
+    failed++;
+    results.push({ pass: false, message });
+  }
+}
+
+function assertEqual(actual, expected, message) {
+  const pass = actual === expected;
+  if (!pass) message += ` (got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)})`;
+  assert(pass, message);
+}
+
+function group(name) {
+  results.push({ group: name });
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitFor(predicate, label, timeout = 12000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const value = predicate();
+      if (value) return value;
+    } catch (_) {}
+    await wait(50);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+
+function setValue(win, selector, value) {
+  const el = win.document.querySelector(selector);
+  if (!el) throw new Error(`Missing element ${selector}`);
+  el.value = value;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+
+function clickSelector(win, selector) {
+  const el = win.document.querySelector(selector);
+  if (!el) throw new Error(`Missing element ${selector}`);
+  el.click();
+}
+
+function chooseRadio(win, name, value) {
+  const el = win.document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (!el) throw new Error(`Missing radio ${name}=${value}`);
+  el.click();
+}
+
+async function runClinicianWorkflow() {
+  group('Clinician Workflow');
+
+  const frame = document.getElementById('appFrame');
+  await waitFor(() => (
+    frame.contentWindow &&
+    frame.contentWindow.location &&
+    /index\.html/.test(frame.contentWindow.location.pathname) &&
+    frame.contentDocument &&
+    frame.contentDocument.getElementById('appContainer')
+  ), 'app iframe ready');
+  const win = frame.contentWindow;
+  const doc = win.document;
+  const alerts = [];
+  win.alert = (message) => alerts.push(String(message));
+  win.confirm = () => true;
+
+  await waitFor(() => !doc.getElementById('appContainer').classList.contains('d-none'), 'app visible');
+  await waitFor(() => doc.getElementById('userEmail').textContent.trim() === 'workflow-test@localhost', 'workflow user label');
+  assertEqual(doc.getElementById('userEmail').textContent.trim(), 'workflow-test@localhost', 'Workflow app bypasses auth on localhost test mode');
+
+  setValue(win, '#patientName', 'Workflow QA Patient');
+  setValue(win, '#patientDob', '1984-03-12');
+  setValue(win, '#patientMrn', 'WF-001');
+  setValue(win, '[name="age"]', '42');
+  setValue(win, '[name="sex"]', 'M');
+  setValue(win, '[name="bmi"]', '32');
+  setValue(win, '[name="neck"]', '17');
+  setValue(win, '[name="tonsils"]', '2');
+  setValue(win, '[name="ftp"]', 'III');
+  setValue(win, '[name="pahi"]', '28');
+  setValue(win, '[name="supPahi"]', '42');
+  setValue(win, '[name="nonSupPahi"]', '9');
+  setValue(win, '[name="remPahi"]', '38');
+  setValue(win, '[name="nremPahi"]', '16');
+  setValue(win, '[name="odi"]', '18');
+  setValue(win, '[name="nadir"]', '84');
+  setValue(win, '[name="weightLossReadiness"]', 'considering');
+
+  clickSelector(win, '#btnSavePatient');
+  await waitFor(() => doc.getElementById('patientNameDisplay').textContent.trim() === 'Workflow QA Patient', 'patient saved to bar');
+  assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false).length, 1, 'Saving through the real UI persists one patient in the workflow test store');
+
+  clickSelector(win, '#form button[type="submit"]');
+  await waitFor(() => win.OSAReportState && win.OSAReportState.getLastAnalysisData(), 'analysis available');
+  assertEqual(win.OSAReportState.getLastAnalysisData().primaryAHI, 28, 'Generate Reports populates analysis data from the form');
+  await waitFor(() => doc.getElementById('patientReportTrigger').style.display !== 'none', 'patient report trigger visible');
+  assert(doc.getElementById('clinicianReport').textContent.trim().length > 0, 'Clinician report renders after analysis');
+
+  clickSelector(win, '#btnGenerateReport');
+  await waitFor(() => doc.getElementById('reportOverlay').classList.contains('active'), 'report overlay active');
+  assert(doc.getElementById('reportPreviewContent').textContent.includes('Workflow QA Patient'), 'Patient report preview renders inside the overlay');
+
+  clickSelector(win, '#btnSaveReportSnapshot');
+  await waitFor(() => {
+    const patient = win.__OSA_WORKFLOW_TEST__.listPatients(false)[0];
+    return patient && patient.reportSnapshotCount === 1;
+  }, 'snapshot saved');
+  assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshotCount, 1, 'Save Snapshot persists a report snapshot through the chart workflow');
+  clickSelector(win, '#btnCloseReport');
+
+  clickSelector(win, '#btnClearForm');
+  await waitFor(() => doc.getElementById('patientIdBar').style.display === 'none', 'patient bar hidden after clear');
+  assertEqual(doc.getElementById('patientName').value, '', 'Clear Form resets the current chart state');
+
+  clickSelector(win, '#btnPatientList');
+  await waitFor(() => doc.querySelectorAll('#patientListBody tr').length === 1, 'patient list row appears');
+  doc.querySelector('#patientListBody tr').click();
+  await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'patient loaded from list');
+  assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Loading from the patient list rehydrates identity fields');
+
+  const patientId = win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].patientId;
+  win.__OSA_WORKFLOW_TEST__.injectPendingIntake(patientId, {
+    weightLossReadiness: 'ready',
+    cpapRetry: 'Yes'
+  });
+
+  clickSelector(win, '#btnReviewDashboard');
+  await waitFor(() => doc.getElementById('reviewDashboardCountNeeded').textContent === '1', 'review dashboard count');
+  assertEqual(doc.getElementById('reviewDashboardCountNeeded').textContent, '1', 'Review dashboard surfaces one pending chart');
+  clickSelector(win, '#reviewDashboardBody .btn-dashboard-review');
+  await waitFor(() => doc.querySelectorAll('#intakeReviewBody tr[data-field]').length === 2, 'intake review rows present');
+
+  clickSelector(win, 'input[name="intakeReviewDecision-weightLossReadiness"][value="accept-intake"]');
+  clickSelector(win, 'input[name="intakeReviewDecision-cpapRetry"][value="keep-chart"]');
+  setValue(win, '#intakeReviewNote', 'Workflow smoke review');
+  clickSelector(win, '#btnApplyIntakeReview');
+
+  await waitFor(() => {
+    const patient = win.__OSA_WORKFLOW_TEST__.getPatient(patientId);
+    return patient.intakePendingFieldCount === 0;
+  }, 'intake review applied');
+
+  const reviewedPatient = win.__OSA_WORKFLOW_TEST__.getPatient(patientId);
+  assertEqual(reviewedPatient.formData.weightLossReadiness, 'ready', 'Accepting a pending intake field applies it to the chart');
+  assertEqual(reviewedPatient.formData.cpapRetry || '', '', 'Keeping the chart value leaves the original field untouched');
+  assertEqual(reviewedPatient.intakeReviewHistory.length, 1, 'Intake review decisions persist to review history');
+  assert((reviewedPatient.fieldProvenanceHistory.weightLossReadiness || []).length >= 2, 'Accepted intake fields append to provenance history');
+  assert(alerts.some(msg => msg.includes('Report snapshot saved to the chart.')), 'Workflow alerts confirm snapshot persistence');
+
+  clickSelector(win, '#btnPatientList');
+  await waitFor(() => doc.querySelectorAll('#patientListBody tr').length === 1, 'patient list reopened');
+  setValue(win, '#patientSearch', 'Workflow QA Patient');
+  await waitFor(() => doc.querySelectorAll('#patientListBody tr').length === 1, 'exact-name search results');
+  assert(doc.querySelector('#patientListBody tr').textContent.includes('Workflow QA Patient'), 'Exact-name patient search returns the saved chart through the real list UI');
+  setValue(win, '#patientSearch', '');
+
+  clickSelector(win, '#patientListBody .btn-delete-patient');
+  await waitFor(() => win.__OSA_WORKFLOW_TEST__.getPatient(patientId).isDeleted === true, 'patient archived');
+  assertEqual(doc.getElementById('patientIdBar').style.display, 'none', 'Archiving the active chart clears the loaded-patient workspace');
+
+  clickSelector(win, '#toggleArchivedPatients');
+  await waitFor(() => doc.querySelectorAll('#patientListBody .btn-restore-patient').length === 1, 'archived row visible');
+  clickSelector(win, '#patientListBody .btn-restore-patient');
+  await waitFor(() => win.__OSA_WORKFLOW_TEST__.getPatient(patientId).isDeleted === false, 'patient restored');
+  assertEqual(win.__OSA_WORKFLOW_TEST__.getPatient(patientId).isDeleted, false, 'Restore returns the archived chart to the active dataset');
+}
+
+async function runIntakeWorkflow() {
+  group('Patient Intake Workflow');
+
+  const frame = document.getElementById('intakeFrame');
+  await waitFor(() => (
+    frame.contentWindow &&
+    frame.contentWindow.location &&
+    /intake\.html/.test(frame.contentWindow.location.pathname) &&
+    frame.contentDocument &&
+    frame.contentDocument.getElementById('stateForm')
+  ), 'intake iframe ready');
+  const win = frame.contentWindow;
+  const doc = win.document;
+
+  await waitFor(() => doc.getElementById('stateForm').classList.contains('intake-form-view--active'), 'intake form visible');
+  assert(doc.getElementById('greetingName').textContent.includes('Workflow Test'), 'Workflow intake mode renders the validated token greeting');
+
+  setValue(win, '#age', '44');
+  setValue(win, '#sex', 'F');
+  setValue(win, '#heightFeet', '5');
+  setValue(win, '#heightInches', '6');
+  setValue(win, '#weight', '186');
+
+  for (let i = 1; i <= 8; i++) chooseRadio(win, `ess${i}`, '1');
+  for (let i = 1; i <= 7; i++) chooseRadio(win, `isi${i}`, '1');
+  for (let i = 1; i <= 5; i++) chooseRadio(win, `nose${i}`, '1');
+
+  chooseRadio(win, 'nasalObs', 'yes');
+  chooseRadio(win, 'snoringReported', 'yes');
+  chooseRadio(win, 'weightInterest', 'ready');
+
+  clickSelector(win, '#submitBtn');
+  await waitFor(() => doc.getElementById('stateThankYou').classList.contains('intake-state--active'), 'thank you state visible');
+
+  const lastSubmission = win.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();
+  assert(!!lastSubmission, 'Workflow intake mode stores the submitted payload');
+  assertEqual(lastSubmission.payload.weightLossReadiness, 'ready', 'Intake submission preserves mapped weight-readiness value');
+  assertEqual(lastSubmission.payload.preferences.avoidCpap, false, 'Intake submission preserves unchecked preference flags');
+  assert(doc.getElementById('stateThankYou').textContent.includes('Thank you'), 'Intake UI reaches the thank-you state after submission');
+}
+
+function renderResults() {
+  const container = document.getElementById('results');
+  const summary = document.createElement('div');
+  summary.className = 'summary ' + (failed ? 'has-fail' : 'all-pass');
+  summary.innerHTML = `<strong>${passed} passed</strong>, <strong>${failed} failed</strong>`;
+  container.appendChild(summary);
+
+  results.forEach((result) => {
+    if (result.group) {
+      const heading = document.createElement('h2');
+      heading.textContent = result.group;
+      heading.style.fontSize = '1.05rem';
+      heading.style.marginTop = '1.5rem';
+      container.appendChild(heading);
+      return;
+    }
+    const pre = document.createElement('pre');
+    pre.className = result.pass ? 'pass' : 'fail';
+    pre.textContent = `${result.pass ? 'PASS' : 'FAIL'}: ${result.message}`;
+    container.appendChild(pre);
+  });
+}
+
+(async function run() {
+  try {
+    await runClinicianWorkflow();
+    await runIntakeWorkflow();
+  } catch (err) {
+    failed++;
+    results.push({ pass: false, message: `Unhandled smoke-suite error: ${err.message}` });
+  }
+  renderResults();
+})();
+</script>
+</body>
+</html>

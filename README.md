@@ -21,6 +21,7 @@
 * **Patient report snapshots** can be saved into the chart as frozen artifacts with hash metadata and replayed later from snapshot history.
 
 ### Regression testing
-* **Executable browser harness:** run `tests/run-headless-suite.sh` to start a local static server, execute the browser regression suite in headless Chrome, and fail fast if any assertions break.
+* **Executable browser harness:** run `tests/run-headless-suite.sh` to start a local static server, execute both the core regression suite and the multi-step workflow smoke suite in headless Chrome, and fail fast if any assertions break.
 * **Source-of-truth matrix:** scenario coverage is tracked in `docs/test-matrix.md`, with the latest smoke-test outcomes in `docs/test-matrix-results.md`.
 * **CI hook:** `.github/workflows/regression-harness.yml` runs the same headless browser harness on `main`, pull requests, and manual workflow dispatches.
+* **Local workflow test mode:** `tests/workflow-smoke.html` drives the real `index.html` and `intake.html` surfaces on localhost using a safe in-memory auth/DB shim, so save/load/review/snapshot/intake-submit paths can be exercised without AWS.

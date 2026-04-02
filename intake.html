@@ -452,7 +452,20 @@
 
   // ── Config ──────────────────────────────────────────────────
   const API_URL = (document.body.dataset.apiUrl || '').trim();
-  const token = new URLSearchParams(window.location.search).get('t');
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('t');
+  const workflowTestMode = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+    && params.get('testMode') === 'workflow';
+  const workflowTestState = window.__OSA_INTAKE_WORKFLOW_TEST__ = window.__OSA_INTAKE_WORKFLOW_TEST__ || {
+    active: workflowTestMode,
+    submissions: [],
+    getSubmissions: function() {
+      return this.submissions.slice();
+    },
+    getLastSubmission: function() {
+      return this.submissions.length ? this.submissions[this.submissions.length - 1] : null;
+    }
+  };
 
   // ── DOM refs ────────────────────────────────────────────────
   const stateLoading   = document.getElementById('stateLoading');
@@ -514,6 +527,29 @@
     stateError.querySelector('.intake-state__title').textContent = 'This intake page is not configured';
     stateError.querySelector('.intake-state__message').textContent = 'Please contact Capital ENT & Sinus Center to request an updated intake link.';
     showState(stateError);
+  }
+
+  function showWorkflowToken() {
+    greetingName.textContent = 'Workflow Test';
+    thankYouName.textContent = 'Workflow Test';
+    expiryNotice.textContent = 'Workflow test token active on localhost.';
+
+    buildESS();
+    buildISI();
+    buildNOSE();
+    setupPriorTreatments();
+    setupPreferences();
+    attachListeners();
+    showState(stateForm);
+  }
+
+  async function submitWorkflowPayload(payload) {
+    workflowTestState.submissions.push({
+      submittedAt: new Date().toISOString(),
+      token: token,
+      payload: payload
+    });
+    return { ok: true };
   }
 
   // ── Build Questionnaire Sections ────────────────────────────
@@ -1155,6 +1191,10 @@
       showState(stateError);
       return;
     }
+    if (workflowTestMode) {
+      showWorkflowToken();
+      return;
+    }
     if (!API_URL) {
       showConfigError();
       return;
@@ -1220,16 +1260,20 @@
 
       try {
         var payload = collectData();
-        var resp = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        if (workflowTestMode) {
+          await submitWorkflowPayload(payload);
+        } else {
+          var resp = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
 
-        if (!resp.ok) {
-          var errData;
-          try { errData = await resp.json(); } catch(_) { errData = {}; }
-          throw new Error(errData.error || errData.message || 'Submission failed');
+          if (!resp.ok) {
+            var errData;
+            try { errData = await resp.json(); } catch(_) { errData = {}; }
+            throw new Error(errData.error || errData.message || 'Submission failed');
+          }
         }
 
         // Success — remove token from URL for safety

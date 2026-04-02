@@ -1,10 +1,39 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** April 2, 2026
-**Latest app version:** commit c0e52ee (`feat: add explicit treatment safety inputs`) + local partial-data / zero-value guardrail changes
+**Latest app version:** commit `37840e3` (`fix: harden pilot readiness safeguards`) + local workflow smoke-suite expansion
 
 ---
 
 ## April 2, 2026 Executable Harness Expansion
+
+### Multi-Step Workflow Smoke Follow-Up
+- Added a localhost-only clinician workflow test shim in:
+  - `js/workflow-test-app.js`
+  - `index.html`
+- Added localhost workflow test handling in:
+  - `intake.html`
+- Added a new headless smoke page in:
+  - `tests/workflow-smoke.html`
+- Expanded the runner in:
+  - `tests/run-headless-suite.sh`
+  - `.github/workflows/regression-harness.yml`
+- Added executable workflow coverage for:
+  - clinician save through the real patient bar + in-memory chart backend
+  - clinician analysis through the real `Generate Reports` submit path
+  - patient-report overlay open + snapshot save
+  - clear-form + patient-list reload continuity
+  - exact-name patient search through the real patient-list modal
+  - archive + archived-list restore through the real patient-list modal
+  - review-dashboard surfacing of a pending intake chart
+  - explicit intake-review accept/keep persistence + provenance/review-history checks
+  - public intake form token validation + submit-to-thank-you transition
+- Result: **162 passed, 0 failed** of 162 assertions.
+- Verification method:
+  - `node --check js/workflow-test-app.js`
+  - extracted inline script parse checks for `index.html` and `intake.html`
+  - `bash -n tests/run-headless-suite.sh`
+  - `bash tests/run-headless-suite.sh`
+- Conclusion: the regression harness is no longer limited to report-layer/browser assertions. It now executes real multi-step clinician and intake journeys on localhost using the production UI surfaces with a safe in-memory backend.
 
 ### Home-Test Central Confirmation Follow-Up
 - Added source/syntax verification for the new WatchPAT central-confirmation guardrail in:
@@ -109,7 +138,7 @@
   - explicit per-field `accept-intake` / `keep-chart` resolution payloads
   - persistent `fieldProvenanceHistory` and `intakeReviewHistory`
   - provenance modal now renders current chart value, pending intake value, and compact timeline history
-- Conclusion: the explicit intake-review resolution workflow and durable field-timeline plumbing are implemented and syntax-clean. Live browser/AWS validation of this new review path is still pending.
+- Conclusion: the explicit intake-review resolution workflow and durable field-timeline plumbing are implemented, syntax-clean, and now covered by the localhost workflow smoke suite. Live AWS-backed validation remains a separate layer.
 
 ### Intake Review Dashboard Follow-Up
 - Added source/syntax verification for the new dedicated review-dashboard surface in `index.html`.
@@ -121,7 +150,7 @@
 - Verification method:
   - extracted inline script parse check via `node --check /tmp/osa-index-inline.js`
   - source review of `loadReviewDashboard()` and shared queue-ranking helpers
-- Conclusion: the intake review queue is no longer limited to the patient-list toggle. Live browser validation of the new dashboard actions is still pending.
+- Conclusion: the intake review queue is no longer limited to the patient-list toggle, and the localhost workflow smoke suite now covers the dashboard open/review path. Live AWS-backed validation remains a separate layer.
 
 ### Treatment Safety Guardrails Follow-Up
 - Re-ran the local browser harness after adding executable coverage for:
@@ -732,9 +761,8 @@
 **BMI guardrail:** BMI 29 render did **not** include `GLP-1 therapies` ✅
 
 ### Open From This Follow-Up
-- Review-queue behavior still needs one browser-level walkthrough of the new `Review queue only` toggle.
 - Compact visit-audit entries still need one live save/load inspection against a real patient row to confirm the stored visit payload shape end to end.
-- Exact full-name `name-index` search is now implemented, but it still needs one exercised request against a populated dataset to confirm the exact-match fast path before scan fallback.
+- Exact full-name search is now covered through the localhost workflow smoke suite, but the live DynamoDB exact-match fast path still needs one exercised request against a populated hosted dataset to confirm it is beating the scan fallback in practice.
 
 ### Test 82: Packaged deploy path
 **Status:** static verification complete
