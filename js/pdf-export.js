@@ -116,11 +116,12 @@ const OSAPdfExport = (() => {
     .osa-section-title { color: #1F3A5C; font-weight: 700; border-bottom: 2px solid #C8102E; padding-bottom: 4px; display: inline-block; }
 
     /* Patient report styles for PDF */
-    .patient-report { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.65; color: #374151; }
+    .patient-report { margin: 0; padding: 0; max-width: none; background: transparent; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.65; color: #374151; }
     .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #1F3A5C; }
     .patient-report .report-logo { height: 48px; width: auto; }
     .patient-report .report-meta { text-align: right; font-size: 12px; color: #6B7280; }
     .patient-report .report-patient-name { font-weight: 600; color: #374151; }
+    .patient-report .report-section { display: block; margin: 0; padding: 0; }
     .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
     .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 24px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
     .ahi-scale { margin: 16px 0; }
@@ -140,6 +141,8 @@ const OSAPdfExport = (() => {
     .rec-item { padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
     .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
     .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
+    .checklist-group { margin-bottom: 10px; }
+    .checklist-group:last-child { margin-bottom: 0; }
     .checklist-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 4px; }
     .checklist-group-label:first-of-type { margin-top: 0; }
     .checklist-group-subtitle { font-size: 11px; color: #9ca3af; margin-top: 0; margin-bottom: 6px; font-style: italic; }
@@ -165,6 +168,9 @@ const OSAPdfExport = (() => {
     /* Care summary card */
     .care-summary-card { background: #f0f2f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; }
     .care-summary-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; margin-bottom: 4px; }
+    .pdf-page-unit { display: block; overflow: hidden; }
+    .pdf-page-unit > :first-child { margin-top: 0 !important; }
+    .pdf-page-unit > :last-child { margin-bottom: 0 !important; }
   `;
 
   /**
@@ -178,26 +184,46 @@ const OSAPdfExport = (() => {
    * Prefers breaks between block-level elements (h2, p, div, etc.).
    */
   function findBreakPoints(container, canvasScale) {
-    // Collect bottom-edges of all block-level children and their nested blocks
-    const breakable = container.querySelectorAll(
-      'h2, h3, p, table, thead, tbody, tr, div.rec-item, div.phenotype-item, div.checklist-item, div.whatif-item, ' +
-      'div.cpap-context-box, div.comisa-callout, div.treatment-group-label, div.checklist-group-label, p.checklist-group-subtitle, ' +
-      'div.report-header, div.care-pathway, div.care-summary-card, div.ahi-scale, div.report-footer'
+    const structuredBlocks = container.querySelectorAll(
+      '.report-header, .report-section, .care-pathway, .care-summary-card, .ahi-scale, ' +
+      '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .report-footer'
+    );
+    const flowBlocks = container.querySelectorAll(
+      'h2, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, p, ul, ol'
     );
     const containerTop = container.getBoundingClientRect().top;
-    const points = [];
+    const points = [0];
 
-    breakable.forEach(el => {
+    structuredBlocks.forEach(el => {
       const rect = el.getBoundingClientRect();
-      // The bottom of this element (relative to container top) is a safe break point
-      const bottomY = (rect.bottom - containerTop) * canvasScale;
-      // The top of this element is also a candidate (break before the element)
-      const topY = (rect.top - containerTop) * canvasScale;
+      const styles = window.getComputedStyle(el);
+      const marginTop = parseFloat(styles.marginTop || '0') || 0;
+      const marginBottom = parseFloat(styles.marginBottom || '0') || 0;
+      const topY = Math.max(
+        0,
+        Math.round(((rect.top - containerTop) - marginTop) * canvasScale)
+      );
+      const bottomY = Math.max(
+        0,
+        Math.round(((rect.bottom - containerTop) + marginBottom) * canvasScale)
+      );
       points.push(topY, bottomY);
     });
 
-    // Deduplicate and sort
-    return [...new Set(points)].sort((a, b) => a - b);
+    flowBlocks.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const styles = window.getComputedStyle(el);
+      const marginBottom = parseFloat(styles.marginBottom || '0') || 0;
+      const bottomY = Math.max(
+        0,
+        Math.round(((rect.bottom - containerTop) + marginBottom) * canvasScale)
+      );
+      points.push(bottomY);
+    });
+
+    return [...new Set(points)]
+      .filter(point => Number.isFinite(point))
+      .sort((a, b) => a - b);
   }
 
   /**
@@ -218,6 +244,149 @@ const OSAPdfExport = (() => {
     return best;
   }
 
+  function createPdfRenderShell() {
+    const shell = document.createElement('div');
+    shell.style.cssText = "width:800px; background:white; padding:40px; font-family:'Inter','Segoe UI',system-ui,sans-serif;";
+    const style = document.createElement('style');
+    style.textContent = PDF_STYLES;
+    shell.appendChild(style);
+    return shell;
+  }
+
+  function createPatientPageShell(sourceRoot) {
+    const shell = createPdfRenderShell();
+    const report = document.createElement('div');
+    report.className = sourceRoot.className;
+    report.style.cssText = 'margin:0; padding:0; max-width:none; background:transparent;';
+    if (sourceRoot.hasAttribute('data-patient-name')) {
+      report.setAttribute('data-patient-name', sourceRoot.getAttribute('data-patient-name') || '');
+    }
+    if (sourceRoot.hasAttribute('data-report-date')) {
+      report.setAttribute('data-report-date', sourceRoot.getAttribute('data-report-date') || '');
+    }
+    shell.appendChild(report);
+    return { shell, report };
+  }
+
+  function buildPatientPageUnit(nodes) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pdf-page-unit';
+    nodes.forEach(node => wrapper.appendChild(node.cloneNode(true)));
+    return wrapper;
+  }
+
+  function collectPatientReportUnits(reportRoot) {
+    const units = [];
+    const topLevel = [...reportRoot.children];
+
+    topLevel.forEach(section => {
+      if (!(section instanceof HTMLElement) || !section.matches('.report-section')) {
+        units.push(buildPatientPageUnit([section]));
+        return;
+      }
+
+      const children = [...section.children];
+      let i = 0;
+      while (i < children.length) {
+        const child = children[i];
+        if (!(child instanceof HTMLElement)) {
+          units.push(buildPatientPageUnit([child]));
+          i++;
+          continue;
+        }
+
+        if (child.matches('h2')) {
+          const nodes = [child];
+          if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('p')) {
+            nodes.push(children[i + 1]);
+            i++;
+            if (
+              children[i + 1] instanceof HTMLElement &&
+              children[i + 1].matches('.phenotype-item, .checklist-group, .whatif-item')
+            ) {
+              nodes.push(children[i + 1]);
+              i++;
+            }
+          }
+          units.push(buildPatientPageUnit(nodes));
+          i++;
+          continue;
+        }
+
+        if (child.matches('.treatment-group-label') && children[i + 1] instanceof HTMLElement && children[i + 1].matches('.rec-item')) {
+          units.push(buildPatientPageUnit([child, children[i + 1]]));
+          i += 2;
+          continue;
+        }
+
+        units.push(buildPatientPageUnit([child]));
+        i++;
+      }
+    });
+
+    return units;
+  }
+
+  function paginatePatientReport(reportRoot, pageCssHeight) {
+    const units = collectPatientReportUnits(reportRoot);
+    const measureHost = document.createElement('div');
+    measureHost.style.cssText = 'position:absolute; left:-9999px; top:0;';
+    document.body.appendChild(measureHost);
+    const pageFitLimit = Math.max(1, pageCssHeight - 24);
+
+    const pages = [];
+    let current = createPatientPageShell(reportRoot);
+    measureHost.appendChild(current.shell);
+
+    try {
+      units.forEach(unit => {
+        const unitClone = unit.cloneNode(true);
+        current.report.appendChild(unitClone);
+
+        const renderedHeight = Math.ceil(current.shell.getBoundingClientRect().height);
+        if (renderedHeight > pageFitLimit && current.report.children.length > 1) {
+          current.report.removeChild(unitClone);
+          measureHost.removeChild(current.shell);
+          pages.push(current.shell);
+
+          current = createPatientPageShell(reportRoot);
+          measureHost.appendChild(current.shell);
+          current.report.appendChild(unitClone);
+        }
+      });
+
+      measureHost.removeChild(current.shell);
+      pages.push(current.shell);
+    } finally {
+      document.body.removeChild(measureHost);
+    }
+
+    return pages;
+  }
+
+  async function renderShellToCanvas(shell, renderHost, canvasScale) {
+    renderHost.appendChild(shell);
+    try {
+      const shellWidth = Math.ceil(shell.scrollWidth || shell.clientWidth || 800);
+      return await html2canvas(shell, {
+        scale: canvasScale,
+        useCORS: true,
+        logging: false,
+        width: shellWidth,
+        windowWidth: shellWidth,
+        onclone: (clonedDoc) => {
+          clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+            const href = link.href || '';
+            if (href.includes('fonts.googleapis') || href.includes('fonts.gstatic')) return;
+            link.remove();
+          });
+        }
+      });
+    } finally {
+      renderHost.removeChild(shell);
+    }
+  }
+
   async function exportFromHTML(html, filename, addFooter = false, footerDate = null) {
     if (typeof jspdf === 'undefined' || typeof html2canvas === 'undefined') {
       alert('PDF export libraries not loaded. Please check your internet connection.');
@@ -232,6 +401,44 @@ const OSAPdfExport = (() => {
 
     try {
       const canvasScale = 2;
+      const { jsPDF } = jspdf;
+      const pdf = new jsPDF('p', 'mm', 'letter');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const footerMargin = addFooter ? 8 : 0;  // Reserve space for footer text
+      const usableWidth = pageWidth - margin * 2;
+      const usableHeight = pageHeight - margin * 2 - footerMargin;
+      const patientReportRoot = container.querySelector('.patient-report');
+
+      if (patientReportRoot) {
+        const sizingPage = createPatientPageShell(patientReportRoot);
+        container.appendChild(sizingPage.shell);
+        const pageShellWidth = Math.ceil(sizingPage.shell.scrollWidth || sizingPage.shell.clientWidth || 800);
+        container.removeChild(sizingPage.shell);
+
+        const pageCssHeight = Math.floor(usableHeight * (pageShellWidth / usableWidth));
+        const patientPages = paginatePatientReport(patientReportRoot, pageCssHeight);
+
+        for (let i = 0; i < patientPages.length; i++) {
+          if (i > 0) pdf.addPage();
+          const pageCanvas = await renderShellToCanvas(patientPages[i], container, canvasScale);
+          const pxPerMm = pageCanvas.width / usableWidth;
+          const destH = pageCanvas.height / pxPerMm;
+          const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+          pdf.addImage(pageImg, 'JPEG', margin, margin, usableWidth, destH);
+
+          if (addFooter) {
+            pdf.setFontSize(8);
+            pdf.setTextColor(156, 163, 175);
+            const footerText = 'Prepared by Capital ENT \u00B7 ' + formatPdfDate(footerDate);
+            pdf.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
+          }
+        }
+
+        pdf.save(filename);
+        return;
+      }
 
       // Collect break points from the DOM before html2canvas renders
       const breakPoints = findBreakPoints(container, canvasScale);
@@ -251,18 +458,9 @@ const OSAPdfExport = (() => {
         }
       });
 
-      const { jsPDF } = jspdf;
-      const pdf = new jsPDF('p', 'mm', 'letter');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10;
-      const footerMargin = addFooter ? 8 : 0;  // Reserve space for footer text
-      const usableWidth = pageWidth - margin * 2;
-      const usableHeight = pageHeight - margin * 2 - footerMargin;
-
       // Scale factor: how many canvas pixels per mm of PDF
       const pxPerMm = canvas.width / usableWidth;
-      const pageHeightPx = usableHeight * pxPerMm;
+      const pageHeightPx = Math.floor(usableHeight * pxPerMm);
 
       let srcY = 0;  // current position in canvas pixels
       let pageNum = 0;
@@ -271,7 +469,7 @@ const OSAPdfExport = (() => {
         if (pageNum > 0) pdf.addPage();
 
         // Find the ideal cut point for this page
-        const idealEnd = srcY + pageHeightPx;
+        const idealEnd = Math.min(canvas.height, srcY + pageHeightPx);
         let cutY;
 
         if (idealEnd >= canvas.height) {
@@ -282,7 +480,9 @@ const OSAPdfExport = (() => {
           cutY = bestBreak(breakPoints, idealEnd, srcY);
         }
 
-        const sliceH = cutY - srcY;
+        const startY = Math.max(0, Math.floor(srcY));
+        const endY = Math.min(canvas.height, Math.max(startY + 1, Math.round(cutY)));
+        const sliceH = endY - startY;
         if (sliceH <= 0) break;  // safety
 
         // Create a cropped canvas for this page slice
@@ -293,7 +493,7 @@ const OSAPdfExport = (() => {
         // Fill white background to avoid JPEG compression artifacts on partial pages
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        ctx.drawImage(canvas, 0, startY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
 
         const destH = sliceH / pxPerMm;  // height in mm
         const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
@@ -307,7 +507,7 @@ const OSAPdfExport = (() => {
           pdf.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
         }
 
-        srcY = cutY;
+        srcY = endY;
         pageNum++;
       }
 

@@ -88,3 +88,29 @@ Why: the old matrix had strong clinical and report coverage but not enough aroun
 ## Remaining Follow-Up
 - Browser walkthrough of the intake UI to confirm the new CPAP validation/error states.
 - End-to-end verification against a live deployed stack for the DynamoDB transaction/IAM path and the stale-save 409 behavior.
+
+## April 2, 2026 Staging Follow-Up
+
+### `infrastructure/lambda/intake.mjs`
+- Removed the unused `:used` and `:active` expression values from the patient-side `TransactWriteItems` update expression.
+Why: the first real staging intake submission that reached the transactional merge path failed with a DynamoDB `ValidationException`, because the patient update was sending expression values that only belonged to the token update.
+
+### `docs/test-matrix.md`
+- Added a live-staging validation group for intake conflict staging, stale-save handling, restricted-origin CORS, audit-trail verification, and patient PDF export.
+Why: those checks proved important enough during staging that they should be explicit regression targets, not ad hoc follow-up tasks.
+
+### `docs/test-matrix-results.md`
+- Recorded the staging failure, the redeployed intake fix, and the post-fix validation evidence.
+Why: the repository should preserve not just the pass state, but also the root cause of the staging-only failure that surfaced during end-to-end testing.
+
+## Verification
+- `node --check infrastructure/lambda/intake.mjs`
+- Live staging redeploy of `osa-intake-api-capital-ent-stg-20260401b`
+- Live staging re-test:
+  - intake submission `200`
+  - conflict staging into `intakePendingOverrides`
+  - stale-save `409`
+  - allowed/disallowed CORS behavior
+  - API Gateway access-log presence
+  - CloudTrail DynamoDB data-event presence
+  - patient PDF export to `~/Downloads`

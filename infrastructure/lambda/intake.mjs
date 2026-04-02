@@ -748,8 +748,6 @@ async function handlePostIntake(event, rawToken, rawBody) {
     '#intakePendingProvenance': 'intakePendingProvenance',
   };
   const exprValues = {
-    ':used': 'used',
-    ':active': 'active',
     ':now': now,
     ':fd': mergeResult.mergedFormData,
     ':fieldProvenance': nextFieldProvenance,

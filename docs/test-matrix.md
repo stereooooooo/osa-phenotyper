@@ -78,7 +78,7 @@
 | 39 | FTP handoff to patient report | Pre-study or OSA patient with FTP III/IV — Section A / exam language should explicitly mention the Friedman Tongue Position finding |
 | 40 | Low-HB wording guardrail | Mild OSA with measured low hypoxic burden — report should use uncertainty-aware language ("reasonable first-line alternatives"), not "works just as well" certainty language |
 | 41 | Patient PDF metadata | Exported patient PDF filename should use patient name + report date, and per-page footer date should match the report date rather than export time |
-| 42 | Patient PDF pagination | Long patient report with care pathway, checklist groups, and multiple what-if cards — page breaks should prefer section/card boundaries instead of clipping through those blocks |
+| 42 | Patient PDF pagination | Long patient report with care pathway, checklist groups, and multiple what-if cards — page breaks should prefer section/card boundaries, avoid splitting mid-rec-item, and keep `Your First 30 Days` / `What If…?` headings with their first block |
 
 ### Group 10: Intake & Data Integrity Regression Checks
 | # | Name | Key Features |
@@ -101,7 +101,7 @@
 | 54 | Cognito group RBAC | Authenticated user without `osa-admin` or `osa-clinician` group should receive `403` on patient/token routes; archive should remain admin-only |
 | 55 | API audit logging | HTTP API stage should emit access logs to the KMS-encrypted access-log group, and CloudTrail should capture both management and DynamoDB data-plane events |
 | 56 | Safe runtime config defaults | Fresh checkout should no longer point `js/aws-config.js` or `intake.html` at production AWS endpoints until `deploy.sh` writes environment-specific values |
-| 57 | Declarative WAF attachment | Stack deployment should create the WAF association without requiring a follow-up CLI command or best-effort script step |
+| 57 | HTTP API WAF limitation documented | Stack deployment should succeed without attempting an unsupported direct WAF association on the API Gateway HTTP API stage; WAF reintroduction remains a follow-up for a supported edge layer |
 
 ### Group 12: UI & Code Quality Regression Checks
 | # | Name | Key Features |
@@ -123,3 +123,12 @@
 | 68 | Report snapshot save | Saving a report snapshot from the preview overlay should persist immutable patient-report HTML plus hashed analysis metadata, increment chart version, and append a visit entry |
 | 69 | Report snapshot history | Snapshot modal should list saved snapshots newest-first, allow frozen preview of prior reports, and cap retained snapshots to the configured history limit |
 | 70 | Snapshot save scope guardrail | Previewing a historical saved snapshot should disable the `Save Snapshot` action so clinicians cannot accidentally resave stale HTML as if it were the current live analysis |
+
+### Group 14: Live Staging Validation Checks
+| # | Name | Key Features |
+|---|------|-------------|
+| 71 | Staging intake conflict merge | Real staging intake submission with clinician-entered CPAP data plus conflicting intake responses should return `200`, preserve the clinician value in `formData`, and stage the conflicting intake value in `intakePendingOverrides` |
+| 72 | Staging stale-save protection | Real staging chart save using an outdated `version` should return `409` with the reload-before-saving message |
+| 73 | Staging CORS allow/deny | Allowed origin should receive `Access-Control-Allow-Origin` on GET/preflight, while a disallowed origin should receive no permissive ACAO header |
+| 74 | Staging audit trail evidence | Real staging requests should appear in the API Gateway access-log group, and CloudTrail audit objects should contain DynamoDB data-plane events for patient/intake activity |
+| 75 | Staging patient PDF export | Live staging-backed UI should generate a patient report PDF with the patient-based filename and a non-empty multi-page document |

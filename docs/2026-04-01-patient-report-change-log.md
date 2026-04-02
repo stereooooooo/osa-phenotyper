@@ -37,6 +37,9 @@ Why: exported footer dates should reflect the report snapshot, not the download 
 - Expanded page-break candidate selectors to include care-pathway, care-summary, checklist subtitle, and table-related blocks.
 Why: long reports were more likely to split cards and grouped content at awkward boundaries.
 
+- Reworked patient-report pagination to build page-sized DOM shells, reset screen-only `.patient-report` margin/padding during PDF measurement, and add a fit buffer plus stronger semantic grouping for checklist and what-if sections.
+Why: screenshot QA showed the old export path was still clipping through treatment paragraphs, checklist blocks, and what-if cards because the paginator was measuring with the on-screen report CSS but rendering with the stripped PDF CSS. That mismatch let content overrun the page and split inside patient-facing blocks.
+
 ### `js/app.js`
 - Changed the patient-report data handoff from `Number(mall)` to the original `mall` value.
 Why: the report needs the original Friedman Tongue Position value to render correctly.
@@ -57,6 +60,8 @@ Why: the prior matrix covered clinical logic more heavily than report rendering,
 - `node --check js/patientReport.js`
 - `node --check js/pdf-export.js`
 - `node --check js/app.js`
+- Manual screenshot review of broken exported PDF pages supplied during staging QA.
+- Fresh local export artifact review of `tests/artifacts/Sleep_Report_PDF_Pagination_QA_Fix2_2026-04-02.pdf`, including rendered page images for pages 1–5.
 
 ## Remaining Follow-Up
-- Browser-level walkthrough of the updated patient states and a long-report PDF export to confirm visual pagination behavior end-to-end.
+- Browser-level re-check of archive/restore remains separate, but the patient-report PDF pagination fix has now been re-exported and visually confirmed locally.

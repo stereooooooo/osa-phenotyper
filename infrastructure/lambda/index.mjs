@@ -5,6 +5,10 @@
  */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
+  CognitoIdentityProviderClient,
+  AdminListGroupsForUserCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
+import {
   DynamoDBDocumentClient, GetCommand, PutCommand,
   UpdateCommand, ScanCommand, QueryCommand
 } from '@aws-sdk/lib-dynamodb';
@@ -18,8 +22,10 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .filter(Boolean);
 const ADMIN_GROUP_NAME = process.env.ADMIN_GROUP_NAME || 'osa-admin';
 const CLINICIAN_GROUP_NAME = process.env.CLINICIAN_GROUP_NAME || 'osa-clinician';
+const USER_POOL_ID = process.env.USER_POOL_ID || '';
 const REPORT_SNAPSHOT_LIMIT = 5;
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
 
 function getAllowedOrigin(event) {
   const origin = event?.headers?.origin || event?.headers?.Origin || '';
@@ -179,14 +185,55 @@ function derivePatientStatus(milestones, fallbackStatus = 'Initial Eval') {
     : (fallbackStatus || 'Initial Eval');
 }
 
-function getUserGroups(event) {
-  const rawGroups = event?.requestContext?.authorizer?.jwt?.claims?.['cognito:groups'];
+function parseUserGroups(rawGroups) {
   if (!rawGroups) return [];
-  if (Array.isArray(rawGroups)) return rawGroups.map(group => String(group).trim()).filter(Boolean);
-  return String(rawGroups)
+  const normalizeGroupName = (group) => String(group)
+    .trim()
+    .replace(/^[\[\]"'\s]+|[\[\]"'\s]+$/g, '')
+    .trim();
+
+  if (Array.isArray(rawGroups)) return rawGroups.map(normalizeGroupName).filter(Boolean);
+  const normalized = String(rawGroups).trim();
+  if (!normalized) return [];
+  if (normalized.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(normalized);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalizeGroupName).filter(Boolean);
+      }
+    } catch {
+      // Fall back to comma-delimited parsing below.
+    }
+  }
+  return normalized
     .split(',')
-    .map(group => group.trim())
+    .map(normalizeGroupName)
     .filter(Boolean);
+}
+
+async function getUserGroups(event) {
+  const claims = event?.requestContext?.authorizer?.jwt?.claims || {};
+  const claimGroups = parseUserGroups(claims['cognito:groups']);
+  if (claimGroups.length || !USER_POOL_ID || !cognito) return claimGroups;
+
+  const username = claims['cognito:username'] || claims.username || claims.sub;
+  if (!username) return [];
+
+  try {
+    const response = await cognito.send(new AdminListGroupsForUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: String(username),
+    }));
+    return (response.Groups || [])
+      .map(group => String(group.GroupName || '').trim())
+      .filter(Boolean);
+  } catch (err) {
+    console.log(JSON.stringify({
+      event: 'group_lookup_failed',
+      errorType: err?.name || 'unknown',
+    }));
+    return [];
+  }
 }
 
 function hasRequiredGroup(userGroups, allowedGroups) {
@@ -198,7 +245,7 @@ export async function handler(event) {
   const method = event.requestContext?.http?.method || event.httpMethod;
   const path = event.requestContext?.http?.path || event.path;
   const user = event.requestContext?.authorizer?.jwt?.claims?.email || 'unknown';
-  const userGroups = getUserGroups(event);
+  const userGroups = await getUserGroups(event);
 
   try {
     if (method === 'OPTIONS') {

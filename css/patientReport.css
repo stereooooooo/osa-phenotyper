@@ -145,6 +145,9 @@ body.report-preview-open {
   align-items: flex-start;
   margin-bottom: 1rem;
 }
+.patient-report .report-section {
+  display: block;
+}
 .patient-report .phenotype-icon {
   font-size: 1.3rem;
   color: #1F3A5C;
@@ -193,6 +196,12 @@ body.report-preview-open {
   gap: 0.5rem;
   align-items: flex-start;
   margin-bottom: 0.5rem;
+}
+.patient-report .checklist-group {
+  margin-bottom: 0.875rem;
+}
+.patient-report .checklist-group:last-child {
+  margin-bottom: 0;
 }
 .patient-report .checklist-box {
   flex-shrink: 0;

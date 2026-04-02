@@ -1045,6 +1045,7 @@ ${items}`;
       const groupItems = uniqueCheckItems.filter(ci => ci.group === groupKey);
       if (groupItems.length === 0) continue;
       const meta = GROUP_META[groupKey];
+      itemsHTML += `\n<div class="checklist-group">`;
       itemsHTML += `\n<div class="checklist-group-label">${esc(meta.label)}</div>`;
       if (meta.subtitle) {
         itemsHTML += `\n<p class="checklist-group-subtitle">${esc(meta.subtitle)}</p>`;
@@ -1055,6 +1056,7 @@ ${items}`;
   <div>${esc(ci.text)}</div>
 </div>`;
       });
+      itemsHTML += `\n</div>`;
     }
 
     if (!itemsHTML) return '';
@@ -1209,7 +1211,9 @@ ${items.join('')}`;
       renderSectionF(data),
       renderSectionG(data),
       renderFooter(data),
-    ];
+    ].filter(Boolean).map((sectionHtml, index) =>
+      `<section class="report-section report-section-${index + 1}">${sectionHtml}</section>`
+    );
     return '<div class="patient-report" data-patient-name="' + esc(data.patientName || '') + '" data-report-date="' + esc(data.reportDate || '') + '">' + sections.join('') + '</div>';
   }
 

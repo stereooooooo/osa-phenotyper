@@ -68,22 +68,30 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'Low Arousal Threshold': {
-      const arRatio = (m.arInd && m.ahi) ? (m.arInd/m.ahi) : 0;
-      if((m.isi||0) >= T.arousal.isiHigh || arRatio >= T.arousal.arRatioHigh) return 'High';
-      if((m.isi||0) >= T.arousal.isi || arRatio >= T.arousal.arRatio) return 'Moderate';
+      const score = m.edwardsArTHScore || 0;
+      const maxScore = m.edwardsArTHMaxScore || 0;
+      if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
+      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Moderate';
       return 'Low';
     }
     case 'High Loop Gain': {
-      const p3 = m.pahic3||0, p4 = m.pahic4||0, csr = m.csr||0;
-      if(csr >= T.loopGain.csrHigh || p3 >= T.loopGain.pahic3High || p4 >= T.loopGain.pahic4High) return 'High';
-      if(csr >= T.loopGain.csr || p3 >= T.loopGain.pahic3 || p4 >= T.loopGain.pahic4) return 'Moderate';
-      if(m.cvd) return 'Moderate';
+      const lg = m.lgEstimate;
+      const supportCount =
+        ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
+        ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
+        ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
+        ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
+      if(exists(lg) && lg >= T.loopGain.estimateHigh) return supportCount >= 1 ? 'High' : 'Moderate';
+      if(exists(lg) && lg >= T.loopGain.estimateBorderline) return supportCount >= 1 || m.cvd ? 'Moderate' : 'Low';
+      if(supportCount >= 2) return m.cvd ? 'High' : 'Moderate';
+      if(supportCount >= 1 && m.cvd) return 'Moderate';
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
       const remNrem = (m.remAhi && m.nremAhi) ? (m.remAhi/m.nremAhi) : 0;
-      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatioHigh) return 'High';
-      if(remNrem > T.muscleResponse.remNremRatio) return 'Moderate';
+      const nrem = m.nremAhi || 0;
+      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
+      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
       return 'Low';
     }
     case 'Positional OSA': {
@@ -99,9 +107,9 @@ function confidenceFor(tag, ctx){
       return 'Low';
     }
     case 'High Hypoxic Burden': {
-      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100;
-      if(hb >= T.hypoxicBurden.hbPerHourHigh || hb90 > T.hypoxicBurden.areaUnder90High || nad < T.hypoxicBurden.nadirHigh || odi >= T.hypoxicBurden.odiHigh) return 'High';
-      if(hb >= T.hypoxicBurden.hbPerHour || hb90 > T.hypoxicBurden.areaUnder90 || nad < T.hypoxicBurden.nadir || odi >= T.hypoxicBurden.odi) return 'Moderate';
+      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
+      if(hb >= T.hypoxicBurden.hbPerHourHigh || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
+      if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
       return 'Low';
     }
     case 'Nasal-Resistance Contributor': {
@@ -184,6 +192,21 @@ assert(r.valid, 'unknown field always valid');
 r = OSAValidation.validateField('bmi', '');
 assert(r.valid, 'blank field is valid (optional)');
 
+group('Form Validation');
+const requiredForm = document.createElement('form');
+requiredForm.innerHTML = `
+  <div><label>Patient name<input name="patientName" required data-label="Patient name"></label></div>
+  <div><label>Sex<select name="sex" required data-label="Sex"><option value=""></option><option value="M">Male</option></select></label></div>
+`;
+document.body.appendChild(requiredForm);
+let formValidation = OSAValidation.validateForm(requiredForm);
+assertEqual(formValidation.errors.length, 2, 'required empty text/select fields block submission');
+requiredForm.querySelector('[name="patientName"]').value = 'Test Patient';
+requiredForm.querySelector('[name="sex"]').value = 'M';
+formValidation = OSAValidation.validateForm(requiredForm);
+assertEqual(formValidation.errors.length, 0, 'required fields clear once populated');
+requiredForm.remove();
+
 // ── Anatomical Confidence ─────────────────────────────────────
 group('Anatomical Phenotype Confidence');
 assertEqual(
@@ -206,39 +229,39 @@ assertEqual(
 // ── Low Arousal Threshold Confidence ──────────────────────────
 group('Low Arousal Threshold Confidence');
 assertEqual(
-  confidenceFor('Low Arousal Threshold', { metrics: { isi: 25, ahi: 20, arInd: null } }),
-  'High', 'ISI 25 ≥ 22 → High'
+  confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 3, edwardsArTHMaxScore: 3 } }),
+  'High', 'Edwards score 3/3 → High'
 );
 assertEqual(
-  confidenceFor('Low Arousal Threshold', { metrics: { isi: 16, ahi: 20, arInd: null } }),
-  'Moderate', 'ISI 16 ≥ 15 → Moderate'
+  confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 2, edwardsArTHMaxScore: 3 } }),
+  'Moderate', 'Edwards score 2/3 → Moderate'
 );
 assertEqual(
-  confidenceFor('Low Arousal Threshold', { metrics: { isi: 10, ahi: 20, arInd: 40 } }),
-  'High', 'ArI/AHI=2.0 ≥ 1.8 → High'
+  confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 2, edwardsArTHMaxScore: 2 } }),
+  'Moderate', 'Edwards score 2/2 → Moderate'
 );
 assertEqual(
-  confidenceFor('Low Arousal Threshold', { metrics: { isi: 5, ahi: 20, arInd: null } }),
-  'Low', 'ISI 5, no arousal data → Low'
+  confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 1, edwardsArTHMaxScore: 3 } }),
+  'Low', 'Edwards score below threshold → Low'
 );
 
 // ── High Loop Gain Confidence ─────────────────────────────────
 group('High Loop Gain Confidence');
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { csr: 25, pahic3: 0, pahic4: 0, cvd: false } }),
-  'High', 'CSR 25 ≥ 20 → High'
+  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.75, csr: 12, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
+  'High', 'High loop-gain estimate + supportive signal → High'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 0, pahic4: 0, cvd: false } }),
-  'Moderate', 'CSR 12 ≥ 10 → Moderate'
+  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.65, csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: true } }),
+  'Moderate', 'Borderline estimate + CVD modifier → Moderate'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { csr: 5, pahic3: 5, pahic4: 2, cvd: true } }),
-  'Moderate', 'CVD alone bumps Low → Moderate'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 10, pahic4: 0, cai: 0, cvd: true } }),
+  'High', 'Two supportive signals + CVD → High'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { csr: 5, pahic3: 5, pahic4: 2, cvd: false } }),
-  'Low', 'No thresholds met, no CVD → Low'
+  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.55, csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
+  'Low', 'No estimate/support thresholds met → Low'
 );
 
 // ── Positional OSA Confidence ─────────────────────────────────
@@ -270,24 +293,24 @@ assertEqual(
 // ── Hypoxic Burden Confidence ─────────────────────────────────
 group('Hypoxic Burden Confidence');
 assertEqual(
-  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 10, hb90PH: 0, odi: 0, nadir: 90 } }),
-  'High', 'HB/hr 10 ≥ 8 → High'
+  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 80, hb90PH: 0, odi: 0, nadir: 90, t90: 0 } }),
+  'High', 'HB/hr 80 ≥ 73 → High'
 );
 assertEqual(
-  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 6, hb90PH: 0, odi: 0, nadir: 90 } }),
-  'Moderate', 'HB/hr 6 ≥ 5 → Moderate'
+  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 35, hb90PH: 0, odi: 0, nadir: 90, t90: 0 } }),
+  'Moderate', 'HB/hr 35 ≥ 30 → Moderate'
 );
 assertEqual(
-  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 2, hb90PH: 0.2, odi: 10, nadir: 92 } }),
+  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 2, hb90PH: 0.2, odi: 10, nadir: 92, t90: 2 } }),
   'Low', 'All below thresholds → Low'
 );
 assertEqual(
-  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 0, hb90PH: 0, odi: 65, nadir: 90 } }),
-  'High', 'ODI 65 ≥ 60 → High'
+  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 0, hb90PH: 0, odi: 55, nadir: 90, t90: 0 } }),
+  'High', 'ODI 55 > 50 → High'
 );
 assertEqual(
-  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 0, hb90PH: 0, odi: 0, nadir: 78 } }),
-  'High', 'Nadir 78 < 80 → High'
+  confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 0, hb90PH: 0, odi: 0, nadir: 74, t90: 0 } }),
+  'High', 'Nadir 74 < 75 → High'
 );
 
 // ── Delta Heart Rate Confidence ───────────────────────────────
@@ -343,8 +366,8 @@ assertEqual(
 // ── Poor Muscle Responsiveness Confidence ─────────────────────
 group('Poor Muscle Responsiveness Confidence');
 assertEqual(
-  confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 35, remAhi: 50, nremAhi: 18 } }),
-  'High', 'AHI≥30, ratio 2.8 (>2.5) → High'
+  confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 35, remAhi: 56, nremAhi: 20 } }),
+  'High', 'AHI≥30, ratio 2.8 (>2.5), NREM≥20 → High'
 );
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 20, remAhi: 50, nremAhi: 20 } }),
@@ -366,8 +389,8 @@ assert(!cw.some(w => w.id === 'nonSup_gt_sup'), 'no warning when field missing')
 group('Sample Report Phenotype Detection');
 
 // Using the sample report values: pAHI 29.2, supine 52.9, non-supine 22.1,
-// REM 45.8, NREM 24.1, nadir 86, HB/hr 37, ISI 18, BMI 39.8, neck 17.5
-// Expected phenotypes: High Anatomical, Low Arousal, Positional, High Hypoxic Burden, Nasal
+// REM 45.8, NREM 24.1, nadir 86, HB/hr 37, BMI 39.8, neck 17.5
+// Expected phenotype signals: High Anatomical, High Hypoxic Burden, Nasal
 
 const sampleMetrics = {
   sex: 'M', bmi: 39.8, neck: 17.5, tons: 2, mall: 'III', ahi: 29.2,
@@ -389,8 +412,10 @@ const anatFlags = [
 assertEqual(anatFlags, 3, 'Sample: 3 anatomical flags (BMI, neck, FTP)');
 assert(anatFlags >= T.anatomical.minCriteria, 'Sample: triggers High Anatomical');
 
-// Low Arousal: ISI 18 ≥ 15
-assert(sampleMetrics.isi >= T.arousal.isi, 'Sample: triggers Low Arousal (ISI 18)');
+assertEqual(
+  confidenceFor('Low Arousal Threshold', { metrics: sampleMetrics }),
+  'Low', 'Sample: Low ArTH remains low without Edwards score inputs'
+);
 
 // High Loop Gain: CSR 0, pAHIc3 0.9, pAHIc4 0.2 — should NOT trigger (CVD no longer standalone)
 const hlgTrigger = (sampleMetrics.csr >= T.loopGain.csr) ||

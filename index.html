@@ -747,8 +747,7 @@ document.getElementById('priorCpap').addEventListener('change', function() {
 });
 
 /* ── New Patient / Clear Form ─────────────────────────────────── */
-function resetWorkspaceForNewPatient() {
-  clearCurrentPatient();
+function resetWorkspaceUiState() {
   document.getElementById('form').reset();
   document.getElementById('patientSummary').innerHTML = '';
   document.getElementById('clinicianReport').innerHTML = '';
@@ -770,7 +769,11 @@ function resetWorkspaceForNewPatient() {
 
 document.getElementById('btnClearForm').addEventListener('click', () => {
   if(!confirm('Clear all fields and start a new patient?')) return;
-  resetWorkspaceForNewPatient();
+  if (window.OSAChartActions?.resetWorkspaceForNewPatient) {
+    window.OSAChartActions.resetWorkspaceForNewPatient();
+    return;
+  }
+  resetWorkspaceUiState();
 });
 
 /* ── Bootstrap tooltips ───────────────────────────────────────── */
@@ -1558,6 +1561,11 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     document.getElementById('validationAlerts').innerHTML = '';
   }
 
+  function resetWorkspaceForNewPatient() {
+    clearCurrentPatient();
+    resetWorkspaceUiState();
+  }
+
   // ── Save patient ────────────────────────────────────────────
   document.getElementById('btnSavePatient').addEventListener('click', async () => {
     const name = document.getElementById('patientName').value.trim();
@@ -1630,6 +1638,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
   });
 
   window.OSAChartActions = {
+    resetWorkspaceForNewPatient,
     async saveReportSnapshot({ analysisData, patientReportHtml, reportDate, patientName, triggerEl }) {
       if (!currentPatientId) {
         alert('Save the patient chart before saving a report snapshot.');

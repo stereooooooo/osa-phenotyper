@@ -21,11 +21,17 @@ Why: the prior stack had no API Gateway access-log trail, leaving a major audit 
 - Expanded CloudTrail to include management events, global service events, and multi-region trail behavior.
 Why: DynamoDB data-plane logging alone was not a complete audit record for a HIPAA review.
 
-- Declared the WAF association in CloudFormation and retained the patient, token, and audit-log data stores on stack teardown/replacement.
-Why: security controls and retention should not depend on a follow-up CLI step or an accidental stack delete.
+- Retained the patient, token, and audit-log data stores on stack teardown/replacement, and kept the intake Web ACL resource defined in infrastructure.
+Why: audit-critical stores should survive stack churn, and the WAF policy itself is still part of the intended edge-security design.
 
 - Removed unnecessary `DeleteItem` permissions from the main Lambda role.
 Why: the backend now archives records instead of hard-deleting them, so the broader IAM action was no longer justified.
+
+- Added an explicit dependency from the initial admin group attachment to both the admin user and admin group resources.
+Why: a real CloudFormation staging deploy exposed a race where `AWS::Cognito::UserPoolUserToGroupAttachment` could execute before the seeded admin user existed, causing the entire stack creation to roll back.
+
+- Removed the direct `AWS::WAFv2::WebACLAssociation` from the HTTP API stage.
+Why: live AWS deployment validation showed that the current API Gateway v2 HTTP API stage ARN is not a supported WAF association target. The app can now deploy for staging/testing, but full WAF enforcement will require a different front door design such as API Gateway REST or CloudFront.
 
 ### `infrastructure/lambda/index.mjs`
 - Replaced wildcard origin handling with origin allow-list reflection plus stricter response headers (`no-store`, HSTS, `nosniff`).
@@ -33,6 +39,15 @@ Why: the previous API would respond to any browser origin and did not explicitly
 
 - Added Cognito-group RBAC checks on all clinician routes, with archive restricted to the admin group.
 Why: authentication alone is not adequate access control for patient CRUD and token-management operations.
+
+- Hardened Cognito group parsing to accept JSON-array strings as well as native arrays / comma-delimited strings.
+Why: live staging testing showed API Gateway JWT claims can present `cognito:groups` as a serialized JSON array, which caused valid admin users to be rejected with `403 Forbidden`.
+
+- Added a Cognito `AdminListGroupsForUser` fallback when JWT group claims are absent from the API Gateway event.
+Why: live staging validation still produced authenticated requests with missing group claims, so the clinician API now resolves RBAC from the user pool directly when necessary instead of denying valid users.
+
+- Normalized bracketed / quoted group tokens (for example `[osa-admin]`) before RBAC comparison.
+Why: staging validation indicated that API Gateway can pass group claims in a wrapper format that is neither a native array nor valid JSON, so simple comma splitting still left authorized users blocked.
 
 - Removed raw error-message logging from the top-level Lambda catch path.
 Why: generic error-type logging reduces the chance of PHI or token details leaking through exception messages.
@@ -89,8 +104,10 @@ Why: the matrix previously covered clinical logic, reporting, and intake integri
 - `node --check js/auth.js`
 - Inline script syntax parse for `index.html` and `intake.html`
 - `bash -n infrastructure/deploy.sh`
+- Live CloudFormation failure inspection in AWS (`AdminUserGroupAttachment` attempted before `AdminUser` existed)
 
 ## Remaining Follow-Up
-- CloudFormation deployment validation against a real AWS account to confirm the new KMS key policy, WAF association, API access logs, and CloudTrail settings all apply cleanly.
+- CloudFormation deployment validation against a real AWS account to confirm the new KMS key policy, API access logs, and CloudTrail settings all apply cleanly.
 - First-login MFA bootstrap test against the real Cognito user pool to confirm the `MFA_SETUP` callback behavior matches the deployed library/runtime combination.
 - Decide whether archive/restore should get a dedicated admin-only UI instead of the current one-way archive action.
+- Reintroduce WAF protection through a supported edge layer for the intake/API surface, likely by moving to API Gateway REST or fronting the app/API with CloudFront.

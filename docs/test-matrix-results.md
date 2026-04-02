@@ -1,4 +1,147 @@
 # Patient Report Test Matrix — Results
+**Latest smoke test:** April 1, 2026
+**Latest app version:** commit 4b9856c (`fix: add chart governance safeguards`)
+
+---
+
+## April 1, 2026 Post-Remediation Smoke Test
+
+### Scope
+- Executed the legacy browser harness at `tests/tests.html` in local Chrome against the current codebase.
+- Ran local clinician-app smoke checks on `http://127.0.0.1:3000/index.html` with safe blank AWS config.
+- Focus for this pass: non-AWS browser behavior after the audit remediation work.
+
+### Browser Harness
+- Result: **96 passed, 0 failed** of 96 assertions.
+- Execution method: local static server + headless Chrome DOM run.
+- Remediation during this pass:
+  - Updated the harness confidence expectations to match the current Edwards-score low arousal threshold logic.
+  - Updated high loop gain and high hypoxic burden expectations to the current composite/tiered model.
+  - Updated sample-report assertions that were still expecting the retired low-arousal trigger path.
+  - Added a browser-level validation test for required form fields.
+- Conclusion: the local browser regression harness is back in sync with the remediated clinical logic and currently passes cleanly.
+
+### Local Clinician-App Smoke Checks
+
+#### 1. Safe defaults / local config posture
+- `sex`, `tonsils`, and `ftp` loaded blank on first render.
+- `Save Patient` and `Patients` controls were hidden with blank local `AWS_CONFIG`, confirming safe non-production local behavior.
+- Result: **PASS**
+
+#### 2. Required-field submit gate
+- Submitted the form with required fields blank.
+- Observed blocking alert with all 5 expected missing fields:
+  - Patient name
+  - Date of birth
+  - Age
+  - Sex
+  - BMI
+- Observed `5` invalid controls styled inline.
+- Result: **PASS**
+
+#### 3. Pre-study workflow
+- Entered minimum demographic data with no sleep-study values and submitted.
+- `Generate Patient Report` became available.
+- Clinician report remained empty in the pre-study state.
+- Result: **PASS**
+
+#### 4. Patient report overlay
+- Opened the pre-study report preview.
+- Verified:
+  - adaptive title `Your Sleep Evaluation Summary`
+  - care pathway rendered
+  - `Your Next Steps` section rendered
+  - pre-study report remained patient-facing and did not render the clinician report block
+- Result: **PASS**
+
+### Not Covered In This Local Pass
+- Save/archive/restore against a live AWS-backed patient record
+- Intake-link generation and patient intake submission
+- Persistent field-provenance display from real saved records
+- Persistent report snapshot save/history from real saved records
+- PDF pagination / clipping review
+- MFA / RBAC / CORS / deployed infrastructure validation
+
+### Next Testing Step
+- Use a deployed environment with real AWS config and run the expanded regression matrix sections that depend on persistence, auth, intake tokens, archived-record lifecycle, provenance, and report snapshots.
+
+---
+
+## April 1, 2026 AWS Staging Validation
+
+### Environment
+- AWS account: `420551259537`
+- Region: `us-east-2`
+- Staging stack: `osa-phenotyper-capital-ent-stg-20260401b`
+- API: `https://sgwvp3545f.execute-api.us-east-2.amazonaws.com`
+- User pool: `us-east-2_ohn6HsKt7`
+
+### Deployment Findings Fixed During Validation
+- Fixed a CloudFormation race where `AdminUserGroupAttachment` could run before `AdminUser` existed.
+- Removed the unsupported direct WAF association to the API Gateway HTTP API stage so the stack could deploy.
+- Fixed clinician Lambda RBAC handling so staging auth works when API Gateway serializes or omits `cognito:groups` in non-obvious formats.
+
+### Auth & Session Validation
+- First login required password change and MFA setup.
+- Software-token MFA enrollment completed successfully.
+- Cognito user state after setup: `CONFIRMED`, preferred MFA `SOFTWARE_TOKEN_MFA`.
+- Result: **PASS**
+
+### AWS-Backed Persistence Smoke Checks
+- `GET /patients` with the staging browser `idToken` returned `200`.
+- `POST /patients` with the staging browser `idToken` returned `201`.
+- `POST /patients` with the staging browser `accessToken` also returned `201` after the RBAC fixes.
+- `POST /intake-tokens` returned `201` and produced a valid token + expiry timestamp.
+- `GET /intake/{token}` returned `200` on the public intake route.
+- `PUT /patients/{id}` with `reportSnapshot` returned `200`, incremented `version`, and persisted exactly one snapshot.
+- `DELETE /patients/{id}` archived the patient and removed it from the default active list.
+- `GET /patients?includeArchived=true` returned the archived patient to the admin-scoped list.
+- `PUT /patients/{id}` with `{ restore: true }` restored the archived chart to the active list.
+- Result: **PASS**
+
+### Follow-Up Fix Found During Live Intake Testing
+- The first fully valid staging intake submission surfaced a real server bug: the intake Lambda returned `500` with CloudWatch `ValidationException` once the transactional merge path executed.
+- Root cause: the patient-side `TransactWriteItems` update expression in `infrastructure/lambda/intake.mjs` was receiving unused `:used` / `:active` expression values that only belonged to the token-side update.
+- Remediation: removed the unused values, packaged the Lambda, and redeployed `osa-intake-api-capital-ent-stg-20260401b` directly to staging.
+- Result after redeploy: **PASS**
+
+### Remaining Staging Checks Completed
+- Live intake submit with canonical `weightLossReadiness = ready` returned `200`.
+- Conflict staging behaved correctly: clinician `formData.cpapCurrent` stayed `on`, while conflicting intake values landed in `intakePendingOverrides` as `cpapCurrent = ""` and `age = 38`.
+- Intake provenance behaved correctly: `cpapRetry` and `weightLossReadiness` were applied with `patient-intake` provenance, while `cpapCurrent` remained `clinician`.
+- Stale-save protection behaved correctly: first save returned `200`, second save with the stale `version` returned `409` and the reload-before-saving message.
+- CORS behaved correctly on staging:
+  - Allowed origin `http://127.0.0.1:3000` received `access-control-allow-origin` on both GET and OPTIONS.
+  - Disallowed origin `https://evil.example` received no permissive ACAO header on GET or OPTIONS.
+- API Gateway access logs were present in `/aws/apigateway/osa-phenotyper-capital-ent-stg-20260401b`, including the intentional `400`, the pre-fix `500`, and the post-fix `200`.
+- CloudTrail audit objects were present in `s3://osa-audit-logs-capital-ent-stg-20260401b-420551259537/...`, and sampled records included DynamoDB `PutItem`, `UpdateItem`, `GetItem`, `Scan`, and `TransactWriteItems` events from both patient and intake Lambdas.
+- Patient PDF export from the staging-backed UI saved `/Users/raymondbrown/Downloads/Sleep_Report_PDF_Export_QA_2026-04-02.pdf`.
+- PDF verification:
+  - producer `jsPDF 2.5.1`
+  - `5` pages
+  - `2868864` bytes
+  - letter-sized pages
+
+### Remaining Gaps After This Staging Pass
+- Browser automation for the patient-list archive/restore buttons remains flaky because Chrome + AppleScript dialog handling can stall the scripted UI path. During manual browser testing, that path also exposed a frontend scoping bug (`clearCurrentPatient is not defined`) in the archive reset helper; the scope fix is now patched locally in `index.html`, but the archive button still needs one final browser re-check after reload.
+- Full visual review of PDF pagination/clipping needed a fresh re-export after the latest local patch. Screenshot QA on April 1, 2026 showed real break defects in the prior export build:
+  - a phenotype section starting with clipped fragments at the top of page 2
+  - treatment paragraphs splitting across pages mid-rec-item
+  - `Your First 30 Days` and `What If…?` headers orphaning from their checklist/card content
+- Local remediation is now patched in `js/pdf-export.js` and `js/patientReport.js`:
+  - patient-report pages are built as separate DOM shells instead of relying on whole-report canvas slicing
+  - screen-only `.patient-report` margin/padding is reset during PDF measurement so the measured layout matches the rendered layout
+  - a fit buffer and stronger semantic grouping were added for phenotype, checklist, and what-if blocks
+- Re-check result on April 1, 2026: **PASS**
+  - Generated a fresh patient PDF through the live export code path and captured the artifact at `tests/artifacts/Sleep_Report_PDF_Pagination_QA_Fix2_2026-04-02.pdf`.
+  - Verified rendered pages from that new artifact:
+    - page 2 no longer starts with clipped carry-over fragments
+    - treatment recommendations no longer split mid-rec-item at the prior failing boundary
+    - `Your First 30 Days` starts with its heading, intro, and first checklist group together
+    - `What If…?` starts with its heading and scenario cards together on the final page
+
+---
+
 **Run date:** March 19, 2026
 **App version:** commit cca8d97 (HB revamp + T90)
 

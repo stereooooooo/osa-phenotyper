@@ -44,6 +44,10 @@ This pass addressed the remaining clinician-facing workflow and maintainability 
 - Updated `index.html` reset flow to clear progress-step ARIA state plus inline validation/error styling when starting a new patient.
 - Why: the reset path could leave behind invalid-state styling or navigation state from the prior chart.
 
+### 8. Fixed archive-path workspace reset scoping
+- Updated `index.html` so the generic DOM reset logic lives in `resetWorkspaceUiState()`, while the patient-state reset lives inside the auth/database orchestration scope and is exposed through `window.OSAChartActions.resetWorkspaceForNewPatient`.
+- Why: the archived-patient browser flow was calling a top-level reset helper that referenced `clearCurrentPatient()` from the wrong scope, which caused the real staging UI error `Failed to archive: clearCurrentPatient is not defined`.
+
 ## Follow-Up Still Recommended
 - Run a browser walkthrough for desktop and mobile layouts, especially the progress track and action-row stacking.
 - Run keyboard-only testing across the clinician workflow and report preview.

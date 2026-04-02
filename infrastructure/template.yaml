@@ -227,6 +227,9 @@ Resources:
 
   AdminUserGroupAttachment:
     Type: AWS::Cognito::UserPoolUserToGroupAttachment
+    DependsOn:
+      - AdminUser
+      - AdminGroup
     Properties:
       GroupName: !Ref AdminGroupName
       Username: !Ref AdminEmail
@@ -283,6 +286,14 @@ Resources:
                   - 'kms:Decrypt'
                   - 'kms:GenerateDataKey'
                 Resource: !GetAtt EncryptionKey.Arn
+        - PolicyName: CognitoGroupLookup
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'cognito-idp:AdminListGroupsForUser'
+                Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}'
 
   # ─── Intake Lambda Execution Role (least-privilege) ─────────
   IntakeLambdaRole:
@@ -354,6 +365,7 @@ Resources:
         Variables:
           TABLE_NAME: !Ref PatientTable
           TOKEN_TABLE: !Ref IntakeTokenTable
+          USER_POOL_ID: !Ref UserPool
           ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
           ADMIN_GROUP_NAME: !Ref AdminGroupName
           CLINICIAN_GROUP_NAME: !Ref ClinicianGroupName
@@ -701,13 +713,6 @@ Resources:
             SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
             MetricName: AWSSQLiRules
-
-  IntakeWafAssociation:
-    Type: AWS::WAFv2::WebACLAssociation
-    DependsOn: HttpApiStage
-    Properties:
-      ResourceArn: !Sub 'arn:aws:apigateway:${AWS::Region}::/apis/${HttpApi}/stages/$default'
-      WebACLArn: !GetAtt IntakeWaf.Arn
 
 Outputs:
   ApiUrl:
