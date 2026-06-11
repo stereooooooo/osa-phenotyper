@@ -291,6 +291,9 @@
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnIntakeLink" title="Generate a secure intake questionnaire link for the patient">
           <i class="bi bi-link-45deg"></i> Intake Link
         </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPortalLink" title="Manage the patient-facing portal page link">
+          <i class="bi bi-person-badge"></i> Patient Page
+        </button>
         <span class="text-muted small" id="patientLastSaved"></span>
       </span>
     </div>
@@ -341,6 +344,57 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Patient Portal Modal ===== -->
+<div class="modal fade" id="patientPortalModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-badge"></i> Patient Sleep Page</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="portalPublicationStatus" class="alert alert-secondary small mb-3">
+          No reviewed patient page has been published yet. Generate the patient report and publish it before sharing a link.
+        </div>
+        <div id="portalPublicationMeta" class="small text-muted mb-3 d-none"></div>
+        <div id="portalGenerate">
+          <p class="small text-muted mb-3">Generate a secure patient-facing page link. The page will always show the most recent clinician-published version of the patient's reviewed report.</p>
+          <button type="button" class="btn btn-primary w-100" id="btnGeneratePortalLink">
+            <i class="bi bi-plus-circle"></i> Generate Patient Page Link
+          </button>
+        </div>
+        <div id="portalLinkDisplay" class="d-none">
+          <div class="alert alert-success small">
+            <i class="bi bi-check-circle-fill"></i> Patient page link generated. Copy it below and send it through your secure communication workflow.
+          </div>
+          <div class="input-group mb-2">
+            <input type="text" class="form-control form-control-sm" id="portalLinkUrl" readonly>
+            <button class="btn btn-outline-secondary btn-sm" type="button" id="btnCopyPortalLink" title="Copy to clipboard">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+          <div class="small text-muted mb-3" id="portalLinkExpiry"></div>
+          <div class="alert alert-warning small mb-0">
+            <i class="bi bi-shield-lock"></i> <strong>HIPAA reminder:</strong> This link gives access to the patient's published sleep page. Share it only through approved secure channels.
+          </div>
+        </div>
+        <div id="portalTokensList" class="mt-3 d-none">
+          <hr>
+          <h6 class="small fw-semibold text-muted">Active Patient Page Links</h6>
+          <div id="portalTokensBody"></div>
+        </div>
+        <div id="portalLinkSpinner" class="text-center py-3 d-none">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+        </div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
+        <div class="small text-muted">Patients see only clinician-published content, not the live chart.</div>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -760,6 +814,9 @@
     </button>
     <button type="button" class="btn btn-outline-primary btn-sm" id="btnSaveReportSnapshot">
       <i class="bi bi-folder-check"></i> Save Snapshot
+    </button>
+    <button type="button" class="btn btn-outline-success btn-sm" id="btnPublishPatientPortal">
+      <i class="bi bi-cloud-check"></i> Publish to Patient Page
     </button>
     <button type="button" class="btn btn-success btn-sm" id="btnDownloadReportPdf">
       <i class="bi bi-file-earmark-pdf"></i> Download PDF
@@ -1803,6 +1860,7 @@ function applyRuntimeMeta(meta) {
     const reviewButton = document.getElementById('btnReviewIntake');
     const provenanceButton = document.getElementById('btnFieldProvenance');
     const snapshotButton = document.getElementById('btnReportSnapshots');
+    const portalButton = document.getElementById('btnPortalLink');
     reviewButton.classList.toggle('d-none', !hasPendingIntakeConflicts(patient));
     provenanceButton.classList.toggle('d-none', !patient.patientId);
     snapshotButton.classList.toggle('d-none', !patient.patientId);
@@ -1810,6 +1868,12 @@ function applyRuntimeMeta(meta) {
       ? patient.reportSnapshotCount
       : (Array.isArray(patient.reportSnapshots) ? patient.reportSnapshots.length : 0);
     snapshotButton.innerHTML = `<i class="bi bi-clock-history"></i> Snapshots${snapshotCount ? ` (${snapshotCount})` : ''}`;
+    if (portalButton) {
+      const published = Boolean(patient.patientPortalPublication && patient.patientPortalPublication.patientReportHtml);
+      portalButton.classList.toggle('btn-outline-secondary', !published);
+      portalButton.classList.toggle('btn-outline-success', published);
+      portalButton.innerHTML = `<i class="bi bi-person-badge"></i> Patient Page${published ? ' Published' : ''}`;
+    }
   }
 
   function formatPendingIntakeValue(value) {
@@ -2306,6 +2370,55 @@ function applyRuntimeMeta(meta) {
           if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
         }
       }
+    },
+    async publishPatientPortal({ analysisData, patientReportHtml, reportDate, patientName, triggerEl }) {
+      if (!currentPatientId) {
+        alert('Save the patient chart before publishing a patient page.');
+        return;
+      }
+
+      const button = document.getElementById('btnPublishPatientPortal');
+      const originalHtml = button ? button.innerHTML : '';
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Publishing...';
+      }
+
+      try {
+        const patient = await OSADatabase.updatePatient(currentPatientId, {
+          version: currentPatientVersion,
+          reportSnapshot: {
+            analysisData,
+            patientReportHtml,
+            reportDate,
+            patientName,
+          },
+          portalPublication: {
+            analysisData,
+            patientReportHtml,
+            reportDate,
+            patientName,
+          },
+          visitAction: 'Patient portal published',
+        });
+        currentPatientRecord = patient;
+        currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+        updatePatientBar(patient);
+        renderReportSnapshotsModal(patient);
+        alert('Patient page published. You can now generate or resend the patient page link.');
+      } catch (err) {
+        if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
+          alert('This chart changed before the patient page could be published. Reload the patient record and try again.');
+        } else {
+          alert('Could not publish the patient page: ' + err.message);
+        }
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+          if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
+        }
+      }
     }
   };
 
@@ -2329,6 +2442,41 @@ function applyRuntimeMeta(meta) {
     ? '/intake'
     : '/intake.html';
   const intakeBaseUrl = new URL(intakeLinkPath, `${intakeLinkBaseOrigin}/`).toString();
+  const patientPortalModal = new bootstrap.Modal(document.getElementById('patientPortalModal'));
+  const portalBaseUrl = new URL('/portal.html', `${intakeLinkBaseOrigin}/`);
+  if (forceLocalWorkflowLinks) {
+    portalBaseUrl.searchParams.set('testMode', 'workflow');
+  }
+
+  function formatPortalPublicationMeta(publication) {
+    if (!publication || !publication.publishedAt) return '';
+    const parts = [`Published ${formatDateTime(publication.publishedAt)}`];
+    if (publication.reportDate) parts.push(`Report date ${publication.reportDate}`);
+    if (publication.publishedBy) parts.push(`by ${publication.publishedBy}`);
+    return parts.join(' • ');
+  }
+
+  function renderPortalPublicationState(patient) {
+    const statusEl = document.getElementById('portalPublicationStatus');
+    const metaEl = document.getElementById('portalPublicationMeta');
+    const generateBtn = document.getElementById('btnGeneratePortalLink');
+    const published = patient && patient.patientPortalPublication && patient.patientPortalPublication.patientReportHtml;
+    if (!statusEl || !metaEl) return;
+
+    if (published) {
+      statusEl.className = 'alert alert-success small mb-3';
+      statusEl.innerHTML = '<i class="bi bi-cloud-check"></i> A reviewed patient page is currently published. New publications will replace what the patient sees at this link.';
+      metaEl.classList.remove('d-none');
+      metaEl.textContent = formatPortalPublicationMeta(patient.patientPortalPublication);
+      if (generateBtn) generateBtn.disabled = false;
+    } else {
+      statusEl.className = 'alert alert-secondary small mb-3';
+      statusEl.textContent = 'No reviewed patient page has been published yet. Generate the patient report and publish it before sharing a link.';
+      metaEl.classList.add('d-none');
+      metaEl.textContent = '';
+      if (generateBtn) generateBtn.disabled = true;
+    }
+  }
 
   document.getElementById('btnIntakeLink').addEventListener('click', async () => {
     if (!currentPatientId) {
@@ -2416,6 +2564,100 @@ function applyRuntimeMeta(meta) {
     try {
       await OSADatabase.revokeIntakeToken(tokenHash);
       loadIntakeTokens(currentPatientId);
+    } catch (err) {
+      alert('Failed to revoke: ' + err.message);
+    }
+  };
+
+  document.getElementById('btnPortalLink').addEventListener('click', async () => {
+    if (!currentPatientId) {
+      alert('Please save the patient first before managing a patient page link.');
+      return;
+    }
+    document.getElementById('portalGenerate').classList.remove('d-none');
+    document.getElementById('portalLinkDisplay').classList.add('d-none');
+    document.getElementById('portalLinkSpinner').classList.add('d-none');
+    try {
+      const patient = await OSADatabase.getPatient(currentPatientId);
+      currentPatientRecord = patient;
+      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+      updatePatientBar(patient);
+      renderPortalPublicationState(patient);
+      await loadPortalTokens(currentPatientId);
+      patientPortalModal.show();
+    } catch (err) {
+      alert('Could not load patient page details: ' + err.message);
+    }
+  });
+
+  document.getElementById('btnGeneratePortalLink').addEventListener('click', async () => {
+    const btn = document.getElementById('btnGeneratePortalLink');
+    const spinner = document.getElementById('portalLinkSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+      const result = await OSADatabase.createPortalToken(currentPatientId);
+      const url = new URL(portalBaseUrl.toString());
+      url.searchParams.set('t', result.token);
+
+      document.getElementById('portalLinkUrl').value = url.toString();
+      document.getElementById('portalLinkExpiry').textContent =
+        `Expires: ${new Date(result.expiresAt).toLocaleString()}`;
+      document.getElementById('portalGenerate').classList.add('d-none');
+      document.getElementById('portalLinkDisplay').classList.remove('d-none');
+      spinner.classList.add('d-none');
+      await loadPortalTokens(currentPatientId);
+    } catch (err) {
+      alert('Failed to generate patient page link: ' + err.message);
+      spinner.classList.add('d-none');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btnCopyPortalLink').addEventListener('click', () => {
+    const input = document.getElementById('portalLinkUrl');
+    navigator.clipboard.writeText(input.value).then(() => {
+      const btn = document.getElementById('btnCopyPortalLink');
+      btn.innerHTML = '<i class="bi bi-check"></i>';
+      setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
+    });
+  });
+
+  async function loadPortalTokens(patientId) {
+    const container = document.getElementById('portalTokensList');
+    const body = document.getElementById('portalTokensBody');
+    try {
+      const tokens = await OSADatabase.listPortalTokens(patientId);
+      if (!tokens.length) {
+        container.classList.add('d-none');
+        return;
+      }
+      container.classList.remove('d-none');
+      body.innerHTML = tokens.map(t => {
+        const status = t.status;
+        const badgeClass = status === 'active' ? 'bg-success' : status === 'expired' ? 'bg-secondary' : 'bg-danger';
+        const created = new Date(t.createdAt).toLocaleDateString();
+        const revokeBtn = status === 'active'
+          ? ` <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="revokePortalToken('${escHtml(t.tokenHash)}')" title="Revoke this patient page link"><i class="bi bi-x-circle"></i></button>`
+          : '';
+        return `<div class="d-flex align-items-center gap-2 mb-1">
+          <span class="badge ${badgeClass}" style="min-width:60px;">${status}</span>
+          <span class="small text-muted">${created}</span>
+          ${revokeBtn}
+        </div>`;
+      }).join('');
+    } catch (err) {
+      container.classList.add('d-none');
+    }
+  }
+
+  window.revokePortalToken = async function(tokenHash) {
+    if (!confirm('Revoke this patient page link? The patient will no longer be able to open it.')) return;
+    try {
+      await OSADatabase.revokePortalToken(tokenHash);
+      loadPortalTokens(currentPatientId);
     } catch (err) {
       alert('Failed to revoke: ' + err.message);
     }

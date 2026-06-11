@@ -30,6 +30,11 @@
 * **Visible runtime labeling:** the clinician app and intake page now render environment/build metadata plus a non-production banner so staging, pilot, workflow-test, and local sessions are clearly distinguishable from production.
 * **Deploy-time metadata injection:** `infrastructure/deploy.sh` now writes environment label, build ID, deploy time, and stack context into the runtime config / intake page during deployment.
 
+### Patient portal MVP
+* **Clinician-published patient page:** clinicians can now publish the currently reviewed patient report into a dedicated patient-facing portal view instead of exposing the live chart.
+* **Separate patient page links:** patient page links are generated independently from intake links and always resolve to the latest clinician-published version.
+* **Public read-only portal page:** `portal.html` renders only clinician-published content, never draft clinician chart state, and can later be extended with interactive education modules.
+
 ### Pilot launch docs
 * **Pilot checklist:** `docs/pilot-go-live-checklist.md` is the concrete pre-patient checklist for the first supervised live pilot day.
 * **Production hosting plan:** `docs/production-hosting-plan.md` maps the AWS / CloudFront / WAF / domain work needed to move from staging validation to a real production-hosted deployment.

@@ -572,6 +572,36 @@ let reportHtml = PatientReport.generateReportHTML(buildReportData({
 assert(reportHtml.includes('What may still be refined'), 'Data limitations callout renders when insufficient-data domains are present');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('did <strong>not show evidence of obstructive sleep apnea</strong> (AHI 3)'), 'Returning normal-AHI summary says the study did not show evidence of obstructive sleep apnea');
+assert(!reportHtml.includes('normal sleep apnea'), 'Returning normal-AHI summary never says "normal sleep apnea"');
+assert(reportHtml.includes('Your Sleep Study Summary'), 'Returning normal-AHI reports use a neutral sleep-study summary heading');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
+  subtype: 'Minimally Symptomatic',
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(!reportHtml.includes('Your Sleep Apnea Pattern:'), 'Normal-AHI reports suppress sleep-apnea subtype headings');
+assert(!reportHtml.includes('Not everyone with sleep apnea feels tired or has obvious symptoms'), 'Normal-AHI reports suppress OSA-specific subtype counseling');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 22,
+  ahi: 22,
+  severity: 'moderate',
+  nadir: 84,
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('lower than we want to see during sleep and one reason treatment still matters'), 'Moderate-range nadir wording is softer and action-oriented');
+assert(!reportHtml.includes('can affect your heart and overall health over time'), 'Moderate-range nadir wording avoids overstating long-term harm');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   insufficientDataDomains: [],
 }));
 assert(!reportHtml.includes('What may still be refined'), 'Data limitations callout stays hidden when insufficient-data domains are absent');
@@ -608,6 +638,14 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   bmi: 32,
 }));
 assert(reportHtml.includes('GLP-1 therapies'), 'BMI 30+ keeps GLP-1 language available in weight rec');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  phen: ['High Hypoxic Burden'],
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('meaningful drops in blood oxygen during the night'), 'High-hypoxic-burden explanation uses calibrated oxygen wording');
+assert(reportHtml.includes('can help confirm that treatment is bringing those oxygen levels into a safer range'), 'High-hypoxic-burden explanation keeps follow-up language probabilistic');
+assert(!reportHtml.includes('fall well below normal'), 'High-hypoxic-burden explanation avoids overly alarmist oxygen language');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'OXYGEN-WORKUP', text: 'Review full oxygen metrics before finalizing cardiovascular risk.' }],
@@ -687,6 +725,24 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'Surgery workup tag renders a patient-friendly safety explanation');
 assert(reportHtml.includes('sleep endoscopy (DISE) before choosing a specific airway surgery'), 'Surgery workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  hasCOMISA: true,
+  phen: ['Low Arousal Threshold', 'High Hypoxic Burden', 'Nasal-Resistance Contributor'],
+  recTags: [
+    { tag: 'CBTI', text: 'Treat insomnia first.' },
+    { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
+    { tag: 'CPAP', text: 'Use CPAP.' },
+    { tag: 'MAD', text: 'Consider oral appliance therapy.' },
+    { tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' },
+    { tag: 'ENDOTYPE-WORKUP', text: 'Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.' },
+    { tag: 'SURGALT', text: 'Airway surgery can be considered after full workup.' }
+  ],
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('Complete Before Finalizing Other Options'), 'Workup recommendations render in their own treatment-plan group');
+assert(reportHtml.indexOf('Start Now') < reportHtml.indexOf('Complete Before Finalizing Other Options'), 'Actual treatment actions lead before prerequisite workups');
+assert(reportHtml.indexOf('CPAP Therapy') < reportHtml.indexOf('Complete DISE-Guided Surgical Planning First'), 'Primary therapies appear before workup items in the treatment plan');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');

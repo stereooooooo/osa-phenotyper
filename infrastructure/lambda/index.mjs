@@ -28,6 +28,11 @@ const VISIT_FIELD_PREVIEW_LIMIT = 12;
 const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
 const INTAKE_REVIEW_HISTORY_LIMIT = 20;
 const INTAKE_REVIEW_FIELD_PREVIEW_LIMIT = 20;
+const TOKEN_TYPE_INTAKE = 'intake';
+const TOKEN_TYPE_PORTAL = 'portal';
+const INTAKE_TOKEN_LIFETIME_SECONDS = 72 * 60 * 60;
+const PORTAL_TOKEN_LIFETIME_SECONDS = 180 * 24 * 60 * 60;
+const TOKEN_TTL_GRACE_SECONDS = 30 * 24 * 60 * 60;
 const ALLOWED_INTAKE_REVIEW_ACTIONS = new Set(['accept-intake', 'keep-chart']);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
@@ -218,6 +223,70 @@ function buildReportSnapshots(existingSnapshots, payload, user, timestamp) {
   const snapshots = Array.isArray(existingSnapshots) ? existingSnapshots.slice() : [];
   snapshots.push(snapshot);
   return snapshots.slice(-REPORT_SNAPSHOT_LIMIT);
+}
+
+function extractPatientFirstName(fullName) {
+  const trimmed = String(fullName || '').trim();
+  if (!trimmed) return 'Patient';
+  if (trimmed.includes(',')) {
+    return trimmed.split(',').pop().trim().split(/\s+/)[0] || 'Patient';
+  }
+  return trimmed.split(/\s+/)[0] || 'Patient';
+}
+
+function buildPortalPublication(payload, user, timestamp) {
+  if (!payload || typeof payload !== 'object') return null;
+
+  const patientReportHtml = typeof payload.patientReportHtml === 'string'
+    ? payload.patientReportHtml.trim()
+    : '';
+  if (!patientReportHtml) return null;
+
+  const analysisData = cloneJson(payload.analysisData || {});
+  const analysisJson = JSON.stringify(analysisData);
+  const stage = analysisData.primaryAHI === null || analysisData.primaryAHI === undefined
+    ? 'pre-study'
+    : 'post-study';
+  const primaryAHI = analysisData.primaryAHI ?? null;
+  const severity = analysisData.severity || null;
+  const phenotypes = Array.isArray(analysisData.phen) ? analysisData.phen.slice(0, 20) : [];
+  const patientName = String(payload.patientName || '').trim();
+  const summaryParts = [];
+
+  summaryParts.push(stage === 'pre-study' ? 'Initial sleep evaluation' : 'Reviewed sleep report');
+  if (severity && severity !== 'normal') summaryParts.push(`${severity} OSA`);
+  if (primaryAHI !== null && primaryAHI !== undefined) {
+    summaryParts.push(primaryAHI < 5 ? `AHI ${Math.round(primaryAHI)} (normal range)` : `AHI ${Math.round(primaryAHI)}`);
+  }
+  if (phenotypes.length) summaryParts.push(phenotypes.slice(0, 2).join(', '));
+
+  return {
+    publicationId: randomUUID(),
+    publishedAt: timestamp,
+    publishedBy: user,
+    reportDate: payload.reportDate || timestamp.split('T')[0],
+    patientName,
+    patientFirstName: extractPatientFirstName(patientName),
+    stage,
+    severity,
+    primaryAHI,
+    phenotypes,
+    recTags: Array.isArray(analysisData.recTags) ? analysisData.recTags.map(rec => rec.tag).filter(Boolean).slice(0, 30) : [],
+    summary: summaryParts.filter(Boolean).join(' | ') || 'Reviewed patient report',
+    analysisData,
+    analysisHash: createHash('sha256').update(analysisJson).digest('hex'),
+    patientReportHtml,
+    patientReportHash: createHash('sha256').update(patientReportHtml).digest('hex'),
+    schemaVersion: 1,
+  };
+}
+
+function recordMatchesTokenType(record, tokenType) {
+  const actual = record?.tokenType;
+  if (tokenType === TOKEN_TYPE_INTAKE) {
+    return !actual || actual === TOKEN_TYPE_INTAKE;
+  }
+  return actual === tokenType;
 }
 
 function getMeaningfulChangedFields(previousFormData, nextFormData) {
@@ -454,6 +523,23 @@ export async function handler(event) {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const tokenHash = path.split('/').pop();
       return await revokeIntakeToken(event, tokenHash, user);
+    }
+
+    // ── Patient Portal Token Management Routes ─────────────
+    if (method === 'POST' && path === '/portal-tokens') {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      const body = JSON.parse(event.body || '{}');
+      return await createPortalToken(event, body, user);
+    }
+    if (method === 'GET' && path.match(/^\/portal-tokens\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      const patientId = path.split('/').pop();
+      return await listPortalTokens(event, patientId);
+    }
+    if (method === 'DELETE' && path.match(/^\/portal-tokens\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      const tokenHash = path.split('/').pop();
+      return await revokePortalToken(event, tokenHash, user);
     }
 
     return fail(event, 'Not found', 404);
@@ -805,6 +891,8 @@ async function updatePatient(event, id, body, user, userGroups) {
   } else if (status !== undefined && status !== (Item.status || '')) {
     changedRecordFields.push('status');
   }
+  if (body.reportSnapshot !== undefined) changedRecordFields.push('reportSnapshots');
+  if (body.portalPublication !== undefined) changedRecordFields.push('patientPortalPublication');
   const changedFormFields = formData !== undefined
     ? getMeaningfulChangedFields(currentFormData, formData)
     : [];
@@ -924,6 +1012,17 @@ async function updatePatient(event, id, body, user, userGroups) {
     updates[':rs'] = reportSnapshots;
     updates[':rsc'] = reportSnapshots.length;
     updates[':lrs'] = now;
+  }
+  if (body.portalPublication !== undefined) {
+    const portalPublication = buildPortalPublication(body.portalPublication, user, now);
+    if (!portalPublication) {
+      return fail(event, 'A reviewed patient report is required before publishing to the patient portal.');
+    }
+    expr += ', #pp = :pp, #ppat = :ppat';
+    names['#pp'] = 'patientPortalPublication';
+    names['#ppat'] = 'patientPortalPublishedAt';
+    updates[':pp'] = portalPublication;
+    updates[':ppat'] = now;
   }
 
   if (removeExpr.length) {
@@ -1071,7 +1170,11 @@ async function searchPatients(event, params, userGroups) {
  * Generate a time-limited, single-use intake token for a patient.
  * Token is returned once; only SHA-256 hash is stored.
  */
-async function createIntakeToken(event, body, user) {
+async function createPatientScopedToken(event, body, user, {
+  tokenType,
+  lifetimeSeconds,
+  logAction,
+}) {
   const { patientId } = body;
   if (!patientId) return fail(event, 'patientId is required');
 
@@ -1087,22 +1190,18 @@ async function createIntakeToken(event, body, user) {
   // Generate 256-bit cryptographically random token
   const rawToken = randomBytes(32).toString('base64url');
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-
-  // Extract first name only (for patient greeting — minimal PHI)
-  const fullName = patient.name || '';
-  const firstName = fullName.includes(',')
-    ? fullName.split(',').pop().trim().split(' ')[0]   // "Last, First Middle" → "First"
-    : fullName.split(' ')[0];                            // "First Last" → "First"
+  const firstName = extractPatientFirstName(patient.name || '');
 
   const now = new Date();
-  const expiresAt = Math.floor(now.getTime() / 1000) + (72 * 60 * 60); // 72 hours
-  const ttl = expiresAt + (30 * 24 * 60 * 60); // TTL: 30 days after expiry for audit
+  const expiresAt = Math.floor(now.getTime() / 1000) + lifetimeSeconds;
+  const ttl = expiresAt + TOKEN_TTL_GRACE_SECONDS;
 
   await ddb.send(new PutCommand({
     TableName: TOKEN_TABLE,
     Item: {
       tokenHash,
       patientId,
+      tokenType,
       expiresAt,
       ttl,
       status: 'active',
@@ -1116,8 +1215,9 @@ async function createIntakeToken(event, body, user) {
 
   // Audit log (no PHI — only patientId and action)
   console.log(JSON.stringify({
-    action: 'intake_token_created',
+    action: logAction,
     patientId,
+    tokenType,
     createdBy: user,
     expiresAt: new Date(expiresAt * 1000).toISOString(),
     timestamp: now.toISOString(),
@@ -1127,6 +1227,22 @@ async function createIntakeToken(event, body, user) {
     token: rawToken,
     expiresAt: new Date(expiresAt * 1000).toISOString(),
   }, 201);
+}
+
+async function createIntakeToken(event, body, user) {
+  return createPatientScopedToken(event, body, user, {
+    tokenType: TOKEN_TYPE_INTAKE,
+    lifetimeSeconds: INTAKE_TOKEN_LIFETIME_SECONDS,
+    logAction: 'intake_token_created',
+  });
+}
+
+async function createPortalToken(event, body, user) {
+  return createPatientScopedToken(event, body, user, {
+    tokenType: TOKEN_TYPE_PORTAL,
+    lifetimeSeconds: PORTAL_TOKEN_LIFETIME_SECONDS,
+    logAction: 'portal_token_created',
+  });
 }
 
 /**
@@ -1144,16 +1260,44 @@ async function listIntakeTokens(event, patientId) {
   }));
 
   const now = Math.floor(Date.now() / 1000);
-  const tokens = (Items || []).map(t => ({
+  const tokens = (Items || [])
+    .filter(t => recordMatchesTokenType(t, TOKEN_TYPE_INTAKE))
+    .map(t => ({
     tokenHash: t.tokenHash,
     status: t.status === 'active' && t.expiresAt <= now ? 'expired' : t.status,
     expiresAt: new Date(t.expiresAt * 1000).toISOString(),
     createdAt: t.createdAt,
     createdBy: t.createdBy,
     usedAt: t.usedAt,
-  }));
+    }));
 
   // Sort by createdAt desc
+  tokens.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return ok(event, tokens);
+}
+
+async function listPortalTokens(event, patientId) {
+  const { Items } = await ddb.send(new QueryCommand({
+    TableName: TOKEN_TABLE,
+    IndexName: 'patient-index',
+    KeyConditionExpression: 'patientId = :pid',
+    ExpressionAttributeValues: { ':pid': patientId },
+    ProjectionExpression: 'tokenHash, #s, expiresAt, createdAt, createdBy, usedAt, tokenType',
+    ExpressionAttributeNames: { '#s': 'status' },
+  }));
+
+  const now = Math.floor(Date.now() / 1000);
+  const tokens = (Items || [])
+    .filter(t => recordMatchesTokenType(t, TOKEN_TYPE_PORTAL))
+    .map(t => ({
+      tokenHash: t.tokenHash,
+      status: t.status === 'active' && t.expiresAt <= now ? 'expired' : t.status,
+      expiresAt: new Date(t.expiresAt * 1000).toISOString(),
+      createdAt: t.createdAt,
+      createdBy: t.createdBy,
+      usedAt: t.usedAt,
+    }));
+
   tokens.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   return ok(event, tokens);
 }
@@ -1163,23 +1307,35 @@ async function listIntakeTokens(event, patientId) {
  * Revoke an active token (sets status to 'revoked').
  */
 async function revokeIntakeToken(event, tokenHash, user) {
+  return revokeScopedToken(event, tokenHash, user, TOKEN_TYPE_INTAKE, 'intake_token_revoked');
+}
+
+async function revokePortalToken(event, tokenHash, user) {
+  return revokeScopedToken(event, tokenHash, user, TOKEN_TYPE_PORTAL, 'portal_token_revoked');
+}
+
+async function revokeScopedToken(event, tokenHash, user, tokenType, logAction) {
   try {
+    const typeCondition = tokenType === TOKEN_TYPE_INTAKE
+      ? '(attribute_not_exists(tokenType) OR tokenType = :tokenType)'
+      : 'tokenType = :tokenType';
     await ddb.send(new UpdateCommand({
       TableName: TOKEN_TABLE,
       Key: { tokenHash },
       UpdateExpression: 'SET #s = :revoked, revokedAt = :now, revokedBy = :user',
-      ConditionExpression: '#s = :active',
+      ConditionExpression: `#s = :active AND ${typeCondition}`,
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: {
         ':revoked': 'revoked',
         ':active': 'active',
+        ':tokenType': tokenType,
         ':now': new Date().toISOString(),
         ':user': user,
       },
     }));
 
     console.log(JSON.stringify({
-      action: 'intake_token_revoked',
+      action: logAction,
       tokenHash: tokenHash.substring(0, 8) + '...',
       revokedBy: user,
       timestamp: new Date().toISOString(),

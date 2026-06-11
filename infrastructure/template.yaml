@@ -613,6 +613,14 @@ Resources:
       AuthorizationType: NONE
       Target: !Sub 'integrations/${IntakeLambdaIntegration}'
 
+  RouteGetPatientPortal:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /patient-portal/{token}'
+      AuthorizationType: NONE
+      Target: !Sub 'integrations/${IntakeLambdaIntegration}'
+
   # Routes — Token Management (Cognito-authorized, clinician-facing)
   RouteCreateIntakeToken:
     Type: AWS::ApiGatewayV2::Route
@@ -637,6 +645,33 @@ Resources:
     Properties:
       ApiId: !Ref HttpApi
       RouteKey: 'DELETE /intake-tokens/{tokenHash}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteCreatePortalToken:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /portal-tokens'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteGetPortalTokens:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /portal-tokens/{patientId}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref HttpApiAuthorizer
+      Target: !Sub 'integrations/${LambdaIntegration}'
+
+  RouteDeletePortalToken:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'DELETE /portal-tokens/{tokenHash}'
       AuthorizationType: JWT
       AuthorizerId: !Ref HttpApiAuthorizer
       Target: !Sub 'integrations/${LambdaIntegration}'
@@ -746,6 +781,24 @@ Resources:
             Compress: true
             CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
             OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
+          - PathPattern: portal-tokens*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            Compress: true
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
+            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
           - PathPattern: intake/*
             TargetOriginId: ApiOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -757,6 +810,20 @@ Resources:
               - POST
               - PATCH
               - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            Compress: true
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
+            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
+          - PathPattern: patient-portal/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
             CachedMethods:
               - GET
               - HEAD

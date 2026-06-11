@@ -5,6 +5,7 @@
  * Routes:
  *   GET  /intake/{token}  – validate magic-link token, return minimal info
  *   POST /intake/{token}  – submit intake form, merge into patient record
+ *   GET  /patient-portal/{token} – return the latest clinician-published patient portal view
  *
  * Security:
  *   - Tokens are SHA-256 hashed before DB lookup (never stored in plain text)
@@ -28,6 +29,8 @@ const ddb           = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const MAX_TOKEN_ATTEMPTS = 5;
 const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
+const TOKEN_TYPE_INTAKE = 'intake';
+const TOKEN_TYPE_PORTAL = 'portal';
 
 /* ── CORS + security response headers ────────────────────── */
 
@@ -76,6 +79,12 @@ export async function handler(event) {
     if (method === 'GET' && path.match(/^\/intake\/[^/]+$/)) {
       const token = path.split('/').pop();
       return await handleGetIntake(event, token);
+    }
+
+    // GET /patient-portal/{token}
+    if (method === 'GET' && path.match(/^\/patient-portal\/[^/]+$/)) {
+      const token = path.split('/').pop();
+      return await handleGetPatientPortal(event, token);
     }
 
     // POST /intake/{token}
@@ -130,8 +139,16 @@ async function incrementAttempts(tokenHash) {
  * The `reason` is only for server-side logging; it is NEVER sent to the client.
  */
 function validateTokenRecord(record) {
+  return validateTokenRecordForType(record, TOKEN_TYPE_INTAKE);
+}
+
+function validateTokenRecordForType(record, expectedTokenType) {
   if (!record) {
     return { valid: false, reason: 'not_found' };
+  }
+  const recordType = record.tokenType || TOKEN_TYPE_INTAKE;
+  if (recordType !== expectedTokenType) {
+    return { valid: false, reason: 'token_type_mismatch' };
   }
   if (record.status !== 'active') {
     return { valid: false, reason: 'status_not_active' };
@@ -150,7 +167,7 @@ function validateTokenRecord(record) {
  * Full token lookup + validation flow.
  * Returns the same shape as validateTokenRecord, plus tokenHash for later use.
  */
-async function lookupAndValidateToken(rawToken) {
+async function lookupAndValidateToken(rawToken, expectedTokenType = TOKEN_TYPE_INTAKE) {
   const tokenHash = hashToken(rawToken);
 
   const { Item: record } = await ddb.send(new GetCommand({
@@ -158,7 +175,7 @@ async function lookupAndValidateToken(rawToken) {
     Key: { tokenHash },
   }));
 
-  const result = validateTokenRecord(record);
+  const result = validateTokenRecordForType(record, expectedTokenType);
 
   if (!result.valid) {
     await incrementAttempts(tokenHash);
@@ -175,7 +192,7 @@ async function lookupAndValidateToken(rawToken) {
 /* ── GET /intake/{token} ─────────────────────────────────── */
 
 async function handleGetIntake(event, rawToken) {
-  const { valid, record, tokenHash } = await lookupAndValidateToken(rawToken);
+  const { valid, record, tokenHash } = await lookupAndValidateToken(rawToken, TOKEN_TYPE_INTAKE);
 
   if (!valid) {
     return fail(event, TOKEN_INVALID_MSG, 403);
@@ -205,6 +222,70 @@ async function handleGetIntake(event, rawToken) {
     valid: true,
     firstName: record.patientFirstName,
     expiresAt: new Date(record.expiresAt * 1000).toISOString(),
+  });
+}
+
+/* ── GET /patient-portal/{token} ─────────────────────────── */
+
+async function handleGetPatientPortal(event, rawToken) {
+  const { valid, record } = await lookupAndValidateToken(rawToken, TOKEN_TYPE_PORTAL);
+
+  if (!valid) {
+    return fail(event, TOKEN_INVALID_MSG, 403);
+  }
+
+  const { Item: patient } = await ddb.send(new GetCommand({
+    TableName: PATIENT_TABLE,
+    Key: { patientId: record.patientId },
+    ProjectionExpression: 'patientId, isDeleted, patientPortalPublication',
+  }));
+
+  if (!patient || patient.isDeleted) {
+    console.log(JSON.stringify({
+      action: 'portal_validate_patient_unavailable',
+      patientId: record.patientId,
+      timestamp: new Date().toISOString(),
+    }));
+    return fail(event, TOKEN_INVALID_MSG, 403);
+  }
+
+  const publication = patient.patientPortalPublication;
+
+  console.log(JSON.stringify({
+    action: 'portal_validate_success',
+    patientId: record.patientId,
+    published: Boolean(publication && publication.patientReportHtml),
+    timestamp: new Date().toISOString(),
+  }));
+
+  if (!publication || !publication.patientReportHtml) {
+    return ok(event, {
+      valid: true,
+      published: false,
+      firstName: record.patientFirstName,
+      expiresAt: new Date(record.expiresAt * 1000).toISOString(),
+    });
+  }
+
+  return ok(event, {
+    valid: true,
+    published: true,
+    firstName: record.patientFirstName,
+    expiresAt: new Date(record.expiresAt * 1000).toISOString(),
+    publication: {
+      publicationId: publication.publicationId,
+      publishedAt: publication.publishedAt,
+      publishedBy: publication.publishedBy,
+      reportDate: publication.reportDate,
+      patientName: publication.patientName,
+      patientFirstName: publication.patientFirstName,
+      stage: publication.stage,
+      severity: publication.severity,
+      primaryAHI: publication.primaryAHI,
+      summary: publication.summary,
+      patientReportHtml: publication.patientReportHtml,
+      schemaVersion: publication.schemaVersion || 1,
+    },
   });
 }
 
@@ -686,7 +767,7 @@ function mapToFormData(data, scores) {
 async function handlePostIntake(event, rawToken, rawBody) {
   // ── 1. Validate token ────────────────────────────────────
   const { valid: tokenValid, record: tokenRecord, tokenHash } =
-    await lookupAndValidateToken(rawToken);
+    await lookupAndValidateToken(rawToken, TOKEN_TYPE_INTAKE);
 
   if (!tokenValid) {
     return fail(event, TOKEN_INVALID_MSG, 403);

@@ -2134,6 +2134,7 @@ document.getElementById('form').addEventListener('submit', e => {
 const reportOverlay = document.getElementById('reportOverlay');
 const reportCloseButton = document.getElementById('btnCloseReport');
 const saveReportSnapshotButton = document.getElementById('btnSaveReportSnapshot');
+const publishPatientPortalButton = document.getElementById('btnPublishPatientPortal');
 let lastReportTrigger = null;
 
 function getReportFocusableElements() {
@@ -2156,6 +2157,7 @@ function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false) {
   reportOverlay.classList.add('active');
   document.body.classList.add('report-preview-open');
   if (saveReportSnapshotButton) saveReportSnapshotButton.disabled = !allowSnapshotSave;
+  if (publishPatientPortalButton) publishPatientPortalButton.disabled = !allowSnapshotSave;
   window.setTimeout(() => reportCloseButton?.focus(), 0);
 }
 
@@ -2175,6 +2177,18 @@ document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', asyn
   if (!lastAnalysisData || !window.OSAChartActions?.saveReportSnapshot) return;
   const currentHtml = document.getElementById('reportPreviewContent')?.innerHTML || '';
   await window.OSAChartActions.saveReportSnapshot({
+    analysisData: lastAnalysisData,
+    patientReportHtml: currentHtml,
+    reportDate: lastAnalysisData.reportDate,
+    patientName: lastAnalysisData.patientName,
+    triggerEl: e.currentTarget,
+  });
+});
+
+document.getElementById('btnPublishPatientPortal')?.addEventListener('click', async (e) => {
+  if (!lastAnalysisData || !window.OSAChartActions?.publishPatientPortal) return;
+  const currentHtml = document.getElementById('reportPreviewContent')?.innerHTML || '';
+  await window.OSAChartActions.publishPatientPortal({
     analysisData: lastAnalysisData,
     patientReportHtml: currentHtml,
     reportDate: lastAnalysisData.reportDate,

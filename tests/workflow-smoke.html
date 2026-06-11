@@ -21,6 +21,7 @@
 
 <iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
 <iframe id="intakeFrame" src="../intake.html?testMode=workflow&amp;t=workflow-token"></iframe>
+<iframe id="portalFrame" src="about:blank"></iframe>
 
 <script>
 let passed = 0;
@@ -157,7 +158,32 @@ async function runClinicianWorkflow() {
     return patient && patient.reportSnapshotCount === 1;
   }, 'snapshot saved');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshotCount, 1, 'Save Snapshot persists a report snapshot through the chart workflow');
+
+  clickSelector(win, '#btnPublishPatientPortal');
+  await waitFor(() => {
+    const patient = win.__OSA_WORKFLOW_TEST__.listPatients(false)[0];
+    return patient && patient.patientPortalPublication && patient.patientPortalPublication.patientReportHtml;
+  }, 'portal publication saved');
+  assert(Boolean(win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].patientPortalPublication), 'Publish to Patient Page persists a reviewed patient portal publication');
   clickSelector(win, '#btnCloseReport');
+
+  clickSelector(win, '#btnPortalLink');
+  await waitFor(() => doc.getElementById('patientPortalModal').classList.contains('show'), 'patient portal modal opens');
+  clickSelector(win, '#btnGeneratePortalLink');
+  await waitFor(() => Boolean(doc.getElementById('portalLinkUrl').value), 'patient portal link generated');
+  const generatedPortalLink = doc.getElementById('portalLinkUrl').value;
+  assert(generatedPortalLink.startsWith(`${win.location.origin}/portal.html?testMode=workflow&t=workflow-portal-token-`), 'Workflow portal-link generation points at the local patient portal page');
+  const portalFrame = document.getElementById('portalFrame');
+  portalFrame.src = generatedPortalLink;
+  await waitFor(() => {
+    const portalDoc = portalFrame.contentDocument;
+    return portalDoc && portalDoc.getElementById('portalStateReady') && !portalDoc.getElementById('portalStateReady').classList.contains('d-none');
+  }, 'portal page rendered');
+  assert(portalFrame.contentDocument.getElementById('portalReportMount').textContent.includes('Workflow QA Patient'), 'Published patient page renders the clinician-reviewed report content');
+  assert(portalFrame.contentDocument.getElementById('portalStatePending').classList.contains('d-none'), 'Published patient page stays out of the unpublished placeholder state');
+  assert(!portalFrame.contentDocument.getElementById('portalOverview').classList.contains('d-none'), 'Published patient page shows the at-a-glance overview rail');
+  assert(portalFrame.contentDocument.getElementById('portalOverviewStudy').textContent.includes('AHI 28'), 'Published patient page surfaces the sleep-study summary above the full report');
+  assert(portalFrame.contentWindow.getComputedStyle(portalFrame.contentDocument.querySelector('.report-header')).display === 'none', 'Published patient page hides the duplicate inner report header');
 
   clickSelector(win, '#btnClearForm');
   await waitFor(() => doc.getElementById('patientIdBar').style.display === 'none', 'patient bar hidden after clear');

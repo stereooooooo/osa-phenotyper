@@ -80,6 +80,8 @@
 | 41 | Patient PDF metadata | Exported patient PDF filename should use patient name + report date, and per-page footer date should match the report date rather than export time |
 | 42 | Patient PDF pagination | Long patient report with care pathway, checklist groups, and multiple what-if cards — page breaks should prefer section/card boundaries, avoid splitting mid-rec-item, and keep `Your First 30 Days` / `What If…?` headings with their first block |
 
+Normal-AHI wording check: returning post-study summaries should say the study did not show evidence of obstructive sleep apnea, not `normal sleep apnea`.
+
 ### Group 10: Intake & Data Integrity Regression Checks
 | # | Name | Key Features |
 |---|------|-------------|
@@ -241,3 +243,18 @@
 |---|------|-------------|
 | 123 | Clinician runtime labeling | The main app should visibly label the current environment and build metadata, and show a non-production banner in workflow-test / local / staging / pilot modes so staging cannot be mistaken for production during clinical validation |
 | 124 | Intake runtime labeling | The patient intake surface should show matching runtime metadata and a non-production banner outside production so pilot/staging intake links are visibly distinguishable from the production patient-facing flow |
+
+### Group 30: Patient Portal MVP
+| # | Name | Key Features |
+|---|------|-------------|
+| 125 | Clinician patient-page publication | From the report overlay, clinicians should be able to publish the reviewed patient report into a patient-facing portal record without exposing the live chart or requiring a separate manual artifact upload |
+| 126 | Patient-page link management | The patient bar should expose a dedicated patient-page link workflow that only becomes shareable after publication and maintains separate portal tokens from intake tokens |
+| 127 | Public patient-page rendering | `portal.html` should render only the latest clinician-published patient-facing content for a valid token, while unpublished/invalid links stay in safe non-disclosive states |
+| 128 | Local patient-page smoke journey | On localhost workflow test mode, the executable smoke suite should cover publish → link generation → portal page render as one end-to-end flow |
+| 129 | Patient-page presentation and mobile layout | Published patient pages should surface an at-a-glance summary above the report, avoid duplicated inner report chrome, and keep the embedded report readable on narrow screens |
+
+### Group 31: Synthetic Patient Wording Calibration
+| # | Name | Key Features |
+|---|------|-------------|
+| 130 | Moderate oxygen-language calibration | Moderate-range oxygen abnormalities on a real-looking post-study chart should use action-oriented but non-alarmist patient wording, especially for nadir and hypoxic-burden explanations |
+| 131 | Treatment-plan workup separation | When first-line therapies and prerequisite workup tags coexist, the patient plan should lead with actual therapies and move prerequisite workup items into a separate bucket instead of letting them dominate `Start Now` |
