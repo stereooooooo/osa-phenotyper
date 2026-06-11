@@ -61,29 +61,37 @@ function confidenceFor(tag, ctx){
     case 'Low Arousal Threshold': {
       const score = m.edwardsArTHScore || 0;
       const maxScore = m.edwardsArTHMaxScore || 0;
+      // Full 3-variable Edwards score carries the published 84% accuracy (Edwards 2014).
       if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
-      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Moderate';
+      // Partial 2-of-3 (hypopnea fraction unavailable, e.g. routine WatchPAT): the validated
+      // accuracy does NOT apply to the truncated score — report as low-confidence/incomplete.
+      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Low';
       return 'Low';
     }
     case 'High Loop Gain': {
-      const lg = m.lgEstimate;
+      // Qualitative ventilatory-instability flag (no numeric estimate). Driven only by the
+      // central / periodic-breathing signals the study reports; capped at Moderate because
+      // these are supportive signals, not a validated loop-gain measurement.
       const supportCount =
         ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
         ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
         ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
         ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-      if(exists(lg) && lg >= T.loopGain.estimateHigh) return supportCount >= 1 ? 'High' : 'Moderate';
-      if(exists(lg) && lg >= T.loopGain.estimateBorderline) return supportCount >= 1 || m.cvd ? 'Moderate' : 'Low';
-      if(supportCount >= 2) return m.cvd ? 'High' : 'Moderate';
-      if(supportCount >= 1 && m.cvd) return 'Moderate';
+      const strong =
+        ((m.csr||0) >= T.loopGain.csrHigh ? 1 : 0) +
+        ((m.pahic3||0) >= T.loopGain.pahic3High ? 1 : 0) +
+        ((m.pahic4||0) >= T.loopGain.pahic4High ? 1 : 0);
+      if(supportCount >= 2 && strong >= 1) return 'Moderate';
+      if(supportCount >= 2) return m.cvd ? 'Moderate' : 'Low';
+      if(supportCount >= 1 && m.cvd) return 'Low';
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
       const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
       const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
-      /* High confidence: persistent NREM burden + strong REM/NREM skew */
-      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
-      /* Moderate: AHI≥15 validated by Sands 2018, Bamagoos 2019 */
+      // Inferred from the REM/NREM event distribution — a surrogate, not a measured
+      // pharyngeal-muscle trait. Capped at Moderate confidence (Sands 2018 validated muscle
+      // compensation via PSG airflow/Pcrit, not via a REM/NREM ratio).
       if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
       return 'Low';
     }
@@ -981,17 +989,20 @@ document.getElementById('form').addEventListener('submit', e => {
     ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
     : null;
 
-  /* ── Loop Gain point-of-care estimate (Schmickl 2022) ── */
-  /* LG1 = intercept + 0.0016 × AHI − 0.0019 × Hypopnea%  (r=0.48, AUC 0.73 for LG>0.7)
-     Intercept ~0.50 estimated from model calibration (typical LG range 0.2–0.8) */
-  const lgEstimate = (exists(ahi) && exists(fHypopneas))
-    ? Math.max(0, 0.50 + 0.0016 * ahi - 0.0019 * fHypopneas)
-    : null;
+  /* ── Loop Gain: qualitative only (no numeric estimate) ──
+     The Schmickl 2022 regression (LG = β·AHI − β·Hyp%) has NO published intercept and
+     only r=0.48 / AUC 0.73, so a per-patient point estimate over-implies precision and
+     was removed (Phase 2, 2026-06). Possible ventilatory instability is now flagged
+     qualitatively from the central / periodic-breathing signals below (see
+     loopGainSupportCount). */
 
   /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
   /* 3-variable clinical prediction of low arousal threshold:
      AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
-     Score ≥2 = likely low arousal threshold (84% accuracy) */
+     Score ≥2 of 3 = likely low ArTH (84% accuracy). NOTE: that validated accuracy applies
+     to the FULL 3-variable score. When the hypopnea fraction is unavailable (routine
+     WatchPAT), a 2-of-3 partial score is computed and reported at LOW confidence — the 84%
+     figure does not carry to the truncated score. */
   const edwardsArTH = (() => {
     if (!exists(ahi)) return null;
     let score = 0;
@@ -1024,10 +1035,27 @@ document.getElementById('form').addEventListener('submit', e => {
     sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
     remAhi, nremAhi, sup, nons, odi, nadir,
     hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
-    fHypopneas, lgEstimate,
+    fHypopneas,
     edwardsArTHScore: edwardsArTH?.score ?? 0,
     edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
   };
+
+  /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
+     framing are reserved for this tier; a single MODERATE metric flags the phenotype as
+     supportive context only. Thresholds are population-derived (see config.js). */
+  const hbHighTier =
+    (exists(hbPH)   && hbPH   >= T.hypoxicBurden.hbPerHourHigh) ||
+    (exists(odi)    && odi    >  T.hypoxicBurden.odiSevere) ||
+    (exists(nadir)  && nadir  <  T.hypoxicBurden.nadirSevere) ||
+    (exists(t90)    && t90    >  T.hypoxicBurden.t90Severe) ||
+    (exists(hb90PH) && hb90PH >  T.hypoxicBurden.areaUnder90Severe);
+
+  /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
+  const loopGainSupportCount =
+    ((csr||0)    >= T.loopGain.csr    ? 1 : 0) +
+    ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
+    ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
+    ((cai||0)    >= T.loopGain.pahic3 ? 1 : 0);
 
   /* Sex-specific neck threshold */
   const neckThreshold = (sex === 'F') ? T.anatomical.neck.female : T.anatomical.neck.male;
@@ -1060,20 +1088,13 @@ document.getElementById('form').addEventListener('submit', e => {
       ]);
     }
 
-    const loopGainSupportCount =
-      ((csr||0) >= T.loopGain.csr ? 1 : 0) +
-      ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-      ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-      ((cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-    const highLoopGainDetected =
-      (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateHigh) ||
-      (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateBorderline && loopGainSupportCount >= 1) ||
-      (!exists(lgEstimate) && loopGainSupportCount >= 2);
+    /* Qualitative loop-gain flag: ≥2 central / periodic-breathing signals suggest possible
+       ventilatory instability (no numeric estimate; see config.js loopGain note). */
+    const highLoopGainDetected = loopGainSupportCount >= T.loopGain.supportMin;
     const remStageRatio = ratio(remAhi, nremAhi);
     const supNonSupRatio = ratio(sup, nons);
     if(highLoopGainDetected){
       add('High Loop Gain',[
-        exists(lgEstimate)?`LG≈${lgEstimate.toFixed(2)}`:'',
         csr?`CSR ${csr}%`:'',
         exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
         exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
@@ -1087,7 +1108,7 @@ document.getElementById('form').addEventListener('submit', e => {
         exists(nremAhi) &&
         nremAhi >= T.muscleResponse.nremFloor &&
         remStageRatio > T.muscleResponse.remNremRatio ){
-      add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`]);
+      add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`, 'inferred surrogate (not a measured trait)']);
     }
 
     if( exists(supNonSupRatio) && exists(nons) && supNonSupRatio > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
@@ -1213,7 +1234,11 @@ document.getElementById('form').addEventListener('submit', e => {
         pushRec(recs,'Oral appliance therapy is a reasonable alternative/adjunct in REM-predominant OSA.','REM-MAD');
         break;
       case 'High Hypoxic Burden':
-        pushRec(recs,'Start effective therapy promptly to reduce cardiovascular risk.','HB-URG');
+        // Urgency / CV-risk rec only when HB is in the genuinely-high range (CPAP CV-benefit
+        // evidence). A single moderate metric leaves this as supportive context, no urgency.
+        if (hbHighTier) {
+          pushRec(recs,'Hypoxic burden is in the high range where CPAP has shown cardiovascular benefit in trial cohorts — prioritize timely initiation of effective therapy.','HB-URG');
+        }
         break;
       case 'Nasal-Resistance Contributor':
         pushRec(recs,'Nasal optimization (saline rinse, intranasal steroid, ENT evaluation) can improve airflow and CPAP/MAD tolerance.','NASAL-OPT');
@@ -1263,8 +1288,11 @@ document.getElementById('form').addEventListener('submit', e => {
     if (exists(bmi) && bmi >= 30) { unfavorable++; details.push('BMI ≥30'); }
     if (ahi > 30) { unfavorable++; details.push('AHI >30'); }
     const stage = unfavorable === 0 ? 'I' : unfavorable === 1 ? 'II' : unfavorable === 2 ? 'III' : 'IV';
-    const responseRate = unfavorable === 0 ? 91 : unfavorable === 1 ? 68 : unfavorable === 2 ? 50 : 38;
-    return { stage, responseRate, unfavorable, details };
+    // Qualitative candidacy tier only. The Ji 2026 model is single-center (n=119, C=0.68)
+    // and uses a 4th variable (comorbidity burden) the form does not capture, so we do NOT
+    // emit the paper's exact response percentages — see clinician display caveat.
+    const favorability = unfavorable === 0 ? 'more favorable' : unfavorable === 1 ? 'favorable–intermediate' : unfavorable === 2 ? 'less favorable' : 'least favorable';
+    return { stage, favorability, unfavorable, details };
   })();
 
   /* ─── DISE concentric collapse check ────────────────────── */
@@ -1566,8 +1594,8 @@ document.getElementById('form').addEventListener('submit', e => {
   if(out.phen.includes('High Loop Gain')){
     guardrails.push('If considering ASV, confirm LVEF > 45% (contraindicated in HFrEF \u226445%).');
   }
-  if(out.phen.includes('High Hypoxic Burden')){
-    guardrails.push('Prioritize timely initiation of effective therapy due to CV-risk association with hypoxic burden.');
+  if(out.phen.includes('High Hypoxic Burden') && hbHighTier){
+    guardrails.push('Hypoxic burden is in the high range associated with elevated CV risk in trial cohorts — prioritize timely initiation of effective therapy. (HB action thresholds are population-derived, not yet guideline-endorsed.)');
   }
   if(out.phen.includes('Positional OSA') && ahi >= T.severity.severe){
     guardrails.push('Positional therapy alone may be insufficient at this AHI severity; consider as adjunct to PAP.');
@@ -1804,7 +1832,7 @@ document.getElementById('form').addEventListener('submit', e => {
       if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
       if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
       if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>High-risk OSA per pooled multi-trial analysis <small class="text-muted">(Azarbarzin 2025)</small></li><li>CPAP significantly reduces CV events in this group — strongly prioritize effective PAP</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD — highest-risk phenotype, urgent treatment <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}</ul></div>`;
+      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>High-risk OSA per pooled multi-trial analysis <small class="text-muted">(Azarbarzin 2025)</small></li><li>CPAP significantly reduces CV events in this group — strongly prioritize effective PAP</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD — highest-risk phenotype, urgent treatment <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}<li><small class="text-muted">HB action thresholds are population-derived (ISAACC median / pooled cohorts), not yet guideline-endorsed cutoffs — weigh alongside the overall clinical picture.</small></li></ul></div>`;
     }
     if (highHB || severeOther) {
       const triggers = [];
@@ -1812,7 +1840,7 @@ document.getElementById('form').addEventListener('submit', e => {
       if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
       if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
       if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP CV Benefit</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>Above thresholds where CPAP reduces CV events (HR 0.57) <small class="text-muted">(Pinilla 2023)</small></li><li>HB (not AHI alone) predicts MACCEs (HR 1.87) <small class="text-muted">(RICCADSA / Peker 2025)</small></li><li>Prioritize effective PAP therapy for CV risk reduction</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}</ul></div>`;
+      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP CV Benefit</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>Above thresholds where CPAP reduces CV events (HR 0.57) <small class="text-muted">(Pinilla 2023)</small></li><li>HB (not AHI alone) predicts MACCEs (HR 1.87) <small class="text-muted">(RICCADSA / Peker 2025)</small></li><li>Prioritize effective PAP therapy for CV risk reduction</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}<li><small class="text-muted">HB action thresholds are population-derived (ISAACC median / pooled cohorts), not yet guideline-endorsed cutoffs — weigh alongside the overall clinical picture.</small></li></ul></div>`;
     }
     return '';
   })();
@@ -1824,7 +1852,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
     const isMild = ahi < 15;
     if (isMild) {
-      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>CPAP and non-CPAP treatments (MAD, positional, weight loss) show comparable outcomes <small class="text-muted">(Pinilla 2023)</small></li><li>Patient preference should guide selection — alternatives are strong first-line</li><li><small class="text-muted">Note: ISAACC low-HB patients on CPAP trended toward increased CV events (HR 1.33, NS) — supports alternatives-first approach</small></li></ul></div>`;
+      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>CPAP and non-CPAP treatments (MAD, positional, weight loss) show comparable outcomes <small class="text-muted">(Pinilla 2023)</small></li><li>Patient preference should guide selection — alternatives are reasonable first-line</li><li><small class="text-muted">Note: this reflects comparable efficacy in low-HB mild OSA; it does not indicate CPAP is harmful, and CPAP remains appropriate if preferred or otherwise indicated.</small></li></ul></div>`;
     }
     // Moderate OSA + low HB: still worth noting
     if (ahi < 30) {
@@ -1927,10 +1955,16 @@ document.getElementById('form').addEventListener('submit', e => {
     const collImplication = collapsibility === 'high' ? 'Anatomy-directed therapy (CPAP, surgery, HNS) prioritized' : collapsibility === 'low' ? 'Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed' : 'Mixed pattern — both anatomic and nonanatomic therapies may be effective';
     clinAnalysisParts.push(`<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Collapsibility: ${collLabel}</strong> <small class="text-muted">(Vena 2022)</small><ul class="mb-0 mt-1"><li>F(hypopneas) = ${fHypopneas.toFixed(0)}%</li><li>${collImplication}</li></ul></div>`);
   }
-  if (exists(lgEstimate)) {
-    const lgLevel = lgEstimate >= T.loopGain.estimateHigh ? 'High' : lgEstimate >= T.loopGain.estimateBorderline ? 'Borderline' : 'Low';
-    const lgAction = lgEstimate >= T.loopGain.estimateHigh ? '<li>Consider O₂ or acetazolamide</li><li>Monitor for treatment-emergent centrals</li>' : lgEstimate >= T.loopGain.estimateBorderline ? '<li>Monitor for residual events on therapy</li>' : '';
-    clinAnalysisParts.push(`<div class="alert alert-${lgEstimate >= T.loopGain.estimateHigh ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Loop Gain: ${lgLevel} (LG ≈ ${lgEstimate.toFixed(2)})</strong> <small class="text-muted">(Schmickl 2022)</small>${lgAction ? `<ul class="mb-0 mt-1">${lgAction}</ul>` : ''}</div>`);
+  if (loopGainSupportCount >= 1) {
+    const lgSuspected = loopGainSupportCount >= T.loopGain.supportMin;
+    const lgSignals = [
+      csr ? `Cheyne-Stokes / periodic breathing ${csr}%` : '',
+      exists(pahic3) ? `pAHIc 3% ${pahic3}/h` : '',
+      exists(pahic4) ? `pAHIc 4% ${pahic4}/h` : '',
+      exists(cai) ? `CAI ${cai}/h` : '',
+    ].filter(Boolean).map(s => `<li>${s}</li>`).join('');
+    const lgAction = lgSuspected ? '<li>If centrals persist on therapy: consider O₂ or acetazolamide (confirm with in-lab PSG first)</li>' : '';
+    clinAnalysisParts.push(`<div class="alert alert-${lgSuspected ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Ventilatory instability (loop gain): ${lgSuspected ? 'suspected' : 'possible'}</strong> <small class="text-muted">(qualitative — central/periodic-breathing signals; no validated point estimate)</small><ul class="mb-0 mt-1">${lgSignals}${lgAction}</ul></div>`);
   }
   if (hbTreatmentNote) clinAnalysisParts.push(hbTreatmentNote.replace(/mt-2/g, 'mb-2'));
   if (atsTriage) clinAnalysisParts.push(atsTriage.replace(/mt-2/g, 'mb-2'));
@@ -1942,9 +1976,9 @@ document.getElementById('form').addEventListener('submit', e => {
     txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
   if (hnsStage) {
     if (hnsStage.insufficient) {
-      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based response estimate.${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HNS (Inspire) Candidacy (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based candidacy tier.${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
     } else {
-      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS (Inspire) Candidacy — Stage ${hnsStage.stage}: ${hnsStage.favorability}</strong>${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all factors favorable)'}<br><small class="text-muted">Qualitative tier adapted from Ji 2026 (single-center, n=119, C=0.68; needs external validation). Confirm candidacy with DISE.</small>${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
     }
   }
   txCandidacyParts.push(`<div class="alert alert-${priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMAD ? ' — <em>Prior MAD trial; score reflects profile suitability only</em>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
@@ -1954,7 +1988,7 @@ document.getElementById('form').addEventListener('submit', e => {
   /* ── Summary badges for collapsed headers ───────────── */
   const analysisBadges = [
     exists(fHypopneas) ? `Collapsibility: ${collapsibility}` : null,
-    exists(lgEstimate) ? `Loop Gain: ${lgEstimate.toFixed(2)}` : null,
+    loopGainSupportCount >= 1 ? `Loop gain: ${loopGainSupportCount >= T.loopGain.supportMin ? 'suspected' : 'possible'}` : null,
     edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `Low Arousal Threshold (${edwardsArTH.score}/${edwardsArTH.maxScore} criteria)` : null,
     hbTreatmentNote ? 'Hypoxic burden note' : null,
   ].filter(Boolean);
@@ -1962,7 +1996,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const candidacyBadges = [
     friedmanStage ? `Friedman ${friedmanStage}` : null,
     priorMAD ? `MAD: ${madScore.tier} (prior trial)` : `MAD: ${madScore.tier}`,
-    hnsStage && !hnsStage.insufficient ? `Inspire: ${hnsStage.responseRate}% response (Stage ${hnsStage.stage})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
+    hnsStage && !hnsStage.insufficient ? `Inspire: Stage ${hnsStage.stage} (${hnsStage.favorability})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
   ].filter(Boolean);
 
   let cHTML = `
@@ -2099,7 +2133,6 @@ document.getElementById('form').addEventListener('submit', e => {
     hypopneaIndex,
     fHypopneas,
     collapsibility,
-    lgEstimate,
     dhr,
     milestones: [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value),
     studyType: document.querySelector('input[name="studyType"]:checked')?.value || null,

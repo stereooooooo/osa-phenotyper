@@ -27,15 +27,22 @@ const OSA_CONFIG = {
     },
 
     loopGain: {
-      estimateHigh:   0.7,      // Schmickl 2022: LG >0.7 = high
-      estimateBorderline: 0.6,  // borderline instability
-      csr:            10,       // supportive periodic-breathing signal only
+      // DEPRECATED (Phase 2, 2026-06): the numeric loop-gain point estimate was removed.
+      // The Schmickl 2022 regression has no published intercept and only AUC 0.73, so a
+      // per-patient point estimate over-implied precision. Loop gain is now a QUALITATIVE
+      // "possible ventilatory instability" flag driven by the central/periodic-breathing
+      // signals below (CSR, pAHIc, CAI). estimateHigh/estimateBorderline are retained only
+      // for reference and are no longer used by the engine.
+      estimateHigh:   0.7,      // [deprecated] Schmickl 2022: LG >0.7 = high
+      estimateBorderline: 0.6,  // [deprecated] borderline instability
+      csr:            10,       // central/periodic-breathing signal (Cheyne-Stokes %)
       csrHigh:        20,
-      pahic3:         10,       // supportive central-event signal only
+      pahic3:         10,       // central-event signal (pAHIc 3%)
       pahic3High:     20,
-      pahic4:         5,        // supportive central-event signal only
-      pahic4High:     10
-      // NOTE: CVD and central-event metrics are confidence modifiers only — not primary triggers
+      pahic4:         5,        // central-event signal (pAHIc 4%)
+      pahic4High:     10,
+      supportMin:     2         // ≥2 central signals → flag possible ventilatory instability
+      // NOTE: CVD remains a confidence modifier only — not a primary trigger
     },
 
     muscleResponse: {
@@ -62,11 +69,16 @@ const OSA_CONFIG = {
     },
 
     hypoxicBurden: {
-      // Composite tiering: worst metric determines tier
-      // Moderate = phenotype triggers; Severe = urgency + CV risk framing
-      // Updated 2025: ISAACC (Pinilla 2023), pooled multi-trial (Azarbarzin 2025), RICCADSA (Peker 2025)
-      hbPerHour:          30,   // %min/hr — moderate threshold (phenotype trigger)
-      hbPerHourHigh:      73,   // %min/hr — ISAACC: CPAP reduces CV events above this (HR 0.57)
+      // Composite tiering: worst metric determines tier.
+      // IMPORTANT (Phase 2, 2026-06): these cutoffs are POPULATION-DERIVED, not
+      // guideline-endorsed action thresholds. 30 is an Azarbarzin 2019 tertile boundary;
+      // 73 is the ISAACC cohort median (post-hoc ACS subgroup). HB is a cardiovascular-risk
+      // MARKER. A single MODERATE metric flags the phenotype as supportive CONTEXT only —
+      // it no longer drives a treatment-urgency recommendation. Urgency / CV framing is
+      // reserved for the HIGH tier (hbPerHourHigh / severe-range metrics), where trial
+      // evidence for CPAP CV benefit exists. See app.js hbHighTier.
+      hbPerHour:          30,   // %min/hr — moderate (phenotype CONTEXT trigger; Azarbarzin tertile)
+      hbPerHourHigh:      73,   // %min/hr — high tier; ISAACC: CPAP reduces CV events above this (HR 0.57)
       hbPerHourSevere:    87,   // %min/hr — pooled 2025: high-risk OSA definition (Azarbarzin 2025)
       odi:                20,   // ODI — moderate threshold (strongest HB correlator, r=0.73)
       odiSevere:          50,   // ODI — severe threshold

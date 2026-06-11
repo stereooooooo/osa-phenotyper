@@ -33,7 +33,7 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 | Phase | Theme | Status |
 |------|-------|--------|
 | 1 | Patient safety & trust | ✅ Done (`phase-1-safety-fixes`) |
-| 2 | Right-size cutting-edge clinical claims (concern #2) | ☐ Pending |
+| 2 | Right-size cutting-edge clinical claims (concern #2) | ✅ Done (`phase-1-safety-fixes`) |
 | 3 | Simplify the patient report (concern #1) | ☐ Pending |
 | 4 | Polish — performance, accessibility, security hardening | ☐ Pending |
 | 5 | Structural hardening — code, tests, config | ☐ Pending |
@@ -51,36 +51,24 @@ Shipped 2026-06-11 on branch `phase-1-safety-fixes`. See changelog for detail.
 
 ---
 
-## Phase 2 — Right-size cutting-edge clinical claims (concern #2) ☐
+## Phase 2 — Right-size cutting-edge clinical claims (concern #2) ✅ DONE
 
-Goal: keep the features, but make confidence match the evidence. Convert research-grade
-*markers* and population *split-points* from deterministic treatment *triggers* into supporting
-*context*. Citations are real; this is calibration, not removal.
+Shipped 2026-06-11 on branch `phase-1-safety-fixes`. Calibration, not removal — features kept,
+confidence right-sized. Physician chose the conservative option on each fork (decouple HB urgency
+from the moderate tier; drop the loop-gain number for a qualitative flag; qualitative Ji tiers).
+See changelog and `docs/citations.md` "Phase 2 confidence-calibration changes" for detail.
 
-- [ ] **Hypoxic burden drives treatment urgency beyond the evidence** (high) —
-  `js/app.js:1101-1117, 1215-1217, 1785-1834`, `js/config.js:64-79`. "High Hypoxic Burden"
-  fires on any single moderate-range oxygen metric and emits "start therapy promptly to reduce
-  cardiovascular risk." The 73.1 cut is the ISAACC cohort *median*, the 30 an Azarbarzin tertile —
-  neither a validated action threshold. **Fix:** demote to supportive context; stop emitting an
-  urgency rec from one moderate metric; soften "Strong CPAP Indication"; caveat that the cutoffs
-  are population-derived; reconsider the "low HB → CPAP may harm" framing for non-ACS patients.
-- [ ] **Loop-gain estimate uses a fabricated 0.50 intercept** (high) — `js/app.js:984-989, 1068-1083`.
-  Schmickl 2022 published the two coefficients but no intercept; the guessed 0.50 dominates the
-  realistic range and determines the binary "High Loop Gain" label (which drives CPAP advice, the
-  ASV pathway, and −1 in the MAD score). **Fix:** present loop gain as a qualitative
-  ventilatory-instability flag, or a low-confidence research estimate with no hard 0.7 cutoff.
-- [ ] **Edwards arousal-threshold run as 2-of-3 from WatchPAT** (medium) — `js/app.js:991-1009, 1055-1061`.
-  Drops the hypopnea-fraction variable the published 84% accuracy depends on, still labels
-  "Moderate" confidence. **Fix:** downgrade to "Low / incomplete (2 of 3 inputs)" or require all 3.
-- [ ] **"Poor Muscle Responsiveness" inferred from REM/NREM ratio** (medium) — `js/app.js:1085-1091`.
-  An unvalidated surrogate for a PSG-derived trait. **Fix:** reframe as an inferred hypothesis;
-  never let confidence reach "High" without PSG inputs.
-- [ ] **Ji 2026 HNS staging drops the comorbidity variable** (medium) — `js/app.js:1251-1268`.
-  Uses 3 of 4 inputs but emits the paper's exact "91% → 38%" rates from a single-center, C=0.68,
-  unvalidated model. **Fix:** add the comorbidity input or show a qualitative tier; add the
-  single-center/validation caveat.
-- [ ] **Patient "Why This Matters" calls HB ≥73 definitively "high"** (low) — `js/patientReport.js:1349-1372`.
-  **Fix:** descriptive phrasing tied to the number, not the categorical "high."
+- [x] **Hypoxic burden urgency decoupled from the moderate tier** (high) — `js/app.js`, `js/config.js`.
+  Single moderate metric → supportive context only; urgency/CV framing + patient heart-urgency line
+  gated on new `hbHighTier` (≥73 / severe-range). Population-derived caveat added; low-HB harm
+  implication removed.
+- [x] **Loop-gain numeric estimate removed → qualitative flag** (high) — `js/app.js`, `js/config.js`.
+  No more fabricated 0.50 intercept; flag now driven by central/periodic-breathing signals only,
+  capped at Moderate.
+- [x] **Edwards 2-of-3 partial → Low confidence** (medium) — `js/app.js`.
+- [x] **Poor muscle responsiveness capped at Moderate** (medium) — `js/app.js`.
+- [x] **Ji HNS staging → qualitative tiers + validation caveat** (medium) — `js/app.js`.
+- [x] **Patient Section G HB wording softened** (low) — `js/patientReport.js`.
 
 ---
 

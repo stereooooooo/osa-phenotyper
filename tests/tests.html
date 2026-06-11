@@ -80,26 +80,31 @@ function confidenceFor(tag, ctx){
       const score = m.edwardsArTHScore || 0;
       const maxScore = m.edwardsArTHMaxScore || 0;
       if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
-      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Moderate';
+      // Phase 2: partial 2-of-3 (no hypopnea fraction) → Low confidence, not Moderate
+      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Low';
       return 'Low';
     }
     case 'High Loop Gain': {
-      const lg = m.lgEstimate;
+      // Phase 2: qualitative flag from central/periodic-breathing signals only (no lgEstimate),
+      // capped at Moderate.
       const supportCount =
         ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
         ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
         ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
         ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-      if(exists(lg) && lg >= T.loopGain.estimateHigh) return supportCount >= 1 ? 'High' : 'Moderate';
-      if(exists(lg) && lg >= T.loopGain.estimateBorderline) return supportCount >= 1 || m.cvd ? 'Moderate' : 'Low';
-      if(supportCount >= 2) return m.cvd ? 'High' : 'Moderate';
-      if(supportCount >= 1 && m.cvd) return 'Moderate';
+      const strong =
+        ((m.csr||0) >= T.loopGain.csrHigh ? 1 : 0) +
+        ((m.pahic3||0) >= T.loopGain.pahic3High ? 1 : 0) +
+        ((m.pahic4||0) >= T.loopGain.pahic4High ? 1 : 0);
+      if(supportCount >= 2 && strong >= 1) return 'Moderate';
+      if(supportCount >= 2) return m.cvd ? 'Moderate' : 'Low';
+      if(supportCount >= 1 && m.cvd) return 'Low';
       return 'Low';
     }
     case 'Poor Muscle Responsiveness': {
       const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
       const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
-      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
+      // Phase 2: inferred surrogate — capped at Moderate (no High path)
       if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
       return 'Low';
     }
@@ -277,30 +282,34 @@ assertEqual(
 );
 assertEqual(
   confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 2, edwardsArTHMaxScore: 2 } }),
-  'Moderate', 'Edwards score 2/2 → Moderate'
+  'Low', 'Edwards partial 2/2 (hypopnea fraction unavailable) → Low (Phase 2: validated accuracy needs full 3-variable score)'
 );
 assertEqual(
   confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 1, edwardsArTHMaxScore: 3 } }),
   'Low', 'Edwards score below threshold → Low'
 );
 
-// ── High Loop Gain Confidence ─────────────────────────────────
+// ── High Loop Gain Confidence (Phase 2: qualitative, capped at Moderate) ──────
 group('High Loop Gain Confidence');
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.75, csr: 12, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
-  'High', 'High loop-gain estimate + supportive signal → High'
+  confidenceFor('High Loop Gain', { metrics: { csr: 22, pahic3: 12, pahic4: 0, cai: 0, cvd: false } }),
+  'Moderate', 'Two signals incl. one strong (CSR≥20) → Moderate (capped; never High)'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.65, csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: true } }),
-  'Moderate', 'Borderline estimate + CVD modifier → Moderate'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 12, pahic4: 0, cai: 0, cvd: true } }),
+  'Moderate', 'Two moderate signals + CVD modifier → Moderate'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 10, pahic4: 0, cai: 0, cvd: true } }),
-  'High', 'Two supportive signals + CVD → High'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 12, pahic4: 0, cai: 0, cvd: false } }),
+  'Low', 'Two moderate signals, no strong, no CVD → Low'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.55, csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
-  'Low', 'No estimate/support thresholds met → Low'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 0, pahic4: 0, cai: 0, cvd: true } }),
+  'Low', 'Single signal + CVD → Low'
+);
+assertEqual(
+  confidenceFor('High Loop Gain', { metrics: { csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
+  'Low', 'No central/periodic-breathing signals → Low'
 );
 
 // ── Positional OSA Confidence ─────────────────────────────────
@@ -426,11 +435,11 @@ assertEqual(
 group('Poor Muscle Responsiveness Confidence');
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 35, remAhi: 56, nremAhi: 20 } }),
-  'High', 'AHI≥30, ratio 2.8 (>2.5), NREM≥20 → High'
+  'Moderate', 'AHI≥30, ratio 2.8, NREM≥20 → Moderate (Phase 2: inferred surrogate capped at Moderate, no High path)'
 );
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 20, remAhi: 50, nremAhi: 20 } }),
-  'Moderate', 'ratio 2.5 (>2) but AHI<30 → Moderate'
+  'Moderate', 'ratio 2.5 (>2), AHI≥15, NREM≥15 → Moderate'
 );
 
 // ── Cross-field validation ────────────────────────────────────

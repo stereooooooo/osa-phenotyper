@@ -1397,7 +1397,7 @@ ${items.join('')}`;
 
     const findings = [];
     if (triggerSevereAHI) findings.push(`a severe AHI of ${Math.round(+pAHI)} events per hour`);
-    if (triggerHB)        findings.push(`a high hypoxic burden of ${hbArea.toFixed(0)} %min/hr (indicating significant cumulative low-oxygen exposure throughout the night)`);
+    if (triggerHB)        findings.push(`meaningful cumulative low-oxygen exposure during the night (your oxygen spent a notable share of the night below its usual level)`);
     if (triggerODI)       findings.push(`an oxygen desaturation index (ODI) of ${odiVal} events per hour — meaning your oxygen dropped significantly ${odiVal} times every hour`);
     if (triggerNadir)     findings.push(`oxygen levels dropping to ${nadirVal}% during sleep — well below normal`);
     if (triggerT90)       findings.push(`${t90Val.toFixed(0)}% of your sleep time spent with oxygen below 90% — a level associated with increased cardiovascular strain`);
