@@ -8,6 +8,72 @@ full findings inventory.
 
 ---
 
+## [Phase 5 (part 1) — Structural hardening: tests, config, dedup, lint] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. Behavior-preserving refactors of the clinical engine, each
+verified against a new golden-master safety net. Physician chose: build the safety net + the
+low-risk wins now and **defer the full 1,287-line god-function teardown** to a dedicated,
+golden-master-verified follow-up. (Infra-polish call deferred to me: ESLint in, machine-readable
+CI + gitignore reorg deferred.)
+
+### Added — golden-master safety net (`tests/phenotype-matrix.html`)
+- **Live-engine characterization suite.** Drives the real `index.html` engine in workflow-test
+  mode (iframe → fill form → submit → read `OSAReportState.getLastAnalysisData()`) across the 36
+  phenotyping profiles from `docs/test-matrix.md` (Groups 1–8: severity spectrum, CPAP variants,
+  COMISA, anatomy/surgery, phenotype edge cases, Inspire, boundaries, clinical-logic regressions).
+  It locks the **current** phenotype list + ordered recommendation-tag output for each profile, with
+  a per-profile **freshness guard** (asserts `lastAnalysisData.patientName` matches the profile, so a
+  future silent validation break reads stale data and fails loudly instead of passing on a
+  coincidental empty-phenotype match). 108 assertions. Wired into `tests/run-headless-suite.sh` as a
+  third suite. Suite total: 199 → **307**.
+
+### Changed — de-replicated the engine from its tests (`js/phenotype-confidence.js` new)
+- **`confidenceFor()` is now a single source of truth.** The ~90-line phenotype confidence
+  heuristic was an exact copy in both `js/app.js` and `tests/tests.html` (a real drift hazard —
+  the audit's #1 code-quality finding). Extracted to a new shared module loaded before both;
+  `app.js` and `tests.html` now alias the real function, so a logic change is *exercised by the
+  tests* instead of silently passing. Removed the replica + its dead `ratio` copy from `tests.html`.
+
+### Changed — centralized hardcoded thresholds into `js/config.js`
+- Added `thresholds.madCandidacy` (13 MAD scoring factors/cutoffs) and `thresholds.hstValidity`
+  (10 home-sleep-test validity-flag thresholds); rewired the `app.js` MAD-scoring IIFE and HST
+  flag logic to read them. All 23 references verified to resolve to keys with values identical to
+  the original literals (MAD tags are covered by the golden master; the HST flags aren't, so this
+  was cross-checked programmatically).
+- **`patientReport.js ahiSeverityLabel()` now reads `OSA_CONFIG.thresholds.severity`** instead of
+  hardcoding 5/15/30, so the patient layer can no longer drift from the clinician engine.
+
+### Changed — deduplicated the CPAP issue-label map (`js/app.js`)
+- Hoisted one `CPAP_ISSUE_LABELS` constant; replaced the 3 inline copies and resolved the wording
+  drift (`'inefficacy'` → `'prior inefficacy'`, matching the other two copies).
+
+### Added — focused ESLint (`eslint.config.mjs`, `package.json`, CI)
+- Minimal flat config scoped to `js/`: `no-use-before-define` (the temporal-dead-zone guard the
+  audit called for) + zero-false-positive correctness rules. `npm run lint` script + a CI lint step
+  (Node setup) ahead of the browser suite. On first run it **caught a real latent bug** — a
+  duplicate `studyType` key in the `lastAnalysisData` object (`app.js`); removed the dead first key
+  (kept the runtime winner → no behavior change). Lint is green.
+
+### Deferred to Phase 5 (part 2)
+- The **god-function teardown** (`detectPhenotypes()` / `mapTreatments()` / renderer extraction
+  from the 1,287-line submit handler). The golden master now de-risks this; it should be done as a
+  series of small, golden-master-verified increments. Also deferred: machine-readable CI output,
+  the `gitignore → private/` reorg, and migrating `n`/`ratio`/`exists` to a shared util.
+
+### Verification
+- Both prior suites + the new matrix pass (**307 assertions**); ESLint clean. Live app boots with
+  no console errors; shared `OSAPhenotype`, `madCandidacy`, `hstValidity` all present.
+- Every refactor confirmed behavior-preserving: the golden master's phenotype/recommendation
+  output is byte-identical before and after, and the `confidenceFor` unit tests (now against the
+  real shared function) pass.
+- **Adversarial review** (16 agents, 5 fidelity dimensions): the `confidenceFor` extraction and
+  threshold centralization were confirmed byte-identical (zero findings); the review surfaced one
+  real robustness gap — the matrix could read stale data on a silent validation failure — fixed
+  with the freshness guard above and **proven** with a negative test (blanking a required field on
+  one profile makes that profile fail loudly, 3 failures, rest green).
+
+---
+
 ## [Phase 4 — Polish: performance, accessibility, security hardening] — 2026-06-11
 
 Branch: `phase-1-safety-fixes`. Physician chose: lower the clinician-PDF raster scale (defer the

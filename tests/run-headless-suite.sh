@@ -107,4 +107,7 @@ TOTAL_PASSED=$((TOTAL_PASSED + CORE_PASSED))
 WORKFLOW_PASSED="$(run_suite "tests/workflow-smoke.html" "workflow smoke suite" 15000)"
 TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
 
+MATRIX_PASSED="$(run_suite "tests/phenotype-matrix.html" "phenotype characterization matrix" 30000)"
+TOTAL_PASSED=$((TOTAL_PASSED + MATRIX_PASSED))
+
 echo "Headless suite passed: ${TOTAL_PASSED} assertions"

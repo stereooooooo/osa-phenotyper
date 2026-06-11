@@ -36,7 +36,7 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 | 2 | Right-size cutting-edge clinical claims (concern #2) | ✅ Done (`phase-1-safety-fixes`) |
 | 3 | Simplify the patient report (concern #1) | ✅ Done (`phase-1-safety-fixes`) |
 | 4 | Polish — performance, accessibility, security hardening | ✅ Done (`phase-1-safety-fixes`) |
-| 5 | Structural hardening — code, tests, config | ☐ Pending |
+| 5 | Structural hardening — code, tests, config | ◑ Part 1 done; god-function teardown deferred to part 2 (`phase-1-safety-fixes`) |
 
 ---
 
@@ -142,26 +142,31 @@ CSP **and** SRI on `index.html`, and both optional items. See the changelog for 
 
 ---
 
-## Phase 5 — Structural hardening: code, tests, config ☐
+## Phase 5 — Structural hardening: code, tests, config ◑
 
-- [ ] **Unit tests replicate `app.js` logic instead of importing it** (high) — `tests/tests.html:50-145`.
-  A real phenotype-trigger regression would pass all green tests. **Fix:** extract the pure
-  phenotyping function(s) and have tests call the real engine; automate the 31-profile test matrix
-  against the live form.
-- [ ] **1,260-line form-submit god function** (high) — `js/app.js:870-2130`. Tangles parsing, clinical
-  logic, treatment mapping, and rendering (with the documented temporal-dead-zone trap). **Fix:**
-  extract `detectPhenotypes()`, `mapTreatments()`, and a renderer.
-- [ ] **Core thresholds hardcoded outside config.js** (high) — `js/app.js:1310-1339, 1495-1535`,
-  `js/patientReport.js:25-31`. MAD score, HST flags, and the patient-side AHI-severity tiers are
-  magic numbers; `patientReport.js` can drift from `config.js`. **Fix:** move into `config.js`;
-  have `ahiSeverityLabel()` read `OSA_CONFIG`.
-- [ ] **CPAP-issue label map duplicated 3× with a drift** (medium) — `js/app.js:1148, 1393, 1976`
-  ("prior inefficacy" vs "inefficacy"). **Fix:** hoist one `CPAP_ISSUE_LABELS` constant.
-- [ ] **Blanket `*.pdf` gitignore is fragile** (low) — `.gitignore`. Safe today; **Fix:** move real
-  sample/PHI files into a single ignored `private/` dir + keep `*.pdf` as a backstop.
-- [ ] **CI passes by grepping a rendered string; no linter** (low) — `.github/workflows/`,
-  `tests/run-headless-suite.sh:84-99`. **Fix:** add ESLint (`no-use-before-define` catches TDZ);
-  emit a machine-readable result and key CI off that.
+Part 1 shipped 2026-06-11 on branch `phase-1-safety-fixes`. Physician chose: build the golden-master
+safety net + the low-risk wins now, **defer the full god-function teardown** to a verified part 2.
+See the changelog for detail.
+
+- [x] **Unit tests replicate `app.js` logic instead of importing it** (high) — fixed two ways:
+  (a) `confidenceFor()` extracted to `js/phenotype-confidence.js`, imported by both `app.js` and
+  `tests/tests.html` (replica + its dead `ratio` removed); (b) new `tests/phenotype-matrix.html`
+  golden-master suite drives the **real** engine across the 36 phenotyping profiles and locks
+  current phenotype/recommendation output (199 → 271 assertions).
+- [ ] **~1,287-line form-submit god function** (high) — `js/app.js` form-submit handler (verified
+  878–2164, not 870–2130). **Deferred to part 2.** With the golden master now in place, extract
+  `detectPhenotypes()` / `mapTreatments()` / a renderer as small, golden-master-verified increments.
+  The recon flagged this as the highest-regression-risk item; do it carefully, not in one shot.
+- [x] **Core thresholds hardcoded outside config.js** (high) — added `thresholds.madCandidacy` +
+  `thresholds.hstValidity` to `config.js` and rewired the MAD-scoring + HST-flag logic to read
+  them; `patientReport.js ahiSeverityLabel()` now reads `OSA_CONFIG.thresholds.severity`.
+- [x] **CPAP-issue label map duplicated 3× with a drift** (medium) — hoisted one
+  `CPAP_ISSUE_LABELS` constant; drift resolved to "prior inefficacy".
+- [ ] **Blanket `*.pdf` gitignore is fragile** (low) — **deferred** (already double-ignored via
+  `Test Data/` + `*.pdf`; near-zero marginal safety).
+- [~] **CI passes by grepping a rendered string; no linter** (low) — **ESLint added**
+  (`eslint.config.mjs`, focused on `no-use-before-define`/TDZ + correctness rules; `npm run lint` +
+  CI step; caught a real duplicate-key bug on first run). Machine-readable test output **deferred**.
 
 ---
 

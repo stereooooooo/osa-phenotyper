@@ -128,11 +128,43 @@ const OSA_CONFIG = {
       disturbedIsi:   15
     },
 
-    // AHI severity labels
+    // AHI severity labels (also read by patientReport.js ahiSeverityLabel)
     severity: {
       mild:           5,
       moderate:       15,
       severe:         30
+    },
+
+    // MAD (oral appliance) candidacy scoring factors & tier cutoffs
+    // Evidence: Camañes-Gonzalvo 2022/2025, Chen 2020, Edwards 2016, Hamza 2026
+    madCandidacy: {
+      ahiMild:         5,    // AHI 5–<15 → +2 (mild, favorable)
+      ahiModerate:     15,   // AHI 15–<30 → +1 (moderate)
+      ahiSevere:       30,   // AHI ≥30 → −2 (severe, unfavorable)
+      bmiLow:          28,   // BMI <28 → +1
+      bmiHigh:         35,   // BMI ≥35 → −1
+      neckFemale:      14,   // smaller-neck threshold (in), female → +1
+      neckMale:        16,   // smaller-neck threshold (in), male → +1
+      hypopneaHigh:    70,   // F(hypopneas) >70 → +1 (hypopnea-predominant)
+      hypopneaLow:     50,   // F(hypopneas) <50 → −1 (apnea-predominant)
+      ageYoung:        50,   // age <50 → +1
+      ageOld:          65,   // age ≥65 → −1
+      scoreFavorable:  3,    // score ≥3 → favorable
+      scorePoor:       0     // score <0 → poor
+    },
+
+    // Home sleep test (WatchPAT) validity-flag thresholds
+    hstValidity: {
+      tstDanger:        2,    // TST <2 hrs → danger (inadequate recording)
+      tstWarning:       4,    // TST <4 hrs → warning (short recording)
+      ahiRdiRatioLow:   0.5,  // pAHI/PAT-RDI <0.5 → AHI–RDI discrepancy warning
+      tstRemCapture:    5,    // TST <5 hrs + REM AHI 0 → no-REM-captured warning
+      ahiLowSymptom:    5,    // AHI <5 …
+      essSignificant:   10,   // … with ESS ≥10 → possible false-negative warning
+      centralPctDanger: 50,   // central % >50 → danger (predominantly central)
+      centralPctWarning: 25,  // central % >25 → warning (significant central)
+      csrElevated:      15,   // CSR >15% …
+      centralPctLow:    15    // … with central % <15 → CSR-artifact info flag
     }
   },
 

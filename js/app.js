@@ -42,97 +42,22 @@ function pushRec(arr, text, tag){
 const T = OSA_CONFIG.thresholds;
 let lastAnalysisData = null;
 
-/* ── Signal-strength helper (heuristic support, not validated probability) ── */
-function confidenceFor(tag, ctx){
-  const m = ctx.metrics;
-  switch(tag){
-    case 'High Anatomical Contribution': {
-      const neckHigh = m.sex === 'F' ? T.anatomical.neckHigh.female : T.anatomical.neckHigh.male;
-      const strong =
-        ((m.bmi||0) >= T.anatomical.bmiHigh ? 1 : 0) +
-        ((m.neck||0) >= neckHigh ? 1 : 0) +
-        ((m.tons||0) >= T.anatomical.tonsils ? 1 : 0) +
-        (T.anatomical.ftp.includes(m.mall) ? 1 : 0) +
-        ((m.ahi||0) >= T.anatomical.ahiSevere ? 1 : 0);
-      if(strong >= 4) return 'High';
-      if(strong >= 2) return 'Moderate';
-      return 'Low';
-    }
-    case 'Low Arousal Threshold': {
-      const score = m.edwardsArTHScore || 0;
-      const maxScore = m.edwardsArTHMaxScore || 0;
-      // Full 3-variable Edwards score carries the published 84% accuracy (Edwards 2014).
-      if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
-      // Partial 2-of-3 (hypopnea fraction unavailable, e.g. routine WatchPAT): the validated
-      // accuracy does NOT apply to the truncated score — report as low-confidence/incomplete.
-      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Low';
-      return 'Low';
-    }
-    case 'High Loop Gain': {
-      // Qualitative ventilatory-instability flag (no numeric estimate). Driven only by the
-      // central / periodic-breathing signals the study reports; capped at Moderate because
-      // these are supportive signals, not a validated loop-gain measurement.
-      const supportCount =
-        ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
-        ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-        ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-        ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-      const strong =
-        ((m.csr||0) >= T.loopGain.csrHigh ? 1 : 0) +
-        ((m.pahic3||0) >= T.loopGain.pahic3High ? 1 : 0) +
-        ((m.pahic4||0) >= T.loopGain.pahic4High ? 1 : 0);
-      if(supportCount >= 2 && strong >= 1) return 'Moderate';
-      if(supportCount >= 2) return m.cvd ? 'Moderate' : 'Low';
-      if(supportCount >= 1 && m.cvd) return 'Low';
-      return 'Low';
-    }
-    case 'Poor Muscle Responsiveness': {
-      const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
-      const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
-      // Inferred from the REM/NREM event distribution — a surrogate, not a measured
-      // pharyngeal-muscle trait. Capped at Moderate confidence (Sands 2018 validated muscle
-      // compensation via PSG airflow/Pcrit, not via a REM/NREM ratio).
-      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
-      return 'Low';
-    }
-    case 'Positional OSA': {
-      const pr = ratio(m.sup, m.nons) ?? 0;
-      if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return 'High';
-      if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
-      return 'Low';
-    }
-    case 'REM-Predominant OSA': {
-      const rr = ratio(m.remAhi, m.nremAhi) ?? 0;
-      if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return 'High';
-      if(rr >= T.remPredominant.remNremRatio && (m.nremAhi||0) < T.remPredominant.nremMax) return 'Moderate';
-      return 'Low';
-    }
-    case 'High Hypoxic Burden': {
-      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
-      /* High confidence: HB area ≥73 (ISAACC CPAP benefit threshold) OR other metrics in severe range */
-      if(hb >= T.hypoxicBurden.hbPerHourHigh || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
-      /* Moderate tier: any single metric in moderate range (nadir excluded — only triggers at severe) */
-      if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
-      return 'Low';
-    }
-    case 'Nasal-Resistance Contributor': {
-      const nose = m.noseScore || 0;
-      const hasCT = m.ctSeptum || m.ctTurbs;
-      if(nose >= T.nasal.noseSevere || (nose >= T.nasal.noseMild && hasCT)) return 'High';
-      if(nose >= T.nasal.noseMild || m.nasalObs || hasCT) return 'Moderate';
-      if(nose >= T.nasal.noseBorderline) return 'Low';
-      return 'Low';
-    }
-    case 'Elevated Delta Heart Rate': {
-      const dhr = m.dhr || 0;
-      if(dhr >= T.deltaHeartRate.dhrHigh) return 'High';
-      if(dhr >= T.deltaHeartRate.dhr) return 'Moderate';
-      if(dhr >= T.deltaHeartRate.dhrBorderline) return 'Low';
-      return 'Low';
-    }
-    default: return 'Moderate';
-  }
-}
+/* ── Signal-strength helper — extracted to js/phenotype-confidence.js so the
+   heuristic is the single source of truth shared with tests/tests.html
+   (loaded before app.js). ── */
+const confidenceFor = OSAPhenotype.confidenceFor;
+
+/* ── CPAP intolerance reason → display label (single source of truth) ─────── */
+const CPAP_ISSUE_LABELS = {
+  cpapMask: 'mask fit',
+  cpapClaustro: 'claustrophobia',
+  cpapDry: 'dryness',
+  cpapLeaks: 'leaks/noise',
+  cpapSleep: 'sleep onset',
+  cpapSkin: 'skin irritation',
+  cpapNoImprove: 'prior inefficacy',
+  cpapTravel: 'travel'
+};
 
 /* ── AHI severity label helper ────────────────────────────────── */
 function ahiSeverity(ahi) {
@@ -1166,7 +1091,7 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Prior CPAP trial unsuccessful \u2014 prioritize alternatives: mandibular-advancement device, site-directed surgery, or Inspire\u00AE.','CPAP-ALT');
     } else if (cpapWillRetry) {
       const issues = cpapReasons.map(r => {
-        const map = {cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'prior inefficacy',cpapTravel:'travel'};
+        const map = CPAP_ISSUE_LABELS;
         return map[r] || r;
       }).join(', ');
       pushRec(recs,`Retry CPAP with optimized settings (patient willing). Address prior issues${issues ? ': ' + issues : ''}.`,'CPAP');
@@ -1334,17 +1259,18 @@ document.getElementById('form').addEventListener('submit', e => {
   const madScore = (() => {
     let score = 0;
     const factors = [];
+    const MAD = T.madCandidacy;
     /* OSA severity: mild-moderate favorable, severe unfavorable */
-    if (exists(ahi) && ahi >= 5 && ahi < 15) { score += 2; factors.push('mild OSA'); }
-    else if (exists(ahi) && ahi >= 15 && ahi < 30) { score += 1; factors.push('moderate OSA'); }
-    else if (exists(ahi) && ahi >= 30) { score -= 2; factors.push('severe OSA'); }
+    if (exists(ahi) && ahi >= MAD.ahiMild && ahi < MAD.ahiModerate) { score += 2; factors.push('mild OSA'); }
+    else if (exists(ahi) && ahi >= MAD.ahiModerate && ahi < MAD.ahiSevere) { score += 1; factors.push('moderate OSA'); }
+    else if (exists(ahi) && ahi >= MAD.ahiSevere) { score -= 2; factors.push('severe OSA'); }
     /* BMI: <28 favorable, ≥35 unfavorable */
-    if (exists(bmi) && bmi < 28) { score += 1; factors.push('lower BMI'); }
-    else if (exists(bmi) && bmi >= 35) { score -= 1; factors.push('higher BMI'); }
+    if (exists(bmi) && bmi < MAD.bmiLow) { score += 1; factors.push('lower BMI'); }
+    else if (exists(bmi) && bmi >= MAD.bmiHigh) { score -= 1; factors.push('higher BMI'); }
     /* Female: better response rates */
     if (sex === 'F') { score += 1; factors.push('female'); }
     /* Smaller neck: responders avg 1-1.5cm smaller */
-    const neckThresh = sex === 'F' ? 14 : 16;
+    const neckThresh = sex === 'F' ? MAD.neckFemale : MAD.neckMale;
     if (exists(neck) && neck < neckThresh) { score += 1; factors.push('smaller neck'); }
     /* Positional OSA: 64% vs 36% response rate */
     if (out.phen.includes('Positional OSA')) { score += 1; factors.push('positional OSA'); }
@@ -1357,14 +1283,14 @@ document.getElementById('form').addEventListener('submit', e => {
     /* Retrognathia: mandibular retrusion independently predicts better MAD response (Hamza 2026) */
     if (retrognathia) { score += 1; factors.push('retrognathia'); }
     /* Hypopnea-predominant: better MAD response than apnea-predominant (Camañes-Gonzalvo 2025) */
-    if (exists(fHypopneas) && fHypopneas > 70) { score += 1; factors.push('hypopnea-predominant'); }
-    else if (exists(fHypopneas) && fHypopneas < 50) { score -= 1; factors.push('apnea-predominant'); }
+    if (exists(fHypopneas) && fHypopneas > MAD.hypopneaHigh) { score += 1; factors.push('hypopnea-predominant'); }
+    else if (exists(fHypopneas) && fHypopneas < MAD.hypopneaLow) { score -= 1; factors.push('apnea-predominant'); }
     /* Age: younger patients respond better (3-4.5 yr mean difference, Camañes-Gonzalvo 2022, Chen 2020) */
     const age = n(f.get('age'));
-    if (exists(age) && age < 50) { score += 1; factors.push('younger age'); }
-    else if (exists(age) && age >= 65) { score -= 1; factors.push('older age'); }
+    if (exists(age) && age < MAD.ageYoung) { score += 1; factors.push('younger age'); }
+    else if (exists(age) && age >= MAD.ageOld) { score -= 1; factors.push('older age'); }
     /* tier: favorable (≥3), standard (0-2), poor (< 0) */
-    const tier = score >= 3 ? 'favorable' : score < 0 ? 'poor' : 'standard';
+    const tier = score >= MAD.scoreFavorable ? 'favorable' : score < MAD.scorePoor ? 'poor' : 'standard';
     return { score, tier, factors };
   })();
 
@@ -1418,7 +1344,7 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Alternative PAP (BiPAP, ASV) if willing to reconsider','CPAP');
     } else if(cpapWillRetry) {
       const issues = cpapReasons.map(r => {
-        const map = {cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'prior inefficacy',cpapTravel:'travel'};
+        const map = CPAP_ISSUE_LABELS;
         return map[r] || r;
       }).join(', ');
       pushRec(recs,`Retry CPAP with optimized settings (patient willing). Address prior issues${issues ? ': ' + issues : ''}.`,'CPAP');
@@ -1515,14 +1441,15 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ─── HST Validity Assessment ────────────────────────────── */
   const hstFlags = [];
+  const HST = T.hstValidity;
   const tst = n(f.get('tst'));
   const patRdi = n(f.get('patRdi'));
 
   // 1. Total sleep time assessment
   if (exists(tst)) {
-    if (tst < 2) {
+    if (tst < HST.tstDanger) {
       hstFlags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
-    } else if (tst < 4) {
+    } else if (tst < HST.tstWarning) {
       hstFlags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
     }
   }
@@ -1530,7 +1457,7 @@ document.getElementById('form').addEventListener('submit', e => {
   // 2. AHI–RDI discrepancy (may indicate signal artifact or scoring issues)
   if (exists(ahi) && exists(patRdi) && patRdi > 0) {
     const ahiRdiRatio = ahi / patRdi;
-    if (ahiRdiRatio < 0.5) {
+    if (ahiRdiRatio < HST.ahiRdiRatioLow) {
       hstFlags.push({ severity: 'warning', flag: 'Large AHI–RDI discrepancy', detail: `pAHI (${ahi}) is less than half the PAT RDI (${patRdi}). A large gap may indicate significant RERAs (respiratory effort-related arousals) or signal quality issues. Consider in-lab PSG if clinical picture is inconsistent.` });
     }
   }
@@ -1540,27 +1467,27 @@ document.getElementById('form').addEventListener('submit', e => {
     hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'REM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported. Consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
   } else if (exists(ahi) && !exists(nremAhi)) {
     hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'NREM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported.' });
-  } else if (exists(tst) && exists(remAhi) && exists(nremAhi) && tst < 5 && remAhi === 0) {
+  } else if (exists(tst) && exists(remAhi) && exists(nremAhi) && tst < HST.tstRemCapture && remAhi === 0) {
     hstFlags.push({ severity: 'warning', flag: 'No REM sleep captured', detail: `REM AHI is 0 with TST of only ${tst} hrs. REM sleep may not have occurred during this short recording. AHI may underestimate true severity if OSA is REM-predominant. Consider repeat study.` });
   }
 
   // 4. Low AHI despite high symptom burden — possible false negative
-  if (exists(ahi) && ahi < 5 && exists(ess) && ess >= 10) {
+  if (exists(ahi) && ahi < HST.ahiLowSymptom && exists(ess) && ess >= HST.essSignificant) {
     hstFlags.push({ severity: 'warning', flag: 'Low AHI with significant symptoms', detail: `AHI ${ahi} is normal/minimal despite ESS ${ess} (significant sleepiness). HSTs can underestimate AHI due to limited channels and no EEG. Consider in-lab PSG to evaluate for UARS (upper airway resistance syndrome) or first-night effect.` });
   }
 
   // 5. High central apnea component — confirm with lab PSG
   if (exists(pahic3) && exists(ahi) && ahi > 0) {
     const centralPct = (pahic3 / ahi) * 100;
-    if (centralPct > 50) {
+    if (centralPct > HST.centralPctDanger) {
       hstFlags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central event scoring has limitations — <strong>recommend in-lab PSG with EEG</strong> to confirm central vs obstructive classification before treatment planning.` });
-    } else if (centralPct > 25) {
+    } else if (centralPct > HST.centralPctWarning) {
       hstFlags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT uses PAT signal attenuation to differentiate central from obstructive events, which has lower specificity than EEG-based scoring. Consider in-lab PSG for confirmation if central-dominant phenotype affects treatment choice (e.g., ASV vs CPAP).` });
     }
   }
 
   // 6. High CSR without high central AHI — possible scoring artifact
-  if (exists(csr) && csr > 15 && exists(pahic3) && exists(ahi) && ahi > 0 && (pahic3/ahi)*100 < 15) {
+  if (exists(csr) && csr > HST.csrElevated && exists(pahic3) && exists(ahi) && ahi > 0 && (pahic3/ahi)*100 < HST.centralPctLow) {
     hstFlags.push({ severity: 'info', flag: 'Elevated CSR with low central AHI', detail: `CSR ${csr}% is elevated but central AHI is low relative to total. This pattern may indicate Cheyne-Stokes respiration during wakefulness or signal artifact. Correlate with clinical history (heart failure, stroke).` });
   }
 
@@ -2007,7 +1934,7 @@ document.getElementById('form').addEventListener('submit', e => {
     ${pathwayHTML}
     ${careSummaryHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
-    ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => ({cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'inefficacy',cpapTravel:'travel'}[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
+    ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
     ${insufficientDataHTML}
@@ -2076,7 +2003,6 @@ document.getElementById('form').addEventListener('submit', e => {
     ftp: mall || null,
     nasalObs, ctSeptum, ctTurbs,
     ess, isi, noseScore,
-    studyType: f.get('studyType') || null,
     pahi: n(f.get('pahi')),
     ahi,
     odi,

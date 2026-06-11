@@ -21,12 +21,15 @@ var PatientReport = (() => {
     return (data.primaryAHI === null || data.primaryAHI === undefined) ? 'pre-study' : 'post-study';
   }
 
-  /* ── Helper: AHI severity label ───────────────────────────────────────── */
+  /* ── Helper: AHI severity label (reads the shared cutoffs from config.js so
+        the patient layer cannot drift from the clinician engine) ─────────── */
   function ahiSeverityLabel(ahi) {
     if (ahi === null || ahi === undefined) return null;
-    if (ahi >= 30) return 'severe';
-    if (ahi >= 15) return 'moderate';
-    if (ahi >= 5)  return 'mild';
+    const S = (typeof OSA_CONFIG !== 'undefined' && OSA_CONFIG.thresholds && OSA_CONFIG.thresholds.severity)
+      || { mild: 5, moderate: 15, severe: 30 };
+    if (ahi >= S.severe)   return 'severe';
+    if (ahi >= S.moderate) return 'moderate';
+    if (ahi >= S.mild)     return 'mild';
     return 'normal';
   }
 

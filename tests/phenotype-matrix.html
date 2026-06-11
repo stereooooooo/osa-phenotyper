@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OSA Phenotyper – Phenotype Characterization Matrix</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
+  h1 { color: #354A5F; }
+  .pass { color: #198754; }
+  .fail { color: #dc3545; }
+  .summary { font-size: 1.2rem; margin: 1rem 0; padding: 1rem; border-radius: 8px; }
+  .summary.all-pass { background: #d1e7dd; }
+  .summary.has-fail { background: #f8d7da; }
+  pre { background: #fff; padding: 0.4rem; border: 1px solid #dee2e6; border-radius: 4px; margin: 0.2rem 0; font-size: 0.8rem; white-space: pre-wrap; }
+  iframe { position: absolute; left: -9999px; width: 1440px; height: 2400px; border: 0; }
+</style>
+</head>
+<body>
+<h1>OSA Phenotyper Phenotype Characterization Matrix</h1>
+<p>Golden-master: drives the real engine via the live form (workflow test mode) across the
+phenotyping profiles from <code>docs/test-matrix.md</code> (Groups 1–8) and locks the current
+phenotype + recommendation-tag output so a behavior-preserving refactor cannot silently change it.</p>
+<div id="results"></div>
+<pre id="capture" hidden></pre>
+
+<iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
+
+<script>
+let passed = 0;
+let failed = 0;
+const results = [];
+const captures = [];
+
+function assert(condition, message) {
+  if (condition) { passed++; results.push({ pass: true, message }); }
+  else { failed++; results.push({ pass: false, message }); }
+}
+function assertEqual(actual, expected, message) {
+  const pass = actual === expected;
+  if (!pass) message += ` (got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)})`;
+  assert(pass, message);
+}
+function group(name) { results.push({ group: name }); }
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+async function waitFor(predicate, label, timeout = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try { const v = predicate(); if (v) return v; } catch (_) {}
+    await wait(50);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+
+function setField(win, name, value) {
+  const el = win.document.querySelector(`[name="${name}"]`);
+  if (!el) throw new Error('Missing field ' + name);
+  el.value = value;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function setId(win, id, value) {
+  const el = win.document.getElementById(id);
+  if (!el) throw new Error('Missing #' + id);
+  el.value = value;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function setCheck(win, id, checked) {
+  const el = win.document.getElementById(id);
+  if (!el) throw new Error('Missing #' + id);
+  el.checked = checked;
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function chooseRadio(win, name, value) {
+  const el = win.document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (!el) throw new Error(`Missing radio ${name}=${value}`);
+  el.click();
+}
+
+/* ── Phenotyping profiles (docs/test-matrix.md Groups 1–8) ─────────────────
+   All driven in WatchPAT mode (default): AHI→pahi, supine→supPahi, etc.
+   `f` = name→value inputs/selects, `c` = checkbox ids to check.
+   `exp` is the captured current-engine output (the golden baseline). */
+const PROFILES = [
+  // Group 1: Severity Spectrum
+  { id:1,  name:'Pre-study snorer',            f:{age:'55',sex:'M',bmi:'28',ess:'10',isi:'6',tonsils:'2',ftp:'III',noseScore:'35'}, c:['nasalObs','snoringReported'] },
+  { id:2,  name:'Pre-study insomniac',         f:{age:'45',sex:'F',bmi:'24',ess:'7',isi:'20',tonsils:'1',ftp:'II',noseScore:'10'}, c:[] },
+  { id:3,  name:'Normal AHI',                  f:{age:'45',sex:'F',bmi:'25',pahi:'3',ess:'8',isi:'5',tonsils:'1',ftp:'II',noseScore:'5'}, c:[] },
+  { id:4,  name:'Mild positional',             f:{age:'45',sex:'M',bmi:'28',pahi:'8',ess:'12',isi:'6',tonsils:'2',ftp:'II',noseScore:'15',supPahi:'18',nonSupPahi:'4'}, c:[] },
+  { id:5,  name:'Moderate classic',            f:{age:'45',sex:'M',bmi:'32',pahi:'22',ess:'16',isi:'5',tonsils:'2',ftp:'III',noseScore:'10'}, c:[] },
+  { id:6,  name:'Severe obese',                f:{age:'50',sex:'M',bmi:'38',pahi:'55',ess:'19',isi:'5',tonsils:'3',ftp:'III',noseScore:'10',nadir:'78',odi:'40',hbAreaPH:'45',t90:'12'}, c:[] },
+  { id:7,  name:'Very severe morbid',          f:{age:'50',sex:'M',bmi:'44',pahi:'85',ess:'20',isi:'4',tonsils:'2',ftp:'IV',noseScore:'15',nadir:'68',odi:'60',hbAreaPH:'90',t90:'25'}, c:[] },
+  // Group 2: CPAP History Variants
+  { id:8,  name:'Current CPAP user',           f:{age:'50',sex:'M',bmi:'33',pahi:'30',ess:'10',isi:'5'}, c:['priorCpap','cpapCurrent'] },
+  { id:9,  name:'CPAP failed, wont retry',     f:{age:'50',sex:'F',bmi:'31',pahi:'24',ess:'17',isi:'19',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','cpapClaustro','prefAvoidCpap'] },
+  { id:10, name:'CPAP failed, will retry',     f:{age:'50',sex:'M',bmi:'30',pahi:'28',ess:'15',isi:'8',cpapHelped:'No',cpapRetry:'Yes'}, c:['priorCpap','cpapMask'] },
+  { id:11, name:'Prefers to avoid CPAP',       f:{age:'45',sex:'M',bmi:'27',pahi:'12',ess:'14',isi:'5'}, c:['prefAvoidCpap'] },
+  // Group 3: COMISA & Insomnia Variants
+  { id:12, name:'Pure insomnia + mild OSA',    f:{age:'45',sex:'F',bmi:'24',pahi:'7',ess:'6',isi:'22'}, c:[] },
+  { id:13, name:'Sleepy COMISA',               f:{age:'50',sex:'F',bmi:'31',pahi:'24',ess:'17',isi:'19'}, c:[] },
+  { id:14, name:'Insomnia no OSA evidence',    f:{age:'45',sex:'F',bmi:'23',ess:'5',isi:'24'}, c:[] },
+  // Group 4: Anatomy & Surgery Scenarios
+  { id:15, name:'Large tonsils, thin',         f:{age:'40',sex:'M',bmi:'24',pahi:'18',ess:'10',isi:'5',tonsils:'4',ftp:'I'}, c:[] },
+  { id:16, name:'Large tonsils, obese',        f:{age:'45',sex:'M',bmi:'34',pahi:'35',ess:'12',isi:'5',tonsils:'3',ftp:'II'}, c:[] },
+  { id:17, name:'Prior UPPP',                  f:{age:'50',sex:'M',bmi:'30',pahi:'25',ess:'12',isi:'5',tonsils:'1',ftp:'III'}, c:['priorUPPP'] },
+  { id:18, name:'Prior MAD failed',            f:{age:'45',sex:'F',bmi:'28',pahi:'15',ess:'10',isi:'5',tonsils:'2',ftp:'II'}, c:['priorMAD'] },
+  // Group 5: Phenotype Edge Cases
+  { id:19, name:'REM-predominant mild',        f:{age:'40',sex:'F',bmi:'25',pahi:'12',ess:'10',isi:'5',remPahi:'28',nremPahi:'8'}, c:[] },
+  { id:20, name:'High loop gain',              f:{age:'55',sex:'M',bmi:'29',pahi:'25',ess:'12',isi:'5',csr:'15',pahic:'12'}, c:[] },
+  { id:21, name:'High hypoxic burden only',    f:{age:'50',sex:'M',bmi:'30',pahi:'20',ess:'12',isi:'5',nadir:'72',hbAreaPH:'15',odi:'35'}, c:[] },
+  { id:22, name:'Nasal + positional combo',    f:{age:'45',sex:'M',bmi:'28',pahi:'16',ess:'12',isi:'5',noseScore:'60',supPahi:'32',nonSupPahi:'6'}, c:['nasalObs'] },
+  { id:23, name:'Delta HR elevated + CVD',     f:{age:'55',sex:'M',bmi:'30',pahi:'25',ess:'12',isi:'5',dhr:'14'}, c:['cvd'] },
+  // Group 6: Inspire Candidacy
+  { id:24, name:'Good Inspire candidate',      f:{age:'50',sex:'M',bmi:'30',pahi:'28',ess:'12',isi:'5',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','prefInspire'] },
+  { id:25, name:'Poor Inspire (BMI)',          f:{age:'50',sex:'M',bmi:'42',pahi:'72',ess:'15',isi:'5',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','prefInspire'] },
+  { id:26, name:'Interested in Inspire',       f:{age:'45',sex:'M',bmi:'29',pahi:'20',ess:'12',isi:'5'}, c:['prefInspire'] },
+  // Group 7: Borderline / Edge Cases
+  { id:27, name:'BMI 26 mild insomnia',        f:{age:'45',sex:'M',bmi:'26',pahi:'10',ess:'8',isi:'12'}, c:[] },
+  { id:28, name:'BMI 29.9',                    f:{age:'45',sex:'M',bmi:'29.9',pahi:'15',ess:'12',isi:'5'}, c:[] },
+  { id:29, name:'AHI exactly 5',               f:{age:'45',sex:'M',bmi:'28',pahi:'5',ess:'10',isi:'5'}, c:[] },
+  { id:30, name:'AHI exactly 15',              f:{age:'45',sex:'M',bmi:'30',pahi:'15',ess:'12',isi:'5'}, c:[] },
+  { id:31, name:'AHI exactly 30',              f:{age:'45',sex:'M',bmi:'32',pahi:'30',ess:'14',isi:'5'}, c:[] },
+  // Group 8: Clinical Logic Regression Checks
+  { id:32, name:'Edwards low ArTH no insomnia', f:{age:'45',sex:'M',bmi:'27',pahi:'12',ess:'8',isi:'4',nadir:'88',apneaIndex:'3',hypopneaIndex:'9'}, c:[] },
+  { id:33, name:'REM-heavy low NREM burden',   f:{age:'45',sex:'M',bmi:'28',pahi:'22',ess:'12',isi:'5',remPahi:'36',nremPahi:'8'}, c:[] },
+  { id:34, name:'Inspire interest, no PAP failure', f:{age:'45',sex:'M',bmi:'29',pahi:'24',ess:'12',isi:'5'}, c:['prefInspire'] },
+  { id:35, name:'Mild OSA without oxygen metrics', f:{age:'45',sex:'M',bmi:'28',pahi:'10',ess:'10',isi:'5'}, c:[] },
+  { id:36, name:'Obese OSA without anatomical phenotype', f:{age:'45',sex:'M',bmi:'33',pahi:'12',ess:'10',isi:'5',tonsils:'1',ftp:'II',neck:'15'}, c:[] },
+];
+
+/* ── Golden baseline ───────────────────────────────────────────────────────
+   Captured from the current engine (2026-06-11). These are the locked
+   phenotype + ordered recommendation-tag outputs for each profile. A
+   behavior-preserving refactor must reproduce these exactly; a clinical
+   change is expected to update this block deliberately (re-capture). */
+const PHENOTYPE_BASELINE = {
+  1: { phen: [], tags: ["SLEEP-STUDY", "NASAL-OPT"] },
+  2: { phen: [], tags: ["SLEEP-STUDY", "CBTI"] },
+  3: { phen: [], tags: [] },
+  4: { phen: ["Positional OSA"], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "POS", "CPAP", "MAD-FAVORABLE", "SURG"] },
+  5: { phen: [], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  6: { phen: ["High Anatomical Contribution", "High Hypoxic Burden"], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "CPAP", "SURGALT", "WEIGHT", "MAD-POOR", "SURG"] },
+  7: { phen: ["High Anatomical Contribution", "High Hypoxic Burden"], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "CPAP", "SURGALT", "HB-URG", "WEIGHT", "MAD-POOR", "SURG"] },
+  8: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  9: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD", "CBTI", "COMISA-PAP", "COMISA-SRT-CAUTION"] },
+  10: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  11: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "MILD-LIFESTYLE"] },
+  12: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "MILD-LIFESTYLE", "CBTI", "COMISA-PAP"] },
+  13: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD", "CBTI", "COMISA-PAP", "COMISA-SRT-CAUTION"] },
+  14: { phen: [], tags: ["SLEEP-STUDY", "CBTI"] },
+  15: { phen: [], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP", "CPAP", "MAD-FAVORABLE", "SURG"] },
+  16: { phen: ["High Anatomical Contribution"], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP", "CPAP", "SURGALT", "WEIGHT", "MAD-POOR", "SURG"] },
+  17: { phen: [], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  18: { phen: [], tags: ["SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "SURG"] },
+  19: { phen: ["REM-Predominant OSA"], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "REM-CHECK", "REM-MAD", "CPAP", "MAD"] },
+  20: { phen: ["High Loop Gain"], tags: ["MAD-WORKUP", "CENTRAL-PSG-WORKUP", "ASV-SAFETY", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP-FIXED", "CPAP", "MAD"] },
+  21: { phen: ["High Hypoxic Burden"], tags: ["MAD-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "HB-URG", "WEIGHT", "CPAP", "MAD"] },
+  22: { phen: ["Positional OSA", "Nasal-Resistance Contributor"], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "POS", "NASAL-OPT", "CPAP", "MAD"] },
+  23: { phen: ["Elevated Delta Heart Rate"], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "DHR-TX", "WEIGHT", "CPAP", "MAD"] },
+  24: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "HNS-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  25: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "HNS-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  26: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "HNS-WORKUP", "NASAL-WORKUP", "CPAP", "MAD"] },
+  27: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "MILD-LIFESTYLE"] },
+  28: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD"] },
+  29: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "MILD-LIFESTYLE"] },
+  30: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  31: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
+  32: { phen: ["Low Arousal Threshold"], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP-OPT", "CPAP", "MAD"] },
+  33: { phen: ["REM-Predominant OSA"], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "REM-CHECK", "REM-MAD", "CPAP", "MAD"] },
+  34: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "HNS-WORKUP", "NASAL-WORKUP", "CPAP", "MAD"] },
+  35: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "MILD-LIFESTYLE"] },
+  36: { phen: [], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD-FAVORABLE", "SURG", "MILD-LIFESTYLE"] },
+};
+
+function applyProfile(win, doc, p) {
+  doc.getElementById('form').reset();
+  chooseRadio(win, 'studyType', 'watchpat');
+  setId(win, 'patientName', 'Profile ' + p.id);
+  setId(win, 'patientDob', '1980-01-01');
+  for (const [k, v] of Object.entries(p.f)) setField(win, k, v);
+  (p.c || []).forEach(id => setCheck(win, id, true));
+}
+
+async function runMatrix() {
+  group('Phenotype Characterization Matrix');
+  const frame = document.getElementById('appFrame');
+  await waitFor(() => (
+    frame.contentWindow && frame.contentDocument &&
+    /index\.html/.test(frame.contentWindow.location.pathname) &&
+    frame.contentDocument.getElementById('appContainer')
+  ), 'app iframe ready');
+  const win = frame.contentWindow;
+  const doc = win.document;
+  win.alert = () => {};
+  win.confirm = () => true;
+  await waitFor(() => !doc.getElementById('appContainer').classList.contains('d-none'), 'app visible');
+  await waitFor(() => win.OSAReportState, 'report state ready');
+
+  for (const p of PROFILES) {
+    applyProfile(win, doc, p);
+    doc.querySelector('#form button[type="submit"]').click();
+    await wait(40);
+    const data = win.OSAReportState.getLastAnalysisData();
+
+    // Freshness guard — prove THIS profile's analysis actually ran. The engine
+    // stamps lastAnalysisData.patientName from the form ("Profile <id>"); if a
+    // future change silently blocks the submit (e.g. a validation regression on
+    // a required field), getLastAnalysisData() still holds the PREVIOUS
+    // profile's data. Without this guard a stale read could pass on a
+    // coincidental baseline match (many profiles share phen:[]). On failure we
+    // also poison phen/tags so the baseline assertions below fail too.
+    const fresh = !!(data && data.patientName === 'Profile ' + p.id);
+    assert(fresh, `#${p.id} ${p.name}: analysis ran fresh for this profile (validation passed, not stale)`);
+
+    const phen = fresh ? (data.phen || []).slice() : ['<stale-or-validation-blocked>'];
+    const tags = fresh ? (data.recTags || []).map(r => r.tag).filter(Boolean) : ['<stale-or-validation-blocked>'];
+    captures.push({ id: p.id, name: p.name, primaryAHI: fresh ? data.primaryAHI : null, phen, tags });
+
+    const exp = PHENOTYPE_BASELINE[p.id];
+    if (exp) {
+      assertEqual(JSON.stringify(phen), JSON.stringify(exp.phen), `#${p.id} ${p.name}: phenotypes`);
+      assertEqual(JSON.stringify(tags), JSON.stringify(exp.tags), `#${p.id} ${p.name}: recommendation tags`);
+    } else {
+      assert(false, `#${p.id} ${p.name}: no golden baseline defined`);
+    }
+  }
+  window.__CAPTURE__ = captures;
+  document.getElementById('capture').textContent = JSON.stringify(captures, null, 2);
+}
+
+function renderResults() {
+  const container = document.getElementById('results');
+  const summary = document.createElement('div');
+  summary.className = 'summary ' + (failed ? 'has-fail' : 'all-pass');
+  summary.innerHTML = `<strong>${passed} passed</strong>, <strong>${failed} failed</strong>`;
+  container.appendChild(summary);
+  results.forEach((r) => {
+    if (r.group) {
+      const h = document.createElement('h2');
+      h.textContent = r.group; h.style.fontSize = '1.05rem'; h.style.marginTop = '1.2rem';
+      container.appendChild(h); return;
+    }
+    const pre = document.createElement('pre');
+    pre.className = r.pass ? 'pass' : 'fail';
+    pre.textContent = `${r.pass ? 'PASS' : 'FAIL'}: ${r.message}`;
+    container.appendChild(pre);
+  });
+}
+
+(async function run() {
+  try { await runMatrix(); }
+  catch (err) { failed++; results.push({ pass: false, message: `Unhandled matrix error: ${err.message}` }); }
+  renderResults();
+})();
+</script>
+</body>
+</html>
