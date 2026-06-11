@@ -151,12 +151,15 @@ See the changelog for detail.
 - [x] **Unit tests replicate `app.js` logic instead of importing it** (high) — fixed two ways:
   (a) `confidenceFor()` extracted to `js/phenotype-confidence.js`, imported by both `app.js` and
   `tests/tests.html` (replica + its dead `ratio` removed); (b) new `tests/phenotype-matrix.html`
-  golden-master suite drives the **real** engine across the 36 phenotyping profiles and locks
-  current phenotype/recommendation output (199 → 271 assertions).
-- [ ] **~1,287-line form-submit god function** (high) — `js/app.js` form-submit handler (verified
-  878–2164, not 870–2130). **Deferred to part 2.** With the golden master now in place, extract
-  `detectPhenotypes()` / `mapTreatments()` / a renderer as small, golden-master-verified increments.
-  The recon flagged this as the highest-regression-risk item; do it carefully, not in one shot.
+  golden-master suite drives the **real** engine across 37 phenotyping profiles (all 9 phenotypes
+  covered) and locks current phenotype/recommendation + clinician-HTML output (199 → 310 assertions).
+- [~] **~1,287-line form-submit god function** (high) — `js/app.js` form-submit handler. **Part 2
+  in progress.** Extracted so far (each proven byte-identical via the golden master's before/after
+  `{phen,why,tags,clinicianHtml}` diff): `detectPhenotypes()` (increment 1) and `buildHstFlags()`
+  (increment 2); the net was extended to cover the clinician HTML first. **Remaining:** the
+  recommendation mapping (`mapTreatments`, ~300 lines with the module-scoped recSeen/recTagMap
+  dedup — the riskiest) and the ~580-line clinician renderer (large but now net-covered). Do them
+  as small, verified increments.
 - [x] **Core thresholds hardcoded outside config.js** (high) — added `thresholds.madCandidacy` +
   `thresholds.hstValidity` to `config.js` and rewired the MAD-scoring + HST-flag logic to read
   them; `patientReport.js ahiSeverityLabel()` now reads `OSA_CONFIG.thresholds.severity`.
