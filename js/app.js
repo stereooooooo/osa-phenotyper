@@ -799,6 +799,113 @@ function renderHGNSHTML(hgns) {
     </div>`;
 }
 
+/* ── Phenotype detection — pure function extracted from the submit handler.
+   `m` is a metrics object of already-parsed/computed inputs; `T` is the
+   thresholds. Returns { phen: [tags], why: {tag: [reason strings]} } with no
+   DOM access or shared state. Behavior verified byte-identical against
+   tests/phenotype-matrix.html (all 9 phenotypes + reason strings). ── */
+function detectPhenotypes(m, T){
+  const phen = [];
+  const why = {};
+  const add = (tag, reason) => {
+    if(!phen.includes(tag)){ phen.push(tag); why[tag] = reason.filter(Boolean); }
+  };
+
+  const anatFlags = [
+    m.bmi >= T.anatomical.bmi,
+    m.neck >= m.neckThreshold,
+    m.tons >= T.anatomical.tonsils,
+    T.anatomical.ftp.includes(m.mall),
+    m.ahi >= T.anatomical.ahiSevere
+  ].filter(Boolean).length;
+
+  if(anatFlags >= T.anatomical.minCriteria){
+    add('High Anatomical Contribution',[
+      exists(m.bmi)?`BMI ${m.bmi}`:'',
+      exists(m.neck)?`Neck ${m.neck} in`:'',
+      exists(m.tons)?`Tonsils ${m.tons}`:'',
+      m.mall?`FTP ${m.mall}`:'',
+      exists(m.ahi)?`AHI ${m.ahi}`:''
+    ]);
+  }
+
+  if(m.edwardsArTH && m.edwardsArTH.score >= T.arousal.scoreLikely){
+    add('Low Arousal Threshold',[
+      `Edwards ${m.edwardsArTH.score}/${m.edwardsArTH.maxScore}`,
+      ...m.edwardsArTH.details,
+      m.edwardsArTH.partial ? 'Hypopnea fraction unavailable' : ''
+    ]);
+  }
+
+  /* Qualitative loop-gain flag: ≥2 central / periodic-breathing signals suggest possible
+     ventilatory instability (no numeric estimate; see config.js loopGain note). */
+  const highLoopGainDetected = m.loopGainSupportCount >= T.loopGain.supportMin;
+  const remStageRatio = ratio(m.remAhi, m.nremAhi);
+  const supNonSupRatio = ratio(m.sup, m.nons);
+  if(highLoopGainDetected){
+    add('High Loop Gain',[
+      m.csr?`CSR ${m.csr}%`:'',
+      exists(m.pahic3)?`pAHIc 3% ${m.pahic3}/h`:'',
+      exists(m.pahic4)?`pAHIc 4% ${m.pahic4}/h`:'',
+      exists(m.cai)?`CAI ${m.cai}/h`:'',
+      m.cvd?'CVD present (confidence modifier only)':''
+    ]);
+  }
+
+  if( m.ahi >= T.muscleResponse.ahiMin &&
+      exists(remStageRatio) &&
+      exists(m.nremAhi) &&
+      m.nremAhi >= T.muscleResponse.nremFloor &&
+      remStageRatio > T.muscleResponse.remNremRatio ){
+    add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`, `AHI ${m.ahi}`, 'inferred surrogate (not a measured trait)']);
+  }
+
+  if( exists(supNonSupRatio) && exists(m.nons) && supNonSupRatio > T.positional.supNonSupRatio && m.nons < T.positional.nonSupMax ){
+    add('Positional OSA',[`Sup/Non-sup ${formatRatio(supNonSupRatio)}`, `Non-sup AHI ${m.nons}`]);
+  }
+
+  if( exists(remStageRatio) && exists(m.nremAhi) && remStageRatio > T.remPredominant.remNremRatio && m.nremAhi < T.remPredominant.nremMax ){
+    add('REM-Predominant OSA',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`]);
+  }
+
+  /* Composite HB: trigger if ANY metric is in moderate+ range.
+     Nadir only triggers at severe level (<75%) — weaker standalone predictor than
+     duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
+  const hbTrigger = (exists(m.hbPH) && m.hbPH >= T.hypoxicBurden.hbPerHour) ||
+                    (exists(m.odi) && m.odi >= T.hypoxicBurden.odi) ||
+                    (exists(m.nadir) && m.nadir < T.hypoxicBurden.nadirSevere) ||
+                    (exists(m.t90) && m.t90 >= T.hypoxicBurden.t90) ||
+                    (exists(m.hb90PH) && m.hb90PH > T.hypoxicBurden.areaUnder90);
+  if(hbTrigger){
+    add('High Hypoxic Burden',[
+      exists(m.hbPH)?`HB/hr ${m.hbPH}`:'',
+      exists(m.hb90PH)?`Area<90/hr ${m.hb90PH}`:'',
+      exists(m.t90)?`T90 ${m.t90}%`:'',
+      exists(m.odi)?`ODI ${m.odi}`:'',
+      exists(m.nadir)?`Nadir SpO₂ ${m.nadir}%`:''
+    ]);
+  }
+
+  if( (m.noseScore && m.noseScore >= T.nasal.noseMild) || m.nasalObs || m.ctSeptum || m.ctTurbs ){
+    add('Nasal-Resistance Contributor',[
+      m.noseScore ? `NOSE score ${m.noseScore}/100` : '',
+      m.nasalObs ? 'Patient-reported nasal obstruction' : '',
+      m.ctSeptum ? 'CT: deviated septum' : '',
+      m.ctTurbs ? 'CT: turbinate hypertrophy' : ''
+    ]);
+  }
+
+  // Delta Heart Rate (Phase 4 field — only triggers if the input exists)
+  if( m.dhr && m.dhr >= T.deltaHeartRate.dhr ){
+    add('Elevated Delta Heart Rate',[
+      `ΔHR ${m.dhr} bpm`,
+      m.cvd ? 'CVD present' : ''
+    ]);
+  }
+
+  return { phen, why };
+}
+
 /* ── Form submission handler ──────────────────────────────────── */
 document.getElementById('form').addEventListener('submit', e => {
   e.preventDefault();
@@ -831,10 +938,7 @@ document.getElementById('form').addEventListener('submit', e => {
   recTagMap.length = 0;
   const f = new FormData(e.target);
 
-  const out = { phen:[], why:{}, recs:[] };
-  const add = (tag, reason) => {
-    if(!out.phen.includes(tag)){ out.phen.push(tag); out.why[tag] = reason.filter(Boolean); }
-  };
+  const out = { phen:[], why:{}, recs:[] };  // phen/why populated by detectPhenotypes() below
 
   /* ─── INPUTS ────────────────────────────────────────────────── */
   const sex   = f.get('sex');   // M or F
@@ -987,97 +1091,16 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ─── PHENOTYPES (suppressed until OSA is confirmed) ──────── */
   if (osaConfirmed) {
-    const anatFlags = [
-      bmi >= T.anatomical.bmi,
-      neck >= neckThreshold,
-      tons >= T.anatomical.tonsils,
-      T.anatomical.ftp.includes(mall),
-      ahi >= T.anatomical.ahiSevere
-    ].filter(Boolean).length;
-
-    if(anatFlags >= T.anatomical.minCriteria){
-      add('High Anatomical Contribution',[
-        exists(bmi)?`BMI ${bmi}`:'',
-        exists(neck)?`Neck ${neck} in`:'',
-        exists(tons)?`Tonsils ${tons}`:'',
-        mall?`FTP ${mall}`:'',
-        exists(ahi)?`AHI ${ahi}`:''
-      ]);
-    }
-
-    if(edwardsArTH && edwardsArTH.score >= T.arousal.scoreLikely){
-      add('Low Arousal Threshold',[
-        `Edwards ${edwardsArTH.score}/${edwardsArTH.maxScore}`,
-        ...edwardsArTH.details,
-        edwardsArTH.partial ? 'Hypopnea fraction unavailable' : ''
-      ]);
-    }
-
-    /* Qualitative loop-gain flag: ≥2 central / periodic-breathing signals suggest possible
-       ventilatory instability (no numeric estimate; see config.js loopGain note). */
-    const highLoopGainDetected = loopGainSupportCount >= T.loopGain.supportMin;
-    const remStageRatio = ratio(remAhi, nremAhi);
-    const supNonSupRatio = ratio(sup, nons);
-    if(highLoopGainDetected){
-      add('High Loop Gain',[
-        csr?`CSR ${csr}%`:'',
-        exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
-        exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
-        exists(cai)?`CAI ${cai}/h`:'',
-        cvd?'CVD present (confidence modifier only)':''
-      ]);
-    }
-
-    if( ahi >= T.muscleResponse.ahiMin &&
-        exists(remStageRatio) &&
-        exists(nremAhi) &&
-        nremAhi >= T.muscleResponse.nremFloor &&
-        remStageRatio > T.muscleResponse.remNremRatio ){
-      add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`, 'inferred surrogate (not a measured trait)']);
-    }
-
-    if( exists(supNonSupRatio) && exists(nons) && supNonSupRatio > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
-      add('Positional OSA',[`Sup/Non-sup ${formatRatio(supNonSupRatio)}`, `Non-sup AHI ${nons}`]);
-    }
-
-    if( exists(remStageRatio) && exists(nremAhi) && remStageRatio > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
-      add('REM-Predominant OSA',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`]);
-    }
-
-    /* Composite HB: trigger if ANY metric is in moderate+ range.
-       Nadir only triggers at severe level (<75%) — weaker standalone predictor than
-       duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
-    const hbTrigger = (exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHour) ||
-                      (exists(odi) && odi >= T.hypoxicBurden.odi) ||
-                      (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) ||
-                      (exists(t90) && t90 >= T.hypoxicBurden.t90) ||
-                      (exists(hb90PH) && hb90PH > T.hypoxicBurden.areaUnder90);
-    if(hbTrigger){
-      add('High Hypoxic Burden',[
-        exists(hbPH)?`HB/hr ${hbPH}`:'',
-        exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
-        exists(t90)?`T90 ${t90}%`:'',
-        exists(odi)?`ODI ${odi}`:'',
-        exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
-      ]);
-    }
-
-    if( (noseScore && noseScore >= T.nasal.noseMild) || nasalObs || ctSeptum || ctTurbs ){
-      add('Nasal-Resistance Contributor',[
-        noseScore ? `NOSE score ${noseScore}/100` : '',
-        nasalObs ? 'Patient-reported nasal obstruction' : '',
-        ctSeptum ? 'CT: deviated septum' : '',
-        ctTurbs ? 'CT: turbinate hypertrophy' : ''
-      ]);
-    }
-
-    // Delta Heart Rate (Phase 4 field — only triggers if the input exists)
-    if( dhr && dhr >= T.deltaHeartRate.dhr ){
-      add('Elevated Delta Heart Rate',[
-        `ΔHR ${dhr} bpm`,
-        cvd ? 'CVD present' : ''
-      ]);
-    }
+    const detected = detectPhenotypes({
+      bmi, neck, neckThreshold, tons, mall, ahi,
+      edwardsArTH,
+      loopGainSupportCount, csr, pahic3, pahic4, cai, cvd,
+      remAhi, nremAhi, sup, nons,
+      hbPH, odi, nadir, t90, hb90PH,
+      noseScore, nasalObs, ctSeptum, ctTurbs, dhr
+    }, T);
+    out.phen = detected.phen;
+    out.why = detected.why;
   }
 
   /* ─── TREATMENT MAPPING (treatment-history-aware) ──────────── */

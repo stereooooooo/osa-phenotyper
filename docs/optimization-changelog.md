@@ -8,6 +8,30 @@ full findings inventory.
 
 ---
 
+## [Phase 5 (part 2, increment 1) — Extract detectPhenotypes()] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. First increment of the deferred god-function teardown — the
+lowest-risk seam (pure phenotype logic), done now that the golden master can verify it.
+
+### Changed
+- **Extracted `detectPhenotypes(metrics, T)`** as a top-level pure function (no DOM, no shared
+  state) out of the 1,287-line form-submit handler. The 9-phenotype detection block (~93 lines) is
+  replaced by a 13-line call that passes an explicit metrics object and assigns `out.phen`/`out.why`
+  from the result; the now-dead `add` helper was removed from the handler.
+
+### Tests
+- **Strengthened the golden master first** (prerequisite): the 36 profiles exercised 8 of 9
+  phenotypes — added profile 37 (Poor Muscle Responsiveness: AHI 40, REM/NREM > 2, NREM ≥ 15, the
+  one path with no coverage). Suite 310 assertions. Added `why` to the capture dump.
+
+### Verification
+- 310 assertions pass; ESLint clean; app.js syntax valid.
+- **Byte-for-byte proof:** captured every profile's `{phen, why, tags}` before and after the
+  extraction — `diff` is **identical across all 37 profiles**, including the reason strings (e.g.
+  the `cvd`-only-in-the-loop-gain-reason case). The extraction changes structure, not behavior.
+
+---
+
 ## [Phase 5 (part 1) — Structural hardening: tests, config, dedup, lint] — 2026-06-11
 
 Branch: `phase-1-safety-fixes`. Behavior-preserving refactors of the clinical engine, each

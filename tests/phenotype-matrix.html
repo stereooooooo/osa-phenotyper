@@ -126,6 +126,8 @@ const PROFILES = [
   { id:34, name:'Inspire interest, no PAP failure', f:{age:'45',sex:'M',bmi:'29',pahi:'24',ess:'12',isi:'5'}, c:['prefInspire'] },
   { id:35, name:'Mild OSA without oxygen metrics', f:{age:'45',sex:'M',bmi:'28',pahi:'10',ess:'10',isi:'5'}, c:[] },
   { id:36, name:'Obese OSA without anatomical phenotype', f:{age:'45',sex:'M',bmi:'33',pahi:'12',ess:'10',isi:'5',tonsils:'1',ftp:'II',neck:'15'}, c:[] },
+  // Coverage: Poor Muscle Responsiveness (AHI>=15, REM/NREM>2, NREM>=15 — distinct from REM-predominant where NREM<15)
+  { id:37, name:'Poor muscle responsiveness',  f:{age:'50',sex:'M',bmi:'30',pahi:'40',ess:'14',isi:'5',remPahi:'40',nremPahi:'18'}, c:[] },
 ];
 
 /* ── Golden baseline ───────────────────────────────────────────────────────
@@ -170,6 +172,7 @@ const PHENOTYPE_BASELINE = {
   34: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "HNS-WORKUP", "NASAL-WORKUP", "CPAP", "MAD"] },
   35: { phen: [], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "CPAP", "MAD", "MILD-LIFESTYLE"] },
   36: { phen: [], tags: ["MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD-FAVORABLE", "SURG", "MILD-LIFESTYLE"] },
+  37: { phen: ["Poor Muscle Responsiveness"], tags: ["MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "NASAL-WORKUP", "WEIGHT", "CPAP", "MAD"] },
 };
 
 function applyProfile(win, doc, p) {
@@ -214,7 +217,7 @@ async function runMatrix() {
 
     const phen = fresh ? (data.phen || []).slice() : ['<stale-or-validation-blocked>'];
     const tags = fresh ? (data.recTags || []).map(r => r.tag).filter(Boolean) : ['<stale-or-validation-blocked>'];
-    captures.push({ id: p.id, name: p.name, primaryAHI: fresh ? data.primaryAHI : null, phen, tags });
+    captures.push({ id: p.id, name: p.name, primaryAHI: fresh ? data.primaryAHI : null, phen, tags, why: fresh ? data.why : null });
 
     const exp = PHENOTYPE_BASELINE[p.id];
     if (exp) {
