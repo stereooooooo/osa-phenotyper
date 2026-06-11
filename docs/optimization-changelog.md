@@ -8,6 +8,27 @@ full findings inventory.
 
 ---
 
+## [Phase 5 (part 2, increment 2) — net coverage + extract buildHstFlags()] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. Per the chosen path ("net-strengthen, then continue").
+
+### Tests — strengthened the net for renderer/treatment extractions
+- The golden master asserted phenotypes + recommendation *tags* but not the rendered HTML. Added
+  the clinician report HTML to the capture so the before/after snapshot now diffs `{phen, why,
+  tags, clinicianHtml}` per profile — covering recommendation *text*, surgical-staging display, HST
+  flags, and the full clinician renderer. 34/37 profiles carry HTML (3 pre-study correctly skip it).
+
+### Changed — extract buildHstFlags()
+- Moved the 7-check home-sleep-test validity-flag logic (~55 lines) out of the submit handler into
+  a pure `buildHstFlags(metrics, T)`; the handler builds an explicit metrics object and renders the
+  returned flags.
+
+### Verification
+- 310 assertions pass; ESLint clean. Before/after snapshot **byte-identical across all 37 profiles**
+  including the clinician HTML (the HST flags render into it).
+
+---
+
 ## [Phase 5 (part 2, increment 1) — Extract detectPhenotypes()] — 2026-06-11
 
 Branch: `phase-1-safety-fixes`. First increment of the deferred god-function teardown — the

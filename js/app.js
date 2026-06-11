@@ -906,6 +906,71 @@ function detectPhenotypes(m, T){
   return { phen, why };
 }
 
+/* ── Home sleep test (WatchPAT) validity flags — pure function extracted from
+   the submit handler. `m` is the study metrics; `T` the thresholds. Returns the
+   flag array (the caller renders it). Verified byte-identical via the clinician
+   HTML diff in tests/phenotype-matrix.html. ── */
+function buildHstFlags(m, T){
+  const HST = T.hstValidity;
+  const flags = [];
+
+  // 1. Total sleep time assessment
+  if (exists(m.tst)) {
+    if (m.tst < HST.tstDanger) {
+      flags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${m.tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
+    } else if (m.tst < HST.tstWarning) {
+      flags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${m.tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
+    }
+  }
+
+  // 2. AHI–RDI discrepancy (may indicate signal artifact or scoring issues)
+  if (exists(m.ahi) && exists(m.patRdi) && m.patRdi > 0) {
+    const ahiRdiRatio = m.ahi / m.patRdi;
+    if (ahiRdiRatio < HST.ahiRdiRatioLow) {
+      flags.push({ severity: 'warning', flag: 'Large AHI–RDI discrepancy', detail: `pAHI (${m.ahi}) is less than half the PAT RDI (${m.patRdi}). A large gap may indicate significant RERAs (respiratory effort-related arousals) or signal quality issues. Consider in-lab PSG if clinical picture is inconsistent.` });
+    }
+  }
+
+  // 3. Missing REM data
+  if (exists(m.ahi) && !exists(m.remAhi)) {
+    flags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'REM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported. Consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
+  } else if (exists(m.ahi) && !exists(m.nremAhi)) {
+    flags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'NREM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported.' });
+  } else if (exists(m.tst) && exists(m.remAhi) && exists(m.nremAhi) && m.tst < HST.tstRemCapture && m.remAhi === 0) {
+    flags.push({ severity: 'warning', flag: 'No REM sleep captured', detail: `REM AHI is 0 with TST of only ${m.tst} hrs. REM sleep may not have occurred during this short recording. AHI may underestimate true severity if OSA is REM-predominant. Consider repeat study.` });
+  }
+
+  // 4. Low AHI despite high symptom burden — possible false negative
+  if (exists(m.ahi) && m.ahi < HST.ahiLowSymptom && exists(m.ess) && m.ess >= HST.essSignificant) {
+    flags.push({ severity: 'warning', flag: 'Low AHI with significant symptoms', detail: `AHI ${m.ahi} is normal/minimal despite ESS ${m.ess} (significant sleepiness). HSTs can underestimate AHI due to limited channels and no EEG. Consider in-lab PSG to evaluate for UARS (upper airway resistance syndrome) or first-night effect.` });
+  }
+
+  // 5. High central apnea component — confirm with lab PSG
+  if (exists(m.pahic3) && exists(m.ahi) && m.ahi > 0) {
+    const centralPct = (m.pahic3 / m.ahi) * 100;
+    if (centralPct > HST.centralPctDanger) {
+      flags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central event scoring has limitations — <strong>recommend in-lab PSG with EEG</strong> to confirm central vs obstructive classification before treatment planning.` });
+    } else if (centralPct > HST.centralPctWarning) {
+      flags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT uses PAT signal attenuation to differentiate central from obstructive events, which has lower specificity than EEG-based scoring. Consider in-lab PSG for confirmation if central-dominant phenotype affects treatment choice (e.g., ASV vs CPAP).` });
+    }
+  }
+
+  // 6. High CSR without high central AHI — possible scoring artifact
+  if (exists(m.csr) && m.csr > HST.csrElevated && exists(m.pahic3) && exists(m.ahi) && m.ahi > 0 && (m.pahic3/m.ahi)*100 < HST.centralPctLow) {
+    flags.push({ severity: 'info', flag: 'Elevated CSR with low central AHI', detail: `CSR ${m.csr}% is elevated but central AHI is low relative to total. This pattern may indicate Cheyne-Stokes respiration during wakefulness or signal artifact. Correlate with clinical history (heart failure, stroke).` });
+  }
+
+  // 7. Missing positional data limits phenotyping
+  if (!exists(m.sup) || !exists(m.nons)) {
+    const positionalMissing = [];
+    if (!exists(m.sup)) positionalMissing.push('supine AHI');
+    if (!exists(m.nons)) positionalMissing.push('non-supine AHI');
+    flags.push({ severity: 'info', flag: 'Incomplete positional data', detail: `${positionalMissing.join(' and ')} ${positionalMissing.length === 1 ? 'is' : 'are'} not available. Positional OSA cannot be assessed reliably. If the patient reports position-dependent symptoms or snoring, consider repeat study with positional tracking.` });
+  }
+
+  return flags;
+}
+
 /* ── Form submission handler ──────────────────────────────────── */
 document.getElementById('form').addEventListener('submit', e => {
   e.preventDefault();
@@ -1463,64 +1528,10 @@ document.getElementById('form').addEventListener('submit', e => {
 
 
   /* ─── HST Validity Assessment ────────────────────────────── */
-  const hstFlags = [];
-  const HST = T.hstValidity;
-  const tst = n(f.get('tst'));
-  const patRdi = n(f.get('patRdi'));
-
-  // 1. Total sleep time assessment
-  if (exists(tst)) {
-    if (tst < HST.tstDanger) {
-      hstFlags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
-    } else if (tst < HST.tstWarning) {
-      hstFlags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
-    }
-  }
-
-  // 2. AHI–RDI discrepancy (may indicate signal artifact or scoring issues)
-  if (exists(ahi) && exists(patRdi) && patRdi > 0) {
-    const ahiRdiRatio = ahi / patRdi;
-    if (ahiRdiRatio < HST.ahiRdiRatioLow) {
-      hstFlags.push({ severity: 'warning', flag: 'Large AHI–RDI discrepancy', detail: `pAHI (${ahi}) is less than half the PAT RDI (${patRdi}). A large gap may indicate significant RERAs (respiratory effort-related arousals) or signal quality issues. Consider in-lab PSG if clinical picture is inconsistent.` });
-    }
-  }
-
-  // 3. Missing REM data
-  if (exists(ahi) && !exists(remAhi)) {
-    hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'REM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported. Consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
-  } else if (exists(ahi) && !exists(nremAhi)) {
-    hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'NREM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported.' });
-  } else if (exists(tst) && exists(remAhi) && exists(nremAhi) && tst < HST.tstRemCapture && remAhi === 0) {
-    hstFlags.push({ severity: 'warning', flag: 'No REM sleep captured', detail: `REM AHI is 0 with TST of only ${tst} hrs. REM sleep may not have occurred during this short recording. AHI may underestimate true severity if OSA is REM-predominant. Consider repeat study.` });
-  }
-
-  // 4. Low AHI despite high symptom burden — possible false negative
-  if (exists(ahi) && ahi < HST.ahiLowSymptom && exists(ess) && ess >= HST.essSignificant) {
-    hstFlags.push({ severity: 'warning', flag: 'Low AHI with significant symptoms', detail: `AHI ${ahi} is normal/minimal despite ESS ${ess} (significant sleepiness). HSTs can underestimate AHI due to limited channels and no EEG. Consider in-lab PSG to evaluate for UARS (upper airway resistance syndrome) or first-night effect.` });
-  }
-
-  // 5. High central apnea component — confirm with lab PSG
-  if (exists(pahic3) && exists(ahi) && ahi > 0) {
-    const centralPct = (pahic3 / ahi) * 100;
-    if (centralPct > HST.centralPctDanger) {
-      hstFlags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central event scoring has limitations — <strong>recommend in-lab PSG with EEG</strong> to confirm central vs obstructive classification before treatment planning.` });
-    } else if (centralPct > HST.centralPctWarning) {
-      hstFlags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT uses PAT signal attenuation to differentiate central from obstructive events, which has lower specificity than EEG-based scoring. Consider in-lab PSG for confirmation if central-dominant phenotype affects treatment choice (e.g., ASV vs CPAP).` });
-    }
-  }
-
-  // 6. High CSR without high central AHI — possible scoring artifact
-  if (exists(csr) && csr > HST.csrElevated && exists(pahic3) && exists(ahi) && ahi > 0 && (pahic3/ahi)*100 < HST.centralPctLow) {
-    hstFlags.push({ severity: 'info', flag: 'Elevated CSR with low central AHI', detail: `CSR ${csr}% is elevated but central AHI is low relative to total. This pattern may indicate Cheyne-Stokes respiration during wakefulness or signal artifact. Correlate with clinical history (heart failure, stroke).` });
-  }
-
-  // 7. Missing positional data limits phenotyping
-  if (!exists(sup) || !exists(nons)) {
-    const positionalMissing = [];
-    if (!exists(sup)) positionalMissing.push('supine AHI');
-    if (!exists(nons)) positionalMissing.push('non-supine AHI');
-    hstFlags.push({ severity: 'info', flag: 'Incomplete positional data', detail: `${positionalMissing.join(' and ')} ${positionalMissing.length === 1 ? 'is' : 'are'} not available. Positional OSA cannot be assessed reliably. If the patient reports position-dependent symptoms or snoring, consider repeat study with positional tracking.` });
-  }
+  const hstFlags = buildHstFlags({
+    tst: n(f.get('tst')), patRdi: n(f.get('patRdi')),
+    ahi, remAhi, nremAhi, ess, pahic3, csr, sup, nons
+  }, T);
 
   // Build HST validity HTML
   const hstValidityHTML = hstFlags.length ? `
