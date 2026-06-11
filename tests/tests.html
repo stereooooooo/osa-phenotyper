@@ -578,7 +578,7 @@ function buildReportData(overrides = {}) {
 let reportHtml = PatientReport.generateReportHTML(buildReportData({
   insufficientDataDomains: [{ patient: 'Overnight oxygen measurements were incomplete, so the oxygen-risk part of the plan may change after more data is collected.' }],
 }));
-assert(reportHtml.includes('What may still be refined'), 'Data limitations callout renders when insufficient-data domains are present');
+assert(!reportHtml.includes('What may still be refined'), 'Phase 3: data-limitations callout is suppressed from the patient view (clinician-only)');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 3,
@@ -622,8 +622,8 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
     { key: 'delta-heart-rate', patient: 'We have not yet entered the extra overnight heart-rate reactivity measure.' }
   ],
 }));
-assert(reportHtml.includes('Contributing factors still being clarified'), 'Section C shows unresolved-phenotype callout when phenotype inputs are incomplete');
-assert(reportHtml.includes('do not show one single dominant pattern'), 'Zero-phenotype summary avoids implying that unresolved contributors were ruled out');
+assert(!reportHtml.includes('Contributing factors still being clarified'), 'Phase 3: unresolved-phenotype callout is suppressed from the patient view (clinician-only)');
+assert(!reportHtml.includes('ruled out') && reportHtml.includes('did not point to one dominant cause'), 'Zero-phenotype summary avoids implying that unresolved contributors were ruled out');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   weightLossReadiness: 'ready',
@@ -652,8 +652,8 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   phen: ['High Hypoxic Burden'],
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
-assert(reportHtml.includes('meaningful drops in blood oxygen during the night'), 'High-hypoxic-burden explanation uses calibrated oxygen wording');
-assert(reportHtml.includes('can help confirm that treatment is bringing those oxygen levels into a safer range'), 'High-hypoxic-burden explanation keeps follow-up language probabilistic');
+assert(reportHtml.includes('dipped lower than we like to see during the night'), 'High-hypoxic-burden explanation uses calibrated oxygen wording');
+assert(reportHtml.includes('helps confirm treatment is bringing those levels into a safer range'), 'High-hypoxic-burden explanation keeps follow-up language probabilistic');
 assert(!reportHtml.includes('fall well below normal'), 'High-hypoxic-burden explanation avoids overly alarmist oxygen language');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({

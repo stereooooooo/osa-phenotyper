@@ -34,7 +34,7 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 |------|-------|--------|
 | 1 | Patient safety & trust | ✅ Done (`phase-1-safety-fixes`) |
 | 2 | Right-size cutting-edge clinical claims (concern #2) | ✅ Done (`phase-1-safety-fixes`) |
-| 3 | Simplify the patient report (concern #1) | ☐ Pending |
+| 3 | Simplify the patient report (concern #1) | ✅ Done (`phase-1-safety-fixes`) |
 | 4 | Polish — performance, accessibility, security hardening | ☐ Pending |
 | 5 | Structural hardening — code, tests, config | ☐ Pending |
 
@@ -72,29 +72,23 @@ See changelog and `docs/citations.md` "Phase 2 confidence-calibration changes" f
 
 ---
 
-## Phase 3 — Simplify the patient report (concern #1) ☐
+## Phase 3 — Simplify the patient report (concern #1) ✅ DONE
 
-Goal: lead with the bottom line, cut density, translate jargon. Measured today: ~1,900 words,
-6 sections, up to 8 colored callouts, Flesch-Kincaid grade 10–13 (one passage at 18.8).
+Shipped 2026-06-11 on branch `phase-1-safety-fixes`. Physician chose plain-language headings,
+"lead + lean" (summary card + trim, all sections kept, PDF-friendly), and suppress clinician
+uncertainty callouts. All in `js/patientReport.js`. See changelog for detail.
 
-- [ ] **No "bottom line + one next step" summary** (high) — `js/patientReport.js:1389-1408`.
-  **Fix:** add a `renderSummaryCard()` right after the header for all patients: one plain-language
-  finding sentence + one highlighted "Your most important next step." < 40 words.
-- [ ] **Raw phenotype names shown as bold headings** (high) — `js/patientReport.js:636-647`.
-  "Low Arousal Threshold" / "High Loop Gain" mean nothing (or the wrong thing) to a patient.
-  **Fix:** `patientLabelMap` → plain-language headings; keep clinical names clinician-only.
-- [ ] **"Why This Matters" dumps 5 metrics in one grade-18 sentence** (high) — `js/patientReport.js:1358-1372`.
-  Includes `%min/hr`, a research unit. **Fix:** 2–3 short sentences, lead with the takeaway, drop
-  raw numbers from the patient view.
-- [ ] **Clinician uncertainty/workup callouts rendered to patients** (medium) — `js/patientReport.js:531-581`.
-  **Fix:** suppress from patient view or collapse to one line ("your doctor will go over a few
-  remaining details with you").
-- [ ] **Cumulative callout-box overload** (medium) — `js/patientReport.js:1389-1408`, `css/patientReport.css`.
-  Six competing colored-box styles; flat hierarchy. **Fix:** density budget (≤3–4 callouts, one
-  strong color reserved for the summary); make What-If and full phenotype detail collapsible.
-- [ ] **What-If / phenotype paragraphs long and number-heavy** (low) — `js/patientReport.js:1280-1322, 616-633`.
-  **Fix:** ≤2 sentences and ≤1 number per what-if; cap phenotype descriptions ~40 words; show top
-  2–3 contributors with the rest behind a toggle.
+- [x] **Bottom-line summary card** added at the top for every patient (`renderSummaryCard` /
+  `summaryNextStep`) — finding + one CPAP-state-aware next step.
+- [x] **Phenotype headings → plain language** via `patientLabelMap`; clinical names clinician-only.
+- [x] **"Why This Matters" rewritten** to two short paragraphs, no metric dump.
+- [x] **Clinician uncertainty callouts suppressed** from the patient view (`renderDataLimitations`
+  and the unresolved-phenotype callout).
+- [x] **What-if trimmed** (≤2 sentences / ≤1 number; dropped projected-AHI) and **phenotype
+  descriptions trimmed** (~75 → ~50 words).
+- [~] Cumulative callout-box overload — partially addressed (summary card as the single strong
+  anchor + 2 callouts suppressed). Minor residual: returning patients see the finding ~3× in the
+  first screen (summary card + "Where You Are" + Section B). Deferred polish.
 
 ---
 

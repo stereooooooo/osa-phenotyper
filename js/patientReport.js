@@ -218,6 +218,76 @@ var PatientReport = (() => {
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
+     SUMMARY CARD — bottom line + one next step, shown first for every patient
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  /* Short, plain-language "first action" per lead recommendation tag. */
+  const NEXT_STEP_ACTIONS = {
+    'CPAP': 'Get fitted for CPAP and start your therapy — we will help you find a comfortable setup.',
+    'CPAP-ALT': 'Get fitted for CPAP and start your therapy — we will help you find a comfortable setup.',
+    'MAD': 'See a sleep dentist about a custom oral appliance.',
+    'MAD-FAVORABLE': 'See a sleep dentist about a custom oral appliance.',
+    'MAD-POOR': 'Talk with your doctor about whether a custom oral appliance is a good fit for you.',
+    'HNS': 'Talk with us about whether Inspire therapy is right for you.',
+    'INSPIRE-EVAL': 'Schedule your Inspire candidacy evaluation (a sleep endoscopy).',
+    'SURG': 'Discuss the surgical options in your plan with your ENT.',
+    'SURGALT': 'Discuss the surgical options in your plan with your ENT.',
+    'CBTI': 'Start CBT-I — the program for insomnia — as your first step.',
+    'POS': 'Try sleeping on your side (positional therapy) as a first step.',
+    'WEIGHT': 'Begin a weight-management plan with your doctor’s support.',
+    'NASAL-OPT': 'Start nasal treatment to make breathing — and any therapy — easier.',
+    'MILD-LIFESTYLE': 'Start with the lifestyle changes in your plan; we will recheck in a few months.',
+    'SLEEP-STUDY': 'Schedule the sleep study your care team recommended.',
+    'UARS-EVAL': 'Talk with your doctor about whether more detailed sleep testing is needed.',
+  };
+
+  function summaryNextStep(data) {
+    const stage = getReportStage(data);
+    if (stage === 'pre-study') return 'Schedule the sleep study your care team recommended.';
+    const ahi = data.primaryAHI;
+    if (exists(ahi) && ahi < 5) {
+      return symptomaticNormalHomeTest(data)
+        ? 'Talk with your doctor about whether a more detailed in-lab sleep study is the right next step.'
+        : 'Review these results with your doctor and keep an eye on how you are sleeping.';
+    }
+    // Established CPAP user: the action is continuity, not a new fitting.
+    if (data.cpapCurrent) return 'Keep using your CPAP, and bring any comfort issues to your next visit so we can fine-tune it.';
+    // Otherwise follow the report's own recommendation priority — first one the patient actually sees.
+    const entries = getPatientFacingRecEntries(data);
+    for (const e of entries) {
+      if (patientFriendlyRec(e.tag, e.text || '', data) === null) continue;  // suppressed / not shown
+      if (NEXT_STEP_ACTIONS[e.tag]) return NEXT_STEP_ACTIONS[e.tag];
+    }
+    return 'Review your treatment plan below with your doctor and choose a first step together.';
+  }
+
+  function renderSummaryCard(data) {
+    const stage = getReportStage(data);
+    const ahi = data.primaryAHI;
+    let finding, meaning = '';
+    if (stage === 'pre-study') {
+      finding = 'We are recommending a sleep study to get a clear picture of how you breathe overnight.';
+    } else if (exists(ahi) && ahi < 5) {
+      finding = 'Your sleep study did not find obstructive sleep apnea — your breathing was in the normal range.';
+      if (symptomaticNormalHomeTest(data)) meaning = 'Because you have been having symptoms, we still want to take a closer look (see below).';
+    } else {
+      const sev = ahiSeverityLabel(ahi);  // mild | moderate | severe
+      finding = `Your sleep study shows <strong>${sev} sleep apnea</strong>.`;
+      meaning = sev === 'severe'
+        ? 'At this level it adds real strain on your heart and body over time — and treatment can make a big difference.'
+        : sev === 'moderate'
+          ? 'It is interrupting your sleep often enough to affect your health and energy, and treatment helps.'
+          : 'Even at this level, treating it can improve how rested you feel and protect your long-term health.';
+    }
+    const nextStep = summaryNextStep(data);
+    return `
+<div class="report-summary-card" style="margin:0 0 1.25rem;padding:1rem 1.15rem;background:#eef3f8;border-left:4px solid #1F3A5C;border-radius:6px;">
+  <p style="margin:0;font-size:1.05rem;line-height:1.5;color:#1a2b42;">${finding}${meaning ? ' ' + meaning : ''}</p>
+  <p style="margin:0.6rem 0 0;font-size:1rem;line-height:1.45;color:#1a2b42;"><strong style="color:#1F3A5C;">Your most important next step:</strong> ${nextStep}</p>
+</div>`;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
      CARE PATHWAY BAR — Visual step indicator for the patient
      ══════════════════════════════════════════════════════════════════════════ */
   function renderCarePathway(data) {
@@ -627,18 +697,15 @@ ${subtypeHtml}`;
     const phen = data.phen || [];
     if (getReportStage(data) !== 'post-study') return '';
     if (data.primaryAHI < 5) return '';  // Normal AHI handled by Section B2
-    const unresolvedCallout = renderUnresolvedPhenotypeCallout(data);
+    // Phase 3: the "contributing factors still being clarified" callout is suppressed from
+    // the patient view (clinician-oriented, actionless for the patient).
 
     /* Zero phenotypes — provide context instead of blank gap */
     if (phen.length === 0) {
-      const unresolvedNotes = getUnresolvedPhenotypeNotes(data);
-      const summary = unresolvedNotes.length
-        ? 'Your sleep study confirmed obstructive sleep apnea. The data we have so far do not show one single dominant pattern, and a few possible contributing factors still need fuller assessment before they should be treated as absent.'
-        : 'Your sleep study confirmed obstructive sleep apnea, but your results did not show a strong pattern in the common contributing factors we test for (such as anatomical narrowing, positional dependence, or breathing instability). This is not unusual — many patients have sleep apnea caused by a combination of subtle factors rather than one dominant pattern. Your treatment plan is still tailored to your severity level and personal circumstances, and your doctor will work with you to find the most effective approach.';
+      const summary = 'Your sleep study confirmed obstructive sleep apnea, but your results did not point to one dominant cause among the patterns we check (such as airway shape, position, or breathing instability). This is common — for many people it is a mix of smaller factors. Your plan is still tailored to your severity and situation, and your doctor will work with you to find what helps most.';
       return `
 <h2>About Your Sleep Apnea</h2>
-<p>${summary}</p>
-${unresolvedCallout}`;
+<p>${summary}</p>`;
     }
 
     const iconMap = {
@@ -654,23 +721,37 @@ ${unresolvedCallout}`;
     };
 
     const descMap = {
-      'High Anatomical Contribution': `The physical structure of your airway is an important factor in your sleep apnea. This can include enlarged tonsils, a recessed jaw, excess tissue in the throat, or a narrow palate. When these features are present, the airway has less room to stay open, especially when the muscles relax during sleep. Treatments that target the airway physically — such as oral appliances, certain surgeries, or Inspire therapy — often work especially well for this pattern.`,
+      'High Anatomical Contribution': `The physical shape of your airway — things like enlarged tonsils, a set-back jaw, or extra throat tissue — leaves less room for air when your muscles relax in sleep. Treatments that physically open the airway (an oral appliance, surgery, or Inspire) often work especially well here.`,
 
-      'Low Arousal Threshold': `Your brain appears to wake up more easily than average when breathing becomes difficult during sleep. While this seems like it might be helpful, it actually prevents your airway muscles from having enough time to recover and reopen the airway on their own. Instead of one sustained blockage, you may experience many brief, fragmented wake-ups that disrupt sleep without you even realizing it. This pattern often responds well to treatments that stabilize breathing and reduce how often the brain needs to intervene.`,
+      'Low Arousal Threshold': `Your brain wakes up easily when breathing gets hard. That sounds helpful, but it cuts short your airway muscles' chance to reopen on their own, leaving many brief, fragmented wake-ups. Treatments that steady your breathing — so the brain doesn't have to step in so often — tend to help.`,
 
-      'High Loop Gain': `Your body's breathing control system may be set to a hair-trigger sensitivity — like a thermostat that overreacts to small changes. When your breathing slows slightly during sleep, your body may over-correct by breathing too fast, then too slow, creating an unstable cycle. This pattern is sometimes associated with a history of heart or lung conditions. Treatments that stabilize breathing rhythms, including certain CPAP settings, positional therapy, or medications in some cases, can help regulate this cycle.`,
+      'High Loop Gain': `Your breathing control reacts to small changes like an over-sensitive thermostat — speeding up, then slowing too much, in an unstable cycle. Steadying that rhythm (with certain CPAP settings, positional therapy, or in some cases medication) can help smooth it out.`,
 
-      'Poor Muscle Responsiveness': `The muscles around your airway may not be responding as strongly as expected when breathing gets difficult. Normally, when the airway starts to close, a reflex tightens the throat muscles to help hold it open. In your case, that response may be weaker, especially during dream (REM) sleep when muscles are naturally more relaxed. This pattern can matter when we discuss treatment options, including whether therapies that physically support the airway might be a better fit.`,
+      'Poor Muscle Responsiveness': `The muscles that normally tighten to hold your airway open may respond weakly, especially during dream (REM) sleep when muscles relax most. This can shape your options — including whether a treatment that physically supports the airway is a better fit.`,
 
-      'Positional OSA': `Your sleep apnea is significantly worse when you sleep on your back. Gravity pulls the tongue and throat tissue backward when you are in the supine (back-sleeping) position, narrowing or blocking the airway. When you sleep on your side, the airway stays more open and breathing is easier. Positional therapy — using a device or pillow to encourage side-sleeping — can reduce your sleep apnea events substantially and may be one of the most straightforward parts of your treatment plan.`,
+      'Positional OSA': `Your apnea is much worse on your back, where gravity pulls the tongue and throat tissue into the airway; on your side it stays more open. Positional therapy — a device or pillow that keeps you off your back — can cut your events substantially and is one of the simplest steps.`,
 
-      'REM-Predominant OSA': `Your breathing problems are concentrated during REM sleep — the stage of sleep when you dream. During REM, your brain intentionally relaxes most of your body's muscles (so you don't act out your dreams), and this includes the muscles that hold the airway open. As a result, the airway is more likely to collapse during this stage. Because REM sleep is essential for memory, emotion, and mental health, disruptions to it can have an outsized impact on how you feel. CPAP therapy is particularly effective at protecting REM sleep.`,
+      'REM-Predominant OSA': `Your breathing problems cluster in REM (dream) sleep, when your brain relaxes the muscles that hold the airway open. Because REM is key for memory and mood, disruptions there affect how you feel. CPAP is particularly good at protecting REM sleep.`,
 
-      'High Hypoxic Burden': `Your sleep study showed meaningful drops in blood oxygen during the night. When the airway blocks repeatedly, oxygen levels can dip lower than we want to see during sleep. Over time, that pattern can add stress to the heart and blood vessels, so it is one reason your treatment plan gives extra attention to controlling breathing events and improving oxygen stability. Follow-up testing can help confirm that treatment is bringing those oxygen levels into a safer range.`,
+      'High Hypoxic Burden': `Your oxygen dipped lower than we like to see during the night. Over time that adds stress to the heart and blood vessels, so your plan pays extra attention to steadying your breathing and oxygen. Follow-up testing helps confirm treatment is bringing those levels into a safer range.`,
 
-      'Nasal-Resistance Contributor': `Blockage or narrowing in your nasal passages is playing a role in your sleep apnea. When the nose is congested or structurally narrowed, breathing through the nose takes more effort, and the body may switch to mouth breathing during sleep. Mouth breathing bypasses the nose's ability to support the airway and makes it easier for the throat to collapse. Addressing nasal obstruction — whether with medications, nasal strips, or surgery — can improve how well other sleep apnea treatments work.`,
+      'Nasal-Resistance Contributor': `Narrowing or blockage in your nose makes breathing through it harder and can push you toward mouth-breathing in sleep, which makes the throat easier to collapse. Treating the nose — with medication, allergy care, or surgery — helps your other treatments work better.`,
 
-      'Elevated Delta Heart Rate': `Your heart rate shows larger-than-normal swings during the night, rising sharply when breathing is blocked and then dropping when the airway reopens. These repeated spikes put extra strain on the heart and blood vessels, similar to intermittent bursts of exercise throughout the night. Over years, this cardiovascular stress raises the risk of high blood pressure and heart rhythm problems. Effective sleep apnea treatment typically brings these heart rate swings back to normal, relieving this hidden burden on the heart.`,
+      'Elevated Delta Heart Rate': `Your heart rate swings sharply through the night — spiking when breathing is blocked, dropping when it reopens. Those repeated jolts strain the heart and, over years, raise blood pressure and rhythm risks. Effective treatment usually calms these swings back toward normal.`,
+    };
+
+    /* Plain-language headings shown to the patient (the clinical phenotype name stays
+       in the clinician view only). Keeps the medical term out of the patient's eyeline. */
+    const patientLabelMap = {
+      'High Anatomical Contribution': 'The shape of your airway',
+      'Low Arousal Threshold': 'You wake easily when breathing gets hard',
+      'High Loop Gain': 'Your breathing control runs on a hair-trigger',
+      'Poor Muscle Responsiveness': 'Your airway muscles relax too much in sleep',
+      'Positional OSA': 'Worse when you sleep on your back',
+      'REM-Predominant OSA': 'Worse during dream (REM) sleep',
+      'High Hypoxic Burden': 'Your oxygen dips during the night',
+      'Nasal-Resistance Contributor': 'Your nose adds to the problem',
+      'Elevated Delta Heart Rate': 'Your heart rate surges during sleep',
     };
 
     const items = phen.map(p => {
@@ -680,7 +761,7 @@ ${unresolvedCallout}`;
 <div class="phenotype-item">
   <i class="bi ${esc(icon)} phenotype-icon"></i>
   <div>
-    <strong>${esc(p)}</strong>
+    <strong>${esc(patientLabelMap[p] || p)}</strong>
     <p style="margin-top:0.25rem;margin-bottom:0;">${esc(desc)}</p>
   </div>
 </div>`;
@@ -688,8 +769,7 @@ ${unresolvedCallout}`;
 
     return `
 <h2>What's Contributing to Your Sleep Apnea</h2>
-<p>Sleep apnea is not one-size-fits-all. Your results show specific patterns that help explain why your airway has trouble staying open during sleep. Understanding these patterns allows us to choose treatments that are most likely to work for you.</p>
-${unresolvedCallout}
+<p>Sleep apnea is not one-size-fits-all. Your results point to a few specific patterns, which helps us pick the treatments most likely to work for you.</p>
 ${items}`;
   }
 
@@ -1318,17 +1398,16 @@ ${itemsHTML}`;
 
     /* Weight / AHI projection (or pre-study snoring version) */
     if (showWeight && hasPrimAHI) {
-      const projAHI = Math.round(data.primaryAHI * 0.70);
       items.push(`
 <div class="whatif-item">
   <strong>What if you lost weight?</strong>
-  <p style="margin:0.4rem 0 0;">Your current AHI is <strong>${Math.round(data.primaryAHI)}</strong>. Research shows that meaningful weight loss can reduce sleep apnea severity by about 30% or more. Based on your results, reaching a healthier weight could potentially bring your AHI down to around <strong>${projAHI}</strong> — a significant improvement. Weight loss does not guarantee a cure, but it often makes other treatments work better and reduces the strain on your heart and joints.</p>
+  <p style="margin:0.4rem 0 0;">Reaching a healthier weight often lowers sleep apnea — sometimes by a third or more — and makes other treatments work better. Even a 10% drop in weight can ease the strain on your airway, heart, and joints.</p>
 </div>`);
     } else if (showWeight && isPreStudy) {
       items.push(`
 <div class="whatif-item">
   <strong>What if you lost weight?</strong>
-  <p style="margin:0.4rem 0 0;">Your BMI of <strong>${bmi.toFixed(1)}</strong> puts you in the ${bmi >= 30 ? 'obese' : 'overweight'} range. Excess weight — especially around the neck, tongue, and throat — is one of the strongest risk factors for both snoring and sleep apnea. Studies show that even modest weight loss of 5–7 pounds can reduce snoring frequency by up to 45%. Losing weight also shrinks the soft tissues that vibrate during snoring and reduces pressure on the airway when you lie down. If your sleep study does show sleep apnea, weight loss will make every other treatment — CPAP, oral appliances, surgery — work better.</p>
+  <p style="margin:0.4rem 0 0;">Extra weight around the neck and throat is one of the biggest drivers of snoring and sleep apnea. Even losing 5–7 pounds can noticeably cut snoring, and it makes any future treatment work better.</p>
 </div>`);
     }
 
@@ -1338,18 +1417,16 @@ ${itemsHTML}`;
       const nonSupAHI = data.nonSupPahi ?? data.ahiNonSup ?? null;
 
       if (supAHI !== null && nonSupAHI !== null) {
-        const supLabel    = ahiSeverityLabel(supAHI);
-        const nonSupLabel = ahiSeverityLabel(nonSupAHI);
         items.push(`
 <div class="whatif-item">
   <strong>What if you slept on your side every night?</strong>
-  <p style="margin:0.4rem 0 0;">Your AHI breaks down very differently depending on position. When sleeping on your back: <strong>${Math.round(supAHI)} events/hour</strong> (${supLabel}). When sleeping on your side: <strong>${Math.round(nonSupAHI)} events/hour</strong> (${nonSupLabel}). Consistently sleeping on your side could dramatically reduce your sleep apnea severity. Positional therapy is one of the simplest changes you can make with meaningful results.</p>
+  <p style="margin:0.4rem 0 0;">Your breathing is much worse on your back than on your side. Sleeping on your side consistently could cut your events sharply — it's one of the simplest changes with a real payoff, and a positional device helps you keep it up overnight.</p>
 </div>`);
       } else {
         items.push(`
 <div class="whatif-item">
   <strong>What if you slept on your side every night?</strong>
-  <p style="margin:0.4rem 0 0;">Your sleep study identified positional sleep apnea — your breathing is significantly worse when lying on your back. Sleeping consistently on your side is one of the most straightforward changes you can make, and it can dramatically reduce your breathing events. Positional therapy devices make this easier to maintain throughout the night.</p>
+  <p style="margin:0.4rem 0 0;">Your study showed your breathing is much worse on your back. Sleeping on your side is one of the simplest changes you can make and can sharply reduce your breathing events — a positional device helps you keep it up overnight.</p>
 </div>`);
       }
     }
@@ -1359,7 +1436,7 @@ ${itemsHTML}`;
       items.push(`
 <div class="whatif-item">
   <strong>What if your nasal obstruction were treated?</strong>
-  <p style="margin:0.4rem 0 0;">Nasal blockage does not cause sleep apnea on its own, but it makes the airway more vulnerable to collapse and makes other treatments harder to use effectively. Studies show that treating nasal obstruction — whether through medication, allergy management, or surgery — can improve how well CPAP and oral appliances work, and may reduce the pressure settings needed. In some cases, improved nasal breathing alone can meaningfully reduce breathing events during sleep.</p>
+  <p style="margin:0.4rem 0 0;">A blocked nose doesn't cause sleep apnea by itself, but it makes the airway easier to collapse and CPAP or an oral appliance harder to use. Treating it — with medication, allergy care, or surgery — can make those treatments work better and sometimes reduces events on its own.</p>
 </div>`);
     }
 
@@ -1395,21 +1472,12 @@ ${items.join('')}`;
 
     if (!triggerSevereAHI && !triggerHB && !triggerODI && !triggerNadir && !triggerT90) return '';
 
-    const findings = [];
-    if (triggerSevereAHI) findings.push(`a severe AHI of ${Math.round(+pAHI)} events per hour`);
-    if (triggerHB)        findings.push(`meaningful cumulative low-oxygen exposure during the night (your oxygen spent a notable share of the night below its usual level)`);
-    if (triggerODI)       findings.push(`an oxygen desaturation index (ODI) of ${odiVal} events per hour — meaning your oxygen dropped significantly ${odiVal} times every hour`);
-    if (triggerNadir)     findings.push(`oxygen levels dropping to ${nadirVal}% during sleep — well below normal`);
-    if (triggerT90)       findings.push(`${t90Val.toFixed(0)}% of your sleep time spent with oxygen below 90% — a level associated with increased cardiovascular strain`);
-
-    const findingsList = findings.length === 1
-      ? findings[0]
-      : findings.slice(0, -1).join(', ') + ', and ' + findings[findings.length - 1];
-
+    /* Phase 3: lead with the takeaway, not a list of numbers. The specific metrics live in
+       "Understanding Your Results" and the clinician report; here we give the why + the hope. */
     return `
 <h2>Why This Matters</h2>
-<p>Your results showed ${findingsList}. When sleep apnea is left untreated at this level, the nightly stress on your body adds up over time. Research consistently links untreated moderate-to-severe sleep apnea with higher rates of high blood pressure, heart disease, stroke, type 2 diabetes, and cognitive decline. The repeated drops in oxygen and the strain of fighting to breathe hundreds of times each night are real physical stressors — even if they happen while you're unaware of them.</p>
-<p>The encouraging news is that effective treatment can improve symptoms and may reduce these risks, especially when it meaningfully controls your breathing events and oxygen drops over time. CPAP has shown the clearest cardiovascular benefit in patients with higher hypoxic burden and good adherence, and any surgical plan should be confirmed with follow-up testing rather than assumed to be curative. Addressing your sleep apnea is still one of the most important steps you can take for your long-term health, and many people notice better energy, focus, and sleep quality within weeks of starting effective treatment.</p>`;
+<p>Sleep apnea at this level puts real, repeated stress on your heart and body every night — even though you don't feel it happening. Over time, untreated apnea raises the risk of high blood pressure, heart disease, and stroke, along with everyday problems like poor focus and low energy.</p>
+<p>The good news: treating it lowers that strain. Most people feel more rested within a few weeks of starting effective treatment, and sticking with it is one of the most valuable things you can do for your long-term health. We'll use follow-up testing to make sure your treatment is doing its job.</p>`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
@@ -1435,12 +1503,15 @@ ${items.join('')}`;
   function generateReportHTML(data) {
     const sections = [
       renderHeader(data),
+      renderSummaryCard(data),
       renderCarePathway(data),
       renderCareSummary(data),
       renderSectionA(data),
       renderSectionB(data),
       renderSectionB2(data),
-      renderDataLimitations(data),
+      /* renderDataLimitations suppressed from the patient view (Phase 3) — these
+         "what may still be refined" notes are clinician-oriented and actionless for
+         the patient; the clinician report still surfaces data-completeness gaps. */
       renderSectionC(data),
       renderSectionD(data),
       renderSectionE(data),

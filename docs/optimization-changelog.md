@@ -8,6 +8,51 @@ full findings inventory.
 
 ---
 
+## [Phase 3 — Simplify the patient report] — 2026-06-11
+
+Branch: `phase-1-safety-fixes` · Concern #1 (too information-dense / hard to understand).
+Physician chose: plain-language phenotype headings, "lead + lean" (summary card + trim, keep all
+sections, PDF-friendly with no collapsing), and suppress clinician uncertainty callouts.
+All changes in `js/patientReport.js`.
+
+### Added
+- **Bottom-line summary card** at the very top of every report (`renderSummaryCard`): one plain
+  sentence stating the finding, one on what it means, and a highlighted "Your most important next
+  step." The next step derives from the report's real recommendation priority (`summaryNextStep` →
+  `getPatientFacingRecEntries`), is CPAP-state-aware, and handles pre-study / normal / symptomatic-
+  home-test cases (the last integrates the Phase 1 false-reassurance caveat).
+
+### Changed
+- **Phenotype headings → plain language.** Section C now shows "Worse when you sleep on your back",
+  "You wake easily when breathing gets hard", etc. via a `patientLabelMap`; the raw clinical name
+  ("Positional OSA", "Low Arousal Threshold") stays in the clinician view only.
+- **"Why This Matters" rewritten** from a single grade-18, 5-metric run-on into two short
+  plain-language paragraphs that lead with the takeaway and drop the raw numbers (AHI/ODI/%min/hr).
+- **What-if scenarios trimmed** to ≤2 sentences / ≤1 number each; dropped the re-stated projected
+  AHI ("bring your AHI down to around N") and the back-vs-side event-count dump.
+- **Phenotype descriptions trimmed** from ~75–85 words to ~45–55 words each (clinical meaning
+  preserved; the plain heading now carries the "what").
+
+### Removed (from the patient view)
+- The clinician-oriented **"What may still be refined"** (`renderDataLimitations`) and **"Contributing
+  factors still being clarified"** (unresolved-phenotype) callouts — actionless for patients; the
+  clinician report still surfaces data-completeness gaps.
+
+### Tests (`tests/tests.html`)
+- Updated 5 patient-report regression assertions to the new behavior (callouts suppressed, new HB
+  wording, new zero-phenotype summary). These are real `patientReport.js` tests (not replicated).
+
+### Verification
+- Rendered the live report for moderate / severe / pre-study / normal-symptomatic / 5-phenotype
+  patients: summary card sits right after the header, all phenotype headings plain (no raw clinical
+  names leak), clinician callouts gone, Why-This-Matters number-free, what-if projections dropped.
+- Densest case (5 phenotypes) dropped from a ~1,887-word baseline to ~1,317 (~30%), and the
+  bottom-line-first structure is the larger UX win. Both suites pass (199); no console errors.
+- Known minor: returning patients see the finding ~3× in the first screen (summary card +
+  "Where You Are" + Section B) — reinforcing, deferred.
+
+---
+
 ## [Phase 2 — Right-size cutting-edge clinical claims] — 2026-06-11
 
 Branch: `phase-1-safety-fixes` · Concern #2 (logic too "cutting edge"). Calibration, not removal —
