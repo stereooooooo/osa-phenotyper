@@ -84,7 +84,7 @@ Recommendations use tags (e.g., `CPAP`, `MAD-FAVORABLE`, `HNS`, `CBTI`) that map
 - **Magic-link tokens**: Staff generates a 72-hour, single-use token via "Intake Link" button → copies URL → sends to patient via HIPAA-compliant channel
 - **Token security**: 256-bit random tokens, SHA-256 hashed before DB storage, 5-attempt lockout, single-use enforcement
 - **Intake page** (`intake.html`): Standalone, zero third-party scripts, CSP headers, `Referrer-Policy: no-referrer`
-- **Separate Lambda** (`intake.mjs`) with restricted IAM: only `UpdateItem` on patient `formData` — cannot list, delete, or read full records
+- **Separate Lambda** (`intake.mjs`) with a least-privilege role (`IntakeLambdaRole`) scoped to the patient + intake-token tables only: it can `GetItem`/`UpdateItem`/`TransactWriteItems` on those two tables (no `Scan`/`Query`/`DeleteItem`, no access to any other table). DynamoDB IAM cannot scope permissions to a single attribute, so the **application code** — not the IAM policy — is what limits reads/writes to `formData` and the related intake-metadata attributes (via `ProjectionExpression` + explicit attribute selection).
 - **Field mapping**: Intake Lambda maps patient responses to exact `formData` keys used by `app.js` and `populateForm()`. Boolean fields use `'on'`/`''` to match HTML checkbox behavior.
 - **Audit**: CloudTrail logs all DynamoDB data-plane events, CloudWatch logs retained 7 years (2557 days), no PHI in any log
 - **HIPAA**: Full compliance checklist in `docs/plans/staged-bubbling-cosmos.md`. All AWS services are HIPAA-eligible with active BAA.

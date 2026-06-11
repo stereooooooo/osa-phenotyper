@@ -688,6 +688,13 @@ Resources:
           {"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength","integrationError":"$context.integrationErrorMessage"}
       DefaultRouteSettings:
         DetailedMetricsEnabled: true
+        # Always-on API-Gateway throttle backstop (stage-wide). The per-IP WAF
+        # rate limit is the primary control; this caps total throughput so a
+        # burst cannot exhaust Lambda/DynamoDB even if the WAF is absent. Tune
+        # to clinic load before deploy — generous for a single clinic, far
+        # below the account default (10k/5k).
+        ThrottlingRateLimit: 200
+        ThrottlingBurstLimit: 400
 
   LambdaApiPermission:
     Type: AWS::Lambda::Permission

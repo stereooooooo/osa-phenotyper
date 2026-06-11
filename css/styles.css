@@ -98,6 +98,26 @@ h1, h2, h3, h4, h5, h6,
 [aria-expanded="false"] .osa-collapse-icon {
   transform: rotate(-90deg);
 }
+/* Collapsible headers are <button>s for keyboard access — strip the UA
+   button chrome while keeping the card-header / clin-section appearance. */
+button.osa-collapsible,
+button.osa-clin-section-header {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;          /* fill the card / section width like the old <div> */
+  text-align: left;
+  border: 0;            /* drop the UA <button> outset border... */
+  border-radius: 0;
+}
+button.osa-collapsible {
+  display: block;
+  border-bottom: 1px solid var(--osa-gray-border);  /* ...but keep the card-header divider */
+}
+button.osa-collapsible:focus-visible,
+button.osa-clin-section-header:focus-visible {
+  outline: 2px solid var(--osa-crimson);
+  outline-offset: -2px;
+}
 
 /* ── Form controls (compact) ─────────────────────────────────── */
 .form-control, .form-select {

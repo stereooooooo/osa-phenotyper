@@ -136,6 +136,14 @@ write_cloudfront_waf_rules() {
                   "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
                   "PositionalConstraint": "STARTS_WITH"
                 }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/patient-portal/",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
               }
             ]
           }
@@ -192,6 +200,14 @@ write_cloudfront_waf_rules() {
                   "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
                   "PositionalConstraint": "STARTS_WITH"
                 }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/patient-portal/",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
               }
             ]
           }
@@ -234,6 +250,14 @@ write_cloudfront_waf_rules() {
               {
                 "ByteMatchStatement": {
                   "SearchString": "/intake/",
+                  "FieldToMatch": { "UriPath": {} },
+                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/patient-portal/",
                   "FieldToMatch": { "UriPath": {} },
                   "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
                   "PositionalConstraint": "STARTS_WITH"

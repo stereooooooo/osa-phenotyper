@@ -373,7 +373,7 @@
     async createPortalToken(patientId) {
       const patient = getPatientOrThrow(patientId);
       const issuedAt = nowIso();
-      const expiresAt = new Date(Date.now() + (180 * 24 * 60 * 60 * 1000)).toISOString();
+      const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
       const token = `workflow-portal-token-${tokenSeq++}`;
       const record = {
         token,

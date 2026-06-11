@@ -42,7 +42,7 @@
 
   <!-- Progress Bar -->
   <div class="intake-progress" id="progressBar">
-    <div class="intake-progress__bar-track">
+    <div class="intake-progress__bar-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0" aria-valuetext="0 of 6 required sections complete" aria-label="Required sections complete">
       <div class="intake-progress__bar-fill" id="progressFill"></div>
     </div>
     <div class="intake-progress__label" id="progressLabel">0 of 6 required sections complete</div>
@@ -68,7 +68,7 @@
   </div>
 
   <!-- Validation Summary -->
-  <div class="intake-validation-summary" id="validationSummary">
+  <div class="intake-validation-summary" id="validationSummary" role="alert" aria-live="assertive" tabindex="-1">
     Please answer all required questions before submitting.
   </div>
 
@@ -551,6 +551,7 @@
   const validationSummary = document.getElementById('validationSummary');
   const progressFill   = document.getElementById('progressFill');
   const progressLabel  = document.getElementById('progressLabel');
+  const progressTrack  = document.getElementById('progressTrack');
   applyRuntimeMeta();
 
   // ── Questionnaire Data ──────────────────────────────────────
@@ -627,6 +628,7 @@
   // ── Build Questionnaire Sections ────────────────────────────
   function buildESS() {
     var container = document.getElementById('essQuestions');
+    var ESS_SCALE = ['Would never doze', 'Slight chance', 'Moderate chance', 'High chance'];
     ESS_QUESTIONS.forEach(function(q, i) {
       var num = i + 1;
       var div = document.createElement('div');
@@ -645,7 +647,7 @@
       var groupDiv = document.createElement('div');
       groupDiv.className = 'intake-radio-group';
       groupDiv.setAttribute('role', 'radiogroup');
-      groupDiv.setAttribute('aria-label', 'ESS question ' + num);
+      groupDiv.setAttribute('aria-label', 'ESS question ' + num + ': ' + q);
 
       for (var v = 0; v <= 3; v++) {
         var id = 'ess' + num + '_' + v;
@@ -656,6 +658,7 @@
         input.id = id;
         input.className = 'intake-radio';
         input.required = true;
+        input.setAttribute('aria-label', v + ' — ' + ESS_SCALE[v]);
 
         var label = document.createElement('label');
         label.htmlFor = id;
@@ -711,7 +714,7 @@
       var groupDiv = document.createElement('div');
       groupDiv.className = 'intake-radio-group';
       groupDiv.setAttribute('role', 'radiogroup');
-      groupDiv.setAttribute('aria-label', 'ISI question ' + num);
+      groupDiv.setAttribute('aria-label', 'ISI question ' + num + ': ' + q.text);
 
       for (var v = 0; v <= 4; v++) {
         var id = 'isi' + num + '_' + v;
@@ -722,6 +725,7 @@
         input.id = id;
         input.className = 'intake-radio';
         input.required = true;
+        input.setAttribute('aria-label', v + ' — ' + q.labels[v]);
 
         var label = document.createElement('label');
         label.htmlFor = id;
@@ -745,6 +749,7 @@
 
   function buildNOSE() {
     var container = document.getElementById('noseQuestions');
+    var NOSE_SCALE = ['Not a Problem', 'Very Mild', 'Moderate', 'Fairly Bad', 'Severe'];
     NOSE_QUESTIONS.forEach(function(q, i) {
       var num = i + 1;
       var div = document.createElement('div');
@@ -763,7 +768,7 @@
       var groupDiv = document.createElement('div');
       groupDiv.className = 'intake-radio-group';
       groupDiv.setAttribute('role', 'radiogroup');
-      groupDiv.setAttribute('aria-label', 'NOSE question ' + num);
+      groupDiv.setAttribute('aria-label', 'NOSE question ' + num + ': ' + q);
 
       for (var v = 0; v <= 4; v++) {
         var id = 'nose' + num + '_' + v;
@@ -774,6 +779,7 @@
         input.id = id;
         input.className = 'intake-radio';
         input.required = true;
+        input.setAttribute('aria-label', v + ' — ' + NOSE_SCALE[v]);
 
         var label = document.createElement('label');
         label.htmlFor = id;
@@ -833,6 +839,11 @@
     progressFill.style.width = pct + '%';
     progressLabel.textContent = completedRequired + ' of ' + requiredSections.length + ' required sections complete'
       + (completedOptional ? ' · ' + completedOptional + ' optional section' + (completedOptional !== 1 ? 's' : '') + ' answered' : '');
+    if (progressTrack) {
+      progressTrack.setAttribute('aria-valuenow', completedRequired);
+      progressTrack.setAttribute('aria-valuemax', requiredSections.length);
+      progressTrack.setAttribute('aria-valuetext', progressLabel.textContent);
+    }
   }
 
   function resetCpapDetails() {
@@ -996,6 +1007,10 @@
     document.querySelectorAll('.intake-radio-group--error').forEach(function(el) {
       el.classList.remove('intake-radio-group--error');
     });
+    document.querySelectorAll('[aria-invalid="true"]').forEach(function(el) {
+      el.removeAttribute('aria-invalid');
+      el.removeAttribute('aria-describedby');
+    });
     validationSummary.classList.remove('intake-validation-summary--visible');
   }
 
@@ -1005,6 +1020,8 @@
     if (field) {
       if (field.classList.contains('intake-input')) field.classList.add('intake-input--error');
       if (field.classList.contains('intake-select')) field.classList.add('intake-select--error');
+      field.setAttribute('aria-invalid', 'true');
+      if (errorId) field.setAttribute('aria-describedby', errorId);
     }
     if (err) err.classList.add('intake-error--visible');
   }
@@ -1013,7 +1030,11 @@
     var group = document.querySelector('input[name="' + name + '"]');
     if (group) {
       var rgDiv = group.closest('.intake-radio-group, .intake-toggle-group');
-      if (rgDiv) rgDiv.classList.add('intake-radio-group--error');
+      if (rgDiv) {
+        rgDiv.classList.add('intake-radio-group--error');
+        rgDiv.setAttribute('aria-invalid', 'true');
+        if (errorId) rgDiv.setAttribute('aria-describedby', errorId);
+      }
     }
     var err = document.getElementById(errorId);
     if (err) err.classList.add('intake-error--visible');
@@ -1114,7 +1135,14 @@
     }
 
     if (errors.length > 0) {
+      // Rebuild the summary text so role="alert" reliably re-announces, and
+      // move focus to it (preventScroll so the smooth scroll to the first
+      // error below wins for sighted users).
+      validationSummary.textContent = errors.length
+        + (errors.length === 1 ? ' question needs' : ' questions need')
+        + ' your attention before you can submit. Please review the highlighted fields.';
       validationSummary.classList.add('intake-validation-summary--visible');
+      validationSummary.focus({ preventScroll: true });
       if (firstErrorEl) {
         firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }

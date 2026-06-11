@@ -336,6 +336,12 @@ const QuestionnaireParser = (() => {
 
   /* ── Main parse function ───────────────────────────────────── */
   async function parse(file) {
+    if (window.OSALibs && window.OSALibs.loadPdfParsing) {
+      await window.OSALibs.loadPdfParsing();
+    }
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error('pdf.js library not loaded. Please check your internet connection.');
+    }
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     const items = await getTextItems(pdf);

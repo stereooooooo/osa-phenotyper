@@ -35,7 +35,7 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 | 1 | Patient safety & trust | ✅ Done (`phase-1-safety-fixes`) |
 | 2 | Right-size cutting-edge clinical claims (concern #2) | ✅ Done (`phase-1-safety-fixes`) |
 | 3 | Simplify the patient report (concern #1) | ✅ Done (`phase-1-safety-fixes`) |
-| 4 | Polish — performance, accessibility, security hardening | ☐ Pending |
+| 4 | Polish — performance, accessibility, security hardening | ✅ Done (`phase-1-safety-fixes`) |
 | 5 | Structural hardening — code, tests, config | ☐ Pending |
 
 ---
@@ -92,48 +92,53 @@ uncertainty callouts. All in `js/patientReport.js`. See changelog for detail.
 
 ---
 
-## Phase 4 — Polish: performance, accessibility, security hardening ☐
+## Phase 4 — Polish: performance, accessibility, security hardening ✅ DONE
+
+Shipped 2026-06-11 on branch `phase-1-safety-fixes`. Physician forks: clinician-PDF scale-down
+(defer the full per-page refactor), code the infra changes + correct the IAM docs (deploy later),
+CSP **and** SRI on `index.html`, and both optional items. See the changelog for detail and verification.
+
+> **Infra items are committed but not yet deployed** — they take effect on the next
+> `infrastructure/deploy.sh` run. Review the throttle thresholds against real clinic load first.
 
 ### 4a · Performance
-- [ ] **880 KB of PDF-only libs load render-blocking on every page open** (high) — `index.html:932-940`.
-  pdf.js + jsPDF + html2canvas (~250 KB gzip) load even when no PDF is touched. **Fix:** lazy-load
-  on first PDF drop / first export click (~15-line helper); or at minimum add `defer`.
-- [ ] **Paginator interleaves DOM writes and rect reads in a loop** (medium) — `js/pdf-export.js:342-356`.
-  **Fix:** measure all heights in one pass, then assign pages from cached numbers.
-- [ ] **Clinician PDF rasterizes the whole report as one tall canvas** (medium) — `js/pdf-export.js:446-512`.
-  **Fix:** reuse the per-page shell rendering already used for the patient PDF; consider scale 1.5.
-- [ ] **No preconnect/dns-prefetch hints on index.html** (low) — `index.html:7-9` (portal.html has them).
-- [ ] **CDN libs not self-hosted / no SRI** (low) — `index.html:7-11, 932-940`. **Fix:** self-host
-  the pinned files or add `integrity`+`crossorigin`; unlocks offline + a service-worker cache.
+- [x] **880 KB of PDF-only libs load render-blocking on every page open** (high) — lazy-loaded via
+  `window.OSALibs` (pdf.js on first PDF drop; jsPDF + html2canvas on first export). `index.html`,
+  `js/pdf-parser.js`, `js/questionnaire-parser.js`, `js/pdf-export.js`.
+- [x] **Paginator interleaves DOM writes and rect reads in a loop** (medium) — `js/pdf-export.js`.
+  Now one write pass + one batched read pass + arithmetic page assignment (same greedy fit).
+- [x] **Clinician PDF rasterizes the whole report as one tall canvas** (medium) — `canvasScale` 2 → 1.5
+  (~44% less raster memory). Full per-page refactor deferred to Phase 5 (physician choice).
+- [x] **No preconnect/dns-prefetch hints on index.html** (low) — added (fonts + jsdelivr).
+- [x] **CDN libs not self-hosted / no SRI** (low) — SHA-384 `integrity`+`crossorigin` on all CDN tags
+  (2 CSS, 2 static JS, 3 lazy-loaded PDF libs). Self-hosting not pursued (no-build constraint).
 
 ### 4b · Accessibility & clinician UX
-- [ ] **All 9 collapsible headers are non-keyboard-accessible `<div>`s** (high) —
-  `index.html:458,579,594,617,664,703`, `js/app.js:1997,2008,2019`. Collapsed decision-support
-  sections (MAD/HNS candidacy, follow-up) are unreachable without a mouse. **Fix:** convert to
-  `<button>` (matches the prior progress-track fix) with `aria-controls`.
-- [ ] **pAHI/ODI/nadir show a "required" asterisk but aren't enforced** (medium) —
-  `index.html:672-674`, `js/validate.js:117`. **Fix:** make the marker honest (drop it + add a
-  hint, or gate enforcement on "study reviewed").
-- [ ] **Intake validation errors not announced to screen readers** (medium) — `intake.html` validation
-  summary + per-field errors. **Fix:** `role="alert"`/`aria-live`, `aria-invalid`, focus first error.
-- [ ] **ESS/ISI/NOSE radios are bare numbers to screen readers** (low) — `intake.html` build* funcs.
-- [ ] **Clinician form ~116 controls, all expanded, no "fast path" hint** (low) — `index.html:443-728`.
-- [ ] **Intake progress bar lacks progressbar semantics** (low) — `intake.html:44-49, 821-836`.
+- [x] **All 9 collapsible headers are non-keyboard-accessible `<div>`s** (high) — converted to
+  `<button type="button">` + `aria-controls` (6 static in `index.html`, 3 dynamic in `js/app.js`);
+  CSS strips UA button chrome while preserving the exact look + a focus ring (`css/styles.css`).
+- [x] **pAHI/ODI/nadir show a "required" asterisk but aren't enforced** (medium) — asterisk dropped
+  + honest hint added; range validation unchanged (`index.html`).
+- [x] **Intake validation errors not announced to screen readers** (medium) — `role="alert"` +
+  `aria-live`, dynamic count, focus to summary, `aria-invalid`+`aria-describedby` per field (`intake.html`).
+- [x] **ESS/ISI/NOSE radios are bare numbers to screen readers** (low) — per-radio `aria-label`
+  (value + meaning) + real question text on each radiogroup (`intake.html`).
+- [x] **Clinician form ~116 controls, all expanded, no "fast path" hint** (low) — minimum-fields hint
+  added at the top of the form (`index.html`).
+- [x] **Intake progress bar lacks progressbar semantics** (low) — `role="progressbar"` +
+  `aria-valuemin/max/now/valuetext`, synced in `updateProgress()` (`intake.html`).
 
 ### 4c · Security hardening (audit downgraded the portal Referer claim; these remain)
-- [ ] **Rate limiting depends on an optional WAF; no API-Gateway throttle; portal endpoint uncovered**
-  (medium) — `infrastructure/template.yaml:679-691`, `infrastructure/deploy.sh:103-150`. **Fix:** add
-  `ThrottlingRateLimit`/`BurstLimit` as an always-on backstop; extend WAF scope to `/patient-portal/`.
-- [ ] **Intake Lambda IAM is broader than documented** (medium) — `infrastructure/template.yaml:430-449`.
-  Grants GetItem/UpdateItem on the whole table (code, not IAM, enforces "formData only"). **Fix:**
-  tighten the policy or correct the docs (CLAUDE.md / HIPAA change-log).
-- [ ] **`esc()` doesn't escape single quotes** (low) — `js/patientReport.js:34-41`. Safe today; latent.
-  **Fix:** add `.replace(/'/g, '&#39;')`.
-- [ ] **Cognito tokens in localStorage** (low) — `js/auth.js`. **Fix:** add SRI to CDN tags + a CSP on
-  `index.html` to reduce blast radius; accept as a no-build-SPA tradeoff.
-- [ ] **Portal token is long-lived (180 d) and reusable in the URL** (low, residual) — `infrastructure/lambda/intake.mjs`.
-  **Fix:** shorten lifetime; consider delivering via URL fragment / POST. (Note: the audit's
-  cross-origin Referer-leak claim was **refuted** — modern browsers strip the query string.)
+- [x] **Rate limiting depends on an optional WAF; no API-Gateway throttle; portal endpoint uncovered**
+  (medium) — always-on stage throttle backstop added (`template.yaml`); all 3 CloudFront WAF rules
+  extended to `/patient-portal/` (`deploy.sh`). **Committed, not deployed.**
+- [x] **Intake Lambda IAM is broader than documented** (medium) — docs corrected (`CLAUDE.md`, HIPAA
+  change-log). Tightening rejected: DynamoDB IAM can't scope to an attribute; app code enforces it.
+- [x] **`esc()` doesn't escape single quotes** (low) — added `.replace(/'/g, '&#39;')` (`js/patientReport.js`).
+- [x] **Cognito tokens in localStorage** (low) — mitigated with a scoped CSP + SRI on `index.html`
+  (accepted as a no-build-SPA tradeoff).
+- [x] **Portal token is long-lived (180 d) and reusable in the URL** (low, residual) — shortened to
+  90 days (`infrastructure/lambda/index.mjs`). **Committed, not deployed.**
 
 ---
 

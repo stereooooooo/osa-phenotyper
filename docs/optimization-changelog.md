@@ -8,6 +8,81 @@ full findings inventory.
 
 ---
 
+## [Phase 4 — Polish: performance, accessibility, security hardening] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. Physician chose: lower the clinician-PDF raster scale (defer the
+full per-page refactor), code the infra-security changes now + correct the IAM docs (deploy later),
+add both a CSP **and** SRI to `index.html`, and include both optional items (shorten portal token,
+add the clinician fast-path hint).
+
+### Performance (`index.html`, `js/pdf-export.js`, `js/pdf-parser.js`, `js/questionnaire-parser.js`)
+- **Lazy-load the ~880 KB of PDF-only libraries.** pdf.js, jsPDF, and html2canvas no longer load
+  on every page open. A ~30-line `window.OSALibs` loader injects pdf.js on the first PDF drop
+  (`parse()` in both parsers) and jsPDF + html2canvas on the first export (`exportFromHTML`).
+  Both call sites already guarded on `typeof … === 'undefined'`, so the change is additive. Verified
+  in the preview: on load `pdfjsLib`/`jspdf`/`html2canvas` are all `undefined`; parsing a real
+  WatchPAT PDF lazy-loads pdf.js and extracts 18 fields; export lazy-loads the other two.
+- **Paginator no longer thrashes layout.** `paginatePatientReport` previously appended each unit and
+  read `getBoundingClientRect()` in the same loop (one forced reflow per unit). Now it does one write
+  pass (stack all units), one batched read pass (cache every top/bottom), then assigns pages from the
+  cached numbers — preserving the same greedy fit and the single-oversized-unit guard. Verified
+  equivalent multi-page splitting via the live export pipeline (18×300px → 6 pages; small → 1 page;
+  one 4000px unit → 1 page).
+- **Clinician PDF raster scale 2 → 1.5** (`canvasScale`), ~44% less raster memory on the
+  full-report canvas with no layout/pagination change. (Full per-page refactor deferred to Phase 5.)
+- **Added `preconnect` hints** for `fonts.googleapis.com`, `fonts.gstatic.com`, and `cdn.jsdelivr.net`
+  (parity with `portal.html`).
+
+### Accessibility (`index.html`, `js/app.js`, `css/styles.css`, `intake.html`)
+- **All 9 collapsible section headers are now keyboard-accessible `<button>`s.** The 6 static
+  card headers (`index.html`) and 3 dynamic clinician-analysis headers (`js/app.js`) changed from
+  clickable `<div>` to `<button type="button">` with `aria-controls`; Bootstrap collapse and
+  `aria-expanded` work unchanged. New CSS strips the UA button chrome (border, appearance) while
+  preserving the exact card-header / clin-section look — verified computed-style-identical to the
+  unconverted headers (white bg, navy 700-weight text, 0.95rem, crimson `::after` accent, 1px
+  divider) plus a `:focus-visible` ring.
+- **Honest sleep-study field markers.** Dropped the misleading "required" asterisk from pAHI / ODI /
+  Min SpO₂ (never enforced, and enforcing would break the pre-study pathway) and added an
+  "enter what's available from the study" hint. Range validation on those fields is unchanged.
+- **Intake validation now announced to screen readers.** The summary gained `role="alert"` +
+  `aria-live="assertive"` + `tabindex="-1"`; on failure it shows a dynamic count, receives focus,
+  and each errored field/radiogroup gets `aria-invalid="true"` + `aria-describedby` to its message
+  (cleared on the next attempt). Verified: empty submit → 27 fields flagged, focus on the summary.
+- **ESS/ISI/NOSE radios** now expose meaningful `aria-label`s ("0 — Would never doze", per-question
+  ISI scales) and each radiogroup carries the full question text instead of "ESS question N".
+- **Intake progress bar** gained `role="progressbar"` + `aria-valuemin/max/now` + `aria-valuetext`,
+  kept in sync by `updateProgress()`.
+- **Clinician fast-path hint** added at the top of the 116-field form: the minimum fields (Age, Sex,
+  BMI, one sleep-study metric) needed for a result.
+
+### Security hardening (`index.html`, `js/patientReport.js`, `infrastructure/*`, `CLAUDE.md`, HIPAA change-log)
+- **CSP on `index.html`** (parity with `portal.html`/`intake.html`), scoped to the CDNs, Cognito,
+  and the API origin, with `worker-src` + `connect-src` allowances for the pdf.js worker. Verified
+  non-breaking: page boots, Bootstrap/Cognito/fonts load, PDF parse + export run, zero violations.
+- **SRI on all CDN tags.** SHA-384 `integrity` + `crossorigin` on the 2 CSS links, the 2 static
+  scripts, and the 3 lazy-loaded PDF libs (hashes computed from the pinned files; Bootstrap's match
+  the official published values). Together with the CSP these shrink the blast radius of the
+  Cognito-tokens-in-localStorage XSS risk.
+- **`esc()` now escapes single quotes** (`'` → `&#39;`) — latent-only today, but removes the gap.
+- **Infra (committed, not deployed — needs a `deploy.sh` run):** always-on API-Gateway stage throttle
+  backstop (`ThrottlingRateLimit: 200`/`Burst: 400`); extended all 3 CloudFront WAF rule scopes to
+  cover the public `/patient-portal/` route (WAF JSON re-validated, 3 rules × 4 paths); portal-token
+  lifetime 180 → 90 days. See the HIPAA change-log for rationale and deploy notes.
+- **IAM doc correction.** `CLAUDE.md` overstated the intake Lambda's IAM as "only UpdateItem on
+  formData." Corrected to reality (`GetItem`/`UpdateItem`/`TransactWriteItems` on the patient +
+  token tables; attribute scoping is enforced in application code, not IAM, since DynamoDB IAM
+  can't scope to an attribute). Tightening the policy was considered and rejected as impractical.
+
+### Verification
+- Both headless suites pass (199 assertions); no console errors on `index.html` or `intake.html`.
+- Live preview drove: lazy-load state on page open, real WatchPAT PDF parse under the new CSP,
+  PDF export lazy-load, paginator page-count equivalence, header button toggle + computed-style
+  parity + focus ring, asterisk removal, both hints, intake radio/progressbar/validation a11y.
+- `deploy.sh` shell syntax + generated WAF JSON validated; `template.yaml` throttle added to the
+  always-on stage default route settings.
+
+---
+
 ## [Phase 3 — Simplify the patient report] — 2026-06-11
 
 Branch: `phase-1-safety-fixes` · Concern #1 (too information-dense / hard to understand).

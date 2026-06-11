@@ -334,34 +334,53 @@ const OSAPdfExport = (() => {
     document.body.appendChild(measureHost);
     const pageFitLimit = Math.max(1, pageCssHeight - 24);
 
-    const pages = [];
-    let current = createPatientPageShell(reportRoot);
-    measureHost.appendChild(current.shell);
-
     try {
-      units.forEach(unit => {
-        const unitClone = unit.cloneNode(true);
-        current.report.appendChild(unitClone);
-
-        const renderedHeight = Math.ceil(current.shell.getBoundingClientRect().height);
-        if (renderedHeight > pageFitLimit && current.report.children.length > 1) {
-          current.report.removeChild(unitClone);
-          measureHost.removeChild(current.shell);
-          pages.push(current.shell);
-
-          current = createPatientPageShell(reportRoot);
-          measureHost.appendChild(current.shell);
-          current.report.appendChild(unitClone);
-        }
+      // ── One write pass: stack every unit in a single measuring shell ──
+      const measure = createPatientPageShell(reportRoot);
+      measureHost.appendChild(measure.shell);
+      const shellChrome = Math.ceil(measure.shell.getBoundingClientRect().height); // empty-shell overhead
+      const clones = units.map(unit => {
+        const clone = unit.cloneNode(true);
+        measure.report.appendChild(clone);
+        return clone;
       });
 
-      measureHost.removeChild(current.shell);
-      pages.push(current.shell);
+      // ── One read pass: cache each unit's top/bottom within the report ──
+      // Reading all rects after all appends avoids the per-unit reflow the
+      // previous append-then-measure loop forced.
+      const reportTop = measure.report.getBoundingClientRect().top;
+      const tops = clones.map(c => c.getBoundingClientRect().top - reportTop);
+      const bottoms = clones.map(c => c.getBoundingClientRect().bottom - reportTop);
+      measureHost.removeChild(measure.shell);
+
+      // ── Assign pages from cached numbers (no further layout reads) ──
+      // Same greedy fit as before: a unit starts a new page when the running
+      // content height would overflow and the page already holds ≥1 unit.
+      const contentLimit = Math.max(1, pageFitLimit - shellChrome);
+      const pageGroups = [];
+      let group = [];
+      let pageStartTop = 0;
+      units.forEach((unit, i) => {
+        if (group.length && (bottoms[i] - pageStartTop) > contentLimit) {
+          pageGroups.push(group);
+          group = [];
+          pageStartTop = tops[i];
+        }
+        group.push(unit);
+      });
+      if (group.length) pageGroups.push(group);
+
+      // ── Build the real page shells from the assignment ──
+      const pages = pageGroups.map(groupUnits => {
+        const page = createPatientPageShell(reportRoot);
+        groupUnits.forEach(u => page.report.appendChild(u.cloneNode(true)));
+        return page.shell;
+      });
+
+      return pages.length ? pages : [createPatientPageShell(reportRoot).shell];
     } finally {
       document.body.removeChild(measureHost);
     }
-
-    return pages;
   }
 
   async function renderShellToCanvas(shell, renderHost, canvasScale) {
@@ -388,6 +407,9 @@ const OSAPdfExport = (() => {
   }
 
   async function exportFromHTML(html, filename, addFooter = false, footerDate = null) {
+    if (window.OSALibs && window.OSALibs.loadPdfExport) {
+      try { await window.OSALibs.loadPdfExport(); } catch (e) { /* fall through to the guard below */ }
+    }
     if (typeof jspdf === 'undefined' || typeof html2canvas === 'undefined') {
       alert('PDF export libraries not loaded. Please check your internet connection.');
       return;
@@ -400,7 +422,9 @@ const OSAPdfExport = (() => {
     document.body.appendChild(container);
 
     try {
-      const canvasScale = 2;
+      // 1.5× keeps text crisp while cutting raster memory ~44% vs 2× — matters
+      // most for the clinician PDF, which rasterizes the full report height.
+      const canvasScale = 1.5;
       const { jsPDF } = jspdf;
       const pdf = new jsPDF('p', 'mm', 'letter');
       const pageWidth = pdf.internal.pageSize.getWidth();

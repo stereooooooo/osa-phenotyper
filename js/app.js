@@ -2028,29 +2028,29 @@ document.getElementById('form').addEventListener('submit', e => {
 
     ${clinAnalysisParts.length ? `
     <div class="osa-clin-section mt-3">
-      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinAnalysis" aria-expanded="false">
+      <button type="button" class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinAnalysis" aria-expanded="false" aria-controls="clinAnalysis">
         <span><i class="bi bi-graph-up me-2"></i>Clinical Analysis</span>
         <span class="osa-clin-section-badges">${analysisBadges.map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
         <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
-      </div>
+      </button>
       <div class="collapse" id="clinAnalysis">
         <div class="osa-clin-section-body">${clinAnalysisParts.join('')}</div>
       </div>
     </div>` : ''}
 
     <div class="osa-clin-section mt-2">
-      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#txCandidacy" aria-expanded="false">
+      <button type="button" class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#txCandidacy" aria-expanded="false" aria-controls="txCandidacy">
         <span><i class="bi bi-clipboard2-check me-2"></i>Treatment Candidacy</span>
         <span class="osa-clin-section-badges">${candidacyBadges.map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
         <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
-      </div>
+      </button>
       <div class="collapse" id="txCandidacy">
         <div class="osa-clin-section-body">${txCandidacyParts.join('')}</div>
       </div>
     </div>
 
     <div class="osa-clin-section mt-2">
-      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinFollowup" aria-expanded="false">
+      <button type="button" class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinFollowup" aria-expanded="false" aria-controls="clinFollowup">
         <span><i class="bi bi-calendar-check me-2"></i>Follow-up Plan</span>
         <span class="osa-clin-section-badges">${[
           hasCOMISA ? 'COMISA protocol' : null,
@@ -2058,7 +2058,7 @@ document.getElementById('form').addEventListener('submit', e => {
           `${followUps.length} items`,
         ].filter(Boolean).map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
         <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
-      </div>
+      </button>
       <div class="collapse" id="clinFollowup">
         <div class="osa-clin-section-body">${followUps.map(x => x.startsWith('<strong>') ? `<div class="mb-2">${x}</div>` : `<ul class="mb-1"><li>${x}</li></ul>`).join('')}</div>
       </div>
