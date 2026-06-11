@@ -313,6 +313,7 @@ sync_static_site() {
     --delete \
     --exclude "*" \
     --include "index.html" \
+    --include "portal.html" \
     --include "intake.html" \
     --include "css/*" \
     --include "js/*" \
@@ -448,6 +449,7 @@ const AWS_CONFIG = {
   deployedAt: '${DEPLOYED_AT}',
   stackName: '${STACK_NAME}',
 };
+window.AWS_CONFIG = AWS_CONFIG;
 EOF
 
 # Update intake page runtime URL + CSP connect-src origin
@@ -458,6 +460,11 @@ perl -0pi -e "s#data-app-env=\"[^\"]*\"#data-app-env=\"${DEPLOYMENT_ENVIRONMENT}
 perl -0pi -e "s#data-app-env-label=\"[^\"]*\"#data-app-env-label=\"${DEPLOYMENT_LABEL}\"#g" "${INTAKE_FILE}"
 perl -0pi -e "s#data-build-id=\"[^\"]*\"#data-build-id=\"${BUILD_ID}\"#g" "${INTAKE_FILE}"
 perl -0pi -e "s#data-deployed-at=\"[^\"]*\"#data-deployed-at=\"${DEPLOYED_AT}\"#g" "${INTAKE_FILE}"
+
+# Update patient portal page CSP connect-src origin (portal reads its runtime config
+# from the regenerated aws-config.js, so only the CSP origin needs templating here)
+PORTAL_FILE="${SCRIPT_DIR}/../portal.html"
+perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${APP_URL} ${API_URL}#g" "${PORTAL_FILE}"
 
 echo ""
 echo "[7/7] Publishing static app to CloudFront..."

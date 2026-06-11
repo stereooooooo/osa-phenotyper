@@ -30,6 +30,26 @@ var PatientReport = (() => {
     return 'normal';
   }
 
+  /* ── Helper: symptomatic patient with a normal HOME sleep test ──────────
+     A WatchPAT / home study has fewer channels and no EEG, so it can
+     under-measure milder or non-obstructive sleep-disordered breathing
+     (false negative). When a symptomatic patient gets a normal home study we
+     must NOT give unqualified reassurance — we mirror the clinician-side
+     "Low AHI with significant symptoms" HST flag and point toward in-lab PSG.
+     Reuses detectUARS for the symptom + AHI logic to avoid threshold drift. */
+  function symptomaticNormalHomeTest(data) {
+    const isHomeTest = data.studyType === 'watchpat' || data.studyType === 'both';
+    if (!isHomeTest) return false;
+    const u = OSAReportShared.detectUARS({
+      ahi: data.primaryAHI,
+      rdi: data.patRdi,
+      arInd: data.arInd,
+      ess: data.ess,
+      isi: data.isi,
+    });
+    return u.ahi !== null && u.ahi < 5 && u.symptomatic;
+  }
+
   /* ── Helper: HTML-encode a string ────────────────────────────────────── */
   function esc(str) {
     if (str === null || str === undefined) return '';
@@ -238,8 +258,12 @@ var PatientReport = (() => {
     const parts = [];
     // AHI baseline
     if (data.primaryAHI !== null && data.primaryAHI !== undefined) {
-      const sev = ahiSeverityLabel(data.primaryAHI);
-      parts.push(`Your sleep study showed <strong>${sev} sleep apnea</strong> (AHI ${Math.round(data.primaryAHI)})`);
+      if (+data.primaryAHI < 5) {
+        parts.push(`Your sleep study did <strong>not show evidence of obstructive sleep apnea</strong> (AHI ${Math.round(data.primaryAHI)})`);
+      } else {
+        const sev = ahiSeverityLabel(data.primaryAHI);
+        parts.push(`Your sleep study showed <strong>${sev} sleep apnea</strong> (AHI ${Math.round(data.primaryAHI)})`);
+      }
     }
 
     // Treatment history
@@ -396,6 +420,7 @@ ${parts.join('')}`;
 
     const ahi      = data.primaryAHI;
     const severity = ahiSeverityLabel(ahi);
+    const isNormalStudy = severity === 'normal';
     const ahiRound = Math.round(ahi);
     const ctx      = getVisitContext(data);
 
@@ -406,7 +431,7 @@ ${parts.join('')}`;
     );
     const hasNadir = nadirRaw < 999;
     const nadirNote = hasNadir
-      ? ` Your lowest oxygen level during the study was <strong>${Math.round(nadirRaw)}%</strong>${nadirRaw < 80 ? ' — significantly below normal, which puts extra strain on your heart and body' : nadirRaw < 88 ? ' — below the normal range, which can affect your heart and overall health over time' : ''}.`
+      ? ` Your lowest oxygen level during the study was <strong>${Math.round(nadirRaw)}%</strong>${nadirRaw < 80 ? ' — significantly below the usual range during sleep, which can place substantial stress on your heart and body' : nadirRaw < 88 ? ' — lower than we want to see during sleep and one reason treatment still matters' : nadirRaw < 90 ? ' — slightly below the usual range during sleep' : ''}.`
       : '';
 
     /* — Plain language AHI explanation (visit-aware) — */
@@ -419,7 +444,9 @@ ${parts.join('')}`;
       ahiExpl = `
 <p>During your sleep study, we measured how often your breathing slowed down or stopped while you were asleep. This is called the <strong>Apnea-Hypopnea Index (AHI)</strong>. Your AHI is <strong>${ahiRound} events per hour</strong>, which means your breathing was interrupted about ${ahiRound} times every hour of sleep.${nadirNote}</p>
 ${severity === 'normal'
-  ? '<p>This result is in the <strong>normal range</strong> — fewer than 5 breathing interruptions per hour. While your breathing during sleep appears healthy, we will continue to review your full results with you.</p>'
+  ? (symptomaticNormalHomeTest(data)
+      ? '<p>This result is in the <strong>normal range</strong> — fewer than 5 breathing interruptions per hour. That is a good sign. Because you have been having symptoms and this was a home sleep test, we want to take a closer look before considering things fully settled — see the note just below.</p>'
+      : '<p>This result is in the <strong>normal range</strong> — fewer than 5 breathing interruptions per hour. While your breathing during sleep appears healthy, we will continue to review your full results with you.</p>')
   : `<p>This places you in the <strong>${severity} range</strong> for obstructive sleep apnea. ${
     severity === 'mild'
       ? 'Even mild sleep apnea can affect how rested you feel and, over time, may have health effects worth addressing.'
@@ -449,21 +476,23 @@ ${severity === 'normal'
     /* — Symptom subtype description — */
     let subtypeHtml = '';
     const subtype = (data.subtype || '').toLowerCase();
-    if (subtype.includes('sleepy')) {
+    if (!isNormalStudy && subtype.includes('sleepy')) {
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: Sleepiness-Predominant</strong><br>
 Many people with sleep apnea feel sleepy during the day — and your results suggest this fits you. When your breathing is interrupted repeatedly during the night, your body is briefly woken up each time to reopen the airway. Even if you don't remember these wake-ups, they fragment your sleep and prevent you from reaching the deeper, restorative stages. The result is that you feel tired even after a full night in bed. The good news: effective treatment often brings dramatic improvements in daytime energy.</p>`;
-    } else if (subtype.includes('disturbed') || subtype.includes('comisa')) {
+    } else if (!isNormalStudy && (subtype.includes('disturbed') || subtype.includes('comisa'))) {
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: COMISA (Insomnia + Sleep Apnea)</strong><br>
 Your results show a pattern called COMISA — comorbid insomnia and obstructive sleep apnea. This means you have both difficulty sleeping (insomnia) and breathing interruptions during sleep (sleep apnea), and the two conditions can make each other worse. People with COMISA often have trouble falling asleep or staying asleep, and may feel anxious about sleep itself. Treating just one condition without addressing the other often leads to incomplete improvement. Your care plan will be designed to address both.</p>`;
-    } else if (subtype.includes('minimal')) {
+    } else if (!isNormalStudy && subtype.includes('minimal')) {
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: Minimally Symptomatic</strong><br>
 Not everyone with sleep apnea feels tired or has obvious symptoms — and you appear to fall into this category. Even so, the repeated drops in oxygen and the strain of repeatedly reopening the airway take a quiet toll on the heart, blood pressure, and brain over time. People with untreated sleep apnea — even those who feel fine — have higher rates of high blood pressure, heart disease, and stroke. Treating sleep apnea now is an investment in your long-term health.</p>`;
     }
 
-    const sectionTitle = ctx.isFirstVisit ? 'Understanding Your Results' : 'Your Sleep Apnea Summary';
+    const sectionTitle = isNormalStudy
+      ? (ctx.isFirstVisit ? 'Understanding Your Results' : 'Your Sleep Study Summary')
+      : (ctx.isFirstVisit ? 'Understanding Your Results' : 'Your Sleep Apnea Summary');
 
     return `
 <h2>${sectionTitle}</h2>
@@ -480,8 +509,23 @@ ${subtypeHtml}`;
     if (data.primaryAHI === null || data.primaryAHI === undefined || data.primaryAHI >= 5) return '';
 
     const parts = [];
+    const symptomaticHst = symptomaticNormalHomeTest(data);
 
-    parts.push(`<p>Your sleep study did not find obstructive sleep apnea. Your AHI (Apnea-Hypopnea Index) is <strong>${Math.round(data.primaryAHI)}</strong>, which falls in the <strong>normal range</strong> (fewer than 5 breathing interruptions per hour). This is reassuring news about your breathing during sleep.</p>`);
+    /* UARS / symptom detection (computed up front so the opening framing can react) */
+    const uars = OSAReportShared.detectUARS({
+      ahi: data.primaryAHI,
+      rdi: data.patRdi,
+      arInd: data.arInd,
+      ess: data.ess,
+      isi: data.isi,
+    });
+
+    /* Opening framing — avoid unqualified reassurance for a symptomatic normal home test */
+    if (symptomaticHst) {
+      parts.push(`<p>Your home sleep study did not find obstructive sleep apnea — your AHI (Apnea-Hypopnea Index) is <strong>${Math.round(data.primaryAHI)}</strong>, which is in the <strong>normal range</strong> (fewer than 5 breathing interruptions per hour). That part is good news.</p>`);
+    } else {
+      parts.push(`<p>Your sleep study did not find obstructive sleep apnea. Your AHI (Apnea-Hypopnea Index) is <strong>${Math.round(data.primaryAHI)}</strong>, which falls in the <strong>normal range</strong> (fewer than 5 breathing interruptions per hour). This is reassuring news about your breathing during sleep.</p>`);
+    }
 
     /* Highlight useful findings even in normal study */
     const findings = [];
@@ -499,24 +543,27 @@ ${subtypeHtml}`;
       findings.forEach(f => parts.push(`<p>${f}</p>`));
     }
 
-    /* UARS detection */
-    const uars = OSAReportShared.detectUARS({
-      ahi: data.primaryAHI,
-      rdi: data.patRdi,
-      arInd: data.arInd,
-      ess: data.ess,
-      isi: data.isi,
-    });
-
+    /* Further-evaluation guidance. Prefer the specific UARS callout; otherwise, for a
+       symptomatic normal home test, show a general "worth a closer look" caveat. Both
+       point the patient toward discussing an in-lab study so a false-negative home test
+       does not leave a symptomatic patient falsely reassured. */
     if (uars.isUARS) {
       parts.push(`
 <div class="comisa-callout">
   <strong>Possible Upper Airway Resistance Syndrome (UARS)</strong>
   <p style="margin:0.4rem 0 0;">Although your AHI is normal, your symptoms and some patterns in your study suggest a possible condition called <strong>upper airway resistance syndrome (UARS)</strong>. In UARS, the airway narrows during sleep enough to disrupt sleep quality — causing daytime tiredness, difficulty concentrating, or poor sleep — without fully blocking airflow the way sleep apnea does. Home sleep tests can sometimes miss UARS because it requires more detailed monitoring to detect. Your doctor may recommend an in-lab sleep study for a more thorough evaluation.${uars.rdiElevated ? ` Notably, your RDI (${Math.round(uars.rdi)}) is significantly higher than your AHI (${Math.round(data.primaryAHI)}), which suggests your airway was causing partial breathing disruptions that did not meet the threshold for apnea.` : ''}</p>
 </div>`);
+    } else if (symptomaticHst) {
+      parts.push(`
+<div class="comisa-callout">
+  <strong>Because you've been having symptoms, this is worth a closer look</strong>
+  <p style="margin:0.4rem 0 0;">You came in with symptoms that can point to a sleep problem, and a home sleep test is a simpler study that can sometimes miss milder or different kinds of sleep-disordered breathing. A normal home test does not always rule everything out. We'd like to talk with you about whether a more detailed <strong>in-lab sleep study</strong> would help make sure nothing is being missed.</p>
+</div>`);
     }
 
-    if (parts.length <= 1) return '';  // Just the "normal" paragraph — not enough to warrant a section
+    // A symptomatic normal home test must always render this section (the caveat above is
+    // the whole point); otherwise a lone "normal" paragraph is left to Section B.
+    if (parts.length <= 1 && !symptomaticHst) return '';
 
     return `\n<h2>What Your Sleep Study Found</h2>\n${parts.join('')}`;
   }
@@ -619,7 +666,7 @@ ${unresolvedCallout}`;
 
       'REM-Predominant OSA': `Your breathing problems are concentrated during REM sleep — the stage of sleep when you dream. During REM, your brain intentionally relaxes most of your body's muscles (so you don't act out your dreams), and this includes the muscles that hold the airway open. As a result, the airway is more likely to collapse during this stage. Because REM sleep is essential for memory, emotion, and mental health, disruptions to it can have an outsized impact on how you feel. CPAP therapy is particularly effective at protecting REM sleep.`,
 
-      'High Hypoxic Burden': `Your sleep study showed significant drops in blood oxygen during the night. When the airway blocks repeatedly, the oxygen level in your blood can fall well below normal. These oxygen dips put stress on the heart, blood vessels, and brain. Over time, this pattern is associated with higher risks of high blood pressure, heart disease, and other complications. Your treatment plan will prioritize reducing these oxygen drops, and follow-up testing will confirm that your oxygen levels have normalized.`,
+      'High Hypoxic Burden': `Your sleep study showed meaningful drops in blood oxygen during the night. When the airway blocks repeatedly, oxygen levels can dip lower than we want to see during sleep. Over time, that pattern can add stress to the heart and blood vessels, so it is one reason your treatment plan gives extra attention to controlling breathing events and improving oxygen stability. Follow-up testing can help confirm that treatment is bringing those oxygen levels into a safer range.`,
 
       'Nasal-Resistance Contributor': `Blockage or narrowing in your nasal passages is playing a role in your sleep apnea. When the nose is congested or structurally narrowed, breathing through the nose takes more effort, and the body may switch to mouth breathing during sleep. Mouth breathing bypasses the nose's ability to support the airway and makes it easier for the throat to collapse. Addressing nasal obstruction — whether with medications, nasal strips, or surgery — can improve how well other sleep apnea treatments work.`,
 
@@ -716,6 +763,19 @@ ${items}`;
   const cpapSubTags = new Set(['CPAP-ALT','CPAP-PREF','CPAP-OPT','CPAP-DESENTIZE','CPAP-HUMID','CPAP-RETITRATE','CPAP-FIXED']);
   const nasalSubTags = new Set(['NASAL-SURG','NASAL-PRIOR']);
   const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','HB-URG','DHR-TX']);
+  const workupTags = new Set([
+    'OXYGEN-WORKUP',
+    'POSITION-WORKUP',
+    'SLEEP-STAGE-WORKUP',
+    'ENDOTYPE-WORKUP',
+    'ANATOMY-WORKUP',
+    'HNS-WORKUP',
+    'NASAL-WORKUP',
+    'MAD-WORKUP',
+    'CENTRAL-PSG-WORKUP',
+    'ASV-SAFETY',
+    'SURGERY-WORKUP',
+  ]);
 
   /**
    * Map a rec tag to its patient-friendly HTML, or return null if it should be suppressed.
@@ -843,15 +903,18 @@ ${items}`;
       }
     }
 
+    const workupRecs = allRecs.filter(rec => workupTags.has(rec.tag));
+    const actionableRecs = allRecs.filter(rec => !workupTags.has(rec.tag));
+
     /* ── Split into Start Now / Discuss With Your Doctor ── */
     const shouldHoldCpapForDiscuss = (isMildLowHB || isCpapAvoidant) &&
-      allRecs.length > 1 &&
-      allRecs[allRecs.length - 1]?.tag === 'CPAP';
+      actionableRecs.length > 1 &&
+      actionableRecs[actionableRecs.length - 1]?.tag === 'CPAP';
     const splitAt = shouldHoldCpapForDiscuss
-      ? Math.min(3, allRecs.length - 1)
-      : Math.min(3, allRecs.length);
-    const startNow = allRecs.slice(0, splitAt);
-    const discuss  = allRecs.slice(splitAt);
+      ? Math.min(3, actionableRecs.length - 1)
+      : Math.min(3, actionableRecs.length);
+    const startNow = actionableRecs.slice(0, splitAt);
+    const discuss  = actionableRecs.slice(splitAt);
 
     const sectionTitle = (isPreStudy || isNormalStudy) ? 'Your Next Steps' : 'Your Treatment Plan';
     let output = `\n<h2>${sectionTitle}</h2>`;
@@ -912,10 +975,20 @@ ${items}`;
     }
 
     /* ── Start Now group ── */
-    output += `\n<div class="treatment-group-label">Start Now</div>`;
-    startNow.forEach(rec => {
-      output += `\n<div class="rec-item">${rec.html}</div>`;
-    });
+    if (startNow.length > 0) {
+      output += `\n<div class="treatment-group-label">Start Now</div>`;
+      startNow.forEach(rec => {
+        output += `\n<div class="rec-item">${rec.html}</div>`;
+      });
+    }
+
+    /* ── Complete Before Finalizing Other Options group ── */
+    if (workupRecs.length > 0) {
+      output += `\n<div class="treatment-group-label">Complete Before Finalizing Other Options</div>`;
+      workupRecs.forEach(rec => {
+        output += `\n<div class="rec-item">${rec.html}</div>`;
+      });
+    }
 
     /* ── Discuss With Your Doctor group ── */
     if (discuss.length > 0) {
@@ -1344,7 +1417,13 @@ ${items.join('')}`;
      ══════════════════════════════════════════════════════════════════════════ */
   function renderFooter(data) {
     const dateStr = formatDate(data.reportDate);
+    /* Inline styles (not a CSS class) so the disclaimer survives the PDF pipeline,
+       which strips external stylesheets. Quiet/muted by design to avoid adding to
+       the report's visual density. */
     return `
+<div class="report-disclaimer" style="margin-top:1.5rem;padding-top:0.85rem;border-top:1px solid #e2e8f0;font-size:0.78rem;line-height:1.55;color:#64748b;">
+  This summary was prepared to help you understand your sleep evaluation and plan your next steps with your care team. It is not a final diagnosis or a substitute for medical advice \u2014 please review it with your doctor before making decisions about your care. If you ever have chest pain, severe trouble breathing, or another medical emergency, call 911.
+</div>
 <div class="report-footer">
   Prepared by Capital ENT${dateStr ? ' \u00b7 ' + dateStr : ''}
 </div>`;

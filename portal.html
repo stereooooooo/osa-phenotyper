@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://dk259m1syu2bu.cloudfront.net https://sgwvp3545f.execute-api.us-east-2.amazonaws.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Capital ENT Sleep Page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/patientReport.css" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(214, 228, 245, 0.55), transparent 38%),
+      linear-gradient(180deg, #f7fafc 0%, #eef4fb 100%);
+    color: #1f2937;
+    min-height: 100vh;
+  }
+  .portal-shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 1.4rem 1rem 3rem;
+  }
+  .portal-banner {
+    border-radius: 24px;
+    border: 1px solid #dbe5f1;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.98), rgba(244,248,253,0.98)),
+      #fff;
+    box-shadow: 0 24px 60px rgba(31, 58, 92, 0.08);
+    padding: 1.4rem 1.4rem 1.15rem;
+    margin-bottom: 1.25rem;
+  }
+  .portal-brand {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) auto;
+    gap: 1.25rem;
+    align-items: end;
+  }
+  .portal-brand img {
+    height: 64px;
+    width: auto;
+  }
+  .portal-brand-mark {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.65rem;
+  }
+  .portal-brand-note {
+    font-size: 0.82rem;
+    color: #64748b;
+    text-align: right;
+    line-height: 1.45;
+  }
+  .portal-kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .portal-title {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 800;
+    color: #1f3a5c;
+    margin: 0;
+  }
+  .portal-subtitle {
+    color: #475569;
+    margin: 0.5rem 0 0;
+    max-width: 52rem;
+  }
+  .portal-overview {
+    margin-top: 1.2rem;
+    padding-top: 1.05rem;
+    border-top: 1px solid #e2e8f0;
+  }
+  .portal-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem 1rem;
+  }
+  .portal-overview-item {
+    min-width: 0;
+  }
+  .portal-overview-label {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.28rem;
+  }
+  .portal-overview-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f3a5c;
+    line-height: 1.35;
+  }
+  .portal-overview-summary {
+    margin: 0.95rem 0 0;
+    color: #475569;
+    font-size: 0.94rem;
+    max-width: 62rem;
+  }
+  .portal-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.9rem;
+  }
+  .portal-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.82rem;
+    background: #eef4fb;
+    color: #1f3a5c;
+    border: 1px solid #dbe5f1;
+  }
+  .portal-runtime {
+    margin-bottom: 1rem;
+  }
+  .portal-runtime .badge {
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+  }
+  .portal-state {
+    border-radius: 20px;
+    border: 1px solid #dbe5f1;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 18px 50px rgba(31, 58, 92, 0.08);
+    padding: 1.4rem;
+  }
+  .portal-state h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1f3a5c;
+    margin-bottom: 0.5rem;
+  }
+  .portal-state p:last-child {
+    margin-bottom: 0;
+  }
+  .portal-report-wrap {
+    margin-top: 1.15rem;
+  }
+  .portal-review-note {
+    border-radius: 18px;
+    background: linear-gradient(135deg, #eef4fb, #f6f9fd);
+    border: 1px solid #d9e7f7;
+    color: #1f3a5c;
+    padding: 1rem 1.05rem;
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+  .portal-report-wrap .patient-report {
+    max-width: none;
+    margin: 0;
+    padding: 2rem 2rem 2.15rem;
+    font-size: 1rem;
+    line-height: 1.7;
+    border-radius: 24px;
+    border: 1px solid #dbe5f1;
+    box-shadow: 0 24px 60px rgba(31, 58, 92, 0.08);
+    overflow: hidden;
+  }
+  .portal-report-wrap .patient-report .report-header,
+  .portal-report-wrap .patient-report .report-footer {
+    display: none;
+  }
+  .portal-report-wrap .patient-report h2 {
+    margin-top: 1.65rem;
+  }
+  .portal-report-wrap .patient-report .care-pathway,
+  .portal-report-wrap .patient-report .care-summary-card,
+  .portal-report-wrap .patient-report .cpap-context-box,
+  .portal-report-wrap .patient-report .comisa-callout,
+  .portal-report-wrap .patient-report .whatif-item {
+    border-radius: 16px;
+    border-left-width: 1px;
+    padding: 0.95rem 1rem;
+  }
+  .portal-report-wrap .patient-report .care-pathway {
+    padding: 1rem 1rem 0.95rem;
+  }
+  .portal-report-wrap .patient-report .pathway-steps {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.4rem;
+    scrollbar-width: thin;
+  }
+  .portal-report-wrap .patient-report .pathway-step,
+  .portal-report-wrap .patient-report .pathway-line {
+    flex: 0 0 auto;
+  }
+  .portal-report-wrap .patient-report .pathway-line {
+    width: 24px;
+  }
+  .portal-report-wrap .patient-report .rec-item {
+    padding: 0.65rem 0;
+  }
+  .portal-report-wrap .patient-report .checklist-item {
+    gap: 0.65rem;
+    margin-bottom: 0.7rem;
+  }
+  .portal-report-wrap .patient-report .ahi-scale-bar {
+    height: 38px;
+  }
+  .nonprod-banner {
+    border-radius: 16px;
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fdba74;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 768px) {
+    .portal-shell { padding: 0.85rem 0.75rem 1.75rem; }
+    .portal-runtime {
+      align-items: flex-start !important;
+    }
+    .portal-brand {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+    .portal-brand-mark {
+      align-items: flex-start;
+    }
+    .portal-brand-note {
+      text-align: left;
+    }
+    .portal-brand img { height: 50px; }
+    .portal-title { font-size: 2rem; }
+    .portal-overview-grid {
+      grid-template-columns: 1fr;
+      gap: 0.8rem;
+    }
+    .portal-state {
+      border-radius: 18px;
+      padding: 1.1rem;
+    }
+    .portal-review-note {
+      border-radius: 16px;
+      padding: 0.95rem 0.95rem;
+      font-size: 0.95rem;
+    }
+    .portal-report-wrap .patient-report {
+      padding: 1.15rem 1rem 1.35rem;
+      font-size: 0.96rem;
+      line-height: 1.65;
+      border-radius: 18px;
+    }
+    .portal-report-wrap .patient-report h2 {
+      font-size: 1.02rem;
+      margin-top: 1.35rem;
+    }
+    .portal-report-wrap .patient-report .ahi-scale-bar {
+      height: 34px;
+    }
+    .portal-report-wrap .patient-report .ahi-zone-label {
+      font-size: 0.62rem;
+    }
+    .portal-report-wrap .patient-report .ahi-zone-range {
+      font-size: 0.54rem;
+    }
+    .portal-report-wrap .patient-report .care-pathway,
+    .portal-report-wrap .patient-report .care-summary-card,
+    .portal-report-wrap .patient-report .cpap-context-box,
+    .portal-report-wrap .patient-report .comisa-callout,
+    .portal-report-wrap .patient-report .whatif-item {
+      padding: 0.85rem 0.9rem;
+    }
+    .portal-report-wrap .patient-report .pathway-title,
+    .portal-report-wrap .patient-report .checklist-group-label,
+    .portal-report-wrap .patient-report .treatment-group-label {
+      font-size: 0.75rem;
+    }
+    .portal-report-wrap .patient-report .pathway-step {
+      font-size: 0.78rem;
+      padding: 0.28rem 0.55rem;
+    }
+    .portal-report-wrap .patient-report .phenotype-item {
+      gap: 0.55rem;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="portal-shell">
+    <div class="portal-runtime d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <span class="badge text-bg-secondary" id="portalEnvBadge">PATIENT PAGE</span>
+      <span class="small text-muted" id="portalRuntimeMeta"></span>
+    </div>
+    <div class="nonprod-banner d-none" id="portalRuntimeBanner">
+      This is a non-production environment. Information here is for staging or validation use only.
+    </div>
+
+    <section class="portal-banner">
+      <div class="portal-brand">
+        <div>
+          <div class="portal-kicker">Capital ENT &amp; Sinus Center</div>
+          <h1 class="portal-title">Your Sleep Page</h1>
+          <p class="portal-subtitle" id="portalSubtitle">This page shows the most recent sleep update your care team has reviewed and published for you.</p>
+        </div>
+        <div class="portal-brand-mark">
+          <img src="img/logo.svg" alt="Capital ENT &amp; Sinus Center">
+          <div class="portal-brand-note" id="portalPublishedMeta">Reviewed patient update</div>
+        </div>
+      </div>
+      <div class="portal-meta" id="portalMetaChips"></div>
+      <div class="portal-overview d-none" id="portalOverview">
+        <div class="portal-overview-grid">
+          <div class="portal-overview-item">
+            <span class="portal-overview-label">Care stage</span>
+            <span class="portal-overview-value" id="portalOverviewStage"></span>
+          </div>
+          <div class="portal-overview-item">
+            <span class="portal-overview-label">Sleep study</span>
+            <span class="portal-overview-value" id="portalOverviewStudy"></span>
+          </div>
+          <div class="portal-overview-item">
+            <span class="portal-overview-label">Reviewed</span>
+            <span class="portal-overview-value" id="portalOverviewReviewed"></span>
+          </div>
+        </div>
+        <p class="portal-overview-summary d-none" id="portalOverviewSummary"></p>
+      </div>
+    </section>
+
+    <section class="portal-state" id="portalStateLoading">
+      <h2>Loading your sleep page</h2>
+      <p class="text-muted">Please wait while we load the most recent version your clinician has published for you.</p>
+    </section>
+
+    <section class="portal-state d-none" id="portalStateError">
+      <h2>This link is unavailable</h2>
+      <p class="text-muted" id="portalErrorMessage">This patient page link is invalid or has expired.</p>
+    </section>
+
+    <section class="portal-state d-none" id="portalStatePending">
+      <h2>Your page is not published yet</h2>
+      <p class="text-muted">Your care team has not published a reviewed version of your sleep page yet. If you expected to see an update here, please contact the clinic.</p>
+    </section>
+
+    <section class="d-none" id="portalStateReady">
+      <div class="portal-review-note">
+        This page reflects the most recent version your clinician has reviewed and chosen to share with you.
+      </div>
+      <div class="portal-report-wrap" id="portalReportMount"></div>
+    </section>
+  </main>
+
+<script src="js/aws-config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const runtimeConfig = typeof AWS_CONFIG !== 'undefined' ? AWS_CONFIG : (window.AWS_CONFIG || {});
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('t') || '';
+  const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+  const workflowMode = isLocalHost && params.get('testMode') === 'workflow';
+  const stateLoading = document.getElementById('portalStateLoading');
+  const stateError = document.getElementById('portalStateError');
+  const statePending = document.getElementById('portalStatePending');
+  const stateReady = document.getElementById('portalStateReady');
+  const errorMessage = document.getElementById('portalErrorMessage');
+  const metaChips = document.getElementById('portalMetaChips');
+  const subtitle = document.getElementById('portalSubtitle');
+  const reportMount = document.getElementById('portalReportMount');
+  const publishedMeta = document.getElementById('portalPublishedMeta');
+  const overview = document.getElementById('portalOverview');
+  const overviewStage = document.getElementById('portalOverviewStage');
+  const overviewStudy = document.getElementById('portalOverviewStudy');
+  const overviewReviewed = document.getElementById('portalOverviewReviewed');
+  const overviewSummary = document.getElementById('portalOverviewSummary');
+
+  function showState(active) {
+    [stateLoading, stateError, statePending, stateReady].forEach((el) => {
+      if (!el) return;
+      el.classList.toggle('d-none', el !== active);
+    });
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString();
+  }
+
+  function formatDate(value) {
+    if (!value) return '';
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
+  function formatStageLabel(stage) {
+    const labels = {
+      'pre-study': 'Sleep study planning',
+      'post-study': 'Reviewed results',
+      'study-reviewed': 'Reviewed results',
+      'initial-eval': 'Initial evaluation',
+      'treatment-plan': 'Treatment planning',
+      'cpap-trial': 'Treatment underway',
+      'cpap-followup': 'Treatment follow-up',
+      'post-op': 'Post-treatment follow-up',
+    };
+    if (labels[stage]) return labels[stage];
+    if (!stage) return 'Reviewed update';
+    return stage
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function formatStudySummary(publication) {
+    const ahi = publication.primaryAHI;
+    if (ahi === null || ahi === undefined) {
+      return 'Sleep study still being arranged';
+    }
+    const roundedAhi = Math.round(Number(ahi));
+    if (roundedAhi < 5) {
+      return `No obstructive sleep apnea found (AHI ${roundedAhi})`;
+    }
+    const severity = publication.severity && publication.severity !== 'normal'
+      ? `${publication.severity.charAt(0).toUpperCase()}${publication.severity.slice(1)} OSA`
+      : 'Reviewed sleep study';
+    return `${severity} · AHI ${roundedAhi}`;
+  }
+
+  function setRuntimeMeta() {
+    const envBadge = document.getElementById('portalEnvBadge');
+    const runtimeMeta = document.getElementById('portalRuntimeMeta');
+    const runtimeBanner = document.getElementById('portalRuntimeBanner');
+    const label = runtimeConfig.deploymentLabel || 'PATIENT PAGE';
+    const env = runtimeConfig.deploymentEnvironment || '';
+    const buildId = runtimeConfig.buildId || '';
+    const deployedAt = runtimeConfig.deployedAt || '';
+    envBadge.textContent = label;
+    runtimeMeta.textContent = [buildId ? `Build ${buildId}` : '', deployedAt ? `Deployed ${deployedAt}` : ''].filter(Boolean).join(' • ');
+    runtimeBanner.classList.toggle('d-none', !(env && env !== 'production'));
+  }
+
+  async function loadPortalDataFromApi(rawToken) {
+    const apiUrl = String(runtimeConfig.apiUrl || '').replace(/\/$/, '');
+    if (!apiUrl) throw new Error('Portal configuration is unavailable.');
+    const res = await fetch(`${apiUrl}/patient-portal/${encodeURIComponent(rawToken)}`);
+    const text = await res.text();
+    let data = {};
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        data = {};
+      }
+    }
+    if (!res.ok) {
+      throw new Error((data && (data.error || data.message)) || 'This patient page link is invalid or has expired.');
+    }
+    return data;
+  }
+
+  function loadPortalDataFromWorkflowStore(rawToken) {
+    const raw = localStorage.getItem('osaWorkflowPortalState');
+    const state = raw ? JSON.parse(raw) : { patients: [] };
+    const patient = (state.patients || []).find((entry) => {
+      return Array.isArray(entry.portalTokens) && entry.portalTokens.some((tokenEntry) => tokenEntry.token === rawToken && tokenEntry.status !== 'revoked');
+    });
+
+    if (!patient) {
+      throw new Error('This patient page link is invalid or has expired.');
+    }
+
+    const publication = patient.patientPortalPublication || null;
+    return {
+      valid: true,
+      published: Boolean(publication && publication.patientReportHtml),
+      firstName: (publication && publication.patientFirstName) || (patient.name || '').split(' ').slice(-1)[0] || 'Patient',
+      publication,
+    };
+  }
+
+  function renderPublication(data) {
+    const publication = data.publication || {};
+    const chips = [];
+    if (publication.reportDate) chips.push(`<span class="portal-chip">Report date ${escapeHtml(formatDate(publication.reportDate))}</span>`);
+    if (publication.publishedAt) chips.push(`<span class="portal-chip">Reviewed ${escapeHtml(formatDateTime(publication.publishedAt))}</span>`);
+    if (publication.summary) chips.push(`<span class="portal-chip">${escapeHtml(publication.summary)}</span>`);
+    metaChips.innerHTML = chips.join('');
+    publishedMeta.textContent = publication.patientName
+      ? `${publication.patientName} • reviewed ${formatDateTime(publication.publishedAt) || formatDate(publication.reportDate) || 'recently'}`
+      : `Reviewed ${formatDateTime(publication.publishedAt) || formatDate(publication.reportDate) || 'recently'}`;
+    subtitle.textContent = publication.patientFirstName
+      ? `Hi ${publication.patientFirstName}, this page shows the latest sleep update your care team has reviewed and published for you.`
+      : 'This page shows the most recent sleep update your care team has reviewed and published for you.';
+    overview.classList.remove('d-none');
+    overviewStage.textContent = formatStageLabel(publication.stage);
+    overviewStudy.textContent = formatStudySummary(publication);
+    overviewReviewed.textContent = formatDateTime(publication.publishedAt) || formatDate(publication.reportDate) || 'Recently updated';
+    if (publication.summary) {
+      overviewSummary.textContent = publication.summary;
+      overviewSummary.classList.remove('d-none');
+    } else {
+      overviewSummary.textContent = '';
+      overviewSummary.classList.add('d-none');
+    }
+    reportMount.innerHTML = publication.patientReportHtml || '';
+    showState(stateReady);
+  }
+
+  async function init() {
+    setRuntimeMeta();
+
+    if (!token) {
+      errorMessage.textContent = 'This patient page link is incomplete.';
+      showState(stateError);
+      return;
+    }
+
+    try {
+      const data = workflowMode
+        ? loadPortalDataFromWorkflowStore(token)
+        : await loadPortalDataFromApi(token);
+
+      if (!data.published) {
+        showState(statePending);
+        return;
+      }
+
+      renderPublication(data);
+    } catch (err) {
+      errorMessage.textContent = err.message || 'This patient page link is invalid or has expired.';
+      showState(stateError);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
