@@ -1905,6 +1905,7 @@ function applyRuntimeMeta(meta) {
     try {
       const patient = await OSADatabase.getPatient(id);
       hydrateLoadedPatient(patient);
+      showView('chart');   // reveal the chart — covers every entry point (review queue, patient list, search)
       return true;
     } catch (err) {
       alert('Error loading patient: ' + err.message);
