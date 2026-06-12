@@ -1,11 +1,11 @@
-# Phenotype Baseline — Clinical Review (v2, post clinical-logic refinements)
+# Phenotype Baseline — Clinical Review (v3)
 
-_Regenerated 2026-06-11 from the live engine after the clinical-logic changes you requested (ΔHR removed, Zepbound for obese moderate-severe, workup caveats gated, MAD demoted for poor/severe, recommendations ranked by suitability). Recommendations are now listed **in plan order**; `*-WORKUP` prerequisite caveats sort last. Review for clinical correctness._
+_Regenerated 2026-06-11 after the clinical-logic refinements (ranked plan, gated workups, MAD demotion, Zepbound, ΔHR off) plus the DISE-not-always-required fix (thin Friedman-I + large tonsils → tonsillectomy ± expansion pharyngoplasty without DISE). Recommendations are in plan order; `*-WORKUP` caveats sort last._
 
 ---
 
 ### 1. Pre-study snorer
-**Patient:** M, BMI 28, **no study**, ESS 10 / ISI 6, NOSE 35, nasal obstruction + snoring  
+**Patient:** M, BMI 28, **no study**, ESS 10 / ISI 6, NOSE 35, nasal + snoring  
 **Phenotypes:** _none_  
 **Plan (ranked):** `SLEEP-STUDY, NASAL-OPT`
 
@@ -87,7 +87,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 
 ### 8. Current CPAP user
-**Patient:** M, BMI 33, AHI 30, **currently using CPAP**  
+**Patient:** M, BMI 33, AHI 30, **on CPAP**  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CPAP, WEIGHT, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
@@ -101,7 +101,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 9. CPAP failed, won't retry
-**Patient:** F, BMI 31, AHI 24, ESS 17 / ISI 19 (COMISA), CPAP failed/claustrophobia, prefers alternatives  
+**Patient:** F, BMI 31, AHI 24, ESS 17 / ISI 19 (COMISA), CPAP failed, prefers alternatives  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CBTI, COMISA-PAP, COMISA-SRT-CAUTION, CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
@@ -120,7 +120,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 10. CPAP failed, will retry
-**Patient:** M, BMI 30, AHI 28, CPAP failed (mask), **willing to retry**  
+**Patient:** M, BMI 30, AHI 28, CPAP failed (mask), **will retry**  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
@@ -147,7 +147,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.
 
 ### 12. Pure insomnia + mild OSA
-**Patient:** F, BMI 24, AHI 7, ISI 22 (insomnia, not sleepy)  
+**Patient:** F, BMI 24, AHI 7, ISI 22 (not sleepy)  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CBTI, COMISA-PAP, CPAP, MAD-FAVORABLE, MILD-LIFESTYLE, MAD-WORKUP`
 
@@ -160,7 +160,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.
 
 ### 13. Sleepy COMISA
-**Patient:** F, BMI 31, AHI 24, ESS 17 / ISI 19 (sleepy COMISA)  
+**Patient:** F, BMI 31, AHI 24, ESS 17 / ISI 19  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CBTI, COMISA-PAP, COMISA-SRT-CAUTION, CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
@@ -190,14 +190,14 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 ### 15. Large tonsils, thin
 **Patient:** M, BMI 24, AHI 18, tonsils 4, FTP I  
 **Phenotypes:** _none_  
-**Plan (ranked):** `CPAP, SURG, MAD-FAVORABLE, MAD-WORKUP, SURGERY-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
+**Plan (ranked):** `CPAP, SOFT-TISSUE-STRONG, SURG, MAD-FAVORABLE, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
 **Recommendations (in order):**
 - Start CPAP/APAP
+- Strongly consider tonsillectomy +/- expansion pharyngoplasty (Friedman Stage I: FTP I, Tonsils 4, BMI 24.0 — ~80% UPPP success rate).
 - Surgical correction of correctable airway blockage
 - Oral appliance therapy (MAD) — favorable candidate based on profile
 - Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.
-- Complete DISE-guided surgical planning before finalizing a specific airway procedure target.
 - Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.
 - Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.
 - Review REM/NREM staging data before concluding that REM-specific worsening is absent.
@@ -317,7 +317,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete the upper-airway anatomy exam (BMI, tonsil size, and Friedman tongue position) before finalizing surgery- or anatomy-matched therapy recommendations.
 
-### 23. Delta HR elevated + CVD (ΔHR now disabled)
+### 23. Delta HR elevated + CVD (ΔHR disabled)
 **Patient:** M, BMI 30, AHI 25, ΔHR 14, CVD  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
@@ -368,7 +368,7 @@ _Regenerated 2026-06-11 from the live engine after the clinical-logic changes yo
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 26. Interested in Inspire
-**Patient:** M, BMI 29, AHI 20, interested in Inspire (no CPAP trial)  
+**Patient:** M, BMI 29, AHI 20, interested in Inspire  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CPAP, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, ANATOMY-WORKUP, HNS-WORKUP, NASAL-WORKUP`
 

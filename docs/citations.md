@@ -79,6 +79,7 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Friedman staging (FTP + tonsils + BMI) | Friedman M, et al. "Staging of OSA/Hypopnea Syndrome." *Laryngoscope.* 2004;114(3):454-9. | Auto-calculated Friedman Stage I-IV |
 | Friedman stage I predicts UPPP success (~80%) | Same Friedman 2004 | Stage I → strong tonsillectomy/UPPP rec |
 | Meta-analysis: Stage I positive predictor, Stage III negative | Choi JH, et al. "Predicting Outcomes After UPPP." *Otolaryngol Head Neck Surg.* 2016;155(6):904-913. | Stage III → suppress UPPP, recommend alternatives |
+| DISE not required for clear tonsillar obstruction | Friedman 2004 (above) + clinical practice (ENT review 2026-06) | A **non-obese** Friedman Stage I patient with 3-4+ tonsils has obvious tonsillar/palatal obstruction → tonsillectomy ± expansion pharyngoplasty proceeds **without** a DISE prerequisite. DISE remains required for obese patients (multilevel-collapse risk) and for Friedman II/III, tongue-base, or HNS planning. |
 
 ## HNS (Inspire) Clinical Staging
 

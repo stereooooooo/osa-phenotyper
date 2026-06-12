@@ -31,6 +31,12 @@ Physician decisions: full rec redesign · Zepbound at BMI ≥30 + AHI ≥15 (FDA
 - **Generic surgery requires a real indication**: Friedman II only leads to a surgery rec at
   moderate-severe AHI (Friedman I / anatomical findings / DISE still always qualify) — mild OSA is
   no longer steered toward surgery + DISE.
+- **DISE is no longer a blanket prerequisite** (physician follow-up): a non-obese Friedman-I patient
+  with 3-4+ tonsils proceeds to tonsillectomy ± expansion pharyngoplasty without a DISE caveat (the
+  obstruction site is obvious). The specific tonsillectomy rec is no longer suppressed for those
+  patients. DISE stays required for obese patients (multilevel risk) and Friedman II/III / tongue-base
+  / HNS planning. (#15 thin Friedman-I now leads with the tonsillectomy rec, no DISE caveat; #16
+  obese Friedman-I keeps it.)
 
 ### Changed — weight management (`js/app.js`, `docs/citations.md`)
 - **Explicit Zepbound/GLP-1 evaluation** named in the clinician rec for obesity (BMI ≥30) with

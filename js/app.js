@@ -277,7 +277,10 @@ function buildTreatmentSafetyAssessment(ctx) {
     });
   }
 
-  // DISE remains the planning prerequisite before final site-directed airway surgery selection.
+  // DISE remains the planning prerequisite before final site-directed airway surgery selection —
+  // EXCEPT a clear tonsillar case (Friedman Stage I, 3-4+ tonsils, non-obese): the obstruction site
+  // is obvious, so tonsillectomy +/- expansion pharyngoplasty proceeds without DISE. Obesity keeps
+  // the DISE prerequisite (higher multilevel-collapse risk). (Clinical review 2026-06.)
   const surgeryReferenced = ctx.prefSurgery || [
     'SURG',
     'SURGALT',
@@ -288,7 +291,8 @@ function buildTreatmentSafetyAssessment(ctx) {
     'SOFT-TISSUE-GENERAL',
     'FRIEDMAN-III-ALT',
   ].some(tag => tags.has(tag));
-  if (surgeryReferenced && !ctx.hasDISEData) {
+  const clearTonsillarSurgery = ctx.friedmanStage === 'I' && exists(ctx.tons) && ctx.tons >= T.anatomical.tonsils && exists(ctx.bmi) && ctx.bmi < T.anatomical.bmi;
+  if (surgeryReferenced && !ctx.hasDISEData && !clearTonsillarSurgery) {
     alerts.push({
       key: 'surgery-workup',
       clinician: 'Before finalizing site-directed airway surgery, complete DISE to map the collapse pattern and target levels.',
@@ -1747,6 +1751,9 @@ document.getElementById('form').addEventListener('submit', e => {
     </div>` : '';
   const treatmentSafetyChecks = buildTreatmentSafetyAssessment({
     osaConfirmed,
+    friedmanStage,
+    tons,
+    bmi,
     recTags: recTagMap,
     priorMAD,
     priorJaw,
