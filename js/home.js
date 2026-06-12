@@ -19,8 +19,26 @@
     renderSearch();
   }
 
-  // Stubs replaced in later tasks
-  function renderReviewCard() {}
+  async function renderReviewCard() {
+    const root = document.getElementById('homeReviewCard');
+    let queue = [];
+    try { queue = await window.OSAWorkspace.getReviewQueue(); } catch (e) { root.innerHTML = ''; return; }
+    if (!queue.length) { root.innerHTML = ''; return; }
+    const rows = queue.slice(0, 3).map(p => `
+      <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-id="${escapeHtml(p.patientId)}">
+        <span>${escapeHtml(p.name || '')}<small class="text-muted ms-2">submitted ${escapeHtml((p.intakeReceivedAt || '').slice(0, 10))}</small></span>
+        <i class="bi bi-chevron-right"></i></button>`).join('');
+    root.innerHTML = `
+      <div class="alert alert-info d-flex align-items-center mb-2">
+        <i class="bi bi-clipboard-check me-2"></i><strong>Intakes ready to review</strong>
+        <span class="badge bg-primary ms-2">${queue.length}</span>
+        <button type="button" id="homeReviewAll" class="btn btn-link btn-sm ms-auto p-0">Review all <i class="bi bi-arrow-right"></i></button>
+      </div>
+      <div class="list-group mb-1">${rows}</div>`;
+    root.querySelectorAll('.list-group-item[data-id]').forEach(b =>
+      b.addEventListener('click', () => window.OSAWorkspace.openChart(b.dataset.id)));
+    document.getElementById('homeReviewAll').addEventListener('click', () => window.OSAWorkspace.reviewModalShow());
+  }
   function renderNewPatient() {
     const box = document.getElementById('homeNewPatient');
     box.innerHTML = `
