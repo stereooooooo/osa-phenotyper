@@ -115,7 +115,7 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| Tirzepatide FDA approval for moderate-severe OSA in adults with obesity | U.S. Food and Drug Administration. "FDA Approves First Medication for Obstructive Sleep Apnea." December 20, 2024. | Patient-facing GLP-1/Zepbound mention is gated to BMI ≥30 rather than generic weight counseling |
+| Tirzepatide (Zepbound) for moderate-severe OSA in adults with obesity | Malhotra A, et al. "Tirzepatide for the Treatment of Obstructive Sleep Apnea and Obesity." *N Engl J Med.* 2024;391:1193-1205 (SURMOUNT-OSA); U.S. FDA. "FDA Approves First Medication for Obstructive Sleep Apnea." Dec 20, 2024. | Clinician recommendation explicitly names a GLP-1/tirzepatide (Zepbound) evaluation for obesity (BMI ≥30) **with moderate-to-severe OSA (AHI ≥15)** — matching the FDA OSA indication. Patient-facing GLP-1/Zepbound mention gated to BMI ≥30. Mild obese OSA gets generic weight counseling. |
 | 10% weight loss → meaningful AHI reduction | Peppard PE, et al. "Longitudinal Study of Moderate Weight Change and SDB." *JAMA.* 2000;284(23):3015-21. | Weight loss what-if projection (30% AHI reduction) |
 
 ## UARS (Upper Airway Resistance Syndrome)

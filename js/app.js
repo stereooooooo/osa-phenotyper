@@ -40,6 +40,8 @@ function pushRec(arr, text, tag){
 
 /* ── Shorthand for threshold access ───────────────────────────── */
 const T = OSA_CONFIG.thresholds;
+/* Feature toggle — ΔHR disabled (device can't measure it); see config.js. */
+const DHR_ENABLED = !!(OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate);
 let lastAnalysisData = null;
 
 /* ── Signal-strength helper — extracted to js/phenotype-confidence.js so the
@@ -59,6 +61,31 @@ const CPAP_ISSUE_LABELS = {
   cpapTravel: 'travel'
 };
 
+/* ── Clinician recommendation ranking (lower = higher in the plan) ──────────
+   Leads with the most actionable first-line therapy for the patient and sorts
+   prerequisite workup caveats last so they don't crowd the plan. Unlisted tags
+   get a mid priority; any *-WORKUP tag sorts last. (Clinical review 2026-06.) */
+const REC_PRIORITY = {
+  'SLEEP-STUDY': 2,
+  'CBTI': 5, 'COMISA-PAP': 6, 'COMISA-SRT-CAUTION': 7,
+  'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11,
+  'TONSIL': 15, 'SOFT-TISSUE-STRONG': 16, 'FRIEDMAN-III-ALT': 17,
+  'POS': 20,
+  'WEIGHT': 25,
+  'SURG': 30, 'SURGALT': 31, 'SURG-PREF': 32, 'SOFT-TISSUE-CONSIDER': 33, 'SOFT-TISSUE-GENERAL': 34, 'SOFT-TISSUE-REVISION': 35,
+  'HNS': 40, 'INSPIRE-EVAL': 41, 'INSPIRE-OPT': 42,
+  'ASV-SAFETY': 45,
+  'MAD-FAVORABLE': 50, 'MAD': 51, 'MAD-POOR': 52,
+  'NASAL-OPT': 55,
+  'MILD-LIFESTYLE': 60,
+  'DHR-TX': 62, 'DHR-CARDS': 63
+};
+function recPriority(tag) {
+  if (!tag) return 70;
+  if (/-WORKUP$/.test(tag)) return 90;            // prerequisite caveats sort last
+  return REC_PRIORITY[tag] != null ? REC_PRIORITY[tag] : 70;
+}
+
 /* ── AHI severity label helper ────────────────────────────────── */
 function ahiSeverity(ahi) {
   if (!exists(ahi) || ahi < T.severity.mild) return null;
@@ -72,7 +99,16 @@ function buildInsufficientDataAssessment(ctx) {
 
   const domains = [];
 
-  if (!ctx.oxygenCompositeSufficient) {
+  /* Gate data-completeness caveats so they don't crowd a mild patient's plan:
+     risk/endotype workups only matter at moderate-severe (AHI ≥15); the anatomy
+     workup only when a surgical/anatomy therapy is actually being recommended. */
+  const moderateSevere = exists(ctx.ahi) && ctx.ahi >= T.severity.moderate;
+  /* Anatomy workup is relevant when surgery/HNS is actually on the table — a
+     surgical rec was generated OR the patient is pursuing surgery/Inspire. */
+  const surgRecommended = ctx.prefSurgery || ctx.prefInspire || (Array.isArray(ctx.recTags) && ctx.recTags.some(r =>
+    ['SURG','SURGALT','SURG-PREF','TONSIL','FRIEDMAN-III-ALT','SOFT-TISSUE-REVISION','SOFT-TISSUE-STRONG','SOFT-TISSUE-CONSIDER','SOFT-TISSUE-GENERAL','HNS','INSPIRE-EVAL'].includes(r.tag)));
+
+  if (!ctx.oxygenCompositeSufficient && moderateSevere) {
     const metricCount = ctx.oxygenMetricCount || 0;
     const hasPartialOxygenData = metricCount > 0;
     domains.push({
@@ -86,7 +122,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.sup) || !exists(ctx.nons)) {
+  if ((!exists(ctx.sup) || !exists(ctx.nons)) && moderateSevere) {
     const positionalMissing = [];
     if (!exists(ctx.sup)) positionalMissing.push('supine AHI');
     if (!exists(ctx.nons)) positionalMissing.push('non-supine AHI');
@@ -97,7 +133,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.remAhi) || !exists(ctx.nremAhi)) {
+  if ((!exists(ctx.remAhi) || !exists(ctx.nremAhi)) && moderateSevere) {
     const sleepStageMissing = [];
     if (!exists(ctx.remAhi)) sleepStageMissing.push('REM AHI');
     if (!exists(ctx.nremAhi)) sleepStageMissing.push('NREM AHI');
@@ -108,7 +144,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.fHypopneas)) {
+  if (!exists(ctx.fHypopneas) && moderateSevere) {
     domains.push({
       key: 'endotyping',
       clinician: 'Apnea/hypopnea breakdown is unavailable. Collapsibility estimate, full Edwards arousal-threshold scoring, and point-of-care loop-gain estimation are incomplete; do not treat the absence of those endotypes as exclusion.',
@@ -120,13 +156,13 @@ function buildInsufficientDataAssessment(ctx) {
   if (!exists(ctx.bmi)) anatomyMissing.push('BMI');
   if (!exists(ctx.tons)) anatomyMissing.push('tonsil size');
   if (!exists(ctx.mall)) anatomyMissing.push('Friedman tongue position');
-  if (anatomyMissing.length >= 2) {
+  if (anatomyMissing.length >= 2 && surgRecommended) {
     domains.push({
       key: 'anatomy',
       clinician: `Upper-airway anatomy is incompletely documented (${anatomyMissing.join(', ')} missing). Anatomy-driven phenotypes and surgery/MAD matching should be deferred until the exam is completed.`,
       patient: 'Some parts of your throat exam are still missing, so anatomy-based treatment options should stay provisional until your airway exam is completed.',
     });
-  } else if (anatomyMissing.length === 1) {
+  } else if (anatomyMissing.length === 1 && surgRecommended) {
     domains.push({
       key: 'anatomy-partial',
       clinician: `Upper-airway anatomy documentation is still missing ${anatomyMissing[0]}. Do not treat the absence of an anatomy-driven phenotype as exclusion until the airway exam is completed.`,
@@ -139,7 +175,7 @@ function buildInsufficientDataAssessment(ctx) {
     Boolean(ctx.nasalObs) ||
     Boolean(ctx.ctSeptum) ||
     Boolean(ctx.ctTurbs);
-  if (!hasNasalAssessment) {
+  if (!hasNasalAssessment && moderateSevere) {
     domains.push({
       key: 'nasal',
       clinician: 'Nasal symptom/exam data are absent (NOSE score, nasal-obstruction history, or nasal anatomy findings). Do not treat the absence of a nasal-resistance phenotype as exclusion.',
@@ -147,7 +183,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (ctx.cvd && !exists(ctx.dhr)) {
+  if ((OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate) && ctx.cvd && !exists(ctx.dhr)) {
     domains.push({
       key: 'delta-heart-rate',
       clinician: 'Manual delta heart rate has not been entered. If cardiovascular-stress phenotyping matters for this patient, do not treat the absence of elevated delta heart rate as exclusion.',
@@ -1066,7 +1102,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const hb90PH   = n(f.get('hbUnder90PH'));
   const t90      = n(f.get('t90')) ?? n(f.get('t90Psg'));
 
-  const dhr      = n(f.get('dhr')) ?? n(f.get('dhrPsg')); // Delta Heart Rate (manual entry or from PSG)
+  const dhr      = DHR_ENABLED ? (n(f.get('dhr')) ?? n(f.get('dhrPsg'))) : null; // Delta Heart Rate (disabled via feature flag → null disables the whole ΔHR pathway)
 
   /* ─── PSG-SPECIFIC: Apnea/Hypopnea breakdown ─────────────── */
   const apneaIndex    = n(f.get('apneaIndex'));
@@ -1418,7 +1454,14 @@ document.getElementById('form').addEventListener('submit', e => {
     /* AHI ≥ 5: Standard OSA core trio (treatment-history-aware) */
 
     if (exists(bmi) && bmi >= T.anatomical.bmi) {
-      pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
+      if (exists(ahi) && ahi >= T.severity.moderate) {
+        /* Obesity + moderate-to-severe OSA → name the on-label GLP-1 option.
+           Tirzepatide (Zepbound) FDA-approved for OSA in adults with obesity,
+           SURMOUNT-OSA / FDA Dec 2024 (see docs/citations.md). */
+        pushRec(recs,'Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).','WEIGHT');
+      } else {
+        pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
+      }
     }
 
     /* Fix #4: priorMAD + priorUPPP combination — limited remaining options */
@@ -1453,7 +1496,9 @@ document.getElementById('form').addEventListener('submit', e => {
     } else if(madScore.tier === 'favorable') {
       pushRec(recs,'Oral appliance therapy (MAD) \u2014 favorable candidate based on profile','MAD-FAVORABLE');
     } else if(madScore.tier === 'poor') {
-      pushRec(recs,'Oral appliance therapy (MAD) \u2014 less likely to be sufficient as standalone treatment','MAD-POOR');
+      /* Poor MAD candidate (e.g. severe OSA / high BMI) \u2014 de-emphasized per
+         clinical review: the tier assessment stays in the Treatment Candidacy
+         card as a fallback option, but MAD is not pushed into the main plan. */
     } else {
       pushRec(recs,'Custom oral appliance (MAD)','MAD');
     }
@@ -1461,7 +1506,11 @@ document.getElementById('form').addEventListener('submit', e => {
     const hasAnatomicalPhenotype = out.phen.includes('High Anatomical Contribution');
     const hasNasalPhenotype = out.phen.includes('Nasal-Resistance Contributor');
     const hasDISEEntry = [f.get('vDeg'), f.get('oDeg'), f.get('tDeg'), f.get('eDeg')].some(d => d && d !== '0');
-    if (hasAnatomicalPhenotype || hasNasalPhenotype || hasDISEEntry || friedmanStage === 'I' || friedmanStage === 'II') {
+    /* Generic surgery as a lead option requires a real surgical indication —
+       an anatomical/nasal phenotype, DISE findings, a strong Friedman-I airway,
+       or Friedman II at moderate-severe AHI. Mild OSA without those isn't led
+       toward surgery/DISE (clinical review). */
+    if (hasAnatomicalPhenotype || hasNasalPhenotype || hasDISEEntry || friedmanStage === 'I' || (friedmanStage === 'II' && exists(ahi) && ahi >= T.severity.moderate)) {
       pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
     }
 
@@ -1667,6 +1716,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const hgnsHTML = renderHGNSHTML(hgnsResult);
   const insufficientDataDomains = buildInsufficientDataAssessment({
     osaConfirmed,
+    ahi,
     oxygenMetricsAvailable,
     oxygenMetricCount,
     oxygenCompositeSufficient,
@@ -1725,6 +1775,9 @@ document.getElementById('form').addEventListener('submit', e => {
     insufficientGuardedRecEntries,
     treatmentSafetyChecks
   );
+  /* Rank the plan by clinical priority (stable sort preserves insertion order
+     within a tier); leads with first-line therapy, workup caveats last. */
+  guardedRecEntries.sort((a, b) => recPriority(a.tag) - recPriority(b.tag));
   const guardedRecTexts = guardedRecEntries.map(entry => entry.text);
 
   /* ── Key numbers with color coding ─────────────────────────── */

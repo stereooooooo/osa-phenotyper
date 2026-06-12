@@ -5,6 +5,15 @@
 
 const OSA_CONFIG = {
 
+  /* ── Feature toggles ─────────────────────────────────────────── */
+  /* deltaHeartRate: the current sleep-study device cannot measure ΔHR, so the
+     whole ΔHR pathway (form field, phenotype, recommendation, follow-up) is
+     disabled. The detection/confidence/threshold code is all retained — flip
+     this to `true` to re-enable it when device support exists. */
+  features: {
+    deltaHeartRate: false
+  },
+
   /* ── Phenotype Detection & Confidence Thresholds ─────────────── */
   thresholds: {
 

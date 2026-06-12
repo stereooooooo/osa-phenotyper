@@ -8,6 +8,51 @@ full findings inventory.
 
 ---
 
+## [Clinical-logic refinements — physician review of the baseline] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. Driven by the ENT physician's review of `docs/phenotype-baseline-review.md`.
+These are deliberate **behavior changes** (not refactors), so the golden-master baseline was
+re-captured to lock the new intended output, and the review doc was regenerated for sign-off.
+Physician decisions: full rec redesign · Zepbound at BMI ≥30 + AHI ≥15 (FDA-label) · keep HB cutoffs.
+
+### Changed — recommendation engine (`js/app.js`)
+- **Ranked the clinician plan by clinical suitability** (`REC_PRIORITY`/`recPriority`): leads with
+  first-line therapy (CPAP / CBT-I-for-COMISA / strong-airway surgery / positional / weight) and
+  sorts every `*-WORKUP` prerequisite caveat **last**, so the plan no longer opens with a wall of
+  "before finalizing X, do Y."
+- **Gated the data-completeness workups** (`buildInsufficientDataAssessment`): the oxygen / position /
+  sleep-stage / endotyping / nasal caveats now only fire at moderate-severe (AHI ≥15), and the
+  anatomy caveat only when surgery/Inspire is actually on the table (a surgical rec exists or the
+  patient prefers surgery/Inspire). Mild patients get a clean options list. (Example #4, mild
+  positional: 9 tags with 5 leading workups → `CPAP, positional, MAD, [check dentition]`.)
+- **Demoted MAD for poor candidates**: severe/poor-tier patients no longer get a MAD line in the
+  main plan (the tier assessment stays in the Treatment Candidacy card as a fallback); CPAP-retry
+  patients keep MAD only as a low-ranked option.
+- **Generic surgery requires a real indication**: Friedman II only leads to a surgery rec at
+  moderate-severe AHI (Friedman I / anatomical findings / DISE still always qualify) — mild OSA is
+  no longer steered toward surgery + DISE.
+
+### Changed — weight management (`js/app.js`, `docs/citations.md`)
+- **Explicit Zepbound/GLP-1 evaluation** named in the clinician rec for obesity (BMI ≥30) with
+  moderate-to-severe OSA (AHI ≥15), citing SURMOUNT-OSA (Malhotra, NEJM 2024) / the Dec-2024 FDA
+  approval. Mild obese OSA keeps generic weight counseling.
+
+### Removed (toggle) — Delta Heart Rate (`js/config.js`, `js/app.js`, `index.html`)
+- The current device can't measure ΔHR, so the whole ΔHR pathway is disabled behind a single
+  `OSA_CONFIG.features.deltaHeartRate` flag (default `false`): parsing returns `null` (disabling the
+  phenotype, rec, confidence, follow-up, and HB-synergy), the CVD-missing-ΔHR caveat is gated off,
+  and the form fields are hidden via a `data-feature` toggle. All detection/threshold code is
+  retained — flip the flag to re-enable.
+
+### Verification
+- 310 assertions pass; ESLint clean. Intended effects spot-checked per profile (mild → clean plan;
+  obese moderate-severe → Zepbound; very severe → no MAD; prefInspire → anatomy/HNS workup retained;
+  ΔHR profile → no phenotype). Sanity: every OSA patient still gets CPAP; workups always sort last.
+  A workflow-smoke regression (anatomy workup over-gated for a prefInspire patient) was caught and
+  fixed before re-baselining.
+
+---
+
 ## [Phase 5 (part 2, increment 2) — net coverage + extract buildHstFlags()] — 2026-06-11
 
 Branch: `phase-1-safety-fixes`. Per the chosen path ("net-strengthen, then continue").
