@@ -94,9 +94,10 @@
       <span class="osa-runtime-badge d-none" id="runtimeEnvBadge"></span>
     </a>
     <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnHome"><i class="bi bi-house"></i> Home</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnReviewDashboard"><i class="bi bi-clipboard-data"></i> Review Queue</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-people"></i> Patients</button>
-      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New Patient</button>
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New / clear</button>
       <span class="text-light small d-none d-md-inline ms-2" id="userEmail"></span>
       <button class="btn btn-sm btn-outline-light no-print" id="btnSignOut" title="Sign out"><i class="bi bi-box-arrow-right"></i></button>
     </div>
@@ -1339,6 +1340,8 @@ function applyRuntimeMeta(meta) {
   if (!isConfigured) {
     loginScreen.classList.add('d-none');
     appContainer.classList.remove('d-none');
+    showView('chart');
+    document.getElementById('btnHome').style.display = 'none';
     // Hide DB-dependent buttons
     document.getElementById('btnSavePatient').style.display = 'none';
     document.getElementById('btnReviewDashboard').style.display = 'none';
@@ -1410,6 +1413,7 @@ function applyRuntimeMeta(meta) {
   function showApp() {
     loginScreen.classList.add('d-none');
     appContainer.classList.remove('d-none');
+    showView('home'); if (window.OSAHome) window.OSAHome.render();
     Promise.all([OSAAuth.getUserEmail(), OSAAuth.getUserGroups()]).then(([email, groups]) => {
       currentUserGroups = Array.isArray(groups) ? groups : [];
       currentUserIsAdmin = currentUserGroups.includes(adminGroupName);
@@ -1588,6 +1592,8 @@ function applyRuntimeMeta(meta) {
         return (b.updatedAt || '').localeCompare(a.updatedAt || '');
       });
   }
+
+  document.getElementById('btnHome').addEventListener('click', () => { showView('home'); if (window.OSAHome) window.OSAHome.render(); });
 
   document.getElementById('btnPatientList').addEventListener('click', async () => {
     patientListModal.show();
