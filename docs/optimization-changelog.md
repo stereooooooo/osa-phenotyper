@@ -59,6 +59,33 @@ Physician decisions: full rec redesign · Zepbound at BMI ≥30 + AHI ≥15 (FDA
 
 ---
 
+## [Phase 5 (part 2, increment 3) — extract mapTreatments()] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. The riskiest seam of the teardown — the recommendation engine, which
+previously mutated **module-scoped** dedup state (`recSeen`/`recTagMap`) shared with the rest of the
+handler.
+
+### Changed — extract mapTreatments(f, m, T)
+- Moved the ~325-line recommendation-mapping block (the `pushRec` loop, phenotype-driven treatment
+  `switch`, Friedman/HNS staging, soft-tissue + Inspire surgical staging, MAD candidacy scoring, the
+  stage-aware core trio, and COMISA) out of the submit handler into a top-level **pure** function.
+- **Killed the module-scoped dedup state.** `mapTreatments` now owns a **local** `seen` Set /
+  `recTags` array / `pushRec` (identical key logic: `tag || text.trim().toLowerCase().slice(0,60)`)
+  and **returns** `{recs, recTags, friedmanStage, hnsStage, madScore, hasConcentricCollapse,
+  hasCOMISA, sleepyCOMISA}`. The module `recSeen`/`recTagMap`/`pushRec` declarations and the handler's
+  per-submit `recSeen.clear()`/`recTagMap.length = 0` reset were deleted; the 4 downstream consumers
+  (the WEIGHT follow-up check, `buildInsufficientDataAssessment`, `buildTreatmentSafetyAssessment`,
+  `applyInsufficientDataGuardrails`) were repointed to the returned `recTags`.
+
+### Verification
+- 310 assertions pass; ESLint clean (`no-use-before-define`/TDZ); `node --check` valid.
+- **Byte-for-byte proof:** captured every profile's `{phen, why, tags, recs, clinicianHtml}` before
+  and after — `diff` is **identical across all 37 profiles**, including the full rendered clinician
+  report (which embeds every recommendation text, in ranked order). The 326-line body was moved as an
+  untouched string slice, so the move is provably verbatim; only the dedup-localization wrapper changed.
+
+---
+
 ## [Phase 5 (part 2, increment 2) — net coverage + extract buildHstFlags()] — 2026-06-11
 
 Branch: `phase-1-safety-fixes`. Per the chosen path ("net-strengthen, then continue").

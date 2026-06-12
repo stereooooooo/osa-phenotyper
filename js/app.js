@@ -27,17 +27,6 @@ function formatRatio(val, digits=1){
 function yes(f,key){ return f.get(key)==='on' || f.get(key)==='Yes' || (f.getAll(key)||[]).includes('on') || (f.getAll(key)||[]).includes('Yes'); }
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
-/* ── Dedupe-able recommendations ──────────────────────────────── */
-const recSeen = new Set();
-const recTagMap = [];  // parallel array: [{text, tag}, ...]
-function pushRec(arr, text, tag){
-  const key = (tag || text.trim().toLowerCase().slice(0,60));
-  if(recSeen.has(key)) return;
-  recSeen.add(key);
-  arr.push(text);
-  recTagMap.push({ text, tag: tag || key });
-}
-
 /* ── Shorthand for threshold access ───────────────────────────── */
 const T = OSA_CONFIG.thresholds;
 /* Feature toggle — ΔHR disabled (device can't measure it); see config.js. */
@@ -1011,205 +1000,31 @@ function buildHstFlags(m, T){
   return flags;
 }
 
-/* ── Form submission handler ──────────────────────────────────── */
-document.getElementById('form').addEventListener('submit', e => {
-  e.preventDefault();
-
-  /* ── Validation gate ────────────────────────────────────────── */
-  const { errors, warnings } = OSAValidation.validateForm(e.target);
-  const alertBox = document.getElementById('validationAlerts');
-  const firstInvalid = errors.find(err => err.element)?.element || null;
-
-  if (errors.length > 0) {
-    if (alertBox) {
-      alertBox.innerHTML = `<div class="alert alert-danger"><strong>Please fix these errors:</strong><ul>${errors.map(e => `<li><strong>${e.field}:</strong> ${e.message}</li>`).join('')}</ul></div>`;
-      alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    if (firstInvalid) {
-      firstInvalid.focus({ preventScroll: true });
-      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    return; // block submission
+/* ── Treatment mapping — pure function extracted from the submit handler.
+   Builds the ranked recommendation list with its OWN dedup state (no module
+   globals) plus the derived staging/scoring values the renderer consumes.
+   `f` is the FormData, `m` the metrics/flags bundle, `T` the thresholds.
+   Verified byte-identical via the clinician-HTML diff in
+   tests/phenotype-matrix.html. ── */
+function mapTreatments(f, m, T){
+  const {
+    phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
+    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    prefAvoidCpap, prefSurgery, prefInspire,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
+  } = m;
+  const out = { phen };
+  const recs = [];
+  const recTags = [];
+  const seen = new Set();
+  function pushRec(arr, text, tag){
+    const key = (tag || text.trim().toLowerCase().slice(0,60));
+    if(seen.has(key)) return;
+    seen.add(key);
+    arr.push(text);
+    recTags.push({ text, tag: tag || key });
   }
-
-  if (warnings.length > 0 && alertBox) {
-    alertBox.innerHTML = `<div class="alert alert-warning"><strong>Plausibility warnings:</strong><ul>${warnings.map(w => `<li>${w.field ? `<strong>${w.field}:</strong> ` : ''}${w.message}</li>`).join('')}</ul><small>Reports generated despite warnings. Please verify flagged values.</small></div>`;
-  } else if (alertBox) {
-    alertBox.innerHTML = '';
-  }
-
-  /* ── Proceed with phenotyping ───────────────────────────────── */
-  recSeen.clear();
-  recTagMap.length = 0;
-  const f = new FormData(e.target);
-
-  const out = { phen:[], why:{}, recs:[] };  // phen/why populated by detectPhenotypes() below
-
-  /* ─── INPUTS ────────────────────────────────────────────────── */
-  const sex   = f.get('sex');   // M or F
-  const bmi   = n(f.get('bmi'));
-  const neck  = n(f.get('neck'));
-  const tons  = n(f.get('tonsils'));
-  const mall  = f.get('ftp'); // Friedman Tongue Position
-  const retrognathia = f.get('retrognathia') || '';  // '' | 'mild' | 'moderate'
-
-  const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
-  const arInd = n(f.get('arInd'));
-  const isi   = n(f.get('isi'));
-  const ess   = n(f.get('ess'));
-
-  const csr     = n(f.get('csr'));
-  const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));
-  const pahic4  = n(f.get('pahic4'));
-  const cai     = n(f.get('cai'));
-  const cvd     = yes(f,'cvd');
-
-  /* ─── TREATMENT HISTORY & PREFERENCES ─────────────────────── */
-  const priorCpap     = yes(f,'priorCpap');
-  const cpapCurrent   = yes(f,'cpapCurrent');
-  const cpapHelped    = f.get('cpapHelped') || '';   // Yes/No/Unsure/''
-  const cpapRetry     = f.get('cpapRetry')  || '';   // Yes/No/Maybe/''
-  const cpapReasons   = ['cpapMask','cpapClaustro','cpapDry','cpapLeaks','cpapSleep','cpapSkin','cpapNoImprove','cpapTravel'].filter(k => yes(f,k));
-  const priorUPPP     = yes(f,'priorUPPP');
-  const priorNasal    = yes(f,'priorNasal');
-  const priorSinus    = yes(f,'priorSinus');
-  const priorJaw      = yes(f,'priorJaw');
-  const priorInspire  = yes(f,'priorInspire');
-  const priorMAD      = yes(f,'priorMAD');
-  const prefAvoidCpap = yes(f,'prefAvoidCpap');
-  const prefSurgery   = yes(f,'prefSurgery');
-  const prefInspire   = yes(f,'prefInspire');
-  const weightLossReadiness = f.get('weightLossReadiness') || '';
-  const lvef = n(f.get('lvef'));
-  const madDentition = f.get('madDentition') || '';
-  const madProtrusion = f.get('madProtrusion') || '';
-  const madTmj = f.get('madTmj') || '';
-
-  // Derived flags
-  const cpapFailed    = priorCpap && !cpapCurrent;
-  const cpapRefused   = cpapFailed && cpapRetry === 'No';
-  const cpapWillRetry = cpapFailed && (cpapRetry === 'Yes' || cpapRetry === 'Maybe');
-
-  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
-  const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
-
-  const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
-  const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
-  const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
-
-  const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
-  const nadirRaw = n(f.get('nadir'));
-  const nadirPsg = n(f.get('nadirPsg'));
-  const nadir = exists(nadirRaw) || exists(nadirPsg) ? Math.min( nadirRaw??99 , nadirPsg??99 ) : null;
-
-  const hbPH     = n(f.get('hbAreaPH')) ?? n(f.get('hbAreaPHpsg'));
-  const hb90PH   = n(f.get('hbUnder90PH'));
-  const t90      = n(f.get('t90')) ?? n(f.get('t90Psg'));
-
-  const dhr      = DHR_ENABLED ? (n(f.get('dhr')) ?? n(f.get('dhrPsg'))) : null; // Delta Heart Rate (disabled via feature flag → null disables the whole ΔHR pathway)
-
-  /* ─── PSG-SPECIFIC: Apnea/Hypopnea breakdown ─────────────── */
-  const apneaIndex    = n(f.get('apneaIndex'));
-  const hypopneaIndex = n(f.get('hypopneaIndex'));
-  // F(hypopneas) = hypopneas / (apneas + hypopneas) — Vena 2022
-  const fHypopneas = (exists(apneaIndex) && exists(hypopneaIndex) && (apneaIndex + hypopneaIndex) > 0)
-    ? (hypopneaIndex / (apneaIndex + hypopneaIndex)) * 100
-    : null;
-
-  /* ── Collapsibility estimate from F(hypopneas) (Vena 2022) ── */
-  /* F_hyp <50% (more apneas) → high collapsibility → anatomy-directed therapy
-     F_hyp ≥50% (mostly hypopneas) → mild-moderate collapsibility → non-CPAP may work */
-  const collapsibility = exists(fHypopneas)
-    ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
-    : null;
-
-  /* ── Loop Gain: qualitative only (no numeric estimate) ──
-     The Schmickl 2022 regression (LG = β·AHI − β·Hyp%) has NO published intercept and
-     only r=0.48 / AUC 0.73, so a per-patient point estimate over-implies precision and
-     was removed (Phase 2, 2026-06). Possible ventilatory instability is now flagged
-     qualitatively from the central / periodic-breathing signals below (see
-     loopGainSupportCount). */
-
-  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
-  /* 3-variable clinical prediction of low arousal threshold:
-     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
-     Score ≥2 of 3 = likely low ArTH (84% accuracy). NOTE: that validated accuracy applies
-     to the FULL 3-variable score. When the hypopnea fraction is unavailable (routine
-     WatchPAT), a 2-of-3 partial score is computed and reported at LOW confidence — the 84%
-     figure does not carry to the truncated score. */
-  const edwardsArTH = (() => {
-    if (!exists(ahi)) return null;
-    let score = 0;
-    const details = [];
-    if (ahi < T.arousal.ahiMax) { score++; details.push(`AHI ${ahi} <${T.arousal.ahiMax}`); }
-    if (exists(nadir) && nadir > T.arousal.nadirMin) { score++; details.push(`nadir ${nadir}% >${T.arousal.nadirMin}%`); }
-    const hypFractionAvailable = exists(fHypopneas);
-    if (hypFractionAvailable) {
-      if (fHypopneas > T.arousal.hypFraction) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >${T.arousal.hypFraction}%`); }
-      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤${T.arousal.hypFraction}%`); }
-    }
-    const maxScore = hypFractionAvailable ? 3 : 2;
-    const prediction = score >= T.arousal.scoreLikely ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
-    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
-  })();
-
-  /* nasal signals */
-  const noseScore = n(f.get('noseScore'));
-  const nasalObs  = yes(f,'nasalObs');
-  const ctSeptum  = yes(f,'ctDev');
-  const ctTurbs   = yes(f,'ctTurbs');
-
-  const oxygenMetricCount = [hbPH, hb90PH, odi, t90, nadir].filter(exists).length;
-  const oxygenMetricsAvailable = oxygenMetricCount > 0;
-  const oxygenCompositeSufficient = oxygenMetricCount >= 2;
-  const osaConfirmed = exists(ahi) && ahi >= 5;
-
-  /* pack context for confidence meters */
-  const ctxBase = {
-    sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
-    remAhi, nremAhi, sup, nons, odi, nadir,
-    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
-    fHypopneas,
-    edwardsArTHScore: edwardsArTH?.score ?? 0,
-    edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
-  };
-
-  /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
-     framing are reserved for this tier; a single MODERATE metric flags the phenotype as
-     supportive context only. Thresholds are population-derived (see config.js). */
-  const hbHighTier =
-    (exists(hbPH)   && hbPH   >= T.hypoxicBurden.hbPerHourHigh) ||
-    (exists(odi)    && odi    >  T.hypoxicBurden.odiSevere) ||
-    (exists(nadir)  && nadir  <  T.hypoxicBurden.nadirSevere) ||
-    (exists(t90)    && t90    >  T.hypoxicBurden.t90Severe) ||
-    (exists(hb90PH) && hb90PH >  T.hypoxicBurden.areaUnder90Severe);
-
-  /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
-  const loopGainSupportCount =
-    ((csr||0)    >= T.loopGain.csr    ? 1 : 0) +
-    ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-    ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-    ((cai||0)    >= T.loopGain.pahic3 ? 1 : 0);
-
-  /* Sex-specific neck threshold */
-  const neckThreshold = (sex === 'F') ? T.anatomical.neck.female : T.anatomical.neck.male;
-
-  /* ─── PHENOTYPES (suppressed until OSA is confirmed) ──────── */
-  if (osaConfirmed) {
-    const detected = detectPhenotypes({
-      bmi, neck, neckThreshold, tons, mall, ahi,
-      edwardsArTH,
-      loopGainSupportCount, csr, pahic3, pahic4, cai, cvd,
-      remAhi, nremAhi, sup, nons,
-      hbPH, odi, nadir, t90, hb90PH,
-      noseScore, nasalObs, ctSeptum, ctTurbs, dhr
-    }, T);
-    out.phen = detected.phen;
-    out.why = detected.why;
-  }
-
-  /* ─── TREATMENT MAPPING (treatment-history-aware) ──────────── */
-  const recs = out.recs;
 
   // Helper: build a CPAP-aware recommendation for anatomical contribution
   function cpapRec() {
@@ -1538,6 +1353,218 @@ document.getElementById('form').addEventListener('submit', e => {
     }
   }
 
+  return { recs, recTags, friedmanStage, hnsStage, madScore, hasConcentricCollapse, hasCOMISA, sleepyCOMISA };
+}
+
+/* ── Form submission handler ──────────────────────────────────── */
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+
+  /* ── Validation gate ────────────────────────────────────────── */
+  const { errors, warnings } = OSAValidation.validateForm(e.target);
+  const alertBox = document.getElementById('validationAlerts');
+  const firstInvalid = errors.find(err => err.element)?.element || null;
+
+  if (errors.length > 0) {
+    if (alertBox) {
+      alertBox.innerHTML = `<div class="alert alert-danger"><strong>Please fix these errors:</strong><ul>${errors.map(e => `<li><strong>${e.field}:</strong> ${e.message}</li>`).join('')}</ul></div>`;
+      alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (firstInvalid) {
+      firstInvalid.focus({ preventScroll: true });
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return; // block submission
+  }
+
+  if (warnings.length > 0 && alertBox) {
+    alertBox.innerHTML = `<div class="alert alert-warning"><strong>Plausibility warnings:</strong><ul>${warnings.map(w => `<li>${w.field ? `<strong>${w.field}:</strong> ` : ''}${w.message}</li>`).join('')}</ul><small>Reports generated despite warnings. Please verify flagged values.</small></div>`;
+  } else if (alertBox) {
+    alertBox.innerHTML = '';
+  }
+
+  /* ── Proceed with phenotyping ───────────────────────────────── */
+  const f = new FormData(e.target);
+
+  const out = { phen:[], why:{}, recs:[] };  // phen/why populated by detectPhenotypes() below
+
+  /* ─── INPUTS ────────────────────────────────────────────────── */
+  const sex   = f.get('sex');   // M or F
+  const bmi   = n(f.get('bmi'));
+  const neck  = n(f.get('neck'));
+  const tons  = n(f.get('tonsils'));
+  const mall  = f.get('ftp'); // Friedman Tongue Position
+  const retrognathia = f.get('retrognathia') || '';  // '' | 'mild' | 'moderate'
+
+  const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
+  const arInd = n(f.get('arInd'));
+  const isi   = n(f.get('isi'));
+  const ess   = n(f.get('ess'));
+
+  const csr     = n(f.get('csr'));
+  const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));
+  const pahic4  = n(f.get('pahic4'));
+  const cai     = n(f.get('cai'));
+  const cvd     = yes(f,'cvd');
+
+  /* ─── TREATMENT HISTORY & PREFERENCES ─────────────────────── */
+  const priorCpap     = yes(f,'priorCpap');
+  const cpapCurrent   = yes(f,'cpapCurrent');
+  const cpapHelped    = f.get('cpapHelped') || '';   // Yes/No/Unsure/''
+  const cpapRetry     = f.get('cpapRetry')  || '';   // Yes/No/Maybe/''
+  const cpapReasons   = ['cpapMask','cpapClaustro','cpapDry','cpapLeaks','cpapSleep','cpapSkin','cpapNoImprove','cpapTravel'].filter(k => yes(f,k));
+  const priorUPPP     = yes(f,'priorUPPP');
+  const priorNasal    = yes(f,'priorNasal');
+  const priorSinus    = yes(f,'priorSinus');
+  const priorJaw      = yes(f,'priorJaw');
+  const priorInspire  = yes(f,'priorInspire');
+  const priorMAD      = yes(f,'priorMAD');
+  const prefAvoidCpap = yes(f,'prefAvoidCpap');
+  const prefSurgery   = yes(f,'prefSurgery');
+  const prefInspire   = yes(f,'prefInspire');
+  const weightLossReadiness = f.get('weightLossReadiness') || '';
+  const lvef = n(f.get('lvef'));
+  const madDentition = f.get('madDentition') || '';
+  const madProtrusion = f.get('madProtrusion') || '';
+  const madTmj = f.get('madTmj') || '';
+
+  // Derived flags
+  const cpapFailed    = priorCpap && !cpapCurrent;
+  const cpapRefused   = cpapFailed && cpapRetry === 'No';
+  const cpapWillRetry = cpapFailed && (cpapRetry === 'Yes' || cpapRetry === 'Maybe');
+
+  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
+  const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
+
+  const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
+  const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
+  const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
+
+  const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
+  const nadirRaw = n(f.get('nadir'));
+  const nadirPsg = n(f.get('nadirPsg'));
+  const nadir = exists(nadirRaw) || exists(nadirPsg) ? Math.min( nadirRaw??99 , nadirPsg??99 ) : null;
+
+  const hbPH     = n(f.get('hbAreaPH')) ?? n(f.get('hbAreaPHpsg'));
+  const hb90PH   = n(f.get('hbUnder90PH'));
+  const t90      = n(f.get('t90')) ?? n(f.get('t90Psg'));
+
+  const dhr      = DHR_ENABLED ? (n(f.get('dhr')) ?? n(f.get('dhrPsg'))) : null; // Delta Heart Rate (disabled via feature flag → null disables the whole ΔHR pathway)
+
+  /* ─── PSG-SPECIFIC: Apnea/Hypopnea breakdown ─────────────── */
+  const apneaIndex    = n(f.get('apneaIndex'));
+  const hypopneaIndex = n(f.get('hypopneaIndex'));
+  // F(hypopneas) = hypopneas / (apneas + hypopneas) — Vena 2022
+  const fHypopneas = (exists(apneaIndex) && exists(hypopneaIndex) && (apneaIndex + hypopneaIndex) > 0)
+    ? (hypopneaIndex / (apneaIndex + hypopneaIndex)) * 100
+    : null;
+
+  /* ── Collapsibility estimate from F(hypopneas) (Vena 2022) ── */
+  /* F_hyp <50% (more apneas) → high collapsibility → anatomy-directed therapy
+     F_hyp ≥50% (mostly hypopneas) → mild-moderate collapsibility → non-CPAP may work */
+  const collapsibility = exists(fHypopneas)
+    ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
+    : null;
+
+  /* ── Loop Gain: qualitative only (no numeric estimate) ──
+     The Schmickl 2022 regression (LG = β·AHI − β·Hyp%) has NO published intercept and
+     only r=0.48 / AUC 0.73, so a per-patient point estimate over-implies precision and
+     was removed (Phase 2, 2026-06). Possible ventilatory instability is now flagged
+     qualitatively from the central / periodic-breathing signals below (see
+     loopGainSupportCount). */
+
+  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
+  /* 3-variable clinical prediction of low arousal threshold:
+     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
+     Score ≥2 of 3 = likely low ArTH (84% accuracy). NOTE: that validated accuracy applies
+     to the FULL 3-variable score. When the hypopnea fraction is unavailable (routine
+     WatchPAT), a 2-of-3 partial score is computed and reported at LOW confidence — the 84%
+     figure does not carry to the truncated score. */
+  const edwardsArTH = (() => {
+    if (!exists(ahi)) return null;
+    let score = 0;
+    const details = [];
+    if (ahi < T.arousal.ahiMax) { score++; details.push(`AHI ${ahi} <${T.arousal.ahiMax}`); }
+    if (exists(nadir) && nadir > T.arousal.nadirMin) { score++; details.push(`nadir ${nadir}% >${T.arousal.nadirMin}%`); }
+    const hypFractionAvailable = exists(fHypopneas);
+    if (hypFractionAvailable) {
+      if (fHypopneas > T.arousal.hypFraction) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >${T.arousal.hypFraction}%`); }
+      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤${T.arousal.hypFraction}%`); }
+    }
+    const maxScore = hypFractionAvailable ? 3 : 2;
+    const prediction = score >= T.arousal.scoreLikely ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
+    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
+  })();
+
+  /* nasal signals */
+  const noseScore = n(f.get('noseScore'));
+  const nasalObs  = yes(f,'nasalObs');
+  const ctSeptum  = yes(f,'ctDev');
+  const ctTurbs   = yes(f,'ctTurbs');
+
+  const oxygenMetricCount = [hbPH, hb90PH, odi, t90, nadir].filter(exists).length;
+  const oxygenMetricsAvailable = oxygenMetricCount > 0;
+  const oxygenCompositeSufficient = oxygenMetricCount >= 2;
+  const osaConfirmed = exists(ahi) && ahi >= 5;
+
+  /* pack context for confidence meters */
+  const ctxBase = {
+    sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
+    remAhi, nremAhi, sup, nons, odi, nadir,
+    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
+    fHypopneas,
+    edwardsArTHScore: edwardsArTH?.score ?? 0,
+    edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
+  };
+
+  /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
+     framing are reserved for this tier; a single MODERATE metric flags the phenotype as
+     supportive context only. Thresholds are population-derived (see config.js). */
+  const hbHighTier =
+    (exists(hbPH)   && hbPH   >= T.hypoxicBurden.hbPerHourHigh) ||
+    (exists(odi)    && odi    >  T.hypoxicBurden.odiSevere) ||
+    (exists(nadir)  && nadir  <  T.hypoxicBurden.nadirSevere) ||
+    (exists(t90)    && t90    >  T.hypoxicBurden.t90Severe) ||
+    (exists(hb90PH) && hb90PH >  T.hypoxicBurden.areaUnder90Severe);
+
+  /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
+  const loopGainSupportCount =
+    ((csr||0)    >= T.loopGain.csr    ? 1 : 0) +
+    ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
+    ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
+    ((cai||0)    >= T.loopGain.pahic3 ? 1 : 0);
+
+  /* Sex-specific neck threshold */
+  const neckThreshold = (sex === 'F') ? T.anatomical.neck.female : T.anatomical.neck.male;
+
+  /* ─── PHENOTYPES (suppressed until OSA is confirmed) ──────── */
+  if (osaConfirmed) {
+    const detected = detectPhenotypes({
+      bmi, neck, neckThreshold, tons, mall, ahi,
+      edwardsArTH,
+      loopGainSupportCount, csr, pahic3, pahic4, cai, cvd,
+      remAhi, nremAhi, sup, nons,
+      hbPH, odi, nadir, t90, hb90PH,
+      noseScore, nasalObs, ctSeptum, ctTurbs, dhr
+    }, T);
+    out.phen = detected.phen;
+    out.why = detected.why;
+  }
+
+  /* ─── TREATMENT MAPPING (delegated to mapTreatments — pure fn) ─── */
+  const {
+    recs: recTexts, recTags, friedmanStage, hnsStage, madScore,
+    hasConcentricCollapse, hasCOMISA, sleepyCOMISA,
+  } = mapTreatments(f, {
+    phen: out.phen,
+    sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
+    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    prefAvoidCpap, prefSurgery, prefInspire,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
+  }, T);
+  out.recs = recTexts;
+
   /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
   let subtype = 'Minimally-symptomatic';
   if(ess >= T.subtype.sleepyEss) subtype = 'Sleepy';
@@ -1691,7 +1718,7 @@ document.getElementById('form').addEventListener('submit', e => {
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');
-  if (recTagMap.some(r => r.tag === 'WEIGHT')) {
+  if (recTags.some(r => r.tag === 'WEIGHT')) {
     if (weightLossReadiness === 'ready') {
       followUps.push('Weight-management follow-up in 4\u20136 weeks to reinforce current motivation, review early progress, and escalate support if needed.');
     } else if (weightLossReadiness === 'considering') {
@@ -1740,7 +1767,7 @@ document.getElementById('form').addEventListener('submit', e => {
     cvd,
     prefInspire,
     prefSurgery,
-    recTags: recTagMap,
+    recTags,
     hasDISEData,
     hnsStage,
   });
@@ -1754,7 +1781,7 @@ document.getElementById('form').addEventListener('submit', e => {
     friedmanStage,
     tons,
     bmi,
-    recTags: recTagMap,
+    recTags,
     priorMAD,
     priorJaw,
     prefSurgery,
@@ -1775,7 +1802,7 @@ document.getElementById('form').addEventListener('submit', e => {
       <ul class="mb-0 mt-1">${treatmentSafetyChecks.map(alert => `<li>${alert.clinician}</li>`).join('')}</ul>
     </div>` : '';
   const insufficientGuardedRecEntries = applyInsufficientDataGuardrails(
-    recTagMap.map(r => ({ text: r.text, tag: r.tag })),
+    recTags.map(r => ({ text: r.text, tag: r.tag })),
     insufficientDataDomains
   );
   const guardedRecEntries = applyTreatmentSafetyGuardrails(

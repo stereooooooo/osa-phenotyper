@@ -155,11 +155,14 @@ See the changelog for detail.
   covered) and locks current phenotype/recommendation + clinician-HTML output (199 → 310 assertions).
 - [~] **~1,287-line form-submit god function** (high) — `js/app.js` form-submit handler. **Part 2
   in progress.** Extracted so far (each proven byte-identical via the golden master's before/after
-  `{phen,why,tags,clinicianHtml}` diff): `detectPhenotypes()` (increment 1) and `buildHstFlags()`
-  (increment 2); the net was extended to cover the clinician HTML first. **Remaining:** the
-  recommendation mapping (`mapTreatments`, ~300 lines with the module-scoped recSeen/recTagMap
-  dedup — the riskiest) and the ~580-line clinician renderer (large but now net-covered). Do them
-  as small, verified increments.
+  `{phen,why,tags,recs,clinicianHtml}` diff across all 37 profiles + 310 assertions): `detectPhenotypes()`
+  (increment 1), `buildHstFlags()` (increment 2), and `mapTreatments(f, m, T)` (increment 3 — the ~325-line
+  recommendation mapping). The net was extended to cover the clinician HTML first. `mapTreatments` was the
+  riskiest because it mutated the module-scoped `recSeen`/`recTagMap` dedup state; it now owns a **local**
+  `seen`/`recTags`/`pushRec` and returns `{recs, recTags, friedmanStage, hnsStage, madScore,
+  hasConcentricCollapse, hasCOMISA, sleepyCOMISA}` (the module decls were deleted; the 4 downstream
+  consumers were repointed to the returned `recTags`). **Remaining:** the ~580-line clinician renderer
+  (large but now net-covered). Do it as small, verified increments.
 - [x] **Core thresholds hardcoded outside config.js** (high) — added `thresholds.madCandidacy` +
   `thresholds.hstValidity` to `config.js` and rewired the MAD-scoring + HST-flag logic to read
   them; `patientReport.js ahiSeverityLabel()` now reads `OSA_CONFIG.thresholds.severity`.
