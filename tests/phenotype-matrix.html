@@ -218,7 +218,7 @@ async function runMatrix() {
     const phen = fresh ? (data.phen || []).slice() : ['<stale-or-validation-blocked>'];
     const tags = fresh ? (data.recTags || []).map(r => r.tag).filter(Boolean) : ['<stale-or-validation-blocked>'];
     const clinicianHtml = fresh ? ((doc.getElementById('clinicianReport') || {}).innerHTML || '') : null;
-    captures.push({ id: p.id, name: p.name, primaryAHI: fresh ? data.primaryAHI : null, phen, tags, why: fresh ? data.why : null, clinicianHtml });
+    captures.push({ id: p.id, name: p.name, primaryAHI: fresh ? data.primaryAHI : null, phen, tags, recs: fresh ? (data.recs || []) : null, why: fresh ? data.why : null, clinicianHtml });
 
     const exp = PHENOTYPE_BASELINE[p.id];
     if (exp) {
