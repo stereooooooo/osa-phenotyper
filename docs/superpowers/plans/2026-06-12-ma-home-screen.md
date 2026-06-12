@@ -44,19 +44,24 @@ regression guard (it submits the real form and reads `#clinicianReport`, so a br
 **Files:**
 - Modify: `index.html` (the `#appContainer` body)
 
-- [ ] **Step 1: Wrap the chart content in `#chartView`.**
-  Inside `#appContainer` (opens at `index.html:87`), the children in document order are: the nav header,
-  then the shared modals (`#patientListModal`, `#reviewDashboardModal`, etc.), the `#patientIdBar`, the
-  `#intakeLinkModal` / portal modal, then the **chart content** (progress track, PDF import, patient
-  name/DOB/MRN, demographics, the whole form, results). Insert `<div id="chartView">` immediately
-  **before** the first chart-content block (`<!-- ===== Patient Identifier Bar ===== -->` at
-  `index.html:276`) and its closing `</div>` immediately **before** the `</div>` that closes
-  `#appContainer`. Result: `#patientIdBar` + form + results live inside `#chartView`; the **modals
-  stay above it, as siblings** (do NOT move them inside). Verify by inspection: the only things outside
-  `#chartView` but inside `#appContainer` are the nav header and the modal `<div class="modal …">` blocks.
+> Verified DOM (review): inside `#appContainer` (opens `index.html:87`), `<main class="container my-4">`
+> opens `159`, `<form id="form">` `160`, `</form>` `744`, `</main>` `754`. `#patientListModal` (`109`) is a
+> sibling of `<main>`; but `#reviewDashboardModal` (`205`), `#intakeLinkModal` (`308`), `#patientPortalModal`
+> (`358`), and `#patientIdBar` (`277`) sit **inside** the form. Post-form chart blocks `#patientSummary` /
+> `#patientReportTrigger` / `#clinicianReport` are at ~745–753, inside `<main>`.
 
-- [ ] **Step 2: Add the empty `#homeView` as a sibling** immediately after the nav header and before the
-  first modal (so it sits next to `#chartView`):
+- [ ] **Step 1: Move the three form-internal modals out, then wrap the chart in `#chartView`.**
+  (a) Cut `#reviewDashboardModal` (≈205–307), `#intakeLinkModal` (≈308–356), and `#patientPortalModal`
+  (≈358–406) and paste them between the runtime banner (`106`) and `<main>` (`159`), next to the
+  already-sibling `#patientListModal` — they can't stay inside the form once it's wrapped. Leave
+  `#patientIdBar` (`277`) in place (it's chart content). (b) Wrap the **entire `<main>` interior** as
+  `#chartView`: insert `<div id="chartView">` right after `<main class="container my-4">` (`159`) and
+  `</div>` right before `</main>` (`754`). This includes the post-form `#patientSummary`/
+  `#patientReportTrigger`/`#clinicianReport`, so the toggle hides all chart content — wrapping only the
+  `<form>` would leave `#clinicianReport` visible on home.
+
+- [ ] **Step 2: Add the empty `#homeView` as a sibling of `<main>`,** between the runtime banner (`106`)
+  and the moved modals:
 
 ```html
 <div id="homeView" class="d-none container py-4" style="max-width: 880px;"></div>
@@ -76,11 +81,12 @@ function showView(view) {
 Run: `node --check js/app.js && npx eslint js && bash tests/run-headless-suite.sh`
 Expected: eslint clean; `Headless suite passed: 310 assertions`.
 
-- [ ] **Step 5: Verify the views toggle in the browser.**
+- [ ] **Step 5: Verify the toggle in the browser.** `showView` is IIFE-scoped (not global) and the contract
+  isn't exposed until Task 2, so assert the `d-none` toggle directly rather than calling `showView`:
 
 Run: `mcp__Claude_Preview__preview_start` "osa-phenotyper", then `preview_eval`:
 ```javascript
-(() => { showView('home'); const h = !document.getElementById('homeView').classList.contains('d-none'); const c = document.getElementById('chartView').classList.contains('d-none'); showView('chart'); return { homeShown: h, chartHidden: c }; })()
+(() => { const home = document.getElementById('homeView'), chart = document.getElementById('chartView'); home.classList.remove('d-none'); chart.classList.add('d-none'); const r = { homeShown: !home.classList.contains('d-none'), chartHidden: chart.classList.contains('d-none') }; home.classList.add('d-none'); chart.classList.remove('d-none'); return r; })()
 ```
 Expected: `{ homeShown: true, chartHidden: true }`.
 
@@ -101,19 +107,20 @@ git commit -m "feat(home): scaffold homeView/chartView + showView()"
   and returns nothing. Add `return true;` as the last line of the `try` block and `return false;` as the
   last line of the `catch` block. Do not change existing behavior otherwise.
 
-- [ ] **Step 2: Extract `generateIntakeLink(patientId)` from the `#btnIntakeLink` handler.** The handler
-  (around `index.html:295`+ wiring) calls `OSADatabase.createIntakeToken(patientId)` and builds the URL
-  from `intakeLinkBaseOrigin` (`index.html:2479`) + (`/intake` | `/intake.html`) + `?token=`. Move that
-  token-create + URL-build into a function and have the existing handler call it:
+- [ ] **Step 2: Extract `generateIntakeLink(patientId)` from the `#btnGenerateIntakeLink` handler**
+  (`index.html:2541-2549` — NOT `#btnIntakeLink` at `2527`, which only opens the modal). That handler calls
+  `OSADatabase.createIntakeToken(patientId)` and builds `${intakeBaseUrl}?t=${result.token}` using the
+  already-computed `intakeBaseUrl` (`index.html:2490`). Move that into a helper and have the handler call it:
 
 ```javascript
 async function generateIntakeLink(patientId) {
-  const { token } = await OSADatabase.createIntakeToken(patientId);
-  const path = forceLocalWorkflowLinks ? '/intake' : '/intake.html';
-  return `${intakeLinkBaseOrigin}${path}?token=${encodeURIComponent(token)}`;
+  const result = await OSADatabase.createIntakeToken(patientId);
+  return { link: `${intakeBaseUrl}?t=${encodeURIComponent(result.token)}`, token: result.token, expiresAt: result.expiresAt };
 }
 ```
-(Use the exact origin/path expressions already in scope at `index.html:2479-2489`. If `forceLocalWorkflowLinks`/`intakeLinkBaseOrigin` are declared after the handler, hoist the helper to where they are in scope.)
+Use the **`t`** query param and `intakeBaseUrl` — `intake.html` reads `params.get('t')` (`intake.html:459`)
+and the existing handler builds `?t=` (`index.html:2549`); `?token=` would silently produce dead links.
+Returning `{ link, token, expiresAt }` lets the existing modal keep showing expiry.
 
 - [ ] **Step 3: Add the `OSAWorkspace` contract + ready event at the very end of the inline IIFE**
   (after all functions, incl. `loadReviewDashboard`, `getReviewQueuePatients`, `showView`, `generateIntakeLink` are defined):
@@ -128,7 +135,7 @@ window.OSAWorkspace = {
   },
   async createWithIntakeLink({ name, dob }) {
     const patient = await OSADatabase.createPatient({ name, dob, status: 'Initial Eval', milestones: ['Initial Eval'], formData: {} });
-    const link = await generateIntakeLink(patient.patientId);
+    const { link } = await generateIntakeLink(patient.patientId);   // generateIntakeLink now returns { link, token, expiresAt }
     return { patient, link };
   },
   async getReviewQueue() {
@@ -208,7 +215,7 @@ git commit -m "feat(home): OSAWorkspace contract + ready event; loadPatient retu
 
 - [ ] **Step 3: Verify lint + that home.js renders after ready.**
 Run: `npx eslint js`
-Then `preview_eval` (force the home view + re-render): `(() => { showView('home'); window.OSAHome.render(); return { hasSearch: !!document.getElementById('homeSearch'), hasNew: !!document.getElementById('homeNewPatient') }; })()`
+Then `preview_eval` (force the home view via class toggle — `showView` isn't global — then re-render): `(() => { document.getElementById('homeView').classList.remove('d-none'); window.OSAHome.render(); return { hasSearch: !!document.getElementById('homeSearch'), hasNew: !!document.getElementById('homeNewPatient') }; })()`
 Expected: eslint clean; `{ hasSearch: true, hasNew: true }`.
 
 - [ ] **Step 4: Commit.**
@@ -410,8 +417,12 @@ git commit -m "feat(home): review-queue card (submitted/actionable only) + Revie
 - [ ] **Step 1: Route the authed entry to home.** In `showApp()` (`index.html:1404`), after
   `appContainer.classList.remove('d-none')`, add `showView('home'); if (window.OSAHome) window.OSAHome.render();`.
 
-- [ ] **Step 2: Local/unconfigured mode goes to the chart.** In the `if (!isConfigured)` branch
-  (`index.html:1333`), after it un-hides `appContainer`, add `showView('chart');`.
+- [ ] **Step 2: Local/unconfigured mode goes to the chart, and the Home button is hidden.** The
+  `if (!isConfigured)` branch (`index.html:1333`) `return`s early — before `OSAWorkspace` is defined,
+  before `osa:workspace-ready` is dispatched, and before nav wiring. So after it un-hides `appContainer`,
+  add `showView('chart');` **and** `document.getElementById('btnHome').style.display = 'none';` — otherwise
+  the Home button (added in Step 3) renders but is dead (home.js never initializes in local mode).
+  `showView` is valid here (same IIFE scope; only the page-global `preview_eval` snippets can't call it).
 
 - [ ] **Step 3: Add a Home button to the nav header** (next to `#btnReviewDashboard`, `index.html:97`):
 ```html
