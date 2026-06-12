@@ -36,7 +36,7 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 | 2 | Right-size cutting-edge clinical claims (concern #2) | ✅ Done (`phase-1-safety-fixes`) |
 | 3 | Simplify the patient report (concern #1) | ✅ Done (`phase-1-safety-fixes`) |
 | 4 | Polish — performance, accessibility, security hardening | ✅ Done (`phase-1-safety-fixes`) |
-| 5 | Structural hardening — code, tests, config | ◑ Part 1 done; god-function teardown deferred to part 2 (`phase-1-safety-fixes`) |
+| 5 | Structural hardening — code, tests, config | ✅ Part 1 + Part 2 (god-function teardown) done (`phase-1-safety-fixes`) |
 
 ---
 
@@ -142,7 +142,7 @@ CSP **and** SRI on `index.html`, and both optional items. See the changelog for 
 
 ---
 
-## Phase 5 — Structural hardening: code, tests, config ◑
+## Phase 5 — Structural hardening: code, tests, config ✅
 
 Part 1 shipped 2026-06-11 on branch `phase-1-safety-fixes`. Physician chose: build the golden-master
 safety net + the low-risk wins now, **defer the full god-function teardown** to a verified part 2.
@@ -153,16 +153,17 @@ See the changelog for detail.
   `tests/tests.html` (replica + its dead `ratio` removed); (b) new `tests/phenotype-matrix.html`
   golden-master suite drives the **real** engine across 37 phenotyping profiles (all 9 phenotypes
   covered) and locks current phenotype/recommendation + clinician-HTML output (199 → 310 assertions).
-- [~] **~1,287-line form-submit god function** (high) — `js/app.js` form-submit handler. **Part 2
-  in progress.** Extracted so far (each proven byte-identical via the golden master's before/after
-  `{phen,why,tags,recs,clinicianHtml}` diff across all 37 profiles + 310 assertions): `detectPhenotypes()`
-  (increment 1), `buildHstFlags()` (increment 2), and `mapTreatments(f, m, T)` (increment 3 — the ~325-line
-  recommendation mapping). The net was extended to cover the clinician HTML first. `mapTreatments` was the
-  riskiest because it mutated the module-scoped `recSeen`/`recTagMap` dedup state; it now owns a **local**
-  `seen`/`recTags`/`pushRec` and returns `{recs, recTags, friedmanStage, hnsStage, madScore,
-  hasConcentricCollapse, hasCOMISA, sleepyCOMISA}` (the module decls were deleted; the 4 downstream
-  consumers were repointed to the returned `recTags`). **Remaining:** the ~580-line clinician renderer
-  (large but now net-covered). Do it as small, verified increments.
+- [x] **~1,287-line form-submit god function** (high) — `js/app.js` form-submit handler. **Part 2
+  COMPLETE.** Torn down into four top-level functions, each proven byte-identical via the golden master's
+  before/after `{phen,why,tags,recs,clinicianHtml}` diff across all 37 profiles + 310 assertions:
+  `detectPhenotypes(m,T)` (incr 1), `buildHstFlags(m,T)` (incr 2), `mapTreatments(f,m,T)` (incr 3 — the
+  ~325-line recommendation mapping; killed the module-scoped `recSeen`/`recTagMap` dedup → local, returns
+  `{recs, recTags, …staging/scoring}`), and `buildClinicianReport(f,m,T)` (incr 4 — the ~545-line clinician
+  renderer; builds the whole `cHTML`, returns `{cHTML, subtype, guardedRecTexts, guardedRecEntries,
+  insufficientDataDomains, treatmentSafetyChecks}`). The net was extended to cover the clinician HTML first.
+  The submit handler is now a ~317-line orchestrator (gather inputs → detect → map → render → store →
+  display). Inputs/return sets were locked by static analysis (string-aware free-var + after-cut usage),
+  so completeness holds for unexercised paths too, not just the 37 profiles.
 - [x] **Core thresholds hardcoded outside config.js** (high) — added `thresholds.madCandidacy` +
   `thresholds.hstValidity` to `config.js` and rewired the MAD-scoring + HST-flag logic to read
   them; `patientReport.js ahiSeverityLabel()` now reads `OSA_CONFIG.thresholds.severity`.

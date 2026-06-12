@@ -59,6 +59,44 @@ Physician decisions: full rec redesign · Zepbound at BMI ≥30 + AHI ≥15 (FDA
 
 ---
 
+## [Phase 5 (part 2, increment 4) — extract buildClinicianReport(); teardown COMPLETE] — 2026-06-11
+
+Branch: `phase-1-safety-fixes`. Final increment of the god-function teardown — the clinician renderer,
+the largest remaining block.
+
+### Changed — extract buildClinicianReport(f, m, T)
+- Moved the ~545-line clinician-report renderer (symptom subtype → care pathway → key-number grid →
+  HST/insufficient-data/safety alerts → phenotype table → ranked treatment plan → guardrails →
+  collapsible Clinical Analysis / Treatment Candidacy / Follow-up sections → the full `cHTML` string)
+  out of the submit handler into a top-level function. It reads the milestones/studyType/patientName
+  DOM controls directly (as before) and **returns** `{cHTML, subtype, guardedRecTexts,
+  guardedRecEntries, insufficientDataDomains, treatmentSafetyChecks}` — the only region-computed values
+  the handler still needs. `lastAnalysisData` consumes them by the same names, so that block was left
+  byte-for-byte unchanged.
+- **The submit handler is now a ~317-line orchestrator** (was ~1,287): gather inputs → `detectPhenotypes`
+  → `mapTreatments` → compute assessments → `buildClinicianReport` → store `lastAnalysisData` → render.
+
+### Method — locking the contract without guesswork
+- The 61 inputs were derived by a **string/comment/template-aware free-variable scan** of the region
+  (so HTML/English text inside template literals is ignored but `${…}` expressions are kept), and the
+  6-value return set by an **after-cut usage scan** (every region-declared name referenced past the cut).
+  Both are path-independent, so input/return completeness holds even on code paths the 37 profiles don't
+  exercise — not just the exercised ones.
+
+### Verification
+- 310 assertions pass; ESLint clean; `node --check` valid.
+- **Byte-for-byte proof:** every profile's `{phen, why, tags, recs, clinicianHtml}` is **identical across
+  all 37 profiles** before/after. The 545-line body was moved as an untouched string slice (provably
+  verbatim); a byte-identical result also confirms the 61-input list is complete (any missing input would
+  throw a ReferenceError and fail every profile).
+
+### Result — Phase 5 part 2 (god-function teardown) is complete
+The 1,287-line `app.js` form-submit handler is now four focused top-level functions
+(`detectPhenotypes`, `buildHstFlags`, `mapTreatments`, `buildClinicianReport`) plus a thin orchestrator,
+every increment verified byte-identical against the live-engine golden master.
+
+---
+
 ## [Phase 5 (part 2, increment 3) — extract mapTreatments()] — 2026-06-11
 
 Branch: `phase-1-safety-fixes`. The riskiest seam of the teardown — the recommendation engine, which
