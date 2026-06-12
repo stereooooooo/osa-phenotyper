@@ -838,6 +838,11 @@ fieldset legend {
   font-size: 0.85rem;
 }
 
+/* ── Home screen ─────────────────────────────────────────────── */
+#homeView .card { border-color: rgba(0,0,0,.08); }
+#homeView h3 { color: var(--osa-navy, #1e2f4d); }
+#homeReviewCard .list-group-item { cursor: pointer; }
+
 /* ── Print styles ────────────────────────────────────────────── */
 @media print {
   .no-print { display: none !important; }
