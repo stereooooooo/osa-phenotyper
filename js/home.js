@@ -21,7 +21,45 @@
 
   // Stubs replaced in later tasks
   function renderReviewCard() {}
-  function renderNewPatient() { document.getElementById('homeNewPatient').textContent = 'New patient'; }
+  function renderNewPatient() {
+    const box = document.getElementById('homeNewPatient');
+    box.innerHTML = `
+      <h3 class="h6 mb-2"><i class="bi bi-person-plus me-1"></i>New patient</h3>
+      <label class="form-label small mb-1">Patient name</label>
+      <input type="text" id="homeNewName" class="form-control mb-2" placeholder="Last, First" autocomplete="off">
+      <label class="form-label small mb-1">Date of birth</label>
+      <input type="date" id="homeNewDob" class="form-control mb-3">
+      <button type="button" id="homeCreateBtn" class="btn btn-primary w-100"><i class="bi bi-link-45deg me-1"></i>Create + intake link</button>
+      <div id="homeNewResult" class="mt-2"></div>`;
+    document.getElementById('homeCreateBtn').addEventListener('click', onCreate);
+  }
+
+  async function onCreate() {
+    const name = document.getElementById('homeNewName').value.trim();
+    const dob = document.getElementById('homeNewDob').value;
+    const result = document.getElementById('homeNewResult');
+    if (!name || !dob) { result.innerHTML = '<p class="text-danger small mb-0">Name and date of birth are required.</p>'; return; }
+    const btn = document.getElementById('homeCreateBtn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const { patient, link } = await window.OSAWorkspace.createWithIntakeLink({ name, dob });
+      result.innerHTML = `
+        <div class="input-group input-group-sm mb-2"><input type="text" class="form-control" id="homeNewLink" value="${escapeHtml(link)}" readonly></div>
+        <div class="d-flex gap-2">
+          <button type="button" id="homeCopyDone" class="btn btn-success btn-sm flex-fill"><i class="bi bi-clipboard-check me-1"></i>Copy link &amp; done</button>
+          <button type="button" id="homeOpenChart" class="btn btn-outline-secondary btn-sm flex-fill">Open chart</button>
+        </div>`;
+      document.getElementById('homeCopyDone').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(link); } catch (e) { document.getElementById('homeNewLink').select(); }
+        window.OSAHome.render();
+      });
+      document.getElementById('homeOpenChart').addEventListener('click', () => window.OSAWorkspace.openChart(patient.patientId));
+    } catch (err) {
+      result.innerHTML = '<p class="text-danger small mb-0">Could not create the patient. Check the connection and try again.</p>';
+    } finally {
+      btn.disabled = false; btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i>Create + intake link';
+    }
+  }
   const DATE_RE = /^\s*(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})\s*$/;
   let searchTimer = null;
 
