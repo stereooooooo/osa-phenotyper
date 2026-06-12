@@ -1898,8 +1898,10 @@ function applyRuntimeMeta(meta) {
     try {
       const patient = await OSADatabase.getPatient(id);
       hydrateLoadedPatient(patient);
+      return true;
     } catch (err) {
       alert('Error loading patient: ' + err.message);
+      return false;
     }
   }
 
@@ -2548,6 +2550,11 @@ function applyRuntimeMeta(meta) {
     intakeModal.show();
   });
 
+  async function generateIntakeLink(patientId) {
+    const result = await OSADatabase.createIntakeToken(patientId);
+    return { link: `${intakeBaseUrl}?t=${encodeURIComponent(result.token)}`, token: result.token, expiresAt: result.expiresAt };
+  }
+
   document.getElementById('btnGenerateIntakeLink').addEventListener('click', async () => {
     const btn = document.getElementById('btnGenerateIntakeLink');
     const spinner = document.getElementById('intakeLinkSpinner');
@@ -2555,12 +2562,11 @@ function applyRuntimeMeta(meta) {
     spinner.classList.remove('d-none');
 
     try {
-      const result = await OSADatabase.createIntakeToken(currentPatientId);
-      const url = `${intakeBaseUrl}?t=${result.token}`;
+      const { link, expiresAt } = await generateIntakeLink(currentPatientId);
 
-      document.getElementById('intakeLinkUrl').value = url;
+      document.getElementById('intakeLinkUrl').value = link;
       document.getElementById('intakeLinkExpiry').textContent =
-        `Expires: ${new Date(result.expiresAt).toLocaleString()}`;
+        `Expires: ${new Date(expiresAt).toLocaleString()}`;
 
       document.getElementById('intakeGenerate').classList.add('d-none');
       document.getElementById('intakeLinkDisplay').classList.remove('d-none');
@@ -2746,6 +2752,28 @@ function applyRuntimeMeta(meta) {
       badge.classList.add('d-none');
     }
   };
+
+  window.OSAWorkspace = {
+    showView,
+    async openChart(patientId) {
+      const ok = await loadPatient(patientId);
+      if (ok) showView('chart');
+      return ok;
+    },
+    async createWithIntakeLink({ name, dob }) {
+      const patient = await OSADatabase.createPatient({ name, dob, status: 'Initial Eval', milestones: ['Initial Eval'], formData: {} });
+      const { link } = await generateIntakeLink(patient.patientId);
+      return { patient, link };
+    },
+    async getReviewQueue() {
+      const patients = await OSADatabase.listPatients(false);
+      return patients
+        .filter(p => p.intakeStatus === 'review-needed' || p.intakeStatus === 'received')
+        .sort((a, b) => (b.intakeReceivedAt || '').localeCompare(a.intakeReceivedAt || ''));
+    },
+    reviewModalShow() { reviewDashboardModal.show(); loadReviewDashboard(); },
+  };
+  document.dispatchEvent(new CustomEvent('osa:workspace-ready'));
 
 })();
 </script>
