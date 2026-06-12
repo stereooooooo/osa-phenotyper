@@ -581,7 +581,9 @@ async function createPatient(event, body, user) {
     nameLower: normalizeNameForSearch(name),
     nameSearchBucket: buildNameSearchBucket(name),
     dob,
-    mrn: initialIdentityValues.mrn,
+    // Omit mrn entirely when blank — `mrn` is the mrn-index GSI partition key, and
+    // DynamoDB rejects empty-string key attributes. Leaving it out keeps the index sparse.
+    ...(initialIdentityValues.mrn ? { mrn: initialIdentityValues.mrn } : {}),
     status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
     milestones: normalizedMilestones,
     formData: normalizedFormData,
@@ -946,8 +948,15 @@ async function updatePatient(event, id, body, user, userGroups) {
     updates[':dob'] = dob;
   }
   if (mrn !== undefined) {
-    expr += ', mrn = :mrn';
-    updates[':mrn'] = (mrn || '').trim();
+    // mrn is the mrn-index GSI key: SET it only when non-empty; REMOVE it when cleared
+    // (empty-string key attributes are rejected by DynamoDB; REMOVE keeps the index sparse).
+    const trimmedMrn = (mrn || '').trim();
+    if (trimmedMrn) {
+      expr += ', mrn = :mrn';
+      updates[':mrn'] = trimmedMrn;
+    } else {
+      removeExpr.push('mrn');
+    }
   }
   if (formData !== undefined) {
     expr += ', formData = :fd';
