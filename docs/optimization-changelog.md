@@ -90,6 +90,14 @@ the largest remaining block.
   verbatim); a byte-identical result also confirms the 61-input list is complete (any missing input would
   throw a ReferenceError and fail every profile).
 
+### Follow-up — removed pre-existing dead code (separate chore commit)
+- The 3-lens adversarial review flagged dead code the verbatim move had carried into
+  `buildClinicianReport`: `groupInfo` and the referral-note cluster (`coreNums`/`phenStr`/`nasalStr` →
+  `noteDentist`/`noteENT`/`noteCards`, plus the `supRatio` they fed). All were declared but only fed each
+  other — never reaching `cHTML` or the return (dead in the original handler too). Removed (27 lines).
+  Behavior-neutral (pure const declarations); verified **byte-identical** across all 37 profiles + 310
+  assertions, which independently proves the code was unreachable.
+
 ### Result — Phase 5 part 2 (god-function teardown) is complete
 The 1,287-line `app.js` form-submit handler is now four focused top-level functions
 (`detectPhenotypes`, `buildHstFlags`, `mapTreatments`, `buildClinicianReport`) plus a thin orchestrator,
