@@ -53,6 +53,9 @@ const WatchPATParser = (() => {
    *   raw: full extracted text for debugging
    */
   async function parse(file) {
+    if (window.OSALibs && window.OSALibs.loadPdfParsing) {
+      await window.OSALibs.loadPdfParsing();
+    }
     if (typeof pdfjsLib === 'undefined') {
       throw new Error('pdf.js library not loaded. Please check your internet connection.');
     }

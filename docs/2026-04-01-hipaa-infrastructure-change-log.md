@@ -230,3 +230,23 @@ Why: the upgraded staging stack already had existing patient rows, and they need
 ### `docs/production-hosting-plan.md`
 - Added a production-hosting plan covering the target CloudFront/WAF/S3/API/Cognito topology, domain/TLS work, production rollout steps, monitoring, recovery, and rollback.
 - Why: staging validation is not the same as production readiness. The remaining work needed to be written down as an execution plan instead of staying implicit in prior audit notes.
+
+## June 11, 2026 — Phase 4 Security Hardening (optimization audit follow-up)
+
+> IaC changes below are committed but **not yet deployed**. They take effect on the next `infrastructure/deploy.sh` run. Review the throttle thresholds against real clinic load before deploying.
+
+### `infrastructure/template.yaml`
+- Added an always-on API-Gateway stage throttle backstop to `HttpApiStage.DefaultRouteSettings` (`ThrottlingRateLimit: 200`, `ThrottlingBurstLimit: 400`).
+- Why: the prior stage had no throttle, and (per the WAF note above) the WAF cannot attach to the HTTP API v2 stage directly — it lives at the CloudFront edge and is conditional on `CloudFrontWebAclArn` being passed. With no stage throttle and a public `GET /patient-portal/{token}` route, a burst could exhaust Lambda concurrency / DynamoDB capacity even when the edge WAF is absent. The stage throttle is a capacity backstop that is always present regardless of the front door. Thresholds are generous for a single clinic and far below the AWS account default (10k/5k); tune before production.
+
+### `infrastructure/deploy.sh`
+- Extended all three CloudFront WAF rule scopes (rate limit, AWS common rules, AWS SQLi rules) to also cover the `/patient-portal/` path prefix, alongside the existing `/patients`, `/intake-tokens`, and `/intake/`.
+- Why: the public patient-portal endpoint was the one externally reachable, unauthenticated route **not** covered by the edge WAF rules — exactly the surface that most needs per-IP rate limiting and managed-rule protection.
+
+### `infrastructure/lambda/index.mjs`
+- Shortened the portal-token lifetime from 180 days to 90 days (`PORTAL_TOKEN_LIFETIME_SECONDS`).
+- Why: a portal link that is reusable in the URL for half a year is a long exposure window for a PHI-bearing link. 90 days keeps the link practical for follow-up while halving the window. (The audit's cross-origin Referer-leak concern was refuted — modern browsers strip the query string from cross-origin `Referer` — so this is residual-risk reduction, not a fix for an active leak.)
+
+### Documentation correction — intake Lambda IAM scope (`CLAUDE.md`)
+- Corrected the description of `IntakeLambdaRole`. The prior text claimed the intake Lambda had "restricted IAM: only `UpdateItem` on patient `formData` — cannot list, delete, or read full records." In reality the role grants `GetItem` + `UpdateItem` (and `TransactWriteItems`) on the **whole** patient table, plus token-table access — it cannot `Scan`/`Query`/`DeleteItem` and cannot reach any other table, but it is not attribute-scoped.
+- Why: DynamoDB IAM cannot restrict permissions to a single item attribute, so attribute-level scoping ("formData only") is enforced by the **application code** (`ProjectionExpression` + explicit attribute selection in `intake.mjs`), not by IAM. The docs now state this accurately so a future HIPAA review does not over-credit the IAM boundary. Tightening the IAM itself was considered and rejected as impractical without a significant refactor; the application-layer control remains the real restriction.

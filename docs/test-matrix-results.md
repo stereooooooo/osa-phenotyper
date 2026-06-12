@@ -4,6 +4,94 @@
 
 ---
 
+## April 2, 2026 Patient Report Wording Follow-Up
+
+### Normal-AHI Care Summary Language
+- Found during manual review of synthetic patient `Synthetic 05 - Lauren Patel`.
+- Symptom: the returning patient summary said `Your sleep study showed normal sleep apnea (AHI 3)`, which reads as if `normal` were a subtype of OSA rather than a negative study.
+- Follow-up symptom: the normal-AHI report could also render `Your Sleep Apnea Pattern: Minimally Symptomatic` with copy saying `Not everyone with sleep apnea feels tired...`, which still mislabeled a normal-AHI patient as having sleep apnea.
+- Fix:
+  - normal-AHI returning summaries now say the study did not show evidence of obstructive sleep apnea
+  - normal-AHI reports suppress OSA-specific subtype blocks and use `Your Sleep Study Summary` as the returning heading
+  - added a regression assertion so the report can no longer emit `normal sleep apnea`
+  - added regression assertions so normal-AHI reports no longer emit `Your Sleep Apnea Pattern` or the `Not everyone with sleep apnea...` counseling copy
+- Result:
+  - **180 passed, 0 failed** of 180 assertions
+- Verification:
+  - `node --check js/patientReport.js`
+  - `bash tests/run-headless-suite.sh`
+
+## April 2, 2026 Patient Portal MVP Follow-Up
+
+### Clinician-Published Patient Page
+- Added a new patient portal MVP flow with:
+  - clinician-side `Publish to Patient Page`
+  - dedicated `portal-tokens` management
+  - public `portal.html` rendering of clinician-published content only
+- Verification:
+  - `node --check js/db.js`
+  - `node --check infrastructure/lambda/index.mjs`
+  - `node --check infrastructure/lambda/intake.mjs`
+  - `node --check js/workflow-test-app.js`
+  - `aws cloudformation validate-template --template-body file://infrastructure/template.yaml`
+  - `bash tests/run-headless-suite.sh`
+- Result:
+  - **187 passed, 0 failed** of 187 assertions
+
+### Hosted Patient-Page Deploy Fix
+- Found during live staging validation after the MVP deploy.
+- Symptom: `https://dk259m1syu2bu.cloudfront.net/portal.html` returned S3/XML `AccessDenied` even though the public portal API route was live.
+- Root cause: `infrastructure/deploy.sh` published `index.html` and `intake.html`, but not `portal.html`.
+- Fix:
+  - static CloudFront publishes now include `portal.html`
+  - redeployed staging and verified the hosted patient page now loads through CloudFront
+- Verification:
+  - `bash -n infrastructure/deploy.sh`
+  - `bash tests/run-headless-suite.sh`
+  - `curl -sL https://dk259m1syu2bu.cloudfront.net/portal.html`
+  - `curl -sL https://dk259m1syu2bu.cloudfront.net/patient-portal/not-a-real-token`
+- Result:
+  - hosted `portal.html` now serves the patient-page shell
+  - invalid public portal tokens return the expected JSON error payload instead of an S3 object error
+  - runtime config published at deploy time shows `buildId: 2f89f8d` and `deployedAt: 2026-04-02T22:50:58Z`
+
+### Hosted Patient-Page Runtime Config Fix
+- Found during manual patient-page testing after publication of a real staging chart.
+- Symptom: the patient page loaded its shell but showed `This link is unavailable` with `Portal configuration is unavailable.`
+- Root cause: `portal.html` checked `window.AWS_CONFIG`, but deployed `js/aws-config.js` only declared `const AWS_CONFIG = {...}`. In a classic browser script that creates a global binding, but not a `window` property.
+- Fix:
+  - `portal.html` now uses `typeof AWS_CONFIG !== 'undefined' ? AWS_CONFIG : (window.AWS_CONFIG || {})`
+  - deploy-time `js/aws-config.js` now also appends `window.AWS_CONFIG = AWS_CONFIG`
+  - re-published CloudFront staging
+- Verification:
+  - `bash -n infrastructure/deploy.sh`
+  - `bash tests/run-headless-suite.sh`
+  - `curl -sL https://dk259m1syu2bu.cloudfront.net/js/aws-config.js`
+  - `curl -sL https://dk259m1syu2bu.cloudfront.net/portal.html`
+- Result:
+  - hosted runtime config now exposes both `AWS_CONFIG` and `window.AWS_CONFIG`
+  - hosted `portal.html` contains the repaired runtime lookup path
+  - staging was republished at `2026-04-02T23:19:14Z`
+
+### Patient-Page Presentation And Mobile Follow-Up
+- Found during manual patient-page review of a real published staging chart.
+- Symptoms:
+  - the page looked like a desktop report nested inside another desktop report
+  - the embedded report duplicated its own header/footer inside the portal shell
+  - the presentation was not yet optimized for the phone-first patient use case
+- Fix:
+  - added an at-a-glance overview rail above the report with care stage, study result, and review timing
+  - improved hero hierarchy and publication metadata treatment
+  - hid the duplicate inner report header/footer inside the portal page
+  - widened and restyled the embedded report inside the portal shell
+  - added mobile-specific spacing, typography, and pathway/report overrides in `portal.html`
+- Verification:
+  - `node --check .portal-inline-check.js` (temporary extracted portal script)
+  - `bash tests/run-headless-suite.sh`
+- Result:
+  - **190 passed, 0 failed** of 190 assertions
+  - workflow smoke now verifies the overview rail, study summary, and hidden duplicate header
+
 ## April 2, 2026 Hosted Intake-Link Follow-Up
 
 ### Intake-Link URL Regression
@@ -1042,3 +1130,22 @@
   - appended `fieldProvenanceHistory.bmi` entry with `source = clinician-review` and `resolution = kept-chart`
   - appended compact visit entry `action = Intake review completed`
 **Finding:** fixed. The hosted intake-review path now completes cleanly when the last pending field is resolved instead of failing on an unused DynamoDB expression value.
+
+### Test 130: Moderate oxygen-language calibration
+**Status:** local executable regression + staging synthetic-chart review complete
+**Result:** passed ✅
+**Verification:**
+- reviewed published synthetic-patient outputs for moderate OSA and severe OSA staging charts to compare wording against the actual oxygen profile
+- updated Section B nadir wording so moderate-range nadirs now read as `lower than we want to see during sleep and one reason treatment still matters`
+- updated the `High Hypoxic Burden` phenotype explanation to use `meaningful drops in blood oxygen` and follow-up language that stays probabilistic rather than promising normalization
+- executable regression now checks that moderate nadir wording avoids the old `can affect your heart and overall health over time` phrasing and that the phenotype explanation avoids `fall well below normal`
+**Finding:** fixed. The patient-facing oxygen narrative is now better calibrated for moderate synthetic cases without removing the seriousness of clearly high-risk patterns.
+
+### Test 131: Treatment-plan workup separation
+**Status:** local executable regression + staging synthetic-chart review complete
+**Result:** passed ✅
+**Verification:**
+- reviewed published treatment plans for synthetic moderate and severe OSA charts and confirmed workup tags such as DISE / Inspire / endotype review were crowding out first-line therapy in `Start Now`
+- updated `js/patientReport.js` to classify prerequisite tags into a dedicated `Complete Before Finalizing Other Options` group
+- executable regression now checks that `Start Now` appears before the new workup bucket and that therapies such as CPAP/CBT-I render before workup-only items
+**Finding:** fixed. Patient plans now lead with near-term treatment actions while still keeping prerequisite workup steps visible and understandable.

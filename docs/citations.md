@@ -2,7 +2,36 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-04-02
+**Last updated:** 2026-06-11
+
+---
+
+## Phase 2 confidence-calibration changes (2026-06-11)
+
+Audit follow-up: the citations below are real and correctly attributed, but several were
+being used to drive *deterministic triggers* beyond what the evidence supports. The logic was
+re-calibrated to match the strength of evidence (features kept; confidence right-sized):
+
+- **Hypoxic burden** is now treated as a cardiovascular-risk **marker / supportive context**, not
+  a treatment trigger. A single *moderate*-range metric (HB ≥30, ODI ≥20, T90 ≥5%) no longer emits
+  a treatment-urgency recommendation or a patient "heart health" urgency line. Urgency / CV framing
+  is reserved for the **high tier** (HB ≥73 ISAACC / ≥87 pooled, or severe-range ODI/T90/nadir),
+  where CPAP CV-benefit trial evidence exists. The 30/73/87 cutoffs are population-derived (tertile
+  boundary / cohort medians), now labeled as such in the clinician alerts. The low-HB note no longer
+  implies CPAP *harm* from the non-significant ISAACC signal (HR 1.33, NS).
+- **Loop gain** — the numeric point estimate (Schmickl 2022, row below) was **removed**. That model
+  has no published intercept and only AUC 0.73, so a per-patient number over-implied precision. Loop
+  gain is now a **qualitative** "possible ventilatory instability" flag driven only by the central /
+  periodic-breathing signals the study reports (CSR, pAHIc, CAI); confidence capped at Moderate.
+- **Edwards arousal-threshold score** — the validated 84% accuracy applies to the full 3-variable
+  score. The 2-of-3 partial path (hypopnea fraction unavailable on WatchPAT) is now reported at **Low**
+  confidence, not Moderate.
+- **Poor muscle responsiveness** — an inferred REM/NREM surrogate (not a measured trait); confidence
+  capped at **Moderate** (no High path).
+- **Ji 2026 HNS staging** — exact response percentages (91%→38%) were **removed** in favor of
+  qualitative candidacy tiers ("more / less favorable") with an explicit single-center, n=119,
+  C=0.68, needs-external-validation caveat. The published model also uses a 4th variable (comorbidity
+  burden) the form does not capture.
 
 ---
 
@@ -50,6 +79,7 @@
 | Friedman staging (FTP + tonsils + BMI) | Friedman M, et al. "Staging of OSA/Hypopnea Syndrome." *Laryngoscope.* 2004;114(3):454-9. | Auto-calculated Friedman Stage I-IV |
 | Friedman stage I predicts UPPP success (~80%) | Same Friedman 2004 | Stage I → strong tonsillectomy/UPPP rec |
 | Meta-analysis: Stage I positive predictor, Stage III negative | Choi JH, et al. "Predicting Outcomes After UPPP." *Otolaryngol Head Neck Surg.* 2016;155(6):904-913. | Stage III → suppress UPPP, recommend alternatives |
+| DISE not required for clear tonsillar obstruction | Friedman 2004 (above) + clinical practice (ENT review 2026-06) | A **non-obese** Friedman Stage I patient with 3-4+ tonsils has obvious tonsillar/palatal obstruction → tonsillectomy ± expansion pharyngoplasty proceeds **without** a DISE prerequisite. DISE remains required for obese patients (multilevel-collapse risk) and for Friedman II/III, tongue-base, or HNS planning. |
 
 ## HNS (Inspire) Clinical Staging
 
@@ -86,7 +116,7 @@
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| Tirzepatide FDA approval for moderate-severe OSA in adults with obesity | U.S. Food and Drug Administration. "FDA Approves First Medication for Obstructive Sleep Apnea." December 20, 2024. | Patient-facing GLP-1/Zepbound mention is gated to BMI ≥30 rather than generic weight counseling |
+| Tirzepatide (Zepbound) for moderate-severe OSA in adults with obesity | Malhotra A, et al. "Tirzepatide for the Treatment of Obstructive Sleep Apnea and Obesity." *N Engl J Med.* 2024;391:1193-1205 (SURMOUNT-OSA); U.S. FDA. "FDA Approves First Medication for Obstructive Sleep Apnea." Dec 20, 2024. | Clinician recommendation explicitly names a GLP-1/tirzepatide (Zepbound) evaluation for obesity (BMI ≥30) **with moderate-to-severe OSA (AHI ≥15)** — matching the FDA OSA indication. Patient-facing GLP-1/Zepbound mention gated to BMI ≥30. Mild obese OSA gets generic weight counseling. |
 | 10% weight loss → meaningful AHI reduction | Peppard PE, et al. "Longitudinal Study of Moderate Weight Change and SDB." *JAMA.* 2000;284(23):3015-21. | Weight loss what-if projection (30% AHI reduction) |
 
 ## UARS (Upper Airway Resistance Syndrome)

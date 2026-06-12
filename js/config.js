@@ -5,6 +5,15 @@
 
 const OSA_CONFIG = {
 
+  /* ── Feature toggles ─────────────────────────────────────────── */
+  /* deltaHeartRate: the current sleep-study device cannot measure ΔHR, so the
+     whole ΔHR pathway (form field, phenotype, recommendation, follow-up) is
+     disabled. The detection/confidence/threshold code is all retained — flip
+     this to `true` to re-enable it when device support exists. */
+  features: {
+    deltaHeartRate: false
+  },
+
   /* ── Phenotype Detection & Confidence Thresholds ─────────────── */
   thresholds: {
 
@@ -27,15 +36,22 @@ const OSA_CONFIG = {
     },
 
     loopGain: {
-      estimateHigh:   0.7,      // Schmickl 2022: LG >0.7 = high
-      estimateBorderline: 0.6,  // borderline instability
-      csr:            10,       // supportive periodic-breathing signal only
+      // DEPRECATED (Phase 2, 2026-06): the numeric loop-gain point estimate was removed.
+      // The Schmickl 2022 regression has no published intercept and only AUC 0.73, so a
+      // per-patient point estimate over-implied precision. Loop gain is now a QUALITATIVE
+      // "possible ventilatory instability" flag driven by the central/periodic-breathing
+      // signals below (CSR, pAHIc, CAI). estimateHigh/estimateBorderline are retained only
+      // for reference and are no longer used by the engine.
+      estimateHigh:   0.7,      // [deprecated] Schmickl 2022: LG >0.7 = high
+      estimateBorderline: 0.6,  // [deprecated] borderline instability
+      csr:            10,       // central/periodic-breathing signal (Cheyne-Stokes %)
       csrHigh:        20,
-      pahic3:         10,       // supportive central-event signal only
+      pahic3:         10,       // central-event signal (pAHIc 3%)
       pahic3High:     20,
-      pahic4:         5,        // supportive central-event signal only
-      pahic4High:     10
-      // NOTE: CVD and central-event metrics are confidence modifiers only — not primary triggers
+      pahic4:         5,        // central-event signal (pAHIc 4%)
+      pahic4High:     10,
+      supportMin:     2         // ≥2 central signals → flag possible ventilatory instability
+      // NOTE: CVD remains a confidence modifier only — not a primary trigger
     },
 
     muscleResponse: {
@@ -62,11 +78,16 @@ const OSA_CONFIG = {
     },
 
     hypoxicBurden: {
-      // Composite tiering: worst metric determines tier
-      // Moderate = phenotype triggers; Severe = urgency + CV risk framing
-      // Updated 2025: ISAACC (Pinilla 2023), pooled multi-trial (Azarbarzin 2025), RICCADSA (Peker 2025)
-      hbPerHour:          30,   // %min/hr — moderate threshold (phenotype trigger)
-      hbPerHourHigh:      73,   // %min/hr — ISAACC: CPAP reduces CV events above this (HR 0.57)
+      // Composite tiering: worst metric determines tier.
+      // IMPORTANT (Phase 2, 2026-06): these cutoffs are POPULATION-DERIVED, not
+      // guideline-endorsed action thresholds. 30 is an Azarbarzin 2019 tertile boundary;
+      // 73 is the ISAACC cohort median (post-hoc ACS subgroup). HB is a cardiovascular-risk
+      // MARKER. A single MODERATE metric flags the phenotype as supportive CONTEXT only —
+      // it no longer drives a treatment-urgency recommendation. Urgency / CV framing is
+      // reserved for the HIGH tier (hbPerHourHigh / severe-range metrics), where trial
+      // evidence for CPAP CV benefit exists. See app.js hbHighTier.
+      hbPerHour:          30,   // %min/hr — moderate (phenotype CONTEXT trigger; Azarbarzin tertile)
+      hbPerHourHigh:      73,   // %min/hr — high tier; ISAACC: CPAP reduces CV events above this (HR 0.57)
       hbPerHourSevere:    87,   // %min/hr — pooled 2025: high-risk OSA definition (Azarbarzin 2025)
       odi:                20,   // ODI — moderate threshold (strongest HB correlator, r=0.73)
       odiSevere:          50,   // ODI — severe threshold
@@ -116,11 +137,43 @@ const OSA_CONFIG = {
       disturbedIsi:   15
     },
 
-    // AHI severity labels
+    // AHI severity labels (also read by patientReport.js ahiSeverityLabel)
     severity: {
       mild:           5,
       moderate:       15,
       severe:         30
+    },
+
+    // MAD (oral appliance) candidacy scoring factors & tier cutoffs
+    // Evidence: Camañes-Gonzalvo 2022/2025, Chen 2020, Edwards 2016, Hamza 2026
+    madCandidacy: {
+      ahiMild:         5,    // AHI 5–<15 → +2 (mild, favorable)
+      ahiModerate:     15,   // AHI 15–<30 → +1 (moderate)
+      ahiSevere:       30,   // AHI ≥30 → −2 (severe, unfavorable)
+      bmiLow:          28,   // BMI <28 → +1
+      bmiHigh:         35,   // BMI ≥35 → −1
+      neckFemale:      14,   // smaller-neck threshold (in), female → +1
+      neckMale:        16,   // smaller-neck threshold (in), male → +1
+      hypopneaHigh:    70,   // F(hypopneas) >70 → +1 (hypopnea-predominant)
+      hypopneaLow:     50,   // F(hypopneas) <50 → −1 (apnea-predominant)
+      ageYoung:        50,   // age <50 → +1
+      ageOld:          65,   // age ≥65 → −1
+      scoreFavorable:  3,    // score ≥3 → favorable
+      scorePoor:       0     // score <0 → poor
+    },
+
+    // Home sleep test (WatchPAT) validity-flag thresholds
+    hstValidity: {
+      tstDanger:        2,    // TST <2 hrs → danger (inadequate recording)
+      tstWarning:       4,    // TST <4 hrs → warning (short recording)
+      ahiRdiRatioLow:   0.5,  // pAHI/PAT-RDI <0.5 → AHI–RDI discrepancy warning
+      tstRemCapture:    5,    // TST <5 hrs + REM AHI 0 → no-REM-captured warning
+      ahiLowSymptom:    5,    // AHI <5 …
+      essSignificant:   10,   // … with ESS ≥10 → possible false-negative warning
+      centralPctDanger: 50,   // central % >50 → danger (predominantly central)
+      centralPctWarning: 25,  // central % >25 → warning (significant central)
+      csrElevated:      15,   // CSR >15% …
+      centralPctLow:    15    // … with central % <15 → CSR-artifact info flag
     }
   },
 

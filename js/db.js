@@ -112,6 +112,17 @@ const OSADatabase = (function () {
   }
 
   /**
+   * Generate a long-lived patient portal link for a patient.
+   * Returns { token, expiresAt }.
+   */
+  async function createPortalToken(patientId) {
+    return apiFetch('/portal-tokens', {
+      method: 'POST',
+      body: JSON.stringify({ patientId }),
+    });
+  }
+
+  /**
    * List active/used/expired tokens for a patient (for revocation UI).
    */
   async function listIntakeTokens(patientId) {
@@ -119,10 +130,26 @@ const OSADatabase = (function () {
   }
 
   /**
+   * List active/used/revoked portal tokens for a patient.
+   */
+  async function listPortalTokens(patientId) {
+    return apiFetch(`/portal-tokens/${encodeURIComponent(patientId)}`);
+  }
+
+  /**
    * Revoke an active intake token.
    */
   async function revokeIntakeToken(tokenHash) {
     return apiFetch(`/intake-tokens/${encodeURIComponent(tokenHash)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Revoke an active patient portal token.
+   */
+  async function revokePortalToken(tokenHash) {
+    return apiFetch(`/portal-tokens/${encodeURIComponent(tokenHash)}`, {
       method: 'DELETE',
     });
   }
@@ -198,8 +225,11 @@ const OSADatabase = (function () {
     deletePatient,
     searchPatients,
     createIntakeToken,
+    createPortalToken,
     listIntakeTokens,
+    listPortalTokens,
     revokeIntakeToken,
+    revokePortalToken,
     serializeForm,
     populateForm,
   };

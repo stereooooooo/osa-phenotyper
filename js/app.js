@@ -27,103 +27,52 @@ function formatRatio(val, digits=1){
 function yes(f,key){ return f.get(key)==='on' || f.get(key)==='Yes' || (f.getAll(key)||[]).includes('on') || (f.getAll(key)||[]).includes('Yes'); }
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
-/* ── Dedupe-able recommendations ──────────────────────────────── */
-const recSeen = new Set();
-const recTagMap = [];  // parallel array: [{text, tag}, ...]
-function pushRec(arr, text, tag){
-  const key = (tag || text.trim().toLowerCase().slice(0,60));
-  if(recSeen.has(key)) return;
-  recSeen.add(key);
-  arr.push(text);
-  recTagMap.push({ text, tag: tag || key });
-}
-
 /* ── Shorthand for threshold access ───────────────────────────── */
 const T = OSA_CONFIG.thresholds;
+/* Feature toggle — ΔHR disabled (device can't measure it); see config.js. */
+const DHR_ENABLED = !!(OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate);
 let lastAnalysisData = null;
 
-/* ── Signal-strength helper (heuristic support, not validated probability) ── */
-function confidenceFor(tag, ctx){
-  const m = ctx.metrics;
-  switch(tag){
-    case 'High Anatomical Contribution': {
-      const neckHigh = m.sex === 'F' ? T.anatomical.neckHigh.female : T.anatomical.neckHigh.male;
-      const strong =
-        ((m.bmi||0) >= T.anatomical.bmiHigh ? 1 : 0) +
-        ((m.neck||0) >= neckHigh ? 1 : 0) +
-        ((m.tons||0) >= T.anatomical.tonsils ? 1 : 0) +
-        (T.anatomical.ftp.includes(m.mall) ? 1 : 0) +
-        ((m.ahi||0) >= T.anatomical.ahiSevere ? 1 : 0);
-      if(strong >= 4) return 'High';
-      if(strong >= 2) return 'Moderate';
-      return 'Low';
-    }
-    case 'Low Arousal Threshold': {
-      const score = m.edwardsArTHScore || 0;
-      const maxScore = m.edwardsArTHMaxScore || 0;
-      if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
-      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Moderate';
-      return 'Low';
-    }
-    case 'High Loop Gain': {
-      const lg = m.lgEstimate;
-      const supportCount =
-        ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
-        ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-        ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-        ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-      if(exists(lg) && lg >= T.loopGain.estimateHigh) return supportCount >= 1 ? 'High' : 'Moderate';
-      if(exists(lg) && lg >= T.loopGain.estimateBorderline) return supportCount >= 1 || m.cvd ? 'Moderate' : 'Low';
-      if(supportCount >= 2) return m.cvd ? 'High' : 'Moderate';
-      if(supportCount >= 1 && m.cvd) return 'Moderate';
-      return 'Low';
-    }
-    case 'Poor Muscle Responsiveness': {
-      const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
-      const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
-      /* High confidence: persistent NREM burden + strong REM/NREM skew */
-      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
-      /* Moderate: AHI≥15 validated by Sands 2018, Bamagoos 2019 */
-      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
-      return 'Low';
-    }
-    case 'Positional OSA': {
-      const pr = ratio(m.sup, m.nons) ?? 0;
-      if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return 'High';
-      if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
-      return 'Low';
-    }
-    case 'REM-Predominant OSA': {
-      const rr = ratio(m.remAhi, m.nremAhi) ?? 0;
-      if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return 'High';
-      if(rr >= T.remPredominant.remNremRatio && (m.nremAhi||0) < T.remPredominant.nremMax) return 'Moderate';
-      return 'Low';
-    }
-    case 'High Hypoxic Burden': {
-      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
-      /* High confidence: HB area ≥73 (ISAACC CPAP benefit threshold) OR other metrics in severe range */
-      if(hb >= T.hypoxicBurden.hbPerHourHigh || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
-      /* Moderate tier: any single metric in moderate range (nadir excluded — only triggers at severe) */
-      if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
-      return 'Low';
-    }
-    case 'Nasal-Resistance Contributor': {
-      const nose = m.noseScore || 0;
-      const hasCT = m.ctSeptum || m.ctTurbs;
-      if(nose >= T.nasal.noseSevere || (nose >= T.nasal.noseMild && hasCT)) return 'High';
-      if(nose >= T.nasal.noseMild || m.nasalObs || hasCT) return 'Moderate';
-      if(nose >= T.nasal.noseBorderline) return 'Low';
-      return 'Low';
-    }
-    case 'Elevated Delta Heart Rate': {
-      const dhr = m.dhr || 0;
-      if(dhr >= T.deltaHeartRate.dhrHigh) return 'High';
-      if(dhr >= T.deltaHeartRate.dhr) return 'Moderate';
-      if(dhr >= T.deltaHeartRate.dhrBorderline) return 'Low';
-      return 'Low';
-    }
-    default: return 'Moderate';
-  }
+/* ── Signal-strength helper — extracted to js/phenotype-confidence.js so the
+   heuristic is the single source of truth shared with tests/tests.html
+   (loaded before app.js). ── */
+const confidenceFor = OSAPhenotype.confidenceFor;
+
+/* ── CPAP intolerance reason → display label (single source of truth) ─────── */
+const CPAP_ISSUE_LABELS = {
+  cpapMask: 'mask fit',
+  cpapClaustro: 'claustrophobia',
+  cpapDry: 'dryness',
+  cpapLeaks: 'leaks/noise',
+  cpapSleep: 'sleep onset',
+  cpapSkin: 'skin irritation',
+  cpapNoImprove: 'prior inefficacy',
+  cpapTravel: 'travel'
+};
+
+/* ── Clinician recommendation ranking (lower = higher in the plan) ──────────
+   Leads with the most actionable first-line therapy for the patient and sorts
+   prerequisite workup caveats last so they don't crowd the plan. Unlisted tags
+   get a mid priority; any *-WORKUP tag sorts last. (Clinical review 2026-06.) */
+const REC_PRIORITY = {
+  'SLEEP-STUDY': 2,
+  'CBTI': 5, 'COMISA-PAP': 6, 'COMISA-SRT-CAUTION': 7,
+  'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11,
+  'TONSIL': 15, 'SOFT-TISSUE-STRONG': 16, 'FRIEDMAN-III-ALT': 17,
+  'POS': 20,
+  'WEIGHT': 25,
+  'SURG': 30, 'SURGALT': 31, 'SURG-PREF': 32, 'SOFT-TISSUE-CONSIDER': 33, 'SOFT-TISSUE-GENERAL': 34, 'SOFT-TISSUE-REVISION': 35,
+  'HNS': 40, 'INSPIRE-EVAL': 41, 'INSPIRE-OPT': 42,
+  'ASV-SAFETY': 45,
+  'MAD-FAVORABLE': 50, 'MAD': 51, 'MAD-POOR': 52,
+  'NASAL-OPT': 55,
+  'MILD-LIFESTYLE': 60,
+  'DHR-TX': 62, 'DHR-CARDS': 63
+};
+function recPriority(tag) {
+  if (!tag) return 70;
+  if (/-WORKUP$/.test(tag)) return 90;            // prerequisite caveats sort last
+  return REC_PRIORITY[tag] != null ? REC_PRIORITY[tag] : 70;
 }
 
 /* ── AHI severity label helper ────────────────────────────────── */
@@ -139,7 +88,16 @@ function buildInsufficientDataAssessment(ctx) {
 
   const domains = [];
 
-  if (!ctx.oxygenCompositeSufficient) {
+  /* Gate data-completeness caveats so they don't crowd a mild patient's plan:
+     risk/endotype workups only matter at moderate-severe (AHI ≥15); the anatomy
+     workup only when a surgical/anatomy therapy is actually being recommended. */
+  const moderateSevere = exists(ctx.ahi) && ctx.ahi >= T.severity.moderate;
+  /* Anatomy workup is relevant when surgery/HNS is actually on the table — a
+     surgical rec was generated OR the patient is pursuing surgery/Inspire. */
+  const surgRecommended = ctx.prefSurgery || ctx.prefInspire || (Array.isArray(ctx.recTags) && ctx.recTags.some(r =>
+    ['SURG','SURGALT','SURG-PREF','TONSIL','FRIEDMAN-III-ALT','SOFT-TISSUE-REVISION','SOFT-TISSUE-STRONG','SOFT-TISSUE-CONSIDER','SOFT-TISSUE-GENERAL','HNS','INSPIRE-EVAL'].includes(r.tag)));
+
+  if (!ctx.oxygenCompositeSufficient && moderateSevere) {
     const metricCount = ctx.oxygenMetricCount || 0;
     const hasPartialOxygenData = metricCount > 0;
     domains.push({
@@ -153,7 +111,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.sup) || !exists(ctx.nons)) {
+  if ((!exists(ctx.sup) || !exists(ctx.nons)) && moderateSevere) {
     const positionalMissing = [];
     if (!exists(ctx.sup)) positionalMissing.push('supine AHI');
     if (!exists(ctx.nons)) positionalMissing.push('non-supine AHI');
@@ -164,7 +122,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.remAhi) || !exists(ctx.nremAhi)) {
+  if ((!exists(ctx.remAhi) || !exists(ctx.nremAhi)) && moderateSevere) {
     const sleepStageMissing = [];
     if (!exists(ctx.remAhi)) sleepStageMissing.push('REM AHI');
     if (!exists(ctx.nremAhi)) sleepStageMissing.push('NREM AHI');
@@ -175,7 +133,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.fHypopneas)) {
+  if (!exists(ctx.fHypopneas) && moderateSevere) {
     domains.push({
       key: 'endotyping',
       clinician: 'Apnea/hypopnea breakdown is unavailable. Collapsibility estimate, full Edwards arousal-threshold scoring, and point-of-care loop-gain estimation are incomplete; do not treat the absence of those endotypes as exclusion.',
@@ -187,13 +145,13 @@ function buildInsufficientDataAssessment(ctx) {
   if (!exists(ctx.bmi)) anatomyMissing.push('BMI');
   if (!exists(ctx.tons)) anatomyMissing.push('tonsil size');
   if (!exists(ctx.mall)) anatomyMissing.push('Friedman tongue position');
-  if (anatomyMissing.length >= 2) {
+  if (anatomyMissing.length >= 2 && surgRecommended) {
     domains.push({
       key: 'anatomy',
       clinician: `Upper-airway anatomy is incompletely documented (${anatomyMissing.join(', ')} missing). Anatomy-driven phenotypes and surgery/MAD matching should be deferred until the exam is completed.`,
       patient: 'Some parts of your throat exam are still missing, so anatomy-based treatment options should stay provisional until your airway exam is completed.',
     });
-  } else if (anatomyMissing.length === 1) {
+  } else if (anatomyMissing.length === 1 && surgRecommended) {
     domains.push({
       key: 'anatomy-partial',
       clinician: `Upper-airway anatomy documentation is still missing ${anatomyMissing[0]}. Do not treat the absence of an anatomy-driven phenotype as exclusion until the airway exam is completed.`,
@@ -206,7 +164,7 @@ function buildInsufficientDataAssessment(ctx) {
     Boolean(ctx.nasalObs) ||
     Boolean(ctx.ctSeptum) ||
     Boolean(ctx.ctTurbs);
-  if (!hasNasalAssessment) {
+  if (!hasNasalAssessment && moderateSevere) {
     domains.push({
       key: 'nasal',
       clinician: 'Nasal symptom/exam data are absent (NOSE score, nasal-obstruction history, or nasal anatomy findings). Do not treat the absence of a nasal-resistance phenotype as exclusion.',
@@ -214,7 +172,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (ctx.cvd && !exists(ctx.dhr)) {
+  if ((OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate) && ctx.cvd && !exists(ctx.dhr)) {
     domains.push({
       key: 'delta-heart-rate',
       clinician: 'Manual delta heart rate has not been entered. If cardiovascular-stress phenotyping matters for this patient, do not treat the absence of elevated delta heart rate as exclusion.',
@@ -308,7 +266,10 @@ function buildTreatmentSafetyAssessment(ctx) {
     });
   }
 
-  // DISE remains the planning prerequisite before final site-directed airway surgery selection.
+  // DISE remains the planning prerequisite before final site-directed airway surgery selection —
+  // EXCEPT a clear tonsillar case (Friedman Stage I, 3-4+ tonsils, non-obese): the obstruction site
+  // is obvious, so tonsillectomy +/- expansion pharyngoplasty proceeds without DISE. Obesity keeps
+  // the DISE prerequisite (higher multilevel-collapse risk). (Clinical review 2026-06.)
   const surgeryReferenced = ctx.prefSurgery || [
     'SURG',
     'SURGALT',
@@ -319,7 +280,8 @@ function buildTreatmentSafetyAssessment(ctx) {
     'SOFT-TISSUE-GENERAL',
     'FRIEDMAN-III-ALT',
   ].some(tag => tags.has(tag));
-  if (surgeryReferenced && !ctx.hasDISEData) {
+  const clearTonsillarSurgery = ctx.friedmanStage === 'I' && exists(ctx.tons) && ctx.tons >= T.anatomical.tonsils && exists(ctx.bmi) && ctx.bmi < T.anatomical.bmi;
+  if (surgeryReferenced && !ctx.hasDISEData && !clearTonsillarSurgery) {
     alerts.push({
       key: 'surgery-workup',
       clinician: 'Before finalizing site-directed airway surgery, complete DISE to map the collapse pattern and target levels.',
@@ -866,276 +828,203 @@ function renderHGNSHTML(hgns) {
     </div>`;
 }
 
-/* ── Form submission handler ──────────────────────────────────── */
-document.getElementById('form').addEventListener('submit', e => {
-  e.preventDefault();
-
-  /* ── Validation gate ────────────────────────────────────────── */
-  const { errors, warnings } = OSAValidation.validateForm(e.target);
-  const alertBox = document.getElementById('validationAlerts');
-  const firstInvalid = errors.find(err => err.element)?.element || null;
-
-  if (errors.length > 0) {
-    if (alertBox) {
-      alertBox.innerHTML = `<div class="alert alert-danger"><strong>Please fix these errors:</strong><ul>${errors.map(e => `<li><strong>${e.field}:</strong> ${e.message}</li>`).join('')}</ul></div>`;
-      alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    if (firstInvalid) {
-      firstInvalid.focus({ preventScroll: true });
-      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    return; // block submission
-  }
-
-  if (warnings.length > 0 && alertBox) {
-    alertBox.innerHTML = `<div class="alert alert-warning"><strong>Plausibility warnings:</strong><ul>${warnings.map(w => `<li>${w.field ? `<strong>${w.field}:</strong> ` : ''}${w.message}</li>`).join('')}</ul><small>Reports generated despite warnings. Please verify flagged values.</small></div>`;
-  } else if (alertBox) {
-    alertBox.innerHTML = '';
-  }
-
-  /* ── Proceed with phenotyping ───────────────────────────────── */
-  recSeen.clear();
-  recTagMap.length = 0;
-  const f = new FormData(e.target);
-
-  const out = { phen:[], why:{}, recs:[] };
+/* ── Phenotype detection — pure function extracted from the submit handler.
+   `m` is a metrics object of already-parsed/computed inputs; `T` is the
+   thresholds. Returns { phen: [tags], why: {tag: [reason strings]} } with no
+   DOM access or shared state. Behavior verified byte-identical against
+   tests/phenotype-matrix.html (all 9 phenotypes + reason strings). ── */
+function detectPhenotypes(m, T){
+  const phen = [];
+  const why = {};
   const add = (tag, reason) => {
-    if(!out.phen.includes(tag)){ out.phen.push(tag); out.why[tag] = reason.filter(Boolean); }
+    if(!phen.includes(tag)){ phen.push(tag); why[tag] = reason.filter(Boolean); }
   };
 
-  /* ─── INPUTS ────────────────────────────────────────────────── */
-  const sex   = f.get('sex');   // M or F
-  const bmi   = n(f.get('bmi'));
-  const neck  = n(f.get('neck'));
-  const tons  = n(f.get('tonsils'));
-  const mall  = f.get('ftp'); // Friedman Tongue Position
-  const retrognathia = f.get('retrognathia') || '';  // '' | 'mild' | 'moderate'
+  const anatFlags = [
+    m.bmi >= T.anatomical.bmi,
+    m.neck >= m.neckThreshold,
+    m.tons >= T.anatomical.tonsils,
+    T.anatomical.ftp.includes(m.mall),
+    m.ahi >= T.anatomical.ahiSevere
+  ].filter(Boolean).length;
 
-  const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
-  const arInd = n(f.get('arInd'));
-  const isi   = n(f.get('isi'));
-  const ess   = n(f.get('ess'));
+  if(anatFlags >= T.anatomical.minCriteria){
+    add('High Anatomical Contribution',[
+      exists(m.bmi)?`BMI ${m.bmi}`:'',
+      exists(m.neck)?`Neck ${m.neck} in`:'',
+      exists(m.tons)?`Tonsils ${m.tons}`:'',
+      m.mall?`FTP ${m.mall}`:'',
+      exists(m.ahi)?`AHI ${m.ahi}`:''
+    ]);
+  }
 
-  const csr     = n(f.get('csr'));
-  const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));
-  const pahic4  = n(f.get('pahic4'));
-  const cai     = n(f.get('cai'));
-  const cvd     = yes(f,'cvd');
+  if(m.edwardsArTH && m.edwardsArTH.score >= T.arousal.scoreLikely){
+    add('Low Arousal Threshold',[
+      `Edwards ${m.edwardsArTH.score}/${m.edwardsArTH.maxScore}`,
+      ...m.edwardsArTH.details,
+      m.edwardsArTH.partial ? 'Hypopnea fraction unavailable' : ''
+    ]);
+  }
 
-  /* ─── TREATMENT HISTORY & PREFERENCES ─────────────────────── */
-  const priorCpap     = yes(f,'priorCpap');
-  const cpapCurrent   = yes(f,'cpapCurrent');
-  const cpapHelped    = f.get('cpapHelped') || '';   // Yes/No/Unsure/''
-  const cpapRetry     = f.get('cpapRetry')  || '';   // Yes/No/Maybe/''
-  const cpapReasons   = ['cpapMask','cpapClaustro','cpapDry','cpapLeaks','cpapSleep','cpapSkin','cpapNoImprove','cpapTravel'].filter(k => yes(f,k));
-  const priorUPPP     = yes(f,'priorUPPP');
-  const priorNasal    = yes(f,'priorNasal');
-  const priorSinus    = yes(f,'priorSinus');
-  const priorJaw      = yes(f,'priorJaw');
-  const priorInspire  = yes(f,'priorInspire');
-  const priorMAD      = yes(f,'priorMAD');
-  const prefAvoidCpap = yes(f,'prefAvoidCpap');
-  const prefSurgery   = yes(f,'prefSurgery');
-  const prefInspire   = yes(f,'prefInspire');
-  const weightLossReadiness = f.get('weightLossReadiness') || '';
-  const lvef = n(f.get('lvef'));
-  const madDentition = f.get('madDentition') || '';
-  const madProtrusion = f.get('madProtrusion') || '';
-  const madTmj = f.get('madTmj') || '';
+  /* Qualitative loop-gain flag: ≥2 central / periodic-breathing signals suggest possible
+     ventilatory instability (no numeric estimate; see config.js loopGain note). */
+  const highLoopGainDetected = m.loopGainSupportCount >= T.loopGain.supportMin;
+  const remStageRatio = ratio(m.remAhi, m.nremAhi);
+  const supNonSupRatio = ratio(m.sup, m.nons);
+  if(highLoopGainDetected){
+    add('High Loop Gain',[
+      m.csr?`CSR ${m.csr}%`:'',
+      exists(m.pahic3)?`pAHIc 3% ${m.pahic3}/h`:'',
+      exists(m.pahic4)?`pAHIc 4% ${m.pahic4}/h`:'',
+      exists(m.cai)?`CAI ${m.cai}/h`:'',
+      m.cvd?'CVD present (confidence modifier only)':''
+    ]);
+  }
 
-  // Derived flags
-  const cpapFailed    = priorCpap && !cpapCurrent;
-  const cpapRefused   = cpapFailed && cpapRetry === 'No';
-  const cpapWillRetry = cpapFailed && (cpapRetry === 'Yes' || cpapRetry === 'Maybe');
+  if( m.ahi >= T.muscleResponse.ahiMin &&
+      exists(remStageRatio) &&
+      exists(m.nremAhi) &&
+      m.nremAhi >= T.muscleResponse.nremFloor &&
+      remStageRatio > T.muscleResponse.remNremRatio ){
+    add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`, `AHI ${m.ahi}`, 'inferred surrogate (not a measured trait)']);
+  }
 
-  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
-  const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
+  if( exists(supNonSupRatio) && exists(m.nons) && supNonSupRatio > T.positional.supNonSupRatio && m.nons < T.positional.nonSupMax ){
+    add('Positional OSA',[`Sup/Non-sup ${formatRatio(supNonSupRatio)}`, `Non-sup AHI ${m.nons}`]);
+  }
 
-  const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
-  const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
-  const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
+  if( exists(remStageRatio) && exists(m.nremAhi) && remStageRatio > T.remPredominant.remNremRatio && m.nremAhi < T.remPredominant.nremMax ){
+    add('REM-Predominant OSA',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`]);
+  }
 
-  const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
-  const nadirRaw = n(f.get('nadir'));
-  const nadirPsg = n(f.get('nadirPsg'));
-  const nadir = exists(nadirRaw) || exists(nadirPsg) ? Math.min( nadirRaw??99 , nadirPsg??99 ) : null;
+  /* Composite HB: trigger if ANY metric is in moderate+ range.
+     Nadir only triggers at severe level (<75%) — weaker standalone predictor than
+     duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
+  const hbTrigger = (exists(m.hbPH) && m.hbPH >= T.hypoxicBurden.hbPerHour) ||
+                    (exists(m.odi) && m.odi >= T.hypoxicBurden.odi) ||
+                    (exists(m.nadir) && m.nadir < T.hypoxicBurden.nadirSevere) ||
+                    (exists(m.t90) && m.t90 >= T.hypoxicBurden.t90) ||
+                    (exists(m.hb90PH) && m.hb90PH > T.hypoxicBurden.areaUnder90);
+  if(hbTrigger){
+    add('High Hypoxic Burden',[
+      exists(m.hbPH)?`HB/hr ${m.hbPH}`:'',
+      exists(m.hb90PH)?`Area<90/hr ${m.hb90PH}`:'',
+      exists(m.t90)?`T90 ${m.t90}%`:'',
+      exists(m.odi)?`ODI ${m.odi}`:'',
+      exists(m.nadir)?`Nadir SpO₂ ${m.nadir}%`:''
+    ]);
+  }
 
-  const hbPH     = n(f.get('hbAreaPH')) ?? n(f.get('hbAreaPHpsg'));
-  const hb90PH   = n(f.get('hbUnder90PH'));
-  const t90      = n(f.get('t90')) ?? n(f.get('t90Psg'));
+  if( (m.noseScore && m.noseScore >= T.nasal.noseMild) || m.nasalObs || m.ctSeptum || m.ctTurbs ){
+    add('Nasal-Resistance Contributor',[
+      m.noseScore ? `NOSE score ${m.noseScore}/100` : '',
+      m.nasalObs ? 'Patient-reported nasal obstruction' : '',
+      m.ctSeptum ? 'CT: deviated septum' : '',
+      m.ctTurbs ? 'CT: turbinate hypertrophy' : ''
+    ]);
+  }
 
-  const dhr      = n(f.get('dhr')) ?? n(f.get('dhrPsg')); // Delta Heart Rate (manual entry or from PSG)
+  // Delta Heart Rate (Phase 4 field — only triggers if the input exists)
+  if( m.dhr && m.dhr >= T.deltaHeartRate.dhr ){
+    add('Elevated Delta Heart Rate',[
+      `ΔHR ${m.dhr} bpm`,
+      m.cvd ? 'CVD present' : ''
+    ]);
+  }
 
-  /* ─── PSG-SPECIFIC: Apnea/Hypopnea breakdown ─────────────── */
-  const apneaIndex    = n(f.get('apneaIndex'));
-  const hypopneaIndex = n(f.get('hypopneaIndex'));
-  // F(hypopneas) = hypopneas / (apneas + hypopneas) — Vena 2022
-  const fHypopneas = (exists(apneaIndex) && exists(hypopneaIndex) && (apneaIndex + hypopneaIndex) > 0)
-    ? (hypopneaIndex / (apneaIndex + hypopneaIndex)) * 100
-    : null;
+  return { phen, why };
+}
 
-  /* ── Collapsibility estimate from F(hypopneas) (Vena 2022) ── */
-  /* F_hyp <50% (more apneas) → high collapsibility → anatomy-directed therapy
-     F_hyp ≥50% (mostly hypopneas) → mild-moderate collapsibility → non-CPAP may work */
-  const collapsibility = exists(fHypopneas)
-    ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
-    : null;
+/* ── Home sleep test (WatchPAT) validity flags — pure function extracted from
+   the submit handler. `m` is the study metrics; `T` the thresholds. Returns the
+   flag array (the caller renders it). Verified byte-identical via the clinician
+   HTML diff in tests/phenotype-matrix.html. ── */
+function buildHstFlags(m, T){
+  const HST = T.hstValidity;
+  const flags = [];
 
-  /* ── Loop Gain point-of-care estimate (Schmickl 2022) ── */
-  /* LG1 = intercept + 0.0016 × AHI − 0.0019 × Hypopnea%  (r=0.48, AUC 0.73 for LG>0.7)
-     Intercept ~0.50 estimated from model calibration (typical LG range 0.2–0.8) */
-  const lgEstimate = (exists(ahi) && exists(fHypopneas))
-    ? Math.max(0, 0.50 + 0.0016 * ahi - 0.0019 * fHypopneas)
-    : null;
-
-  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
-  /* 3-variable clinical prediction of low arousal threshold:
-     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
-     Score ≥2 = likely low arousal threshold (84% accuracy) */
-  const edwardsArTH = (() => {
-    if (!exists(ahi)) return null;
-    let score = 0;
-    const details = [];
-    if (ahi < T.arousal.ahiMax) { score++; details.push(`AHI ${ahi} <${T.arousal.ahiMax}`); }
-    if (exists(nadir) && nadir > T.arousal.nadirMin) { score++; details.push(`nadir ${nadir}% >${T.arousal.nadirMin}%`); }
-    const hypFractionAvailable = exists(fHypopneas);
-    if (hypFractionAvailable) {
-      if (fHypopneas > T.arousal.hypFraction) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >${T.arousal.hypFraction}%`); }
-      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤${T.arousal.hypFraction}%`); }
-    }
-    const maxScore = hypFractionAvailable ? 3 : 2;
-    const prediction = score >= T.arousal.scoreLikely ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
-    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
-  })();
-
-  /* nasal signals */
-  const noseScore = n(f.get('noseScore'));
-  const nasalObs  = yes(f,'nasalObs');
-  const ctSeptum  = yes(f,'ctDev');
-  const ctTurbs   = yes(f,'ctTurbs');
-
-  const oxygenMetricCount = [hbPH, hb90PH, odi, t90, nadir].filter(exists).length;
-  const oxygenMetricsAvailable = oxygenMetricCount > 0;
-  const oxygenCompositeSufficient = oxygenMetricCount >= 2;
-  const osaConfirmed = exists(ahi) && ahi >= 5;
-
-  /* pack context for confidence meters */
-  const ctxBase = {
-    sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
-    remAhi, nremAhi, sup, nons, odi, nadir,
-    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
-    fHypopneas, lgEstimate,
-    edwardsArTHScore: edwardsArTH?.score ?? 0,
-    edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
-  };
-
-  /* Sex-specific neck threshold */
-  const neckThreshold = (sex === 'F') ? T.anatomical.neck.female : T.anatomical.neck.male;
-
-  /* ─── PHENOTYPES (suppressed until OSA is confirmed) ──────── */
-  if (osaConfirmed) {
-    const anatFlags = [
-      bmi >= T.anatomical.bmi,
-      neck >= neckThreshold,
-      tons >= T.anatomical.tonsils,
-      T.anatomical.ftp.includes(mall),
-      ahi >= T.anatomical.ahiSevere
-    ].filter(Boolean).length;
-
-    if(anatFlags >= T.anatomical.minCriteria){
-      add('High Anatomical Contribution',[
-        exists(bmi)?`BMI ${bmi}`:'',
-        exists(neck)?`Neck ${neck} in`:'',
-        exists(tons)?`Tonsils ${tons}`:'',
-        mall?`FTP ${mall}`:'',
-        exists(ahi)?`AHI ${ahi}`:''
-      ]);
-    }
-
-    if(edwardsArTH && edwardsArTH.score >= T.arousal.scoreLikely){
-      add('Low Arousal Threshold',[
-        `Edwards ${edwardsArTH.score}/${edwardsArTH.maxScore}`,
-        ...edwardsArTH.details,
-        edwardsArTH.partial ? 'Hypopnea fraction unavailable' : ''
-      ]);
-    }
-
-    const loopGainSupportCount =
-      ((csr||0) >= T.loopGain.csr ? 1 : 0) +
-      ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-      ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-      ((cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-    const highLoopGainDetected =
-      (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateHigh) ||
-      (exists(lgEstimate) && lgEstimate >= T.loopGain.estimateBorderline && loopGainSupportCount >= 1) ||
-      (!exists(lgEstimate) && loopGainSupportCount >= 2);
-    const remStageRatio = ratio(remAhi, nremAhi);
-    const supNonSupRatio = ratio(sup, nons);
-    if(highLoopGainDetected){
-      add('High Loop Gain',[
-        exists(lgEstimate)?`LG≈${lgEstimate.toFixed(2)}`:'',
-        csr?`CSR ${csr}%`:'',
-        exists(pahic3)?`pAHIc 3% ${pahic3}/h`:'',
-        exists(pahic4)?`pAHIc 4% ${pahic4}/h`:'',
-        exists(cai)?`CAI ${cai}/h`:'',
-        cvd?'CVD present (confidence modifier only)':''
-      ]);
-    }
-
-    if( ahi >= T.muscleResponse.ahiMin &&
-        exists(remStageRatio) &&
-        exists(nremAhi) &&
-        nremAhi >= T.muscleResponse.nremFloor &&
-        remStageRatio > T.muscleResponse.remNremRatio ){
-      add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`, `AHI ${ahi}`]);
-    }
-
-    if( exists(supNonSupRatio) && exists(nons) && supNonSupRatio > T.positional.supNonSupRatio && nons < T.positional.nonSupMax ){
-      add('Positional OSA',[`Sup/Non-sup ${formatRatio(supNonSupRatio)}`, `Non-sup AHI ${nons}`]);
-    }
-
-    if( exists(remStageRatio) && exists(nremAhi) && remStageRatio > T.remPredominant.remNremRatio && nremAhi < T.remPredominant.nremMax ){
-      add('REM-Predominant OSA',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${nremAhi}`]);
-    }
-
-    /* Composite HB: trigger if ANY metric is in moderate+ range.
-       Nadir only triggers at severe level (<75%) — weaker standalone predictor than
-       duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
-    const hbTrigger = (exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHour) ||
-                      (exists(odi) && odi >= T.hypoxicBurden.odi) ||
-                      (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) ||
-                      (exists(t90) && t90 >= T.hypoxicBurden.t90) ||
-                      (exists(hb90PH) && hb90PH > T.hypoxicBurden.areaUnder90);
-    if(hbTrigger){
-      add('High Hypoxic Burden',[
-        exists(hbPH)?`HB/hr ${hbPH}`:'',
-        exists(hb90PH)?`Area<90/hr ${hb90PH}`:'',
-        exists(t90)?`T90 ${t90}%`:'',
-        exists(odi)?`ODI ${odi}`:'',
-        exists(nadir)?`Nadir SpO₂ ${nadir}%`:''
-      ]);
-    }
-
-    if( (noseScore && noseScore >= T.nasal.noseMild) || nasalObs || ctSeptum || ctTurbs ){
-      add('Nasal-Resistance Contributor',[
-        noseScore ? `NOSE score ${noseScore}/100` : '',
-        nasalObs ? 'Patient-reported nasal obstruction' : '',
-        ctSeptum ? 'CT: deviated septum' : '',
-        ctTurbs ? 'CT: turbinate hypertrophy' : ''
-      ]);
-    }
-
-    // Delta Heart Rate (Phase 4 field — only triggers if the input exists)
-    if( dhr && dhr >= T.deltaHeartRate.dhr ){
-      add('Elevated Delta Heart Rate',[
-        `ΔHR ${dhr} bpm`,
-        cvd ? 'CVD present' : ''
-      ]);
+  // 1. Total sleep time assessment
+  if (exists(m.tst)) {
+    if (m.tst < HST.tstDanger) {
+      flags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${m.tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
+    } else if (m.tst < HST.tstWarning) {
+      flags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${m.tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
     }
   }
 
-  /* ─── TREATMENT MAPPING (treatment-history-aware) ──────────── */
-  const recs = out.recs;
+  // 2. AHI–RDI discrepancy (may indicate signal artifact or scoring issues)
+  if (exists(m.ahi) && exists(m.patRdi) && m.patRdi > 0) {
+    const ahiRdiRatio = m.ahi / m.patRdi;
+    if (ahiRdiRatio < HST.ahiRdiRatioLow) {
+      flags.push({ severity: 'warning', flag: 'Large AHI–RDI discrepancy', detail: `pAHI (${m.ahi}) is less than half the PAT RDI (${m.patRdi}). A large gap may indicate significant RERAs (respiratory effort-related arousals) or signal quality issues. Consider in-lab PSG if clinical picture is inconsistent.` });
+    }
+  }
+
+  // 3. Missing REM data
+  if (exists(m.ahi) && !exists(m.remAhi)) {
+    flags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'REM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported. Consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
+  } else if (exists(m.ahi) && !exists(m.nremAhi)) {
+    flags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'NREM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported.' });
+  } else if (exists(m.tst) && exists(m.remAhi) && exists(m.nremAhi) && m.tst < HST.tstRemCapture && m.remAhi === 0) {
+    flags.push({ severity: 'warning', flag: 'No REM sleep captured', detail: `REM AHI is 0 with TST of only ${m.tst} hrs. REM sleep may not have occurred during this short recording. AHI may underestimate true severity if OSA is REM-predominant. Consider repeat study.` });
+  }
+
+  // 4. Low AHI despite high symptom burden — possible false negative
+  if (exists(m.ahi) && m.ahi < HST.ahiLowSymptom && exists(m.ess) && m.ess >= HST.essSignificant) {
+    flags.push({ severity: 'warning', flag: 'Low AHI with significant symptoms', detail: `AHI ${m.ahi} is normal/minimal despite ESS ${m.ess} (significant sleepiness). HSTs can underestimate AHI due to limited channels and no EEG. Consider in-lab PSG to evaluate for UARS (upper airway resistance syndrome) or first-night effect.` });
+  }
+
+  // 5. High central apnea component — confirm with lab PSG
+  if (exists(m.pahic3) && exists(m.ahi) && m.ahi > 0) {
+    const centralPct = (m.pahic3 / m.ahi) * 100;
+    if (centralPct > HST.centralPctDanger) {
+      flags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central event scoring has limitations — <strong>recommend in-lab PSG with EEG</strong> to confirm central vs obstructive classification before treatment planning.` });
+    } else if (centralPct > HST.centralPctWarning) {
+      flags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT uses PAT signal attenuation to differentiate central from obstructive events, which has lower specificity than EEG-based scoring. Consider in-lab PSG for confirmation if central-dominant phenotype affects treatment choice (e.g., ASV vs CPAP).` });
+    }
+  }
+
+  // 6. High CSR without high central AHI — possible scoring artifact
+  if (exists(m.csr) && m.csr > HST.csrElevated && exists(m.pahic3) && exists(m.ahi) && m.ahi > 0 && (m.pahic3/m.ahi)*100 < HST.centralPctLow) {
+    flags.push({ severity: 'info', flag: 'Elevated CSR with low central AHI', detail: `CSR ${m.csr}% is elevated but central AHI is low relative to total. This pattern may indicate Cheyne-Stokes respiration during wakefulness or signal artifact. Correlate with clinical history (heart failure, stroke).` });
+  }
+
+  // 7. Missing positional data limits phenotyping
+  if (!exists(m.sup) || !exists(m.nons)) {
+    const positionalMissing = [];
+    if (!exists(m.sup)) positionalMissing.push('supine AHI');
+    if (!exists(m.nons)) positionalMissing.push('non-supine AHI');
+    flags.push({ severity: 'info', flag: 'Incomplete positional data', detail: `${positionalMissing.join(' and ')} ${positionalMissing.length === 1 ? 'is' : 'are'} not available. Positional OSA cannot be assessed reliably. If the patient reports position-dependent symptoms or snoring, consider repeat study with positional tracking.` });
+  }
+
+  return flags;
+}
+
+/* ── Treatment mapping — pure function extracted from the submit handler.
+   Builds the ranked recommendation list with its OWN dedup state (no module
+   globals) plus the derived staging/scoring values the renderer consumes.
+   `f` is the FormData, `m` the metrics/flags bundle, `T` the thresholds.
+   Verified byte-identical via the clinician-HTML diff in
+   tests/phenotype-matrix.html. ── */
+function mapTreatments(f, m, T){
+  const {
+    phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
+    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    prefAvoidCpap, prefSurgery, prefInspire,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
+  } = m;
+  const out = { phen };
+  const recs = [];
+  const recTags = [];
+  const seen = new Set();
+  function pushRec(arr, text, tag){
+    const key = (tag || text.trim().toLowerCase().slice(0,60));
+    if(seen.has(key)) return;
+    seen.add(key);
+    arr.push(text);
+    recTags.push({ text, tag: tag || key });
+  }
 
   // Helper: build a CPAP-aware recommendation for anatomical contribution
   function cpapRec() {
@@ -1145,7 +1034,7 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Prior CPAP trial unsuccessful \u2014 prioritize alternatives: mandibular-advancement device, site-directed surgery, or Inspire\u00AE.','CPAP-ALT');
     } else if (cpapWillRetry) {
       const issues = cpapReasons.map(r => {
-        const map = {cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'prior inefficacy',cpapTravel:'travel'};
+        const map = CPAP_ISSUE_LABELS;
         return map[r] || r;
       }).join(', ');
       pushRec(recs,`Retry CPAP with optimized settings (patient willing). Address prior issues${issues ? ': ' + issues : ''}.`,'CPAP');
@@ -1213,7 +1102,11 @@ document.getElementById('form').addEventListener('submit', e => {
         pushRec(recs,'Oral appliance therapy is a reasonable alternative/adjunct in REM-predominant OSA.','REM-MAD');
         break;
       case 'High Hypoxic Burden':
-        pushRec(recs,'Start effective therapy promptly to reduce cardiovascular risk.','HB-URG');
+        // Urgency / CV-risk rec only when HB is in the genuinely-high range (CPAP CV-benefit
+        // evidence). A single moderate metric leaves this as supportive context, no urgency.
+        if (hbHighTier) {
+          pushRec(recs,'Hypoxic burden is in the high range where CPAP has shown cardiovascular benefit in trial cohorts — prioritize timely initiation of effective therapy.','HB-URG');
+        }
         break;
       case 'Nasal-Resistance Contributor':
         pushRec(recs,'Nasal optimization (saline rinse, intranasal steroid, ENT evaluation) can improve airflow and CPAP/MAD tolerance.','NASAL-OPT');
@@ -1263,8 +1156,11 @@ document.getElementById('form').addEventListener('submit', e => {
     if (exists(bmi) && bmi >= 30) { unfavorable++; details.push('BMI ≥30'); }
     if (ahi > 30) { unfavorable++; details.push('AHI >30'); }
     const stage = unfavorable === 0 ? 'I' : unfavorable === 1 ? 'II' : unfavorable === 2 ? 'III' : 'IV';
-    const responseRate = unfavorable === 0 ? 91 : unfavorable === 1 ? 68 : unfavorable === 2 ? 50 : 38;
-    return { stage, responseRate, unfavorable, details };
+    // Qualitative candidacy tier only. The Ji 2026 model is single-center (n=119, C=0.68)
+    // and uses a 4th variable (comorbidity burden) the form does not capture, so we do NOT
+    // emit the paper's exact response percentages — see clinician display caveat.
+    const favorability = unfavorable === 0 ? 'more favorable' : unfavorable === 1 ? 'favorable–intermediate' : unfavorable === 2 ? 'less favorable' : 'least favorable';
+    return { stage, favorability, unfavorable, details };
   })();
 
   /* ─── DISE concentric collapse check ────────────────────── */
@@ -1306,17 +1202,18 @@ document.getElementById('form').addEventListener('submit', e => {
   const madScore = (() => {
     let score = 0;
     const factors = [];
+    const MAD = T.madCandidacy;
     /* OSA severity: mild-moderate favorable, severe unfavorable */
-    if (exists(ahi) && ahi >= 5 && ahi < 15) { score += 2; factors.push('mild OSA'); }
-    else if (exists(ahi) && ahi >= 15 && ahi < 30) { score += 1; factors.push('moderate OSA'); }
-    else if (exists(ahi) && ahi >= 30) { score -= 2; factors.push('severe OSA'); }
+    if (exists(ahi) && ahi >= MAD.ahiMild && ahi < MAD.ahiModerate) { score += 2; factors.push('mild OSA'); }
+    else if (exists(ahi) && ahi >= MAD.ahiModerate && ahi < MAD.ahiSevere) { score += 1; factors.push('moderate OSA'); }
+    else if (exists(ahi) && ahi >= MAD.ahiSevere) { score -= 2; factors.push('severe OSA'); }
     /* BMI: <28 favorable, ≥35 unfavorable */
-    if (exists(bmi) && bmi < 28) { score += 1; factors.push('lower BMI'); }
-    else if (exists(bmi) && bmi >= 35) { score -= 1; factors.push('higher BMI'); }
+    if (exists(bmi) && bmi < MAD.bmiLow) { score += 1; factors.push('lower BMI'); }
+    else if (exists(bmi) && bmi >= MAD.bmiHigh) { score -= 1; factors.push('higher BMI'); }
     /* Female: better response rates */
     if (sex === 'F') { score += 1; factors.push('female'); }
     /* Smaller neck: responders avg 1-1.5cm smaller */
-    const neckThresh = sex === 'F' ? 14 : 16;
+    const neckThresh = sex === 'F' ? MAD.neckFemale : MAD.neckMale;
     if (exists(neck) && neck < neckThresh) { score += 1; factors.push('smaller neck'); }
     /* Positional OSA: 64% vs 36% response rate */
     if (out.phen.includes('Positional OSA')) { score += 1; factors.push('positional OSA'); }
@@ -1329,14 +1226,14 @@ document.getElementById('form').addEventListener('submit', e => {
     /* Retrognathia: mandibular retrusion independently predicts better MAD response (Hamza 2026) */
     if (retrognathia) { score += 1; factors.push('retrognathia'); }
     /* Hypopnea-predominant: better MAD response than apnea-predominant (Camañes-Gonzalvo 2025) */
-    if (exists(fHypopneas) && fHypopneas > 70) { score += 1; factors.push('hypopnea-predominant'); }
-    else if (exists(fHypopneas) && fHypopneas < 50) { score -= 1; factors.push('apnea-predominant'); }
+    if (exists(fHypopneas) && fHypopneas > MAD.hypopneaHigh) { score += 1; factors.push('hypopnea-predominant'); }
+    else if (exists(fHypopneas) && fHypopneas < MAD.hypopneaLow) { score -= 1; factors.push('apnea-predominant'); }
     /* Age: younger patients respond better (3-4.5 yr mean difference, Camañes-Gonzalvo 2022, Chen 2020) */
     const age = n(f.get('age'));
-    if (exists(age) && age < 50) { score += 1; factors.push('younger age'); }
-    else if (exists(age) && age >= 65) { score -= 1; factors.push('older age'); }
+    if (exists(age) && age < MAD.ageYoung) { score += 1; factors.push('younger age'); }
+    else if (exists(age) && age >= MAD.ageOld) { score -= 1; factors.push('older age'); }
     /* tier: favorable (≥3), standard (0-2), poor (< 0) */
-    const tier = score >= 3 ? 'favorable' : score < 0 ? 'poor' : 'standard';
+    const tier = score >= MAD.scoreFavorable ? 'favorable' : score < MAD.scorePoor ? 'poor' : 'standard';
     return { score, tier, factors };
   })();
 
@@ -1376,7 +1273,14 @@ document.getElementById('form').addEventListener('submit', e => {
     /* AHI ≥ 5: Standard OSA core trio (treatment-history-aware) */
 
     if (exists(bmi) && bmi >= T.anatomical.bmi) {
-      pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
+      if (exists(ahi) && ahi >= T.severity.moderate) {
+        /* Obesity + moderate-to-severe OSA → name the on-label GLP-1 option.
+           Tirzepatide (Zepbound) FDA-approved for OSA in adults with obesity,
+           SURMOUNT-OSA / FDA Dec 2024 (see docs/citations.md). */
+        pushRec(recs,'Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).','WEIGHT');
+      } else {
+        pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
+      }
     }
 
     /* Fix #4: priorMAD + priorUPPP combination — limited remaining options */
@@ -1390,7 +1294,7 @@ document.getElementById('form').addEventListener('submit', e => {
       pushRec(recs,'Alternative PAP (BiPAP, ASV) if willing to reconsider','CPAP');
     } else if(cpapWillRetry) {
       const issues = cpapReasons.map(r => {
-        const map = {cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'prior inefficacy',cpapTravel:'travel'};
+        const map = CPAP_ISSUE_LABELS;
         return map[r] || r;
       }).join(', ');
       pushRec(recs,`Retry CPAP with optimized settings (patient willing). Address prior issues${issues ? ': ' + issues : ''}.`,'CPAP');
@@ -1411,7 +1315,9 @@ document.getElementById('form').addEventListener('submit', e => {
     } else if(madScore.tier === 'favorable') {
       pushRec(recs,'Oral appliance therapy (MAD) \u2014 favorable candidate based on profile','MAD-FAVORABLE');
     } else if(madScore.tier === 'poor') {
-      pushRec(recs,'Oral appliance therapy (MAD) \u2014 less likely to be sufficient as standalone treatment','MAD-POOR');
+      /* Poor MAD candidate (e.g. severe OSA / high BMI) \u2014 de-emphasized per
+         clinical review: the tier assessment stays in the Treatment Candidacy
+         card as a fallback option, but MAD is not pushed into the main plan. */
     } else {
       pushRec(recs,'Custom oral appliance (MAD)','MAD');
     }
@@ -1419,7 +1325,11 @@ document.getElementById('form').addEventListener('submit', e => {
     const hasAnatomicalPhenotype = out.phen.includes('High Anatomical Contribution');
     const hasNasalPhenotype = out.phen.includes('Nasal-Resistance Contributor');
     const hasDISEEntry = [f.get('vDeg'), f.get('oDeg'), f.get('tDeg'), f.get('eDeg')].some(d => d && d !== '0');
-    if (hasAnatomicalPhenotype || hasNasalPhenotype || hasDISEEntry || friedmanStage === 'I' || friedmanStage === 'II') {
+    /* Generic surgery as a lead option requires a real surgical indication —
+       an anatomical/nasal phenotype, DISE findings, a strong Friedman-I airway,
+       or Friedman II at moderate-severe AHI. Mild OSA without those isn't led
+       toward surgery/DISE (clinical review). */
+    if (hasAnatomicalPhenotype || hasNasalPhenotype || hasDISEEntry || friedmanStage === 'I' || (friedmanStage === 'II' && exists(ahi) && ahi >= T.severity.moderate)) {
       pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
     }
 
@@ -1443,19 +1353,32 @@ document.getElementById('form').addEventListener('submit', e => {
     }
   }
 
+  return { recs, recTags, friedmanStage, hnsStage, madScore, hasConcentricCollapse, hasCOMISA, sleepyCOMISA };
+}
+
+/* ── Clinician report renderer — pure-ish function extracted from the submit
+   handler. Builds the entire `cHTML` clinician decision-support report from the
+   analysis context. `f` is the FormData, `m` the metrics/flags/derived bundle,
+   `T` the thresholds; it reads the milestones/studyType/patientName DOM controls
+   directly (same as inline). Returns { cHTML } plus the few computed values the
+   handler still stores in lastAnalysisData. Verified byte-identical via the
+   clinicianHtml diff in tests/phenotype-matrix.html. ── */
+function buildClinicianReport(f, m, T){
+  const {
+    ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons,
+    cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
+    friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbHighTier, hbPH, hnsStage,
+    isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
+    nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
+    oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
+    prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
+    recTags, remAhi, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
+  } = m;
+
   /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
   let subtype = 'Minimally-symptomatic';
   if(ess >= T.subtype.sleepyEss) subtype = 'Sleepy';
   else if(isi >= T.subtype.disturbedIsi) subtype = 'Disturbed-sleep';
-
-  const groupInfo = {
-    'Sleepy': 'You feel very sleepy during the day. Treating OSA usually improves alertness, mood, and driving safety within weeks.',
-    'Disturbed-sleep': hasCOMISA
-      ? 'Your sleep is broken or restless \u2014 you have both insomnia and obstructive sleep apnea, a combination called COMISA (comorbid insomnia and obstructive sleep apnea). These two conditions feed off each other, so treating insomnia first with CBT-I and then adding a breathing device gives you the best chance at lasting improvement.'
-      : 'Your sleep is broken or restless even if you are not very sleepy in the day. Treating the breathing problem and insomnia together works best.',
-    'Minimally-symptomatic': 'You may not notice many symptoms, but repeated breathing pauses can strain the heart and brain over time.'
-  };
-
 
   // Patient-facing report is now generated by PatientReport.generateReportHTML()
   // via the "Generate Patient Report" overlay button.
@@ -1486,63 +1409,10 @@ document.getElementById('form').addEventListener('submit', e => {
 
 
   /* ─── HST Validity Assessment ────────────────────────────── */
-  const hstFlags = [];
-  const tst = n(f.get('tst'));
-  const patRdi = n(f.get('patRdi'));
-
-  // 1. Total sleep time assessment
-  if (exists(tst)) {
-    if (tst < 2) {
-      hstFlags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
-    } else if (tst < 4) {
-      hstFlags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
-    }
-  }
-
-  // 2. AHI–RDI discrepancy (may indicate signal artifact or scoring issues)
-  if (exists(ahi) && exists(patRdi) && patRdi > 0) {
-    const ahiRdiRatio = ahi / patRdi;
-    if (ahiRdiRatio < 0.5) {
-      hstFlags.push({ severity: 'warning', flag: 'Large AHI–RDI discrepancy', detail: `pAHI (${ahi}) is less than half the PAT RDI (${patRdi}). A large gap may indicate significant RERAs (respiratory effort-related arousals) or signal quality issues. Consider in-lab PSG if clinical picture is inconsistent.` });
-    }
-  }
-
-  // 3. Missing REM data
-  if (exists(ahi) && !exists(remAhi)) {
-    hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'REM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported. Consider in-lab PSG if REM-related symptoms (vivid dreams, morning headaches) are present.' });
-  } else if (exists(ahi) && !exists(nremAhi)) {
-    hstFlags.push({ severity: 'info', flag: 'Incomplete REM staging data', detail: 'NREM AHI is not available. REM-predominant OSA cannot be assessed reliably until REM versus non-REM breathing is fully reported.' });
-  } else if (exists(tst) && exists(remAhi) && exists(nremAhi) && tst < 5 && remAhi === 0) {
-    hstFlags.push({ severity: 'warning', flag: 'No REM sleep captured', detail: `REM AHI is 0 with TST of only ${tst} hrs. REM sleep may not have occurred during this short recording. AHI may underestimate true severity if OSA is REM-predominant. Consider repeat study.` });
-  }
-
-  // 4. Low AHI despite high symptom burden — possible false negative
-  if (exists(ahi) && ahi < 5 && exists(ess) && ess >= 10) {
-    hstFlags.push({ severity: 'warning', flag: 'Low AHI with significant symptoms', detail: `AHI ${ahi} is normal/minimal despite ESS ${ess} (significant sleepiness). HSTs can underestimate AHI due to limited channels and no EEG. Consider in-lab PSG to evaluate for UARS (upper airway resistance syndrome) or first-night effect.` });
-  }
-
-  // 5. High central apnea component — confirm with lab PSG
-  if (exists(pahic3) && exists(ahi) && ahi > 0) {
-    const centralPct = (pahic3 / ahi) * 100;
-    if (centralPct > 50) {
-      hstFlags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central event scoring has limitations — <strong>recommend in-lab PSG with EEG</strong> to confirm central vs obstructive classification before treatment planning.` });
-    } else if (centralPct > 25) {
-      hstFlags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT uses PAT signal attenuation to differentiate central from obstructive events, which has lower specificity than EEG-based scoring. Consider in-lab PSG for confirmation if central-dominant phenotype affects treatment choice (e.g., ASV vs CPAP).` });
-    }
-  }
-
-  // 6. High CSR without high central AHI — possible scoring artifact
-  if (exists(csr) && csr > 15 && exists(pahic3) && exists(ahi) && ahi > 0 && (pahic3/ahi)*100 < 15) {
-    hstFlags.push({ severity: 'info', flag: 'Elevated CSR with low central AHI', detail: `CSR ${csr}% is elevated but central AHI is low relative to total. This pattern may indicate Cheyne-Stokes respiration during wakefulness or signal artifact. Correlate with clinical history (heart failure, stroke).` });
-  }
-
-  // 7. Missing positional data limits phenotyping
-  if (!exists(sup) || !exists(nons)) {
-    const positionalMissing = [];
-    if (!exists(sup)) positionalMissing.push('supine AHI');
-    if (!exists(nons)) positionalMissing.push('non-supine AHI');
-    hstFlags.push({ severity: 'info', flag: 'Incomplete positional data', detail: `${positionalMissing.join(' and ')} ${positionalMissing.length === 1 ? 'is' : 'are'} not available. Positional OSA cannot be assessed reliably. If the patient reports position-dependent symptoms or snoring, consider repeat study with positional tracking.` });
-  }
+  const hstFlags = buildHstFlags({
+    tst: n(f.get('tst')), patRdi: n(f.get('patRdi')),
+    ahi, remAhi, nremAhi, ess, pahic3, csr, sup, nons
+  }, T);
 
   // Build HST validity HTML
   const hstValidityHTML = hstFlags.length ? `
@@ -1566,8 +1436,8 @@ document.getElementById('form').addEventListener('submit', e => {
   if(out.phen.includes('High Loop Gain')){
     guardrails.push('If considering ASV, confirm LVEF > 45% (contraindicated in HFrEF \u226445%).');
   }
-  if(out.phen.includes('High Hypoxic Burden')){
-    guardrails.push('Prioritize timely initiation of effective therapy due to CV-risk association with hypoxic burden.');
+  if(out.phen.includes('High Hypoxic Burden') && hbHighTier){
+    guardrails.push('Hypoxic burden is in the high range associated with elevated CV risk in trial cohorts — prioritize timely initiation of effective therapy. (HB action thresholds are population-derived, not yet guideline-endorsed.)');
   }
   if(out.phen.includes('Positional OSA') && ahi >= T.severity.severe){
     guardrails.push('Positional therapy alone may be insufficient at this AHI severity; consider as adjunct to PAP.');
@@ -1625,31 +1495,13 @@ document.getElementById('form').addEventListener('submit', e => {
 
   const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>${diseTable}` : '';
 
-  const supRatio = formatRatio(ratio(sup, nons));
-  const coreNums  = [
-    `AHI: ${exists(ahi)?ahi:'\u2014'}${sevLabel ? ' ('+sevLabel+')' : ''}`,
-    `REM AHI: ${exists(remAhi)?remAhi:'\u2014'}`,
-    `NREM AHI: ${exists(nremAhi)?nremAhi:'\u2014'}`,
-    `Sup/Non-sup: ${supRatio}`,
-    `Nadir SpO\u2082: ${exists(nadir)?nadir+'%':'\u2014'}`,
-    `HB/hr: ${exists(hbPH)?hbPH:'\u2014'}`,
-    `Area<90/hr: ${exists(hb90PH)?hb90PH:'\u2014'}`,
-    `T90: ${exists(t90)?t90+'%':'\u2014'}`
-  ].join(' | ');
-  const phenStr   = out.phen.join(', ') || '\u2014';
-  const nasalStr  = out.phen.includes('Nasal-Resistance Contributor') ? `Nasal obstruction present${noseScore ? ` (NOSE ${noseScore}/100)` : ''}${ctSeptum ? ', CT: deviated septum' : ''}${ctTurbs ? ', CT: turbinate hypertrophy' : ''}.` : '\u2014';
-
-  const noteDentist = `Reason for referral: mandibular advancement device (MAD) evaluation.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: Consider REM-predominant/positional involvement if listed. Coordinate titration and follow-up HSAT/PSG.`;
-  const noteENT     = `Reason for referral: nasal/airway surgery evaluation.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNasal: ${nasalStr}\nNotes: Septum/turbinates may improve airflow and PAP/MAD tolerance; assess palate/pharyngeal collapse per DISE if available.`;
-  const noteCards   = `Reason for FYI/coordination: OSA with cardiovascular considerations.\nSummary: ${coreNums}\nPhenotypes: ${phenStr}\nNotes: If High Loop Gain persists with TECSA, consider O\u2082/acetazolamide; ASV only if LVEF > 45%.`;
-
   const followUps = [];
   if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI at 4–6 weeks post-CBT-I</li><li>Initiate APAP after CBT-I course (typically 4–6 sessions)</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor CPAP adherence at 1, 4, and 12 weeks (insomnia = top predictor of abandonment)</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
   if(hasLowAr && !hasCOMISA) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');
-  if (recTagMap.some(r => r.tag === 'WEIGHT')) {
+  if (recTags.some(r => r.tag === 'WEIGHT')) {
     if (weightLossReadiness === 'ready') {
       followUps.push('Weight-management follow-up in 4\u20136 weeks to reinforce current motivation, review early progress, and escalate support if needed.');
     } else if (weightLossReadiness === 'considering') {
@@ -1678,6 +1530,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const hgnsHTML = renderHGNSHTML(hgnsResult);
   const insufficientDataDomains = buildInsufficientDataAssessment({
     osaConfirmed,
+    ahi,
     oxygenMetricsAvailable,
     oxygenMetricCount,
     oxygenCompositeSufficient,
@@ -1697,7 +1550,7 @@ document.getElementById('form').addEventListener('submit', e => {
     cvd,
     prefInspire,
     prefSurgery,
-    recTags: recTagMap,
+    recTags,
     hasDISEData,
     hnsStage,
   });
@@ -1708,7 +1561,10 @@ document.getElementById('form').addEventListener('submit', e => {
     </div>` : '';
   const treatmentSafetyChecks = buildTreatmentSafetyAssessment({
     osaConfirmed,
-    recTags: recTagMap,
+    friedmanStage,
+    tons,
+    bmi,
+    recTags,
     priorMAD,
     priorJaw,
     prefSurgery,
@@ -1729,13 +1585,16 @@ document.getElementById('form').addEventListener('submit', e => {
       <ul class="mb-0 mt-1">${treatmentSafetyChecks.map(alert => `<li>${alert.clinician}</li>`).join('')}</ul>
     </div>` : '';
   const insufficientGuardedRecEntries = applyInsufficientDataGuardrails(
-    recTagMap.map(r => ({ text: r.text, tag: r.tag })),
+    recTags.map(r => ({ text: r.text, tag: r.tag })),
     insufficientDataDomains
   );
   const guardedRecEntries = applyTreatmentSafetyGuardrails(
     insufficientGuardedRecEntries,
     treatmentSafetyChecks
   );
+  /* Rank the plan by clinical priority (stable sort preserves insertion order
+     within a tier); leads with first-line therapy, workup caveats last. */
+  guardedRecEntries.sort((a, b) => recPriority(a.tag) - recPriority(b.tag));
   const guardedRecTexts = guardedRecEntries.map(entry => entry.text);
 
   /* ── Key numbers with color coding ─────────────────────────── */
@@ -1804,7 +1663,7 @@ document.getElementById('form').addEventListener('submit', e => {
       if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
       if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
       if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>High-risk OSA per pooled multi-trial analysis <small class="text-muted">(Azarbarzin 2025)</small></li><li>CPAP significantly reduces CV events in this group — strongly prioritize effective PAP</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD — highest-risk phenotype, urgent treatment <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}</ul></div>`;
+      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>High-risk OSA per pooled multi-trial analysis <small class="text-muted">(Azarbarzin 2025)</small></li><li>CPAP significantly reduces CV events in this group — strongly prioritize effective PAP</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD — highest-risk phenotype, urgent treatment <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}<li><small class="text-muted">HB action thresholds are population-derived (ISAACC median / pooled cohorts), not yet guideline-endorsed cutoffs — weigh alongside the overall clinical picture.</small></li></ul></div>`;
     }
     if (highHB || severeOther) {
       const triggers = [];
@@ -1812,7 +1671,7 @@ document.getElementById('form').addEventListener('submit', e => {
       if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
       if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
       if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP CV Benefit</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>Above thresholds where CPAP reduces CV events (HR 0.57) <small class="text-muted">(Pinilla 2023)</small></li><li>HB (not AHI alone) predicts MACCEs (HR 1.87) <small class="text-muted">(RICCADSA / Peker 2025)</small></li><li>Prioritize effective PAP therapy for CV risk reduction</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}</ul></div>`;
+      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP CV Benefit</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>Above thresholds where CPAP reduces CV events (HR 0.57) <small class="text-muted">(Pinilla 2023)</small></li><li>HB (not AHI alone) predicts MACCEs (HR 1.87) <small class="text-muted">(RICCADSA / Peker 2025)</small></li><li>Prioritize effective PAP therapy for CV risk reduction</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}<li><small class="text-muted">HB action thresholds are population-derived (ISAACC median / pooled cohorts), not yet guideline-endorsed cutoffs — weigh alongside the overall clinical picture.</small></li></ul></div>`;
     }
     return '';
   })();
@@ -1824,7 +1683,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
     const isMild = ahi < 15;
     if (isMild) {
-      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>CPAP and non-CPAP treatments (MAD, positional, weight loss) show comparable outcomes <small class="text-muted">(Pinilla 2023)</small></li><li>Patient preference should guide selection — alternatives are strong first-line</li><li><small class="text-muted">Note: ISAACC low-HB patients on CPAP trended toward increased CV events (HR 1.33, NS) — supports alternatives-first approach</small></li></ul></div>`;
+      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>CPAP and non-CPAP treatments (MAD, positional, weight loss) show comparable outcomes <small class="text-muted">(Pinilla 2023)</small></li><li>Patient preference should guide selection — alternatives are reasonable first-line</li><li><small class="text-muted">Note: this reflects comparable efficacy in low-HB mild OSA; it does not indicate CPAP is harmful, and CPAP remains appropriate if preferred or otherwise indicated.</small></li></ul></div>`;
     }
     // Moderate OSA + low HB: still worth noting
     if (ahi < 30) {
@@ -1927,10 +1786,16 @@ document.getElementById('form').addEventListener('submit', e => {
     const collImplication = collapsibility === 'high' ? 'Anatomy-directed therapy (CPAP, surgery, HNS) prioritized' : collapsibility === 'low' ? 'Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed' : 'Mixed pattern — both anatomic and nonanatomic therapies may be effective';
     clinAnalysisParts.push(`<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Collapsibility: ${collLabel}</strong> <small class="text-muted">(Vena 2022)</small><ul class="mb-0 mt-1"><li>F(hypopneas) = ${fHypopneas.toFixed(0)}%</li><li>${collImplication}</li></ul></div>`);
   }
-  if (exists(lgEstimate)) {
-    const lgLevel = lgEstimate >= T.loopGain.estimateHigh ? 'High' : lgEstimate >= T.loopGain.estimateBorderline ? 'Borderline' : 'Low';
-    const lgAction = lgEstimate >= T.loopGain.estimateHigh ? '<li>Consider O₂ or acetazolamide</li><li>Monitor for treatment-emergent centrals</li>' : lgEstimate >= T.loopGain.estimateBorderline ? '<li>Monitor for residual events on therapy</li>' : '';
-    clinAnalysisParts.push(`<div class="alert alert-${lgEstimate >= T.loopGain.estimateHigh ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Loop Gain: ${lgLevel} (LG ≈ ${lgEstimate.toFixed(2)})</strong> <small class="text-muted">(Schmickl 2022)</small>${lgAction ? `<ul class="mb-0 mt-1">${lgAction}</ul>` : ''}</div>`);
+  if (loopGainSupportCount >= 1) {
+    const lgSuspected = loopGainSupportCount >= T.loopGain.supportMin;
+    const lgSignals = [
+      csr ? `Cheyne-Stokes / periodic breathing ${csr}%` : '',
+      exists(pahic3) ? `pAHIc 3% ${pahic3}/h` : '',
+      exists(pahic4) ? `pAHIc 4% ${pahic4}/h` : '',
+      exists(cai) ? `CAI ${cai}/h` : '',
+    ].filter(Boolean).map(s => `<li>${s}</li>`).join('');
+    const lgAction = lgSuspected ? '<li>If centrals persist on therapy: consider O₂ or acetazolamide (confirm with in-lab PSG first)</li>' : '';
+    clinAnalysisParts.push(`<div class="alert alert-${lgSuspected ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Ventilatory instability (loop gain): ${lgSuspected ? 'suspected' : 'possible'}</strong> <small class="text-muted">(qualitative — central/periodic-breathing signals; no validated point estimate)</small><ul class="mb-0 mt-1">${lgSignals}${lgAction}</ul></div>`);
   }
   if (hbTreatmentNote) clinAnalysisParts.push(hbTreatmentNote.replace(/mt-2/g, 'mb-2'));
   if (atsTriage) clinAnalysisParts.push(atsTriage.replace(/mt-2/g, 'mb-2'));
@@ -1942,9 +1807,9 @@ document.getElementById('form').addEventListener('submit', e => {
     txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
   if (hnsStage) {
     if (hnsStage.insufficient) {
-      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based response estimate.${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HNS (Inspire) Candidacy (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based candidacy tier.${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
     } else {
-      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS Response Prediction (Ji 2026): Stage ${hnsStage.stage}</strong> — Est. ${hnsStage.responseRate}% response rate${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all favorable)'}${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HNS (Inspire) Candidacy — Stage ${hnsStage.stage}: ${hnsStage.favorability}</strong>${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all factors favorable)'}<br><small class="text-muted">Qualitative tier adapted from Ji 2026 (single-center, n=119, C=0.68; needs external validation). Confirm candidacy with DISE.</small>${hasConcentricCollapse ? ' <span class="badge bg-danger">DISE: Concentric collapse — HNS contraindicated</span>' : ''}</div>`);
     }
   }
   txCandidacyParts.push(`<div class="alert alert-${priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMAD ? ' — <em>Prior MAD trial; score reflects profile suitability only</em>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
@@ -1954,7 +1819,7 @@ document.getElementById('form').addEventListener('submit', e => {
   /* ── Summary badges for collapsed headers ───────────── */
   const analysisBadges = [
     exists(fHypopneas) ? `Collapsibility: ${collapsibility}` : null,
-    exists(lgEstimate) ? `Loop Gain: ${lgEstimate.toFixed(2)}` : null,
+    loopGainSupportCount >= 1 ? `Loop gain: ${loopGainSupportCount >= T.loopGain.supportMin ? 'suspected' : 'possible'}` : null,
     edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `Low Arousal Threshold (${edwardsArTH.score}/${edwardsArTH.maxScore} criteria)` : null,
     hbTreatmentNote ? 'Hypoxic burden note' : null,
   ].filter(Boolean);
@@ -1962,7 +1827,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const candidacyBadges = [
     friedmanStage ? `Friedman ${friedmanStage}` : null,
     priorMAD ? `MAD: ${madScore.tier} (prior trial)` : `MAD: ${madScore.tier}`,
-    hnsStage && !hnsStage.insufficient ? `Inspire: ${hnsStage.responseRate}% response (Stage ${hnsStage.stage})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
+    hnsStage && !hnsStage.insufficient ? `Inspire: Stage ${hnsStage.stage} (${hnsStage.favorability})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
   ].filter(Boolean);
 
   let cHTML = `
@@ -1973,7 +1838,7 @@ document.getElementById('form').addEventListener('submit', e => {
     ${pathwayHTML}
     ${careSummaryHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
-    ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => ({cpapMask:'mask fit',cpapClaustro:'claustrophobia',cpapDry:'dryness',cpapLeaks:'leaks/noise',cpapSleep:'sleep onset',cpapSkin:'skin irritation',cpapNoImprove:'inefficacy',cpapTravel:'travel'}[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
+    ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
     ${insufficientDataHTML}
@@ -1994,29 +1859,29 @@ document.getElementById('form').addEventListener('submit', e => {
 
     ${clinAnalysisParts.length ? `
     <div class="osa-clin-section mt-3">
-      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinAnalysis" aria-expanded="false">
+      <button type="button" class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinAnalysis" aria-expanded="false" aria-controls="clinAnalysis">
         <span><i class="bi bi-graph-up me-2"></i>Clinical Analysis</span>
         <span class="osa-clin-section-badges">${analysisBadges.map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
         <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
-      </div>
+      </button>
       <div class="collapse" id="clinAnalysis">
         <div class="osa-clin-section-body">${clinAnalysisParts.join('')}</div>
       </div>
     </div>` : ''}
 
     <div class="osa-clin-section mt-2">
-      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#txCandidacy" aria-expanded="false">
+      <button type="button" class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#txCandidacy" aria-expanded="false" aria-controls="txCandidacy">
         <span><i class="bi bi-clipboard2-check me-2"></i>Treatment Candidacy</span>
         <span class="osa-clin-section-badges">${candidacyBadges.map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
         <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
-      </div>
+      </button>
       <div class="collapse" id="txCandidacy">
         <div class="osa-clin-section-body">${txCandidacyParts.join('')}</div>
       </div>
     </div>
 
     <div class="osa-clin-section mt-2">
-      <div class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinFollowup" aria-expanded="false">
+      <button type="button" class="osa-clin-section-header" data-bs-toggle="collapse" data-bs-target="#clinFollowup" aria-expanded="false" aria-controls="clinFollowup">
         <span><i class="bi bi-calendar-check me-2"></i>Follow-up Plan</span>
         <span class="osa-clin-section-badges">${[
           hasCOMISA ? 'COMISA protocol' : null,
@@ -2024,12 +1889,239 @@ document.getElementById('form').addEventListener('submit', e => {
           `${followUps.length} items`,
         ].filter(Boolean).map(b => `<span class="badge bg-light text-dark border">${b}</span>`).join(' ')}</span>
         <i class="bi bi-chevron-down osa-collapse-icon ms-auto"></i>
-      </div>
+      </button>
       <div class="collapse" id="clinFollowup">
         <div class="osa-clin-section-body">${followUps.map(x => x.startsWith('<strong>') ? `<div class="mb-2">${x}</div>` : `<ul class="mb-1"><li>${x}</li></ul>`).join('')}</div>
       </div>
     </div>
   `;
+
+  return { cHTML, subtype, guardedRecTexts, guardedRecEntries, insufficientDataDomains, treatmentSafetyChecks };
+}
+
+/* ── Form submission handler ──────────────────────────────────── */
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+
+  /* ── Validation gate ────────────────────────────────────────── */
+  const { errors, warnings } = OSAValidation.validateForm(e.target);
+  const alertBox = document.getElementById('validationAlerts');
+  const firstInvalid = errors.find(err => err.element)?.element || null;
+
+  if (errors.length > 0) {
+    if (alertBox) {
+      alertBox.innerHTML = `<div class="alert alert-danger"><strong>Please fix these errors:</strong><ul>${errors.map(e => `<li><strong>${e.field}:</strong> ${e.message}</li>`).join('')}</ul></div>`;
+      alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (firstInvalid) {
+      firstInvalid.focus({ preventScroll: true });
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return; // block submission
+  }
+
+  if (warnings.length > 0 && alertBox) {
+    alertBox.innerHTML = `<div class="alert alert-warning"><strong>Plausibility warnings:</strong><ul>${warnings.map(w => `<li>${w.field ? `<strong>${w.field}:</strong> ` : ''}${w.message}</li>`).join('')}</ul><small>Reports generated despite warnings. Please verify flagged values.</small></div>`;
+  } else if (alertBox) {
+    alertBox.innerHTML = '';
+  }
+
+  /* ── Proceed with phenotyping ───────────────────────────────── */
+  const f = new FormData(e.target);
+
+  const out = { phen:[], why:{}, recs:[] };  // phen/why populated by detectPhenotypes() below
+
+  /* ─── INPUTS ────────────────────────────────────────────────── */
+  const sex   = f.get('sex');   // M or F
+  const bmi   = n(f.get('bmi'));
+  const neck  = n(f.get('neck'));
+  const tons  = n(f.get('tonsils'));
+  const mall  = f.get('ftp'); // Friedman Tongue Position
+  const retrognathia = f.get('retrognathia') || '';  // '' | 'mild' | 'moderate'
+
+  const ahi   = n(f.get('ahi')) ?? n(f.get('pahi'));
+  const arInd = n(f.get('arInd'));
+  const isi   = n(f.get('isi'));
+  const ess   = n(f.get('ess'));
+
+  const csr     = n(f.get('csr'));
+  const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));
+  const pahic4  = n(f.get('pahic4'));
+  const cai     = n(f.get('cai'));
+  const cvd     = yes(f,'cvd');
+
+  /* ─── TREATMENT HISTORY & PREFERENCES ─────────────────────── */
+  const priorCpap     = yes(f,'priorCpap');
+  const cpapCurrent   = yes(f,'cpapCurrent');
+  const cpapHelped    = f.get('cpapHelped') || '';   // Yes/No/Unsure/''
+  const cpapRetry     = f.get('cpapRetry')  || '';   // Yes/No/Maybe/''
+  const cpapReasons   = ['cpapMask','cpapClaustro','cpapDry','cpapLeaks','cpapSleep','cpapSkin','cpapNoImprove','cpapTravel'].filter(k => yes(f,k));
+  const priorUPPP     = yes(f,'priorUPPP');
+  const priorNasal    = yes(f,'priorNasal');
+  const priorSinus    = yes(f,'priorSinus');
+  const priorJaw      = yes(f,'priorJaw');
+  const priorInspire  = yes(f,'priorInspire');
+  const priorMAD      = yes(f,'priorMAD');
+  const prefAvoidCpap = yes(f,'prefAvoidCpap');
+  const prefSurgery   = yes(f,'prefSurgery');
+  const prefInspire   = yes(f,'prefInspire');
+  const weightLossReadiness = f.get('weightLossReadiness') || '';
+  const lvef = n(f.get('lvef'));
+  const madDentition = f.get('madDentition') || '';
+  const madProtrusion = f.get('madProtrusion') || '';
+  const madTmj = f.get('madTmj') || '';
+
+  // Derived flags
+  const cpapFailed    = priorCpap && !cpapCurrent;
+  const cpapRefused   = cpapFailed && cpapRetry === 'No';
+  const cpapWillRetry = cpapFailed && (cpapRetry === 'Yes' || cpapRetry === 'Maybe');
+
+  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
+  const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
+
+  const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
+  const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
+  const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
+
+  const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
+  const nadirRaw = n(f.get('nadir'));
+  const nadirPsg = n(f.get('nadirPsg'));
+  const nadir = exists(nadirRaw) || exists(nadirPsg) ? Math.min( nadirRaw??99 , nadirPsg??99 ) : null;
+
+  const hbPH     = n(f.get('hbAreaPH')) ?? n(f.get('hbAreaPHpsg'));
+  const hb90PH   = n(f.get('hbUnder90PH'));
+  const t90      = n(f.get('t90')) ?? n(f.get('t90Psg'));
+
+  const dhr      = DHR_ENABLED ? (n(f.get('dhr')) ?? n(f.get('dhrPsg'))) : null; // Delta Heart Rate (disabled via feature flag → null disables the whole ΔHR pathway)
+
+  /* ─── PSG-SPECIFIC: Apnea/Hypopnea breakdown ─────────────── */
+  const apneaIndex    = n(f.get('apneaIndex'));
+  const hypopneaIndex = n(f.get('hypopneaIndex'));
+  // F(hypopneas) = hypopneas / (apneas + hypopneas) — Vena 2022
+  const fHypopneas = (exists(apneaIndex) && exists(hypopneaIndex) && (apneaIndex + hypopneaIndex) > 0)
+    ? (hypopneaIndex / (apneaIndex + hypopneaIndex)) * 100
+    : null;
+
+  /* ── Collapsibility estimate from F(hypopneas) (Vena 2022) ── */
+  /* F_hyp <50% (more apneas) → high collapsibility → anatomy-directed therapy
+     F_hyp ≥50% (mostly hypopneas) → mild-moderate collapsibility → non-CPAP may work */
+  const collapsibility = exists(fHypopneas)
+    ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
+    : null;
+
+  /* ── Loop Gain: qualitative only (no numeric estimate) ──
+     The Schmickl 2022 regression (LG = β·AHI − β·Hyp%) has NO published intercept and
+     only r=0.48 / AUC 0.73, so a per-patient point estimate over-implies precision and
+     was removed (Phase 2, 2026-06). Possible ventilatory instability is now flagged
+     qualitatively from the central / periodic-breathing signals below (see
+     loopGainSupportCount). */
+
+  /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
+  /* 3-variable clinical prediction of low arousal threshold:
+     AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
+     Score ≥2 of 3 = likely low ArTH (84% accuracy). NOTE: that validated accuracy applies
+     to the FULL 3-variable score. When the hypopnea fraction is unavailable (routine
+     WatchPAT), a 2-of-3 partial score is computed and reported at LOW confidence — the 84%
+     figure does not carry to the truncated score. */
+  const edwardsArTH = (() => {
+    if (!exists(ahi)) return null;
+    let score = 0;
+    const details = [];
+    if (ahi < T.arousal.ahiMax) { score++; details.push(`AHI ${ahi} <${T.arousal.ahiMax}`); }
+    if (exists(nadir) && nadir > T.arousal.nadirMin) { score++; details.push(`nadir ${nadir}% >${T.arousal.nadirMin}%`); }
+    const hypFractionAvailable = exists(fHypopneas);
+    if (hypFractionAvailable) {
+      if (fHypopneas > T.arousal.hypFraction) { score++; details.push(`F(hyp) ${fHypopneas.toFixed(0)}% >${T.arousal.hypFraction}%`); }
+      else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤${T.arousal.hypFraction}%`); }
+    }
+    const maxScore = hypFractionAvailable ? 3 : 2;
+    const prediction = score >= T.arousal.scoreLikely ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
+    return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
+  })();
+
+  /* nasal signals */
+  const noseScore = n(f.get('noseScore'));
+  const nasalObs  = yes(f,'nasalObs');
+  const ctSeptum  = yes(f,'ctDev');
+  const ctTurbs   = yes(f,'ctTurbs');
+
+  const oxygenMetricCount = [hbPH, hb90PH, odi, t90, nadir].filter(exists).length;
+  const oxygenMetricsAvailable = oxygenMetricCount > 0;
+  const oxygenCompositeSufficient = oxygenMetricCount >= 2;
+  const osaConfirmed = exists(ahi) && ahi >= 5;
+
+  /* pack context for confidence meters */
+  const ctxBase = {
+    sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
+    remAhi, nremAhi, sup, nons, odi, nadir,
+    hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
+    fHypopneas,
+    edwardsArTHScore: edwardsArTH?.score ?? 0,
+    edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
+  };
+
+  /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
+     framing are reserved for this tier; a single MODERATE metric flags the phenotype as
+     supportive context only. Thresholds are population-derived (see config.js). */
+  const hbHighTier =
+    (exists(hbPH)   && hbPH   >= T.hypoxicBurden.hbPerHourHigh) ||
+    (exists(odi)    && odi    >  T.hypoxicBurden.odiSevere) ||
+    (exists(nadir)  && nadir  <  T.hypoxicBurden.nadirSevere) ||
+    (exists(t90)    && t90    >  T.hypoxicBurden.t90Severe) ||
+    (exists(hb90PH) && hb90PH >  T.hypoxicBurden.areaUnder90Severe);
+
+  /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
+  const loopGainSupportCount =
+    ((csr||0)    >= T.loopGain.csr    ? 1 : 0) +
+    ((pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
+    ((pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
+    ((cai||0)    >= T.loopGain.pahic3 ? 1 : 0);
+
+  /* Sex-specific neck threshold */
+  const neckThreshold = (sex === 'F') ? T.anatomical.neck.female : T.anatomical.neck.male;
+
+  /* ─── PHENOTYPES (suppressed until OSA is confirmed) ──────── */
+  if (osaConfirmed) {
+    const detected = detectPhenotypes({
+      bmi, neck, neckThreshold, tons, mall, ahi,
+      edwardsArTH,
+      loopGainSupportCount, csr, pahic3, pahic4, cai, cvd,
+      remAhi, nremAhi, sup, nons,
+      hbPH, odi, nadir, t90, hb90PH,
+      noseScore, nasalObs, ctSeptum, ctTurbs, dhr
+    }, T);
+    out.phen = detected.phen;
+    out.why = detected.why;
+  }
+
+  /* ─── TREATMENT MAPPING (delegated to mapTreatments — pure fn) ─── */
+  const {
+    recs: recTexts, recTags, friedmanStage, hnsStage, madScore,
+    hasConcentricCollapse, hasCOMISA, sleepyCOMISA,
+  } = mapTreatments(f, {
+    phen: out.phen,
+    sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
+    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    prefAvoidCpap, prefSurgery, prefInspire,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
+  }, T);
+  out.recs = recTexts;
+
+  /* ─── CLINICIAN REPORT (delegated to buildClinicianReport — renderer) ─── */
+  const {
+    cHTML, subtype, guardedRecTexts, guardedRecEntries,
+    insufficientDataDomains, treatmentSafetyChecks,
+  } = buildClinicianReport(f, {
+    ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons,
+    cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
+    friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbHighTier, hbPH, hnsStage,
+    isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
+    nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
+    oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
+    prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
+    recTags, remAhi, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
+  }, T);
 
   // ── Populate analysis data for patient report ──
   lastAnalysisData = {
@@ -2042,7 +2134,6 @@ document.getElementById('form').addEventListener('submit', e => {
     ftp: mall || null,
     nasalObs, ctSeptum, ctTurbs,
     ess, isi, noseScore,
-    studyType: f.get('studyType') || null,
     pahi: n(f.get('pahi')),
     ahi,
     odi,
@@ -2099,7 +2190,6 @@ document.getElementById('form').addEventListener('submit', e => {
     hypopneaIndex,
     fHypopneas,
     collapsibility,
-    lgEstimate,
     dhr,
     milestones: [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value),
     studyType: document.querySelector('input[name="studyType"]:checked')?.value || null,
@@ -2134,6 +2224,7 @@ document.getElementById('form').addEventListener('submit', e => {
 const reportOverlay = document.getElementById('reportOverlay');
 const reportCloseButton = document.getElementById('btnCloseReport');
 const saveReportSnapshotButton = document.getElementById('btnSaveReportSnapshot');
+const publishPatientPortalButton = document.getElementById('btnPublishPatientPortal');
 let lastReportTrigger = null;
 
 function getReportFocusableElements() {
@@ -2156,6 +2247,7 @@ function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false) {
   reportOverlay.classList.add('active');
   document.body.classList.add('report-preview-open');
   if (saveReportSnapshotButton) saveReportSnapshotButton.disabled = !allowSnapshotSave;
+  if (publishPatientPortalButton) publishPatientPortalButton.disabled = !allowSnapshotSave;
   window.setTimeout(() => reportCloseButton?.focus(), 0);
 }
 
@@ -2175,6 +2267,18 @@ document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', asyn
   if (!lastAnalysisData || !window.OSAChartActions?.saveReportSnapshot) return;
   const currentHtml = document.getElementById('reportPreviewContent')?.innerHTML || '';
   await window.OSAChartActions.saveReportSnapshot({
+    analysisData: lastAnalysisData,
+    patientReportHtml: currentHtml,
+    reportDate: lastAnalysisData.reportDate,
+    patientName: lastAnalysisData.patientName,
+    triggerEl: e.currentTarget,
+  });
+});
+
+document.getElementById('btnPublishPatientPortal')?.addEventListener('click', async (e) => {
+  if (!lastAnalysisData || !window.OSAChartActions?.publishPatientPortal) return;
+  const currentHtml = document.getElementById('reportPreviewContent')?.innerHTML || '';
+  await window.OSAChartActions.publishPatientPortal({
     analysisData: lastAnalysisData,
     patientReportHtml: currentHtml,
     reportDate: lastAnalysisData.reportDate,

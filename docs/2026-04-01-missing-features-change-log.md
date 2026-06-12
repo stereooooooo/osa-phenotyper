@@ -218,6 +218,59 @@ This pass focused on the highest-value production-hardening gaps that remained a
 - The regression harness is now a repeatable command and CI workflow, but it is still centered on browser/report assertions rather than full multi-step clinician and intake journeys.
 - The insufficient-data mode is broader now, but it still is not truly universal across every phenotype and downstream treatment path.
 
+## April 2, 2026 Patient Portal MVP Follow-Up
+
+### 19. Added a clinician-published patient portal surface
+- Updated `infrastructure/lambda/index.mjs` so clinicians can now:
+  - mint dedicated long-lived patient portal tokens (`portal-tokens`)
+  - publish a reviewed patient-facing report snapshot into `patientPortalPublication`
+- Updated `infrastructure/lambda/intake.mjs` with a public `GET /patient-portal/{token}` route that returns only the latest clinician-published patient page payload for a valid portal token.
+- Updated `index.html`, `js/db.js`, and `js/app.js` so clinicians can:
+  - publish the currently reviewed patient report from the report overlay
+  - manage patient page links from the patient bar
+- Added `portal.html` as a dedicated patient-facing read-only surface that renders only published content, not the live clinician chart.
+- Why: one of the highest-value product gaps after audit remediation was a safe patient-facing follow-up surface. The MVP uses explicit clinician publication so patients see reviewed content without exposing draft chart state or internal clinician workflow.
+
+### 20. Extended executable workflow coverage to the patient portal
+- Updated `js/workflow-test-app.js` so localhost workflow mode now supports patient portal publications and patient page links in addition to chart saves, snapshots, intake review, and intake submit.
+- Updated `tests/workflow-smoke.html` so the smoke suite now covers:
+  - publishing a patient page from the report overlay
+  - generating a patient page link
+  - opening `portal.html` and rendering the published patient-facing content
+- Why: the patient portal MVP crosses clinician UI, backend token management, and a public page. That path needed executable coverage, not just manual confidence.
+
+### 21. Fixed hosted patient-page publishing so `portal.html` is actually deployed
+- Updated `infrastructure/deploy.sh` so static publishes now include `portal.html` alongside `index.html`, `intake.html`, and the shared assets.
+- Verified the live CloudFront staging deployment now serves:
+  - `https://dk259m1syu2bu.cloudfront.net/portal.html`
+  - `https://dk259m1syu2bu.cloudfront.net/patient-portal/{token}`
+- Why: the first hosted patient-page validation found a real deployment gap. The clinician portal-link flow was working, but the static publish step never uploaded `portal.html`, which made the hosted patient page fail with S3 `AccessDenied`.
+
+### 22. Fixed hosted patient-page runtime config detection
+- Updated `portal.html` so it now reads runtime configuration from either the global lexical `AWS_CONFIG` binding or `window.AWS_CONFIG`.
+- Updated `infrastructure/deploy.sh` so generated `js/aws-config.js` also assigns `window.AWS_CONFIG = AWS_CONFIG` for future public-facing pages that expect a window-scoped runtime object.
+- Re-published CloudFront staging and verified the hosted runtime config now exposes both:
+  - `const AWS_CONFIG = {...}`
+  - `window.AWS_CONFIG = AWS_CONFIG`
+- Why: live patient-page testing found a second real hosted-only bug. The portal page loaded successfully, but it treated runtime config as unavailable because `js/aws-config.js` defined `AWS_CONFIG` without attaching it to `window`, while `portal.html` checked `window.AWS_CONFIG` before calling the public patient-page API.
+
+### 23. Upgraded patient-page presentation for real patient use, especially on phones
+- Updated `portal.html` so the patient page now feels like its own reviewed-care surface instead of a raw embedded report:
+  - added an at-a-glance summary rail for care stage, sleep-study result, and review time
+  - strengthened the hero hierarchy and publication metadata
+  - hid the duplicated inner report header/footer so patients do not see a report nested inside another report shell
+  - widened and restyled the embedded report to read more naturally inside the portal page
+  - added mobile-first spacing, typography, and pathway/scenario overrides so the page remains readable on narrow screens
+- Updated `tests/workflow-smoke.html` so the executable workflow suite now asserts:
+  - the portal overview rail is visible
+  - the portal summary reflects the study result
+  - the duplicate inner report header is hidden inside the portal presentation
+- Why: the first live patient-page walkthrough proved the MVP was functionally correct but still looked too much like a desktop report dropped into a generic shell. Since most patients will open this page on a phone, the portal needed a proper patient-facing presentation layer and mobile behavior before clinical use.
+
+## Remaining Gaps After Patient Portal MVP Follow-Up
+- The portal MVP is read-only and publication-based; it does not yet support patient accounts, notifications, or patient-submitted follow-up tasks.
+- Interactive educational modules, progress check-ins, and richer patient-specific onboarding are still future enhancements.
+
 ## April 2, 2026 Workflow Smoke Suite Follow-Up
 
 ### 19. Added localhost multi-step clinician and intake smoke journeys

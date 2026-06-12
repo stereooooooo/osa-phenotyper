@@ -69,6 +69,12 @@ Why: the prior matrix covered clinical logic more heavily than report rendering,
 ## April 2, 2026 Follow-Up
 
 ### `js/patientReport.js`
+- Changed the returning-visit care-summary wording for normal-AHI studies to say the study did not show evidence of obstructive sleep apnea.
+Why: wording like `normal sleep apnea` is clinically confusing and sounds like a subtype of OSA rather than an absence of diagnostic evidence.
+
+- Suppressed sleep-apnea subtype blocks for normal-AHI studies and changed the returning normal-study heading to `Your Sleep Study Summary`.
+Why: normal-AHI reports should not render OSA-specific pattern language like `Your Sleep Apnea Pattern` or counsel patients as though they have diagnosed OSA.
+
 - Added a patient-facing `What may still be refined` alert when the clinician analysis flags missing oxygen data, incomplete anatomy documentation, or incomplete HNS workup.
 Why: the report needed a visible caution layer so incomplete inputs do not read like fully settled conclusions.
 
@@ -77,3 +83,9 @@ Why: the intake collected readiness data, but the report was still ignoring it a
 
 - Added patient-facing workup descriptions and checklist items for `OXYGEN-WORKUP`, `ANATOMY-WORKUP`, and `HNS-WORKUP`.
 Why: once the clinician layer started deferring incomplete workups instead of emitting premature treatment matches, the patient report needed equally clear next-step language rather than silent tag fallbacks.
+
+- Softened moderate-range oxygen wording in Section B and in the `High Hypoxic Burden` phenotype explanation.
+Why: staging review of realistic synthetic patients showed that phrases like `can affect your heart and overall health over time` and `fall well below normal` were too alarmist for moderate oxygen abnormalities and sounded stronger than the underlying data supported.
+
+- Moved prerequisite workup recommendations such as DISE, Inspire workup, and advanced endotype review into a separate `Complete Before Finalizing Other Options` group instead of letting them consume the top `Start Now` slots.
+Why: realistic staging cases were leading with workup logistics instead of first-line therapy, which made the patient plan feel backward and obscured the actual near-term treatment priorities.

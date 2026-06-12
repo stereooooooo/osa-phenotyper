@@ -19,6 +19,7 @@
 
 <!-- Load app modules (no DOM form needed for unit tests) -->
 <script src="../js/config.js"></script>
+<script src="../js/phenotype-confidence.js"></script>
 <script src="../js/validate.js"></script>
 <script src="../js/report-shared.js"></script>
 <script src="../js/patientReport.js"></script>
@@ -47,98 +48,16 @@ function group(name) {
   results.push({ group: name });
 }
 
-// ── Helpers from app.js (replicated for testing without DOM) ────
+// ── Helpers from app.js (n/exists kept for their own unit tests below) ────
 function n(v){ if(v===null||v===undefined||v==='') return null; const x=+v; return (Number.isFinite(x)?x:null); }
-function ratio(a,b){
-  const num = n(a);
-  const den = n(b);
-  if (num === null || den === null) return null;
-  if (den === 0) return num > 0 ? Infinity : null;
-  return num / den;
-}
 function exists(v){ return v!==null && v!==undefined && v!==''; }
 
 const T = OSA_CONFIG.thresholds;
 
-// Simplified confidenceFor for testing (same logic as app.js)
-function confidenceFor(tag, ctx){
-  const m = ctx.metrics;
-  switch(tag){
-    case 'High Anatomical Contribution': {
-      const neckHigh = m.sex === 'F' ? T.anatomical.neckHigh.female : T.anatomical.neckHigh.male;
-      const strong =
-        ((m.bmi||0) >= T.anatomical.bmiHigh ? 1 : 0) +
-        ((m.neck||0) >= neckHigh ? 1 : 0) +
-        ((m.tons||0) >= T.anatomical.tonsils ? 1 : 0) +
-        (T.anatomical.ftp.includes(m.mall) ? 1 : 0) +
-        ((m.ahi||0) >= T.anatomical.ahiSevere ? 1 : 0);
-      if(strong >= 4) return 'High';
-      if(strong >= 2) return 'Moderate';
-      return 'Low';
-    }
-    case 'Low Arousal Threshold': {
-      const score = m.edwardsArTHScore || 0;
-      const maxScore = m.edwardsArTHMaxScore || 0;
-      if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
-      if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Moderate';
-      return 'Low';
-    }
-    case 'High Loop Gain': {
-      const lg = m.lgEstimate;
-      const supportCount =
-        ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
-        ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-        ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-        ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-      if(exists(lg) && lg >= T.loopGain.estimateHigh) return supportCount >= 1 ? 'High' : 'Moderate';
-      if(exists(lg) && lg >= T.loopGain.estimateBorderline) return supportCount >= 1 || m.cvd ? 'Moderate' : 'Low';
-      if(supportCount >= 2) return m.cvd ? 'High' : 'Moderate';
-      if(supportCount >= 1 && m.cvd) return 'Moderate';
-      return 'Low';
-    }
-    case 'Poor Muscle Responsiveness': {
-      const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
-      const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
-      if((m.ahi||0) >= T.muscleResponse.ahiHigh && remNrem > T.muscleResponse.remNremRatioHigh && nrem >= T.muscleResponse.nremFloorHigh) return 'High';
-      if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
-      return 'Low';
-    }
-    case 'Positional OSA': {
-      const pr = ratio(m.sup, m.nons) ?? 0;
-      if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return 'High';
-      if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
-      return 'Low';
-    }
-    case 'REM-Predominant OSA': {
-      const rr = ratio(m.remAhi, m.nremAhi) ?? 0;
-      if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return 'High';
-      if(rr >= T.remPredominant.remNremRatio && (m.nremAhi||0) < T.remPredominant.nremMax) return 'Moderate';
-      return 'Low';
-    }
-    case 'High Hypoxic Burden': {
-      const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
-      if(hb >= T.hypoxicBurden.hbPerHourHigh || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
-      if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
-      return 'Low';
-    }
-    case 'Nasal-Resistance Contributor': {
-      const nose = m.noseScore || 0;
-      const hasCT = m.ctSeptum || m.ctTurbs;
-      if(nose >= T.nasal.noseSevere || (nose >= T.nasal.noseMild && hasCT)) return 'High';
-      if(nose >= T.nasal.noseMild || m.nasalObs || hasCT) return 'Moderate';
-      if(nose >= T.nasal.noseBorderline) return 'Low';
-      return 'Low';
-    }
-    case 'Elevated Delta Heart Rate': {
-      const dhr = m.dhr || 0;
-      if(dhr >= T.deltaHeartRate.dhrHigh) return 'High';
-      if(dhr >= T.deltaHeartRate.dhr) return 'Moderate';
-      if(dhr >= T.deltaHeartRate.dhrBorderline) return 'Low';
-      return 'Low';
-    }
-    default: return 'Moderate';
-  }
-}
+// confidenceFor is the REAL engine function, imported from the shared module
+// (js/phenotype-confidence.js) — no longer replicated here, so a logic change
+// in the engine is exercised by these tests instead of silently passing.
+const confidenceFor = OSAPhenotype.confidenceFor;
 
 // ── TESTS ───────────────────────────────────────────────────────
 
@@ -277,30 +196,34 @@ assertEqual(
 );
 assertEqual(
   confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 2, edwardsArTHMaxScore: 2 } }),
-  'Moderate', 'Edwards score 2/2 → Moderate'
+  'Low', 'Edwards partial 2/2 (hypopnea fraction unavailable) → Low (Phase 2: validated accuracy needs full 3-variable score)'
 );
 assertEqual(
   confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 1, edwardsArTHMaxScore: 3 } }),
   'Low', 'Edwards score below threshold → Low'
 );
 
-// ── High Loop Gain Confidence ─────────────────────────────────
+// ── High Loop Gain Confidence (Phase 2: qualitative, capped at Moderate) ──────
 group('High Loop Gain Confidence');
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.75, csr: 12, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
-  'High', 'High loop-gain estimate + supportive signal → High'
+  confidenceFor('High Loop Gain', { metrics: { csr: 22, pahic3: 12, pahic4: 0, cai: 0, cvd: false } }),
+  'Moderate', 'Two signals incl. one strong (CSR≥20) → Moderate (capped; never High)'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.65, csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: true } }),
-  'Moderate', 'Borderline estimate + CVD modifier → Moderate'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 12, pahic4: 0, cai: 0, cvd: true } }),
+  'Moderate', 'Two moderate signals + CVD modifier → Moderate'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 10, pahic4: 0, cai: 0, cvd: true } }),
-  'High', 'Two supportive signals + CVD → High'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 12, pahic4: 0, cai: 0, cvd: false } }),
+  'Low', 'Two moderate signals, no strong, no CVD → Low'
 );
 assertEqual(
-  confidenceFor('High Loop Gain', { metrics: { lgEstimate: 0.55, csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
-  'Low', 'No estimate/support thresholds met → Low'
+  confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 0, pahic4: 0, cai: 0, cvd: true } }),
+  'Low', 'Single signal + CVD → Low'
+);
+assertEqual(
+  confidenceFor('High Loop Gain', { metrics: { csr: 0, pahic3: 0, pahic4: 0, cai: 0, cvd: false } }),
+  'Low', 'No central/periodic-breathing signals → Low'
 );
 
 // ── Positional OSA Confidence ─────────────────────────────────
@@ -426,11 +349,11 @@ assertEqual(
 group('Poor Muscle Responsiveness Confidence');
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 35, remAhi: 56, nremAhi: 20 } }),
-  'High', 'AHI≥30, ratio 2.8 (>2.5), NREM≥20 → High'
+  'Moderate', 'AHI≥30, ratio 2.8, NREM≥20 → Moderate (Phase 2: inferred surrogate capped at Moderate, no High path)'
 );
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 20, remAhi: 50, nremAhi: 20 } }),
-  'Moderate', 'ratio 2.5 (>2) but AHI<30 → Moderate'
+  'Moderate', 'ratio 2.5 (>2), AHI≥15, NREM≥15 → Moderate'
 );
 
 // ── Cross-field validation ────────────────────────────────────
@@ -569,7 +492,37 @@ function buildReportData(overrides = {}) {
 let reportHtml = PatientReport.generateReportHTML(buildReportData({
   insufficientDataDomains: [{ patient: 'Overnight oxygen measurements were incomplete, so the oxygen-risk part of the plan may change after more data is collected.' }],
 }));
-assert(reportHtml.includes('What may still be refined'), 'Data limitations callout renders when insufficient-data domains are present');
+assert(!reportHtml.includes('What may still be refined'), 'Phase 3: data-limitations callout is suppressed from the patient view (clinician-only)');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('did <strong>not show evidence of obstructive sleep apnea</strong> (AHI 3)'), 'Returning normal-AHI summary says the study did not show evidence of obstructive sleep apnea');
+assert(!reportHtml.includes('normal sleep apnea'), 'Returning normal-AHI summary never says "normal sleep apnea"');
+assert(reportHtml.includes('Your Sleep Study Summary'), 'Returning normal-AHI reports use a neutral sleep-study summary heading');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
+  subtype: 'Minimally Symptomatic',
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(!reportHtml.includes('Your Sleep Apnea Pattern:'), 'Normal-AHI reports suppress sleep-apnea subtype headings');
+assert(!reportHtml.includes('Not everyone with sleep apnea feels tired or has obvious symptoms'), 'Normal-AHI reports suppress OSA-specific subtype counseling');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 22,
+  ahi: 22,
+  severity: 'moderate',
+  nadir: 84,
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('lower than we want to see during sleep and one reason treatment still matters'), 'Moderate-range nadir wording is softer and action-oriented');
+assert(!reportHtml.includes('can affect your heart and overall health over time'), 'Moderate-range nadir wording avoids overstating long-term harm');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   insufficientDataDomains: [],
@@ -583,8 +536,8 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
     { key: 'delta-heart-rate', patient: 'We have not yet entered the extra overnight heart-rate reactivity measure.' }
   ],
 }));
-assert(reportHtml.includes('Contributing factors still being clarified'), 'Section C shows unresolved-phenotype callout when phenotype inputs are incomplete');
-assert(reportHtml.includes('do not show one single dominant pattern'), 'Zero-phenotype summary avoids implying that unresolved contributors were ruled out');
+assert(!reportHtml.includes('Contributing factors still being clarified'), 'Phase 3: unresolved-phenotype callout is suppressed from the patient view (clinician-only)');
+assert(!reportHtml.includes('ruled out') && reportHtml.includes('did not point to one dominant cause'), 'Zero-phenotype summary avoids implying that unresolved contributors were ruled out');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   weightLossReadiness: 'ready',
@@ -608,6 +561,14 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   bmi: 32,
 }));
 assert(reportHtml.includes('GLP-1 therapies'), 'BMI 30+ keeps GLP-1 language available in weight rec');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  phen: ['High Hypoxic Burden'],
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('dipped lower than we like to see during the night'), 'High-hypoxic-burden explanation uses calibrated oxygen wording');
+assert(reportHtml.includes('helps confirm treatment is bringing those levels into a safer range'), 'High-hypoxic-burden explanation keeps follow-up language probabilistic');
+assert(!reportHtml.includes('fall well below normal'), 'High-hypoxic-burden explanation avoids overly alarmist oxygen language');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'OXYGEN-WORKUP', text: 'Review full oxygen metrics before finalizing cardiovascular risk.' }],
@@ -687,6 +648,24 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'Surgery workup tag renders a patient-friendly safety explanation');
 assert(reportHtml.includes('sleep endoscopy (DISE) before choosing a specific airway surgery'), 'Surgery workup tag adds a practical checklist step');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  hasCOMISA: true,
+  phen: ['Low Arousal Threshold', 'High Hypoxic Burden', 'Nasal-Resistance Contributor'],
+  recTags: [
+    { tag: 'CBTI', text: 'Treat insomnia first.' },
+    { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
+    { tag: 'CPAP', text: 'Use CPAP.' },
+    { tag: 'MAD', text: 'Consider oral appliance therapy.' },
+    { tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' },
+    { tag: 'ENDOTYPE-WORKUP', text: 'Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.' },
+    { tag: 'SURGALT', text: 'Airway surgery can be considered after full workup.' }
+  ],
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('Complete Before Finalizing Other Options'), 'Workup recommendations render in their own treatment-plan group');
+assert(reportHtml.indexOf('Start Now') < reportHtml.indexOf('Complete Before Finalizing Other Options'), 'Actual treatment actions lead before prerequisite workups');
+assert(reportHtml.indexOf('CPAP Therapy') < reportHtml.indexOf('Complete DISE-Guided Surgical Planning First'), 'Primary therapies appear before workup items in the treatment plan');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');
