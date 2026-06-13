@@ -1,10 +1,51 @@
 # OSA Phenotyper — Optimization Changelog
 
-All notable changes from the 2026-06 audit-driven optimization effort are recorded here.
+All notable changes from the 2026-06 audit-driven optimization effort (and subsequent feature work) are recorded here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Newest first.
 
 See [`optimization-roadmap.md`](optimization-roadmap.md) for the forward-looking plan and the
 full findings inventory.
+
+---
+
+## [Post-audit feature: front-desk home screen + MRN fix] — 2026-06-12
+
+Merged to `main`. Work beyond the original 5-phase audit roadmap — a physician-requested front-desk
+feature, plus a backend bug surfaced while testing it end-to-end against the staging backend.
+
+### Added — front-desk home screen (merge `ae143d4`)
+- A streamlined **home/landing screen** — the app's front door for every user on login — with three
+  focused actions: **create a patient + generate the intake link** (then *copy-link-&-done* or
+  *open-chart*), a **universal search** (name / MRN, plus a client-side date-of-birth filter), and an
+  **"intakes ready to review" card** (submitted/actionable only — `review-needed` + `received`, excludes
+  `pending`).
+- Architecture: two switchable views in the existing SPA (`#homeView` / `#chartView`) toggled by
+  `showView()`; the three shared modals moved out of `<form>` to top-level siblings; the whole `<main>`
+  interior wraps in `#chartView`. New isolated module `js/home.js` waits for an `osa:workspace-ready`
+  event and orchestrates existing `db.js` + a new `window.OSAWorkspace` contract (`showView`, `openChart`,
+  `createWithIntakeLink`, `getReviewQueue`, `reviewModalShow`). `loadPatient()` now returns success;
+  `generateIntakeLink()` extracted (correct `?t=` param). The standalone "New Patient" nav entry became
+  the home screen; the chart keeps a "New / clear" reset; local/unconfigured mode skips home → chart.
+- Process: brainstorm → spec → spec review (caught the DOB-search gap, MRN prerequisite, modal placement) →
+  plan → plan review (caught a would-be-invalid DOM wrap and a `?token`/`?t` mismatch) → built task-by-task
+  via subagent-driven development (golden master 310 assertions + ESLint per task; final READY-TO-MERGE
+  review). Spec: `docs/superpowers/specs/2026-06-12-ma-home-screen-design.md`; plan:
+  `docs/superpowers/plans/2026-06-12-ma-home-screen.md`.
+
+### Fixed
+- **Empty-MRN save 500** (PR #2, deployed to staging) — `createPatient`/`updatePatient` now omit a blank
+  `mrn` (keeping the `mrn-index` GSI sparse) instead of writing `mrn: ''`, which DynamoDB rejects as an
+  empty key attribute. The UI treats MRN as optional; this aligns the backend.
+- **"Open" did nothing from the home view** (`613ec59`) — regression from the view split: the existing
+  patient-list and review-dashboard "Open" handlers loaded the patient into the now-hidden `#chartView`
+  without switching to it. `loadPatient()` now calls `showView('chart')` on success — fixes every entry
+  point in one place.
+
+### Deployment status
+- The **backend** change-set (Lambda/API/CloudFront config + the MRN fix + Phase 4 throttle) is deployed
+  to the **staging** stack. The **hosted CloudFront frontend is NOT yet updated** (still the April-3 build,
+  `aws-config.js` buildId `2f89f8d`) — all this work runs on `main` / localhost only until a `deploy.sh`
+  static-site sync ships it to the hosted URL.
 
 ---
 

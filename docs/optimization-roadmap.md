@@ -40,6 +40,27 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 
 ---
 
+## Post-audit work (2026-06-12)
+
+Beyond the original 5-phase roadmap. Shipped to `main`:
+- ✅ **Front-desk home screen** — new home/landing (create + intake-link · universal search · "intakes
+  ready to review" card); two-view SPA split (`#homeView`/`#chartView`) + new `js/home.js` + a
+  `window.OSAWorkspace` contract. Merged (`ae143d4`); Open-from-home regression fixed (`613ec59`).
+  Spec/plan: `docs/superpowers/{specs,plans}/2026-06-12-ma-home-screen-*`.
+- ✅ **Empty-MRN save fix** — backend keeps the `mrn-index` GSI sparse so MRN-less patients save
+  (PR #2, deployed to staging).
+
+**Outstanding:**
+- [ ] **Deploy the hosted frontend** — the staging CloudFront site is still the April-3 build
+  (`aws-config.js` buildId `2f89f8d`); run `deploy.sh` to sync `main`'s static files + regenerate config +
+  apply the WAF rule + invalidate the CDN. The backend is already updated; only the hosted frontend is stale.
+- [ ] Finish the signed-in end-to-end walkthrough of the home flows (search / create+link / review→open).
+- [ ] Minor backlog: fold the FormData/DOM reads into `m` for the sibling `(m,T)` signatures
+  (`mapTreatments`/`buildClinicianReport`); extract `n`/`ratio`/`exists` to a shared util; machine-readable
+  CI output; `private/` gitignore reorg.
+
+---
+
 ## Phase 1 — Patient safety & trust ✅ DONE
 
 Shipped 2026-06-11 on branch `phase-1-safety-fixes`. See changelog for detail.
