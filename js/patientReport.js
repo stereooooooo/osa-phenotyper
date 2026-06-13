@@ -232,8 +232,8 @@ var PatientReport = (() => {
     'MAD': 'See a sleep dentist about a custom oral appliance.',
     'MAD-FAVORABLE': 'See a sleep dentist about a custom oral appliance.',
     'MAD-POOR': 'Talk with your doctor about whether a custom oral appliance is a good fit for you.',
-    'HNS': 'Talk with us about whether Inspire therapy is right for you.',
-    'INSPIRE-EVAL': 'Schedule your Inspire candidacy evaluation (a sleep endoscopy).',
+    'HNS': 'Talk with us about whether an upper-airway nerve-stimulation implant (such as Inspire or Genio) is right for you.',
+    'INSPIRE-EVAL': 'Schedule your nerve-stimulation candidacy evaluation (a sleep endoscopy).',
     'SURG': 'Discuss the surgical options in your plan with your ENT.',
     'SURGALT': 'Discuss the surgical options in your plan with your ENT.',
     'CBTI': 'Start CBT-I — the program for insomnia — as your first step.',
@@ -725,7 +725,7 @@ ${subtypeHtml}`;
     };
 
     const descMap = {
-      'High Anatomical Contribution': `The physical shape of your airway — things like enlarged tonsils, a set-back jaw, or extra throat tissue — leaves less room for air when your muscles relax in sleep. Treatments that physically open the airway (an oral appliance, surgery, or Inspire) often work especially well here.`,
+      'High Anatomical Contribution': `The physical shape of your airway — things like enlarged tonsils, a set-back jaw, or extra throat tissue — leaves less room for air when your muscles relax in sleep. Treatments that physically open the airway (an oral appliance, surgery, or an upper-airway nerve-stimulation implant) often work especially well here.`,
 
       'Low Arousal Threshold': `Your brain wakes up easily when breathing gets hard. That sounds helpful, but it cuts short your airway muscles' chance to reopen on their own, leaving many brief, fragmented wake-ups. Treatments that steady your breathing — so the brain doesn't have to step in so often — tend to help.`,
 
@@ -801,7 +801,7 @@ ${items}`;
     'SLEEP-STAGE-WORKUP': `<strong>Review REM-Sleep Data Before Ruling Out REM Worsening</strong> — Some patients breathe much worse during REM (dream) sleep than during the rest of the night. Your available data do not clearly separate REM from non-REM breathing yet, so REM-specific treatment decisions should stay flexible until that part of the study is confirmed.`,
     'ENDOTYPE-WORKUP': `<strong>Complete the Detailed Event Breakdown Before Final Endotype Matching</strong> — Some of the more advanced breathing-pattern estimates in sleep apnea depend on knowing how many events were full apneas versus partial obstructions (hypopneas). That breakdown is not fully available yet, so some of the finer endotype-based treatment matching still needs the detailed scoring report before it should be treated as complete.`,
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
-    'HNS-WORKUP': `<strong>Complete the Inspire Evaluation First</strong> — Inspire can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, Inspire should stay in the “possible option” category rather than a finalized recommendation.`,
+    'HNS-WORKUP': `<strong>Complete the Nerve-Stimulation Evaluation First</strong> — An upper-airway nerve-stimulation implant (such as Inspire or Genio) can only be judged accurately after a formal workup. That usually includes a sleep endoscopy (DISE) to watch how your airway collapses during sleep and the staging inputs used to estimate response. Until that is done, it should stay in the “possible option” category rather than a finalized recommendation.`,
     'NASAL-WORKUP': `<strong>Complete Nasal Assessment Before Ruling Nasal Treatment In or Out</strong> — A blocked or narrow nose can worsen mouth breathing and make CPAP, oral appliances, and surgery recovery harder. Because your nasal symptom and exam data are still incomplete, your ENT team should finish documenting nasal symptoms and anatomy before treating nasal contribution as absent.`,
     'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
     'MAD-SAFETY-LIMIT': `<strong>Oral Appliance May Not Be a Safe Fit Right Now</strong> — Your current dental or jaw findings make an oral appliance less likely to be a safe or practical treatment at this stage. Problems such as limited tooth support, limited jaw movement, or significant TMJ disease can make a mandibular advancement device hard to fit or hard to tolerate. Your care team may still revisit it later if a sleep dentist feels those concerns can be addressed safely.`,
@@ -809,14 +809,14 @@ ${items}`;
     'ASV-SAFETY': `<strong>Confirm Heart-Function Safety Before ASV</strong> — Some advanced PAP devices, especially ASV, are only appropriate after your care team confirms that your heart function is in a safe range. If ASV comes up as an option, your sleep specialist may review a recent echocardiogram or ask for heart-function testing first.`,
     'ASV-CONTRA': `<strong>Reduced Heart Function Makes ASV Unsafe Right Now</strong> — One type of advanced PAP therapy, ASV, is not considered safe when the heart’s pumping function is reduced below the accepted safety range. If your plan still needs help for central-breathing instability, that discussion should stay with your sleep specialist and heart team rather than treating ASV as a routine option.`,
     'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
-    'HNS': `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Unlike CPAP, there is no mask or airflow — the device works automatically while you sleep. Inspire is FDA-approved for people who have moderate-to-severe sleep apnea, have not been helped by CPAP, and meet specific criteria. A candidacy evaluation will determine whether this option is right for you.`,
+    'HNS': `<strong>Upper-Airway Nerve Stimulation</strong> — A small implanted device gently activates the nerve to your tongue during sleep to keep the airway open — no mask, no airflow. Several FDA-approved systems exist (for example, Inspire and Genio). It's an option for moderate-to-severe sleep apnea not well controlled by CPAP, for patients with a BMI of 40 or below (insurance coverage varies, and some plans require a lower BMI). A brief sleep endoscopy helps your ENT confirm whether it's a good fit.`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
     'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
     'NASAL-SURG': null,  // Merged into NASAL-OPT
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`,
     'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the gold-standard, non-medication treatment for insomnia. It works by changing the thoughts and habits that interfere with sleep — things like irregular sleep schedules, spending too much time in bed, or anxiety about sleep. CBT-I is highly effective and its benefits last long-term, unlike sleep medications. It can be done with a therapist in-person or through a validated digital program.`,
-    'SURGALT': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. A sleep endoscopy (DISE) — a brief procedure performed under light sedation — allows your ENT surgeon to see exactly where and how your airway collapses during sleep, and is used to determine which surgical approach is most appropriate for you.`,
+    'SURGALT': `<strong>Soft-Tissue Airway Surgery</strong> — For sleep apnea related to the structure of the throat — such as enlarged tonsils or excess soft tissue — procedures like tonsillectomy or palate surgery can open the airway and reduce breathing events during sleep. A brief sleep endoscopy under light sedation lets your ENT see exactly where the airway collapses and choose the most appropriate procedure for you.`,
     'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you, and if ASV is being considered they may need to confirm that your heart function is in a safe range first.`,
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
@@ -826,11 +826,11 @@ ${items}`;
     'UARS-EVAL': `<strong>Evaluation for Upper Airway Resistance Syndrome (UARS)</strong> — Your home sleep study did not show obstructive sleep apnea, but your symptoms and some patterns in your results suggest you may have a related condition called upper airway resistance syndrome (UARS). In UARS, the airway narrows enough to disrupt sleep without fully blocking airflow — which means a home test may not detect it. An in-lab sleep study with more detailed monitoring can identify this condition and guide treatment.`,
     'SNORE-ALCOHOL': `<strong>Avoid Alcohol Before Bed</strong> — Alcohol relaxes the muscles in your throat, making snoring worse and increasing the chance of airway collapse during sleep. Avoiding alcohol within 3 hours of bedtime can noticeably reduce snoring and improve sleep quality.`,
     'SNORE-LIFESTYLE': `<strong>Reducing Snoring While We Wait for Results</strong> — There are several things you can start doing now to reduce snoring. <strong>Sleep on your side</strong> — snoring is usually worse on your back because gravity pulls the tongue and soft tissues into the airway. A body pillow or positional device can help. <strong>Avoid alcohol within 3 hours of bedtime</strong> — alcohol relaxes the throat muscles, making snoring louder and more frequent. <strong>Maintain a healthy weight</strong> — even modest weight loss (as little as 5–7 pounds) can noticeably reduce snoring by decreasing tissue bulk around the airway. <strong>Stay active</strong> — regular aerobic exercise may reduce snoring independent of weight loss. <strong>Reduce sedative use</strong> — benzodiazepines and other sedating medications relax the airway and worsen snoring when possible to avoid. These steps form the foundation of snoring management and will also help with any sleep apnea treatment we recommend after your sleep study.`,
-    'INSPIRE-EVAL': `<strong>Inspire Candidacy Evaluation</strong> — You have expressed interest in Inspire therapy. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. A candidacy evaluation involves a sleep endoscopy (DISE) to assess your airway anatomy. Your ENT surgeon will review whether Inspire is a good option for you.`,
+    'INSPIRE-EVAL': `<strong>Nerve-Stimulation Candidacy Evaluation</strong> — You have expressed interest in an upper-airway stimulation implant (such as Inspire or Genio). It is generally considered after CPAP has not worked well enough, for patients with a BMI of 40 or below (coverage varies by insurer). Your ENT will assess candidacy, usually including a brief sleep endoscopy to look at your airway.`,
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
     'COMISA-SRT-CAUTION': null,  // Clinical detail
-    'SURG': `<strong>Airway Surgery</strong> — For patients whose sleep apnea is related to the physical structure of their throat or jaw, surgical procedures can open the airway and reduce or eliminate breathing events during sleep. Options depend on your specific anatomy and may include procedures on the palate, tongue base, or jaw. A sleep endoscopy (DISE) — a brief procedure performed under light sedation — allows your ENT surgeon to see exactly where and how your airway collapses during sleep, and is used to determine which surgical approach is most appropriate for you.`,
+    'SURG': `<strong>Soft-Tissue Airway Surgery</strong> — For sleep apnea related to the structure of the throat — such as enlarged tonsils or excess soft tissue — procedures like tonsillectomy or palate surgery can open the airway and reduce breathing events during sleep. A brief sleep endoscopy under light sedation lets your ENT see exactly where the airway collapses and choose the most appropriate procedure for you.`,
     'SOFT-TISSUE-REVISION': null,  // Clinical detail
     'SOFT-TISSUE-STRONG': null,  // Merged into tonsil/surgery recs
     'SOFT-TISSUE-CONSIDER': null,
@@ -872,12 +872,10 @@ ${items}`;
        the context box already acknowledges CPAP, and the checklist has a lower-priority
        "try CPAP in the future" note */
     if (tag === 'CPAP' && data && data.cpapFailed && !data.cpapWillRetry) return null;
-    /* Inspire with BMI >40 context */
-    if (tag === 'HNS' && data && data.bmi > 40) {
-      return `<strong>Inspire Upper Airway Stimulation (Inspire Therapy)</strong> — Inspire is a small, implanted device that stimulates the nerve controlling the tongue muscle, keeping the airway open during sleep. Inspire is FDA-approved for patients with moderate-to-severe sleep apnea who have not been helped by CPAP. <strong>Important:</strong> Inspire currently requires a BMI of 40 or below (some insurance plans require an even lower BMI). Since your BMI is currently above this threshold, reaching a BMI under 40 through weight management would be the first step toward Inspire candidacy. This is a goal worth discussing with your care team.`;
-    }
-    if (tag === 'INSPIRE-EVAL' && data && data.bmi > 40) {
-      return `<strong>Inspire Candidacy Evaluation</strong> — You are interested in Inspire therapy. Inspire is generally considered only after CPAP has not worked well enough and after a sleep endoscopy (DISE) confirms the right airway pattern. <strong>Important:</strong> your current BMI is above the FDA-supported range for Inspire, so the first step would be bringing your BMI below 40 and then reviewing candidacy with your ENT surgeon and insurer.`;
+    /* Nerve-stimulation implant is not available above BMI 40 — exclude the option entirely
+       (no "lose weight to qualify" framing; the weight + CPAP recs carry the plan instead) */
+    if ((tag === 'HNS' || tag === 'INSPIRE-EVAL' || tag === 'HNS-WORKUP') && data && data.bmi > 40) {
+      return null;
     }
     if (tag === 'WEIGHT' && data) {
       const lead = weightReadinessLead(data);
@@ -912,19 +910,25 @@ ${items}`;
       }
     }
 
-    /* Airway surgery with honest candidacy language for poor surgical candidates */
+    /* Soft-tissue airway surgery: honest candidacy for poor soft-tissue candidates
+       (Friedman III/IV, smaller tonsils), and point them toward nerve stimulation —
+       a different path that doesn't depend on the same anatomy — when BMI allows it.
+       Concentric collapse is intentionally NOT a disqualifier here (a stimulation
+       device such as Genio can be used with concentric collapse). */
     if ((tag === 'SURGALT' || tag === 'SURG') && data) {
-      const poorSurgicalCandidate = (data.bmi > 40) ||
-        (data.friedmanStage === 'III' || data.friedmanStage === 'IV') ||
-        data.hasConcentricCollapse;
-      if (poorSurgicalCandidate) {
-        let reasons = [];
+      const poorSoftTissue = (data.bmi > 40) ||
+        data.friedmanStage === 'III' || data.friedmanStage === 'IV';
+      if (poorSoftTissue) {
+        const reasons = [];
+        if (data.friedmanStage === 'III' || data.friedmanStage === 'IV') reasons.push('your airway anatomy (Friedman Stage ' + data.friedmanStage + ', with smaller tonsils)');
         if (data.bmi > 40) reasons.push('a BMI above 40');
-        if (data.friedmanStage === 'III' || data.friedmanStage === 'IV') reasons.push('your airway anatomy (Friedman Stage ' + data.friedmanStage + ')');
-        if (data.hasConcentricCollapse) reasons.push('a circular (concentric) pattern of airway collapse seen on your sleep endoscopy');
-        const reasonText = reasons.length === 1 ? reasons[0]
-          : reasons.slice(0, -1).join(', ') + ' and ' + reasons[reasons.length - 1];
-        return `<strong>Airway Surgery</strong> — For some patients, surgical procedures can open the airway and reduce sleep apnea. However, we want to be straightforward with you: based on your evaluation — specifically ${reasonText} — soft tissue surgery on the throat (such as palate or tongue base procedures) is <strong>less likely to fully resolve</strong> your sleep apnea on its own. This doesn't mean surgery has no role in your care — it may still be discussed as part of a combined approach, or to address specific findings like nasal obstruction or enlarged tonsils. But for your overall sleep apnea, other treatments (particularly CPAP) are more likely to provide reliable results. Your ENT surgeon will review the full picture with you.`;
+        const reasonText = reasons.length <= 1 ? (reasons[0] || 'your evaluation')
+          : reasons.slice(0, -1).join(' and ');
+        /* Nerve stimulation isn't available above BMI 40, so only offer it at BMI ≤ 40 */
+        const stimAlt = data.bmi <= 40
+          ? ` The better fit may be a different kind of procedure — an <strong>upper-airway nerve-stimulation implant</strong> (such as Inspire or Genio), which works in a different way and doesn't rely on the same throat anatomy. Your ENT can assess whether you're a candidate, usually with a brief sleep endoscopy.`
+          : '';
+        return `<strong>Soft-Tissue Surgery — Honest Candidacy</strong> — Based on your evaluation — specifically ${reasonText} — traditional <strong>soft-tissue throat surgery</strong> (such as tonsillectomy or palate procedures) is <strong>less likely to fully resolve</strong> your sleep apnea on its own.${stimAlt} Your ENT surgeon will review the full picture with you.`;
       }
     }
 
@@ -1239,35 +1243,31 @@ ${items}`;
       checkItems.push({ text: 'Schedule a follow-up appointment in 4–6 weeks to review your sleep study results, discuss your nasal anatomy and whether a procedure might help, and see how you are responding to nasal saline rinses.', group: 'everyone' });
     }
 
-    /* Inspire — milestone-aware for surgical pathway */
-    if (tags.has('HNS') || tags.has('INSPIRE-EVAL')) {
-      if (data.bmi && data.bmi > 40) {
-        checkItems.push({ text: 'Discuss Inspire therapy with your ENT surgeon — you will need to reach a BMI of 40 or below before a formal candidacy evaluation. Ask about weight management resources to help reach this goal.', group: 'treatment' });
-      } else if (diseCompleted) {
-        /* DISE already done — next step is reviewing results and scheduling surgery if candidate */
-        checkItems.push({ text: 'Your sleep endoscopy (DISE) results will be reviewed with you. If the findings confirm you are a candidate for Inspire, the next step is scheduling the implant procedure.', group: 'treatment' });
+    /* Upper-airway nerve stimulation — milestone-aware. Excluded entirely above BMI 40
+       (no device is available there), matching the report's Section D handling. */
+    if ((tags.has('HNS') || tags.has('INSPIRE-EVAL')) && !(data.bmi && data.bmi > 40)) {
+      if (diseCompleted) {
+        /* DISE already done — next step is reviewing results and scheduling the implant if a candidate */
+        checkItems.push({ text: 'Your sleep endoscopy (DISE) results will be reviewed with you. If the findings confirm you are a candidate, the next step is scheduling the implant procedure.', group: 'treatment' });
       } else if (diseScheduled) {
         /* DISE is upcoming — attend the appointment */
-        checkItems.push({ text: 'Attend your upcoming sleep endoscopy (DISE) appointment — this brief procedure under light sedation will allow your surgeon to see exactly how your airway behaves during sleep and determine whether Inspire is the right option for you.', group: 'treatment' });
+        checkItems.push({ text: 'Attend your upcoming sleep endoscopy (DISE) appointment — this brief procedure under light sedation lets your surgeon see exactly how your airway behaves during sleep and determine whether a nerve-stimulation implant is the right option for you.', group: 'treatment' });
       } else if (isSurgicalPathway) {
         /* On surgical pathway but DISE not yet scheduled — schedule it */
-        checkItems.push({ text: 'Schedule a sleep endoscopy (DISE) with your ENT surgeon — this brief procedure under light sedation is needed to evaluate your airway and determine whether Inspire therapy is right for you.', group: 'treatment' });
+        checkItems.push({ text: 'Schedule a sleep endoscopy (DISE) with your ENT surgeon — this brief procedure under light sedation is needed to evaluate your airway and determine whether an upper-airway nerve-stimulation implant (such as Inspire or Genio) is right for you.', group: 'treatment' });
       } else {
         /* Not on surgical pathway yet — schedule evaluation */
-        checkItems.push({ text: 'Schedule an Inspire candidacy evaluation with your ENT surgeon, which includes a sleep endoscopy (DISE) to assess your airway anatomy and determine whether you qualify for the implant procedure.', group: 'treatment' });
+        checkItems.push({ text: 'Schedule a nerve-stimulation candidacy evaluation with your ENT surgeon, which includes a sleep endoscopy (DISE) to assess your airway anatomy and determine whether you qualify for the implant procedure.', group: 'treatment' });
       }
     }
 
-    if (tags.has('HNS-WORKUP') && !tags.has('HNS') && !tags.has('INSPIRE-EVAL')) {
-      if (data.bmi && data.bmi > 40) {
-        checkItems.push({ text: 'If Inspire remains an interest, start by discussing weight-management support with your care team because BMI needs to be below 40 before formal candidacy can be finalized.', group: 'treatment' });
-      }
+    if (tags.has('HNS-WORKUP') && !tags.has('HNS') && !tags.has('INSPIRE-EVAL') && !(data.bmi && data.bmi > 40)) {
       if (diseCompleted) {
-        checkItems.push({ text: 'Review your completed DISE and staging results with your ENT surgeon before deciding whether Inspire is truly a good fit.', group: 'treatment' });
+        checkItems.push({ text: 'Review your completed DISE and staging results with your ENT surgeon before deciding whether an upper-airway nerve-stimulation implant is truly a good fit.', group: 'treatment' });
       } else if (diseScheduled) {
-        checkItems.push({ text: 'Attend your upcoming DISE appointment so your airway pattern can be documented before any Inspire decision is made.', group: 'treatment' });
+        checkItems.push({ text: 'Attend your upcoming DISE appointment so your airway pattern can be documented before any nerve-stimulation decision is made.', group: 'treatment' });
       } else {
-        checkItems.push({ text: 'Schedule the remaining Inspire workup steps, including DISE and any missing staging measurements, before treating Inspire as a finalized option.', group: 'treatment' });
+        checkItems.push({ text: 'Schedule the remaining nerve-stimulation workup steps, including DISE and any missing staging measurements, before treating it as a finalized option.', group: 'treatment' });
       }
     }
 
