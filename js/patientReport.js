@@ -526,7 +526,7 @@ ${severity === 'normal'
       ? 'Even mild sleep apnea can affect how rested you feel and, over time, may have health effects worth addressing.'
       : severity === 'moderate'
         ? 'Moderate sleep apnea has real effects on your energy, mood, and long-term heart and brain health.'
-        : 'Severe sleep apnea puts significant stress on your heart, blood pressure, and overall health. Treatment can make a major difference.'
+        : 'This is the level where consistent treatment matters most, and your plan below is built around that.'
   }</p>`
 }`;
     }
@@ -877,6 +877,14 @@ ${items}`;
     if ((tag === 'HNS' || tag === 'INSPIRE-EVAL' || tag === 'HNS-WORKUP') && data && data.bmi > 40) {
       return null;
     }
+    /* The surgery workup and the nerve-stimulation workup both explain the same DISE step.
+       When the nerve-stimulation workup card will render, drop the duplicate surgery-workup
+       card so the patient sees one "complete your DISE workup first" item, not two. (At BMI > 40
+       the nerve-stimulation workup is suppressed just above, so the surgery-workup card stays.) */
+    if (tag === 'SURGERY-WORKUP' && data && Array.isArray(data.recTags)
+        && data.recTags.some(r => r.tag === 'HNS-WORKUP') && !(data.bmi > 40)) {
+      return null;
+    }
     if (tag === 'WEIGHT' && data) {
       const lead = weightReadinessLead(data);
       const support = data.bmi >= 30
@@ -903,7 +911,6 @@ ${items}`;
           + `<li><strong>Auto-adjusting pressure (APAP)</strong> — These machines start at a low pressure and only increase when needed, making it easier to fall asleep.</li>`
           + `<li><strong>Heated humidification</strong> — Reduces dry mouth, nasal congestion, and throat irritation.</li>`
           + `<li><strong>Ramp feature</strong> — Starts at very low pressure and gradually increases as you fall asleep.</li>`
-          + `<li><strong>Desensitization</strong> — Wearing the mask during relaxing activities (watching TV, reading) for short periods helps your brain get used to the sensation before sleep.</li>`
           + `<li><strong>Treating nasal obstruction</strong> — If your nose is blocked, fixing that first makes CPAP much more tolerable.</li>`
           + `</ul>`
           + `We strongly encourage you to work with your sleep team on a structured CPAP retry plan. Even partial use (4+ hours per night) provides significant health protection for severe sleep apnea.`;
@@ -1271,7 +1278,9 @@ ${items}`;
       }
     }
 
-    if (tags.has('SURGERY-WORKUP') && !tags.has('HNS-WORKUP')) {
+    /* Drop the surgery DISE item only when the nerve-stim workup item actually renders
+       (it covers the same DISE step). At BMI > 40 the nerve-stim item is suppressed, so keep this. */
+    if (tags.has('SURGERY-WORKUP') && !(tags.has('HNS-WORKUP') && !(data.bmi && data.bmi > 40))) {
       checkItems.push({ text: 'Schedule or complete a sleep endoscopy (DISE) before choosing a specific airway surgery, so the procedure can be matched to the exact collapse pattern.', group: 'treatment' });
     }
 
