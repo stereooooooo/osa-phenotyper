@@ -603,8 +603,8 @@ assert(reportHtml.includes('Schedule or complete a full airway exam'), 'Anatomy 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'HNS-WORKUP', text: 'Complete the Inspire/HGNS workup before finalizing candidacy.' }],
 }));
-assert(reportHtml.includes('Complete the Inspire Evaluation First'), 'HNS workup tag renders a patient-friendly treatment explanation');
-assert(reportHtml.includes('Schedule the remaining Inspire workup steps'), 'HNS workup tag adds a practical checklist step when DISE is not yet scheduled');
+assert(reportHtml.includes('Complete the Nerve-Stimulation Evaluation First'), 'HNS workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('Schedule the remaining nerve-stimulation workup steps'), 'HNS workup tag adds a practical checklist step when DISE is not yet scheduled');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'NASAL-WORKUP', text: 'Complete a nasal symptom and airway review before ruling nasal treatment in or out.' }],

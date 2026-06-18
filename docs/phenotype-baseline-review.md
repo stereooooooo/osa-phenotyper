@@ -1,6 +1,8 @@
-# Phenotype Baseline — Clinical Review (v3)
+# Phenotype Baseline — Clinical Review (v4)
 
 _Regenerated 2026-06-11 after the clinical-logic refinements (ranked plan, gated workups, MAD demotion, Zepbound, ΔHR off) plus the DISE-not-always-required fix (thin Friedman-I + large tonsils → tonsillectomy ± expansion pharyngoplasty without DISE). Recommendations are in plan order; `*-WORKUP` caveats sort last._
+
+_Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13). Complete concentric collapse (CCC) at the velum no longer suppresses nerve stimulation — the unilateral Inspire device is contraindicated in CCC, but bilateral stimulation (Genio / Nyxoah) is indicated, so CCC candidates are routed to Genio instead of excluded. BMI > 40 now excludes nerve stimulation entirely (no device, Inspire or Genio, is available above BMI 40). New profiles **#38 (CCC velar candidate)** and **#39 (BMI > 40 exclusion)** lock this behavior; see [docs/citations.md](citations.md) for evidence._
 
 ---
 
@@ -530,3 +532,41 @@ _Regenerated 2026-06-11 after the clinical-logic refinements (ranked plan, gated
 - Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
+
+### 38. CCC velar candidate (Genio) — _new 2026-06-18_
+**Patient:** M, BMI 30, AHI 28, ESS 14 / ISI 5, tonsils 2, FTP II, neck 15.5, DISE velum **CCC** (degree 2), prior CPAP failed (won't retry), prefers nerve stimulation  
+**Phenotypes:** _none_  
+**Plan (ranked):** `CPAP, WEIGHT, SURG, INSPIRE-EVAL, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
+
+**Recommendations (in order):**
+- Alternative PAP (BiPAP, ASV) if willing to reconsider
+- Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).
+- Surgical correction of correctable airway blockage
+- Patient interested in upper-airway nerve stimulation — evaluate candidacy (documented PAP intolerance, AHI 15–100, BMI ≤ 40). DISE shows complete concentric collapse: the unilateral Inspire® device is contraindicated, so route toward bilateral hypoglossal stimulation (Genio / Nyxoah), which is indicated for CCC (FDA AHI 15–65).
+- Custom oral appliance (MAD)
+- Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.
+- Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.
+- Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.
+- Review REM/NREM staging data before concluding that REM-specific worsening is absent.
+- Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
+- Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
+
+**Clinical note:** CCC at the velum no longer suppresses nerve stimulation. Inspire is contraindicated for CCC, so the engine keeps the candidacy recommendation but routes the patient toward the bilateral Genio device. Because DISE + anatomy + staging are all complete here, the HNS/anatomy workup caveats correctly do **not** fire.
+
+### 39. Nerve-stim excluded (BMI > 40) — _new 2026-06-18_
+**Patient:** M, BMI 42, AHI 40, ESS 16 / ISI 5, tonsils 2, FTP II, neck 17, DISE velum AP (degree 1), prior CPAP failed (won't retry), prefers nerve stimulation  
+**Phenotypes:** High Anatomical Contribution  
+**Plan (ranked):** `CPAP, WEIGHT, SURG, CPAP-ALT, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
+
+**Recommendations (in order):**
+- Alternative PAP (BiPAP, ASV) if willing to reconsider
+- Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).
+- Surgical correction of correctable airway blockage
+- Prior CPAP trial unsuccessful — prioritize alternatives: mandibular-advancement device, site-directed surgery.
+- Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.
+- Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.
+- Review REM/NREM staging data before concluding that REM-specific worsening is absent.
+- Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
+- Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
+
+**Clinical note:** BMI > 40 excludes nerve stimulation entirely — no device (Inspire or Genio) is available above BMI 40 — so despite a complete workup and patient interest, no `HNS` / `INSPIRE-EVAL` / `HNS-WORKUP` appears and the plan leads with weight management. The generic CPAP-failure alternatives line also correctly drops nerve stimulation at this BMI.

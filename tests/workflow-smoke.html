@@ -216,7 +216,7 @@ async function runClinicianWorkflow() {
   await waitFor(() => doc.getElementById('reportOverlay').classList.contains('active'), 'report overlay active for insufficient-data case');
   const insufficientReportText = doc.getElementById('reportPreviewContent').innerText;
   assert(insufficientReportText.includes('Complete Airway Exam Before Finalizing Anatomy-Based Treatments'), 'Patient report explains anatomy workup after live insufficient-data submit');
-  assert(insufficientReportText.includes('Complete the Inspire Evaluation First'), 'Patient report explains HNS workup after live insufficient-data submit');
+  assert(insufficientReportText.includes('Complete the Nerve-Stimulation Evaluation First'), 'Patient report explains HNS workup after live insufficient-data submit');
   assert(insufficientReportText.includes('Complete Oxygen-Risk Review'), 'Patient report explains oxygen workup after live insufficient-data submit');
   assert(insufficientReportText.includes('not your main focus right now'), 'Live resubmit updates patient-facing weight-readiness wording');
   clickSelector(win, '#btnCloseReport');

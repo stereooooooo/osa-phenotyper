@@ -81,13 +81,15 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Meta-analysis: Stage I positive predictor, Stage III negative | Choi JH, et al. "Predicting Outcomes After UPPP." *Otolaryngol Head Neck Surg.* 2016;155(6):904-913. | Stage III → suppress UPPP, recommend alternatives |
 | DISE not required for clear tonsillar obstruction | Friedman 2004 (above) + clinical practice (ENT review 2026-06) | A **non-obese** Friedman Stage I patient with 3-4+ tonsils has obvious tonsillar/palatal obstruction → tonsillectomy ± expansion pharyngoplasty proceeds **without** a DISE prerequisite. DISE remains required for obese patients (multilevel-collapse risk) and for Friedman II/III, tongue-base, or HNS planning. |
 
-## HNS (Inspire) Clinical Staging
+## HNS (Inspire / Genio) Clinical Staging
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | Ji 2026 clinical severity staging (neck + BMI + AHI) | Ji J, et al. "Clinical Severity Staging System and Response to HNS." *JAMA Otolaryngol.* 2026;:2844563. | HNS Stage I-IV with response rate prediction (91%→38%) |
-| Current FDA Inspire indication expansion (AHI 15-100, BMI ≤40, PAP/BiPAP intolerance required) | U.S. Food and Drug Administration. "Inspire Upper Airway Stimulation – P130008/S090." Approved June 8, 2023. | Hard HGNS gating: AHI 15-100, BMI ceiling 40, documented PAP failure/intolerance required, CCC remains exclusion |
-| Concentric palatal collapse = HNS contraindication | Strollo PJ, et al. "Upper-Airway Stimulation for OSA." *N Engl J Med.* 2014;370(2):139-49. | DISE check: concentric collapse → HNS contraindicated |
+| Current FDA Inspire indication expansion (AHI 15-100, BMI ≤40, PAP/BiPAP intolerance required) | U.S. Food and Drug Administration. "Inspire Upper Airway Stimulation – P130008/S090." Approved June 8, 2023. | HGNS gating: AHI 15-100 (Inspire), documented PAP failure/intolerance required. CCC is an **Inspire-specific** (unilateral) contraindication only — **not** an absolute HGNS exclusion (see Genio rows). |
+| Concentric palatal collapse contraindicates the **unilateral** Inspire device | Strollo PJ, et al. "Upper-Airway Stimulation for OSA." *N Engl J Med.* 2014;370(2):139-49. (STAR — CCC excluded from trial) | DISE check: velar CCC → contraindicates Inspire; route to bilateral stimulation (Genio) instead of excluding nerve stim (`buildHGNSAssessment`, `mapTreatments`, candidacy badges) |
+| **Bilateral HGNS (Genio / Nyxoah) is indicated for complete concentric collapse (CCC)** | Eastwood PR, Bennett KE, Walsh JH, et al. "Bilateral hypoglossal nerve stimulation for treatment of adult OSA." *Eur Respir J.* 2020;55(1):1901320 (BETTER SLEEP, foundational bilateral HGNS); Nyxoah ACCCESS pivotal trial (NCT05592002) + BETTER SLEEP "with and without CCC" (NCT03763682) + CE-mark CCC indication. ENT review 2026-06-13. | CCC no longer hard-blocks nerve stim: CCC patients are routed to the bilateral Genio device (FDA AHI range 15–65) rather than excluded (`buildHGNSAssessment`, `mapTreatments`, candidacy badges, patient report) |
+| **BMI > 40 excludes ALL hypoglossal nerve stimulation devices** | No FDA-approved HGNS device (Inspire P130008 or Genio) is indicated above BMI 40; payer criteria are frequently stricter. ENT review 2026-06-13. | Hard exclusion: BMI > 40 → no INSPIRE-EVAL/HNS rec emitted and HGNS card marks "not a candidate"; weight reduction to ≤ 40 required first (`js/config.js` `hgns.bmiMax`, `mapTreatments`, `buildHGNSAssessment`) |
 | HNS evaluation criteria and outcomes | Kent DT, et al. "Evaluation of HNS Treatment in OSA." *JAMA Otolaryngol.* 2019;145(11):1044-1052. | HNS recommendation logic |
 | Endotypic predictors of HGNS response | Op de Beeck S, Wellman A, Dieltjens M, et al. "Endotypic Mechanisms of Successful Hypoglossal Nerve Stimulation for OSA." *Am J Respir Crit Care Med.* 2021;203(6):746-755. | Higher arousal threshold and higher muscle compensation predict HGNS response; low ArTH / low muscle compensation are cautionary, not favorable |
 
@@ -194,7 +196,7 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | DISE-guided surgery outcomes — systematic review | Shah SJ, et al. "Association Between DISE Findings and Surgical Outcomes." *Otolaryngol Head Neck Surg.* 2025;:ohn.70018. | DISE-guided surgical routing validation |
-| DISE surgical failure predictors — meta-analysis | Qi Y, et al. "Surgical Failure Guided by DISE." *Eur Arch Otorhinolaryngol.* 2024;281(7):3333-3343. | Concentric collapse contraindication evidence |
+| DISE surgical failure predictors — meta-analysis | Qi Y, et al. "Surgical Failure Guided by DISE." *Eur Arch Otorhinolaryngol.* 2024;281(7):3333-3343. | Concentric collapse predicts **soft-tissue surgery** failure (and contraindicates unilateral Inspire); does **not** exclude bilateral HGNS (Genio) |
 
 ## Endotype-Treatment Matching
 

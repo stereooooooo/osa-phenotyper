@@ -128,10 +128,18 @@ const PROFILES = [
   { id:36, name:'Obese OSA without anatomical phenotype', f:{age:'45',sex:'M',bmi:'33',pahi:'12',ess:'10',isi:'5',tonsils:'1',ftp:'II',neck:'15'}, c:[] },
   // Coverage: Poor Muscle Responsiveness (AHI>=15, REM/NREM>2, NREM>=15 — distinct from REM-predominant where NREM<15)
   { id:37, name:'Poor muscle responsiveness',  f:{age:'50',sex:'M',bmi:'30',pahi:'40',ess:'14',isi:'5',remPahi:'40',nremPahi:'18'}, c:[] },
+  // Group 9: Nerve-stimulation candidacy with CCC / BMI gating (2026-06-18 behavior change).
+  // Both carry a COMPLETE workup (DISE deg+pattern, anatomy, staging) so the HNS/anatomy
+  // workup caveats do NOT fire and the candidacy rec survives to the tag list.
+  // #38: velar CCC at BMI ≤ 40 — CCC no longer blocks; routes to bilateral device (Genio) → INSPIRE-EVAL present.
+  { id:38, name:'CCC velar candidate (Genio)',  f:{age:'52',sex:'M',bmi:'30',pahi:'28',ess:'14',isi:'5',tonsils:'2',ftp:'II',neck:'15.5',vDeg:'2',vPat:'Concentric',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','prefInspire'] },
+  // #39: BMI > 40 with full workup and Inspire interest — nerve stim excluded entirely (no device available) → no HNS/INSPIRE-EVAL/HNS-WORKUP.
+  { id:39, name:'Nerve-stim excluded (BMI>40)',  f:{age:'52',sex:'M',bmi:'42',pahi:'40',ess:'16',isi:'5',tonsils:'2',ftp:'II',neck:'17',vDeg:'1',vPat:'AP',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','prefInspire'] },
 ];
 
 /* ── Golden baseline ───────────────────────────────────────────────────────
-   Captured from the current engine (2026-06-11). These are the locked
+   Captured from the current engine (2026-06-11; profiles 38–39 added 2026-06-18
+   for the CCC/Genio + BMI>40 nerve-stim gating change). These are the locked
    phenotype + ordered recommendation-tag outputs for each profile. A
    behavior-preserving refactor must reproduce these exactly; a clinical
    change is expected to update this block deliberately (re-capture). */
@@ -173,6 +181,11 @@ const PHENOTYPE_BASELINE = {
   35: { phen: [], tags: ["CPAP", "MAD-FAVORABLE", "MILD-LIFESTYLE", "MAD-WORKUP"] },
   36: { phen: [], tags: ["CPAP", "WEIGHT", "MAD-FAVORABLE", "MILD-LIFESTYLE", "MAD-WORKUP"] },
   37: { phen: ["Poor Muscle Responsiveness"], tags: ["CPAP", "WEIGHT", "OXYGEN-WORKUP", "POSITION-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
+  // Group 9 (2026-06-18): nerve-stim CCC/BMI gating change. CCC no longer blocks
+  // stimulation (routes to bilateral Genio) → #38 keeps INSPIRE-EVAL; BMI > 40 excludes
+  // nerve stim entirely → #39 has no HNS/INSPIRE-EVAL/HNS-WORKUP despite a complete workup.
+  38: { phen: [], tags: ["CPAP", "WEIGHT", "SURG", "INSPIRE-EVAL", "MAD", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
+  39: { phen: ["High Anatomical Contribution"], tags: ["CPAP", "WEIGHT", "SURG", "CPAP-ALT", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
 };
 
 function applyProfile(win, doc, p) {

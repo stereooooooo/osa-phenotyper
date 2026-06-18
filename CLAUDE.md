@@ -43,13 +43,13 @@ High Anatomical Contribution, Low Arousal Threshold, High Loop Gain, Poor Muscle
 - **Hypoxic Burden uses composite tiering**: worst of HB area/hr, ODI, T90, nadir SpO₂. Thresholds: HB <30/30-60/>60, ODI <20/20-50/>50, T90 <5%/5-20%/>20%, nadir only severe at <75%.
 - **Friedman Stage** auto-calculated from FTP + tonsils + BMI. Stage I → strong UPPP candidate. Stage III → suppress UPPP, recommend tongue base/HNS/MMA.
 - **MAD candidacy scoring** based on severity, BMI, sex, neck, positional, retrognathia, loop gain, HB. Three tiers: favorable/standard/poor.
-- **HNS (Inspire) staging** per Ji 2026: neck + BMI + AHI → response prediction (91%→38%). DISE concentric collapse = contraindication.
+- **HNS staging** per Ji 2026: neck + BMI + AHI → response prediction (91%→38%). DISE complete concentric collapse (CCC) is an **Inspire-specific** (unilateral) contraindication only — it does NOT exclude nerve stimulation: bilateral HGNS (Genio/Nyxoah) is indicated for CCC, so CCC routes the patient to Genio rather than blocking stim.
 - **COMISA** (ISI ≥15 + AHI ≥5): CBT-I prioritized before CPAP (Sweetman 2019).
 - **Pre-study patients** (no sleep study): only get sleep study rec + CBT-I if insomnia + nasal if obstruction. No OSA treatment recs.
 - **Normal AHI (<5)**: phenotypes suppressed. Snoring pathway + UARS detection if symptomatic.
 - **UARS detection**: AHI <5 + symptoms + (RDI > 1.5×AHI ≥10 OR arousal index ≥15) → recommend in-lab PSG.
 - **Weight management** recs include GLP-1 agonists (Zepbound/tirzepatide). Only for BMI ≥30 (weight loss what-if shows at BMI ≥27).
-- **Inspire BMI >40**: still mention Inspire but note BMI must get under 40 + insurance payer variation.
+- **Nerve stim BMI >40**: excluded entirely — no device (Inspire or Genio) is available above BMI 40, so no `HNS`/`INSPIRE-EVAL` rec is emitted and the HGNS card marks "not a candidate". Below 40, insurance payer criteria vary (may be stricter).
 
 ## Patient Report Structure
 Conditional sections based on data presence:
