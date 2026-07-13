@@ -36,7 +36,7 @@
     const btn = document.getElementById('homeCreateBtn');
     btn.disabled = true; btn.textContent = 'Creating…';
     try {
-      const patient = await window.OSAWorkspace.createPatient({ name, dob });
+      const { patient } = await window.OSAWorkspace.createPatient({ name, dob });
       result.innerHTML = `
         <div class="alert alert-success py-2 small mb-2">Patient chart created.</div>
         <button type="button" id="homeOpenChart" class="btn btn-outline-primary btn-sm w-100">Open chart</button>`;

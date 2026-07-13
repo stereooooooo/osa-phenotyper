@@ -70,8 +70,13 @@ async function run() {
   assert(!doc.getElementById('btnPortalLink'), 'Patient portal control is absent');
   assert(!doc.getElementById('btnPublishPatientPortal'), 'Patient portal publishing is absent');
 
-  setValue(win, '#patientName', 'Workflow QA Patient');
-  setValue(win, '#patientDob', '1984-03-12');
+  setValue(win, '#homeNewName', 'Workflow QA Patient');
+  setValue(win, '#homeNewDob', '1984-03-12');
+  click(win, '#homeCreateBtn');
+  await waitFor(() => doc.getElementById('homeOpenChart'), 'home chart creation');
+  click(win, '#homeOpenChart');
+  await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'home-created chart opens');
+  assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Home-created chart opens with its identity data');
   setValue(win, '#patientMrn', 'WF-001');
   setValue(win, '[name="age"]', '42');
   setValue(win, '[name="sex"]', 'M');
