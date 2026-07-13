@@ -42,7 +42,16 @@ resolve_api_origin_secret() {
       --query "Stacks[0].Parameters[?ParameterKey=='ApiOriginSecret'].ParameterValue | [0]" \
       --output text)
   fi
-  if [ -n "${existing_secret}" ] && [ "${existing_secret}" != "None" ]; then
+  # CloudFormation masks NoEcho parameter values as ****. On updates, recover the
+  # active value from the Lambda environment so CloudFront and Lambda stay in sync.
+  if [ "${existing_secret}" = "****" ]; then
+    existing_secret=$(aws lambda get-function-configuration \
+      --function-name "osa-patients-api-${CLINIC}" \
+      --region "${REGION}" \
+      --query 'Environment.Variables.ORIGIN_VERIFY_SECRET' \
+      --output text 2>/dev/null || true)
+  fi
+  if [ -n "${existing_secret}" ] && [ "${existing_secret}" != "None" ] && [ "${#existing_secret}" -ge 32 ]; then
     API_ORIGIN_SECRET="${existing_secret}"
   else
     API_ORIGIN_SECRET=$(openssl rand -hex 32)

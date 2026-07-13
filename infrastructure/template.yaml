@@ -231,6 +231,31 @@ Resources:
         QueryStringsConfig:
           QueryStringBehavior: all
 
+  WebAppSecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub 'osa-security-headers-${ClinicName}'
+        Comment: Security headers for the clinician-only OSA application
+        SecurityHeadersConfig:
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: no-referrer
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: true
+            Preload: true
+            Override: true
+          XSSProtection:
+            ModeBlock: true
+            Protection: true
+            Override: true
+
   # ─── Cognito User Pool ──────────────────────────────────────
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -543,6 +568,7 @@ Resources:
             - OPTIONS
           Compress: true
           CachePolicyId: !Ref WebAppStaticCachePolicy
+          ResponseHeadersPolicyId: !Ref WebAppSecurityHeadersPolicy
         CacheBehaviors:
           - PathPattern: patients*
             TargetOriginId: ApiOrigin
