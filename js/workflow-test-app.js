@@ -75,22 +75,14 @@
   ensureBootstrapStub();
 
   const store = new Map();
-  const PORTAL_STATE_KEY = 'osaWorkflowPortalState';
   let patientSeq = 1;
   let snapshotSeq = 1;
-  let tokenSeq = 1;
 
   function patientClone(patient) {
     return clone(patient);
   }
 
-  function persistPortalState() {
-    try {
-      window.localStorage.setItem(PORTAL_STATE_KEY, JSON.stringify({
-        patients: [...store.values()].map(patientClone),
-      }));
-    } catch (_) {}
-  }
+  function persistTestState() {}
 
   function getPatientOrThrow(id) {
     const patient = store.get(id);
@@ -175,9 +167,6 @@
       fieldProvenanceHistory: {},
       reportSnapshots: [],
       reportSnapshotCount: 0,
-      patientPortalPublication: null,
-      intakeTokens: [],
-      portalTokens: [],
       isDeleted: false,
       deletedAt: null,
     };
@@ -203,39 +192,15 @@
     };
   }
 
-  function buildPortalPublication(portalPublication, updatedAt) {
-    const analysisData = clone((portalPublication && portalPublication.analysisData) || {});
-    const patientName = (portalPublication && portalPublication.patientName) || analysisData.patientName || '';
-    return {
-      publicationId: `publication-${snapshotSeq++}`,
-      publishedAt: updatedAt,
-      publishedBy: actor(),
-      reportDate: (portalPublication && portalPublication.reportDate) || analysisData.reportDate || '',
-      patientName,
-      patientFirstName: String(patientName || 'Patient').split(',').pop().trim().split(/\s+/)[0] || 'Patient',
-      stage: analysisData.primaryAHI === null || analysisData.primaryAHI === undefined ? 'pre-study' : 'post-study',
-      severity: analysisData.severity || '',
-      primaryAHI: analysisData.primaryAHI ?? null,
-      summary: analysisData.primaryAHI === null || analysisData.primaryAHI === undefined
-        ? 'Initial sleep evaluation'
-        : `Reviewed report | AHI ${analysisData.primaryAHI}`,
-      patientReportHtml: (portalPublication && portalPublication.patientReportHtml) || '',
-      schemaVersion: 1,
-    };
-  }
-
   const workflowDb = {
     init() {},
-    async listPatients(includeArchived) {
-      return listStorePatients(includeArchived);
-    },
     async getPatient(id) {
       return patientClone(getPatientOrThrow(id));
     },
     async createPatient(data) {
       const patient = createBasePatient(data || {});
       store.set(patient.patientId, patient);
-      persistPortalState();
+      persistTestState();
       return patientClone(patient);
     },
     async updatePatient(id, data) {
@@ -251,7 +216,7 @@
         patient.deletedAt = null;
         patient.updatedAt = updatedAt;
         patient.version += 1;
-        persistPortalState();
+        persistTestState();
         return patientClone(patient);
       }
 
@@ -259,10 +224,6 @@
         const snapshot = buildSnapshot(data.reportSnapshot || {}, updatedAt);
         patient.reportSnapshots = [...(patient.reportSnapshots || []), snapshot].slice(-10);
         patient.reportSnapshotCount = patient.reportSnapshots.length;
-      }
-
-      if (data && data.portalPublication !== undefined) {
-        patient.patientPortalPublication = buildPortalPublication(data.portalPublication || {}, updatedAt);
       }
 
       if (data && Object.prototype.hasOwnProperty.call(data, 'name')) patient.name = data.name || '';
@@ -276,7 +237,7 @@
 
       patient.updatedAt = updatedAt;
       patient.version += 1;
-      persistPortalState();
+      persistTestState();
       return patientClone(patient);
     },
     async reviewIntakeChanges(id, version, review) {
@@ -319,7 +280,7 @@
         note: (review && review.note) || '',
         resolutions: clone(resolutions),
       });
-      persistPortalState();
+      persistTestState();
       return patientClone(patient);
     },
     async restorePatient(id) {
@@ -331,7 +292,7 @@
       patient.deletedAt = nowIso();
       patient.updatedAt = patient.deletedAt;
       patient.version += 1;
-      persistPortalState();
+      persistTestState();
       return patientClone(patient);
     },
     async searchPatients(query, includeArchived) {
@@ -342,64 +303,7 @@
           .some(value => String(value).toLowerCase().includes(needle));
       });
       const exactNameMatches = patients.filter((patient) => String(patient.name || '').trim().toLowerCase() === needle);
-      return exactNameMatches.length ? exactNameMatches : patients;
-    },
-    async createIntakeToken(patientId) {
-      const patient = getPatientOrThrow(patientId);
-      const issuedAt = nowIso();
-      const expiresAt = new Date(Date.now() + (72 * 60 * 60 * 1000)).toISOString();
-      const token = `workflow-token-${tokenSeq++}`;
-      const record = {
-        token,
-        tokenHash: `workflow-hash-${token}`,
-        issuedAt,
-        expiresAt,
-        usedAt: null,
-      };
-      patient.intakeTokens.push(record);
-      persistPortalState();
-      return { token, expiresAt };
-    },
-    async listIntakeTokens(patientId) {
-      return clone(getPatientOrThrow(patientId).intakeTokens || []);
-    },
-    async revokeIntakeToken(tokenHash) {
-      store.forEach((patient) => {
-        patient.intakeTokens = (patient.intakeTokens || []).filter(token => token.tokenHash !== tokenHash);
-      });
-      persistPortalState();
-      return { ok: true };
-    },
-    async createPortalToken(patientId) {
-      const patient = getPatientOrThrow(patientId);
-      const issuedAt = nowIso();
-      const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
-      const token = `workflow-portal-token-${tokenSeq++}`;
-      const record = {
-        token,
-        tokenHash: `workflow-hash-${token}`,
-        issuedAt,
-        createdAt: issuedAt,
-        expiresAt,
-        usedAt: null,
-        status: 'active',
-      };
-      patient.portalTokens.push(record);
-      persistPortalState();
-      return { token, expiresAt };
-    },
-    async listPortalTokens(patientId) {
-      return clone(getPatientOrThrow(patientId).portalTokens || []);
-    },
-    async revokePortalToken(tokenHash) {
-      store.forEach((patient) => {
-        patient.portalTokens = (patient.portalTokens || []).map((token) => {
-          if (token.tokenHash !== tokenHash) return token;
-          return { ...token, status: 'revoked' };
-        });
-      });
-      persistPortalState();
-      return { ok: true };
+      return (exactNameMatches.length ? exactNameMatches : patients).slice(0, 10);
     },
   };
 
@@ -436,8 +340,6 @@
       store.clear();
       patientSeq = 1;
       snapshotSeq = 1;
-      tokenSeq = 1;
-      try { window.localStorage.removeItem(PORTAL_STATE_KEY); } catch (_) {}
     },
     injectPendingIntake(id, overrides) {
       const patient = getPatientOrThrow(id);
@@ -461,10 +363,10 @@
       patient.intakeStatus = patient.intakePendingFieldCount ? 'review-needed' : patient.intakeStatus;
       patient.intakeReceivedAt = updatedAt;
       patient.updatedAt = updatedAt;
-      persistPortalState();
+      persistTestState();
       return patientClone(patient);
     },
   };
 
-  persistPortalState();
+  persistTestState();
 })();

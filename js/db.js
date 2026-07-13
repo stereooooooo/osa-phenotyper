@@ -47,11 +47,6 @@ const OSADatabase = (function () {
 
   /* ── CRUD Operations ─────────────────────────────────────── */
 
-  async function listPatients(includeArchived = false) {
-    const suffix = includeArchived ? '?includeArchived=true' : '';
-    return apiFetch(`/patients${suffix}`);
-  }
-
   async function getPatient(id) {
     return apiFetch(`/patients/${encodeURIComponent(id)}`);
   }
@@ -96,62 +91,6 @@ const OSADatabase = (function () {
   async function searchPatients(query, includeArchived = false) {
     const archivedParam = includeArchived ? '&includeArchived=true' : '';
     return apiFetch(`/patients/search?q=${encodeURIComponent(query)}${archivedParam}`);
-  }
-
-  /* ── Intake Token Operations ─────────────────────────────── */
-
-  /**
-   * Generate a single-use intake link for a patient.
-   * Returns { token, expiresAt }.
-   */
-  async function createIntakeToken(patientId) {
-    return apiFetch('/intake-tokens', {
-      method: 'POST',
-      body: JSON.stringify({ patientId }),
-    });
-  }
-
-  /**
-   * Generate a long-lived patient portal link for a patient.
-   * Returns { token, expiresAt }.
-   */
-  async function createPortalToken(patientId) {
-    return apiFetch('/portal-tokens', {
-      method: 'POST',
-      body: JSON.stringify({ patientId }),
-    });
-  }
-
-  /**
-   * List active/used/expired tokens for a patient (for revocation UI).
-   */
-  async function listIntakeTokens(patientId) {
-    return apiFetch(`/intake-tokens/${encodeURIComponent(patientId)}`);
-  }
-
-  /**
-   * List active/used/revoked portal tokens for a patient.
-   */
-  async function listPortalTokens(patientId) {
-    return apiFetch(`/portal-tokens/${encodeURIComponent(patientId)}`);
-  }
-
-  /**
-   * Revoke an active intake token.
-   */
-  async function revokeIntakeToken(tokenHash) {
-    return apiFetch(`/intake-tokens/${encodeURIComponent(tokenHash)}`, {
-      method: 'DELETE',
-    });
-  }
-
-  /**
-   * Revoke an active patient portal token.
-   */
-  async function revokePortalToken(tokenHash) {
-    return apiFetch(`/portal-tokens/${encodeURIComponent(tokenHash)}`, {
-      method: 'DELETE',
-    });
   }
 
   /* ── Form Data Helpers ───────────────────────────────────── */
@@ -216,7 +155,6 @@ const OSADatabase = (function () {
 
   return {
     init,
-    listPatients,
     getPatient,
     createPatient,
     updatePatient,
@@ -224,12 +162,6 @@ const OSADatabase = (function () {
     restorePatient,
     deletePatient,
     searchPatients,
-    createIntakeToken,
-    createPortalToken,
-    listIntakeTokens,
-    listPortalTokens,
-    revokeIntakeToken,
-    revokePortalToken,
     serializeForm,
     populateForm,
   };

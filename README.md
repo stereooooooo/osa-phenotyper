@@ -1,40 +1,43 @@
+# OSA Phenotyper — Clinician-Only Edition
 
-# OSA Phenotyper v8 – requested quick‑adds
+This branch is the internal Capital ENT version of the OSA clinical decision-support app. It preserves the full phenotyping, recommendation, chart, and patient-report workflow while removing every patient-accessible web surface.
 
-### New inputs
-* **Cardiovascular disease** (yes/no) under Medical History.
-* **Snoring Index** (events/hr) in WatchPAT section.
+## Security boundary
 
-### New logic / messaging
-* **High Hypoxic Burden** phenotype now shows a blue card in the Patient Summary with CV‑risk language and CPAP‑urgency bullet.  
-  *Triggered when Min SpO₂ < 85 % or ODI ≥ 40 (simple proxy until full HB calculator arrives).*
-* **Symptom subtype** derived from questionnaires:  
-  *Sleepy* (ESS ≥ 15) → extra counselling sentence.  
-  *Disturbed‑sleep* (ISI ≥ 15).  
-  *Minimally Symptomatic* otherwise.
+- Cognito sign-in with mandatory software-token MFA
+- Membership in `osa-clinician` or `osa-admin` required for every API route
+- No public intake, magic-link, or patient-portal endpoints
+- No bulk patient roster API; staff must search by name prefix, exact MRN, or exact DOB
+- Search responses are limited to 10 charts and never use a DynamoDB table scan
+- Individual chart reads and searches produce PHI-free audit events
+- CloudFront injects an origin-verification secret, so the API Gateway hostname cannot be used to bypass the edge controls
+- DynamoDB and long-retention audit logs use KMS encryption; point-in-time recovery remains enabled
 
-### No HB or ΔHR calculators yet — placeholders only.
+The generated patient report remains available as a PDF. Staff can deliver it through the EHR or another Capital ENT-approved communication process after documenting patient approval. The app itself does not email patients.
 
-### Chart governance hardening
-* **Archived patients can now be restored** by admins from the patient list.
-* **Field provenance** is tracked on saved chart data so clinicians can see whether values came from manual chart entry, patient intake, or a pending intake conflict.
-* **Patient report snapshots** can be saved into the chart as frozen artifacts with hash metadata and replayed later from snapshot history.
+See [docs/clinician-only-architecture.md](docs/clinician-only-architecture.md) for the architecture, operational controls, and production checklist.
 
-### Regression testing
-* **Executable browser harness:** run `tests/run-headless-suite.sh` to start a local static server, execute both the core regression suite and the multi-step workflow smoke suite in headless Chrome, and fail fast if any assertions break.
-* **Source-of-truth matrix:** scenario coverage is tracked in `docs/test-matrix.md`, with the latest smoke-test outcomes in `docs/test-matrix-results.md`.
-* **CI hook:** `.github/workflows/regression-harness.yml` runs the same headless browser harness on `main`, pull requests, and manual workflow dispatches.
-* **Local workflow test mode:** `tests/workflow-smoke.html` drives the real `index.html` and `intake.html` surfaces on localhost using a safe in-memory auth/DB shim, so save/load/review/snapshot/intake-submit paths can be exercised without AWS.
+## Local development
 
-### Pilot-readiness safeguards
-* **Visible runtime labeling:** the clinician app and intake page now render environment/build metadata plus a non-production banner so staging, pilot, workflow-test, and local sessions are clearly distinguishable from production.
-* **Deploy-time metadata injection:** `infrastructure/deploy.sh` now writes environment label, build ID, deploy time, and stack context into the runtime config / intake page during deployment.
+Serve the repository on localhost and open `index.html`. The project is vanilla JavaScript and has no build step.
 
-### Patient portal MVP
-* **Clinician-published patient page:** clinicians can now publish the currently reviewed patient report into a dedicated patient-facing portal view instead of exposing the live chart.
-* **Separate patient page links:** patient page links are generated independently from intake links and always resolve to the latest clinician-published version.
-* **Public read-only portal page:** `portal.html` renders only clinician-published content, never draft clinician chart state, and can later be extended with interactive education modules.
+```sh
+npx serve . -l 3000
+```
 
-### Pilot launch docs
-* **Pilot checklist:** `docs/pilot-go-live-checklist.md` is the concrete pre-patient checklist for the first supervised live pilot day.
-* **Production hosting plan:** `docs/production-hosting-plan.md` maps the AWS / CloudFront / WAF / domain work needed to move from staging validation to a real production-hosted deployment.
+Run lint and the browser regression suites before deployment:
+
+```sh
+npm run lint
+bash tests/run-headless-suite.sh
+```
+
+## AWS deployment
+
+The CloudFormation stack provisions the private S3/CloudFront application, Cognito, API Gateway, Lambda, DynamoDB, KMS, WAF, CloudTrail, and CloudWatch resources. The deployment script creates or reuses the CloudFront-to-API origin secret and publishes only the clinician application.
+
+```sh
+./infrastructure/deploy.sh admin@capitalent.com us-east-2 capital-ent-prod https://osa.example.com
+```
+
+Deployment alone does not establish HIPAA compliance. Capital ENT must also complete the documented risk analysis, workforce access procedures, incident response, device controls, backups/restore tests, and vendor/BAA review.

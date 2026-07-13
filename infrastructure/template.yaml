@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: OSA Phenotyper - HIPAA-compliant patient database infrastructure
+Description: OSA Phenotyper - clinician-only HIPAA security architecture
 
 Parameters:
   ClinicName:
@@ -25,6 +25,11 @@ Parameters:
     Type: String
     Default: ''
     Description: Optional CloudFront-scope WAF Web ACL ARN (must be created in us-east-1)
+  ApiOriginSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: Shared secret CloudFront adds to API origin requests to prevent direct API endpoint bypass
 
 Conditions:
   UseCloudFrontWebAcl: !Not [!Equals [!Ref CloudFrontWebAclArn, '']]
@@ -104,6 +109,8 @@ Resources:
           AttributeType: S
         - AttributeName: nameSearchBucket
           AttributeType: S
+        - AttributeName: dob
+          AttributeType: S
       KeySchema:
         - AttributeName: patientId
           KeyType: HASH
@@ -128,35 +135,9 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-
-  IntakeTokenTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      TableName: !Sub 'osa-intake-tokens-${ClinicName}'
-      BillingMode: PAY_PER_REQUEST
-      SSESpecification:
-        SSEEnabled: true
-        SSEType: KMS
-        KMSMasterKeyId: !Ref EncryptionKey
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
-      AttributeDefinitions:
-        - AttributeName: tokenHash
-          AttributeType: S
-        - AttributeName: patientId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: tokenHash
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: patient-index
+        - IndexName: dob-index
           KeySchema:
-            - AttributeName: patientId
+            - AttributeName: dob
               KeyType: HASH
           Projection:
             ProjectionType: ALL
@@ -366,23 +347,9 @@ Resources:
                   - 'dynamodb:PutItem'
                   - 'dynamodb:UpdateItem'
                   - 'dynamodb:Query'
-                  - 'dynamodb:Scan'
                 Resource:
                   - !GetAtt PatientTable.Arn
                   - !Sub '${PatientTable.Arn}/index/*'
-        - PolicyName: TokenTableAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'dynamodb:PutItem'
-                  - 'dynamodb:GetItem'
-                  - 'dynamodb:UpdateItem'
-                  - 'dynamodb:Query'
-                Resource:
-                  - !GetAtt IntakeTokenTable.Arn
-                  - !Sub '${IntakeTokenTable.Arn}/index/*'
         - PolicyName: KMSAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -401,62 +368,6 @@ Resources:
                   - 'cognito-idp:AdminListGroupsForUser'
                 Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}'
 
-  # ─── Intake Lambda Execution Role (least-privilege) ─────────
-  IntakeLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub 'osa-intake-lambda-${ClinicName}'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-      Policies:
-        - PolicyName: TokenTableAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'dynamodb:GetItem'
-                  - 'dynamodb:UpdateItem'
-                Resource:
-                  - !GetAtt IntakeTokenTable.Arn
-                  - !Sub '${IntakeTokenTable.Arn}/index/*'
-        - PolicyName: PatientTableLimitedAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'dynamodb:GetItem'
-                  - 'dynamodb:UpdateItem'
-                Resource:
-                  - !GetAtt PatientTable.Arn
-        - PolicyName: IntakeTransactionalWriteAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'dynamodb:TransactWriteItems'
-                Resource:
-                  - !GetAtt PatientTable.Arn
-                  - !GetAtt IntakeTokenTable.Arn
-        - PolicyName: KMSAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'kms:Decrypt'
-                  - 'kms:GenerateDataKey'
-                Resource: !GetAtt EncryptionKey.Arn
-
   # ─── Lambda Functions ───────────────────────────────────────
   PatientApi:
     Type: AWS::Lambda::Function
@@ -470,27 +381,11 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref PatientTable
-          TOKEN_TABLE: !Ref IntakeTokenTable
+          ORIGIN_VERIFY_SECRET: !Ref ApiOriginSecret
           USER_POOL_ID: !Ref UserPool
           ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
           ADMIN_GROUP_NAME: !Ref AdminGroupName
           CLINICIAN_GROUP_NAME: !Ref ClinicianGroupName
-      Code: lambda/
-
-  IntakeLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub 'osa-intake-api-${ClinicName}'
-      Runtime: nodejs22.x
-      Handler: intake.handler
-      Role: !GetAtt IntakeLambdaRole.Arn
-      Timeout: 10
-      MemorySize: 256
-      Environment:
-        Variables:
-          PATIENT_TABLE: !Ref PatientTable
-          TOKEN_TABLE: !Ref IntakeTokenTable
-          ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
       Code: lambda/
 
   # ─── API Gateway (HTTP API) ─────────────────────────────────
@@ -533,24 +428,7 @@ Resources:
       IntegrationUri: !GetAtt PatientApi.Arn
       PayloadFormatVersion: '2.0'
 
-  IntakeLambdaIntegration:
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref HttpApi
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt IntakeLambda.Arn
-      PayloadFormatVersion: '2.0'
-
   # Routes — Patient CRUD (Cognito-authorized)
-  RouteGetPatients:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'GET /patients'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
   RouteGetPatient:
     Type: AWS::ApiGatewayV2::Route
     Properties:
@@ -596,86 +474,6 @@ Resources:
       AuthorizerId: !Ref HttpApiAuthorizer
       Target: !Sub 'integrations/${LambdaIntegration}'
 
-  # Routes — Patient Intake (public, token-validated in Lambda)
-  RouteGetIntake:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'GET /intake/{token}'
-      AuthorizationType: NONE
-      Target: !Sub 'integrations/${IntakeLambdaIntegration}'
-
-  RoutePostIntake:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'POST /intake/{token}'
-      AuthorizationType: NONE
-      Target: !Sub 'integrations/${IntakeLambdaIntegration}'
-
-  RouteGetPatientPortal:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'GET /patient-portal/{token}'
-      AuthorizationType: NONE
-      Target: !Sub 'integrations/${IntakeLambdaIntegration}'
-
-  # Routes — Token Management (Cognito-authorized, clinician-facing)
-  RouteCreateIntakeToken:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'POST /intake-tokens'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
-  RouteGetIntakeTokens:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'GET /intake-tokens/{patientId}'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
-  RouteDeleteIntakeToken:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'DELETE /intake-tokens/{tokenHash}'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
-  RouteCreatePortalToken:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'POST /portal-tokens'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
-  RouteGetPortalTokens:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'GET /portal-tokens/{patientId}'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
-  RouteDeletePortalToken:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HttpApi
-      RouteKey: 'DELETE /portal-tokens/{tokenHash}'
-      AuthorizationType: JWT
-      AuthorizerId: !Ref HttpApiAuthorizer
-      Target: !Sub 'integrations/${LambdaIntegration}'
-
   HttpApiStage:
     Type: AWS::ApiGatewayV2::Stage
     Properties:
@@ -704,14 +502,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
 
-  IntakeLambdaApiPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref IntakeLambda
-      Action: 'lambda:InvokeFunction'
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
-
   WebAppDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -732,6 +522,9 @@ Resources:
             OriginAccessControlId: !GetAtt WebAppOriginAccessControl.Id
           - Id: ApiOrigin
             DomainName: !Select [2, !Split ['/', !GetAtt HttpApi.ApiEndpoint]]
+            OriginCustomHeaders:
+              - HeaderName: X-Origin-Verify
+                HeaderValue: !Ref ApiOriginSecret
             CustomOriginConfig:
               HTTPSPort: 443
               OriginProtocolPolicy: https-only
@@ -770,87 +563,11 @@ Resources:
             # AWS managed CachingDisabled policy
             CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
             OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
-          - PathPattern: intake-tokens*
-            TargetOriginId: ApiOrigin
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - POST
-              - PATCH
-              - DELETE
-            CachedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-            Compress: true
-            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
-            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
-          - PathPattern: portal-tokens*
-            TargetOriginId: ApiOrigin
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - POST
-              - PATCH
-              - DELETE
-            CachedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-            Compress: true
-            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
-            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
-          - PathPattern: intake/*
-            TargetOriginId: ApiOrigin
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - POST
-              - PATCH
-              - DELETE
-            CachedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-            Compress: true
-            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
-            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
-          - PathPattern: patient-portal/*
-            TargetOriginId: ApiOrigin
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-            CachedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-            Compress: true
-            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
-            OriginRequestPolicyId: !Ref WebAppApiOriginRequestPolicy
-
   # ─── CloudWatch Log Groups (HIPAA: ~7-year retention) ───────
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/osa-patients-api-${ClinicName}'
-      RetentionInDays: 2557
-      KmsKeyId: !GetAtt EncryptionKey.Arn
-
-  IntakeApiLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/osa-intake-api-${ClinicName}'
       RetentionInDays: 2557
       KmsKeyId: !GetAtt EncryptionKey.Arn
 
@@ -931,7 +648,6 @@ Resources:
             - Type: AWS::DynamoDB::Table
               Values:
                 - !GetAtt PatientTable.Arn
-                - !GetAtt IntakeTokenTable.Arn
 
 Outputs:
   ApiUrl:
@@ -957,14 +673,6 @@ Outputs:
   TableName:
     Description: DynamoDB table name
     Value: !Ref PatientTable
-
-  IntakeTokenTableName:
-    Description: Intake token DynamoDB table name
-    Value: !Ref IntakeTokenTable
-
-  IntakeLambdaName:
-    Description: Intake Lambda function name
-    Value: !Sub 'osa-intake-api-${ClinicName}'
 
   WebAppBucketName:
     Description: Private S3 bucket that stores the CloudFront-hosted web app

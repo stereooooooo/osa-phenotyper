@@ -11,7 +11,11 @@ const OSA_CONFIG = {
      disabled. The detection/confidence/threshold code is all retained — flip
      this to `true` to re-enable it when device support exists. */
   features: {
-    deltaHeartRate: false
+    deltaHeartRate: false,
+    clinicianOnly: true,
+    remoteIntake: false,
+    patientPortal: false,
+    bulkPatientList: false
   },
 
   /* ── Phenotype Detection & Confidence Thresholds ─────────────── */

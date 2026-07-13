@@ -27,6 +27,27 @@ WEB_ROOT="${SCRIPT_DIR}/.."
 WAF_REGION="us-east-1"
 WAF_NAME="osa-edge-waf-${CLINIC}"
 WAF_METRIC_PREFIX="osa-edge-${CLINIC}"
+API_ORIGIN_SECRET="${OSA_API_ORIGIN_SECRET:-}"
+
+resolve_api_origin_secret() {
+  if [ -n "${API_ORIGIN_SECRET}" ]; then
+    return
+  fi
+
+  local existing_secret=""
+  if aws cloudformation describe-stacks --stack-name "${STACK_NAME}" --region "${REGION}" >/dev/null 2>&1; then
+    existing_secret=$(aws cloudformation describe-stacks \
+      --stack-name "${STACK_NAME}" \
+      --region "${REGION}" \
+      --query "Stacks[0].Parameters[?ParameterKey=='ApiOriginSecret'].ParameterValue | [0]" \
+      --output text)
+  fi
+  if [ -n "${existing_secret}" ] && [ "${existing_secret}" != "None" ]; then
+    API_ORIGIN_SECRET="${existing_secret}"
+  else
+    API_ORIGIN_SECRET=$(openssl rand -hex 32)
+  fi
+}
 
 infer_deployment_environment() {
   local raw
@@ -103,7 +124,7 @@ write_cloudfront_waf_rules() {
   cat > "${WAF_RULES_FILE}" <<EOF
 [
   {
-    "Name": "RateLimitApiPaths",
+    "Name": "RateLimitPatientApi",
     "Priority": 1,
     "Action": { "Block": {} },
     "Statement": {
@@ -111,41 +132,11 @@ write_cloudfront_waf_rules() {
         "Limit": 100,
         "AggregateKeyType": "IP",
         "ScopeDownStatement": {
-          "OrStatement": {
-            "Statements": [
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/patients",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/intake-tokens",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/intake/",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/patient-portal/",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              }
-            ]
+          "ByteMatchStatement": {
+            "SearchString": "/patients",
+            "FieldToMatch": { "UriPath": {} },
+            "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+            "PositionalConstraint": "STARTS_WITH"
           }
         }
       }
@@ -153,11 +144,11 @@ write_cloudfront_waf_rules() {
     "VisibilityConfig": {
       "SampledRequestsEnabled": true,
       "CloudWatchMetricsEnabled": true,
-      "MetricName": "ApiRateLimit"
+      "MetricName": "PatientApiRateLimit"
     }
   },
   {
-    "Name": "AWSCommonRulesApiPaths",
+    "Name": "AWSCommonRulesPatientApi",
     "Priority": 2,
     "OverrideAction": { "None": {} },
     "Statement": {
@@ -165,51 +156,15 @@ write_cloudfront_waf_rules() {
         "VendorName": "AWS",
         "Name": "AWSManagedRulesCommonRuleSet",
         "RuleActionOverrides": [
-          {
-            "Name": "SizeRestrictions_BODY",
-            "ActionToUse": { "Count": {} }
-          },
-          {
-            "Name": "CrossSiteScripting_BODY",
-            "ActionToUse": { "Count": {} }
-          }
+          { "Name": "SizeRestrictions_BODY", "ActionToUse": { "Count": {} } },
+          { "Name": "CrossSiteScripting_BODY", "ActionToUse": { "Count": {} } }
         ],
         "ScopeDownStatement": {
-          "OrStatement": {
-            "Statements": [
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/patients",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/intake-tokens",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/intake/",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/patient-portal/",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              }
-            ]
+          "ByteMatchStatement": {
+            "SearchString": "/patients",
+            "FieldToMatch": { "UriPath": {} },
+            "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+            "PositionalConstraint": "STARTS_WITH"
           }
         }
       }
@@ -217,11 +172,11 @@ write_cloudfront_waf_rules() {
     "VisibilityConfig": {
       "SampledRequestsEnabled": true,
       "CloudWatchMetricsEnabled": true,
-      "MetricName": "AWSCommonRulesApi"
+      "MetricName": "AWSCommonRulesPatientApi"
     }
   },
   {
-    "Name": "AWSSQLiRulesApiPaths",
+    "Name": "AWSSQLiRulesPatientApi",
     "Priority": 3,
     "OverrideAction": { "None": {} },
     "Statement": {
@@ -229,41 +184,11 @@ write_cloudfront_waf_rules() {
         "VendorName": "AWS",
         "Name": "AWSManagedRulesSQLiRuleSet",
         "ScopeDownStatement": {
-          "OrStatement": {
-            "Statements": [
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/patients",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/intake-tokens",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/intake/",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              },
-              {
-                "ByteMatchStatement": {
-                  "SearchString": "/patient-portal/",
-                  "FieldToMatch": { "UriPath": {} },
-                  "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-                  "PositionalConstraint": "STARTS_WITH"
-                }
-              }
-            ]
+          "ByteMatchStatement": {
+            "SearchString": "/patients",
+            "FieldToMatch": { "UriPath": {} },
+            "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
+            "PositionalConstraint": "STARTS_WITH"
           }
         }
       }
@@ -271,7 +196,7 @@ write_cloudfront_waf_rules() {
     "VisibilityConfig": {
       "SampledRequestsEnabled": true,
       "CloudWatchMetricsEnabled": true,
-      "MetricName": "AWSSQLiRulesApi"
+      "MetricName": "AWSSQLiRulesPatientApi"
     }
   }
 ]
@@ -337,8 +262,6 @@ sync_static_site() {
     --delete \
     --exclude "*" \
     --include "index.html" \
-    --include "portal.html" \
-    --include "intake.html" \
     --include "css/*" \
     --include "js/*" \
     --include "img/*" \
@@ -354,6 +277,7 @@ echo "  Region      : ${REGION}"
 echo "  Clinic      : ${CLINIC}"
 echo "  Origins     : ${ALLOWED_ORIGINS}"
 echo "  Stack       : ${STACK_NAME}"
+resolve_api_origin_secret
 ensure_artifact_bucket_name
 echo "  Artifacts   : ${ARTIFACT_BUCKET}"
 echo "  Edge WAF    : ${WAF_NAME} (${WAF_REGION})"
@@ -386,6 +310,7 @@ aws cloudformation deploy \
     AdminEmail="${ADMIN_EMAIL}" \
     AllowedOrigins="${ALLOWED_ORIGINS}" \
     CloudFrontWebAclArn="${CLOUDFRONT_WAF_ARN}" \
+    ApiOriginSecret="${API_ORIGIN_SECRET}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "${REGION}" \
   --no-fail-on-empty-changeset
@@ -475,20 +400,6 @@ const AWS_CONFIG = {
 };
 window.AWS_CONFIG = AWS_CONFIG;
 EOF
-
-# Update intake page runtime URL + CSP connect-src origin
-INTAKE_FILE="${SCRIPT_DIR}/../intake.html"
-perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${APP_URL} ${API_URL}#g" "${INTAKE_FILE}"
-perl -0pi -e "s#data-api-url=\"[^\"]*\"#data-api-url=\"${APP_URL}\"#g" "${INTAKE_FILE}"
-perl -0pi -e "s#data-app-env=\"[^\"]*\"#data-app-env=\"${DEPLOYMENT_ENVIRONMENT}\"#g" "${INTAKE_FILE}"
-perl -0pi -e "s#data-app-env-label=\"[^\"]*\"#data-app-env-label=\"${DEPLOYMENT_LABEL}\"#g" "${INTAKE_FILE}"
-perl -0pi -e "s#data-build-id=\"[^\"]*\"#data-build-id=\"${BUILD_ID}\"#g" "${INTAKE_FILE}"
-perl -0pi -e "s#data-deployed-at=\"[^\"]*\"#data-deployed-at=\"${DEPLOYED_AT}\"#g" "${INTAKE_FILE}"
-
-# Update patient portal page CSP connect-src origin (portal reads its runtime config
-# from the regenerated aws-config.js, so only the CSP origin needs templating here)
-PORTAL_FILE="${SCRIPT_DIR}/../portal.html"
-perl -0pi -e "s#(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src )[^;]+#\${1}'self' ${APP_URL} ${API_URL}#g" "${PORTAL_FILE}"
 
 echo ""
 echo "[7/7] Publishing static app to CloudFront..."

@@ -95,8 +95,7 @@
     </a>
     <div class="d-flex align-items-center gap-2">
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnHome"><i class="bi bi-house"></i> Home</button>
-      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnReviewDashboard"><i class="bi bi-clipboard-data"></i> Review Queue</button>
-      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-people"></i> Patients</button>
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-search"></i> Find Patient</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New / clear</button>
       <span class="text-light small d-none d-md-inline ms-2" id="userEmail"></span>
       <button class="btn btn-sm btn-outline-light no-print" id="btnSignOut" title="Sign out"><i class="bi bi-box-arrow-right"></i></button>
@@ -109,210 +108,33 @@
 <!-- ===== Front-Desk Home View (populated by later task) ===== -->
 <div id="homeView" class="d-none container py-4" style="max-width: 880px;"></div>
 
-<!-- ===== Intake Review Dashboard Modal ===== -->
-<div class="modal fade" id="reviewDashboardModal" tabindex="-1" aria-labelledby="reviewDashboardLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="reviewDashboardLabel"><i class="bi bi-clipboard-data"></i> Intake Review Dashboard</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-3">
-        <div id="reviewDashboardLoading" class="text-center py-4">
-          <div class="spinner-border text-primary"></div>
-          <p class="small text-muted mt-2">Loading review queue...</p>
-        </div>
-        <div id="reviewDashboardEmpty" class="text-center py-4 d-none">
-          <i class="bi bi-check2-circle text-success" style="font-size:2rem;"></i>
-          <p class="text-muted mt-2 mb-0">No intake charts currently need review.</p>
-        </div>
-        <div id="reviewDashboardContent" class="d-none">
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <div class="card border-warning h-100">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase">Needs Review</div>
-                  <div class="display-6 mb-1" id="reviewDashboardCountNeeded">0</div>
-                  <div class="small text-muted">Charts with pending intake conflicts that need a clinician decision.</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="card border-success h-100">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase">Intake Received</div>
-                  <div class="display-6 mb-1" id="reviewDashboardCountReceived">0</div>
-                  <div class="small text-muted">Completed intake submissions with no pending chart conflicts.</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="card border-secondary h-100">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase">Pending Intake Links</div>
-                  <div class="display-6 mb-1" id="reviewDashboardCountPending">0</div>
-                  <div class="small text-muted">Patients who still have an intake link outstanding or incomplete.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Patient</th>
-                  <th>MRN</th>
-                  <th>Intake Status</th>
-                  <th>Pending Fields</th>
-                  <th>Received</th>
-                  <th>Last Updated</th>
-                  <th class="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="reviewDashboardBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Intake Link Modal ===== -->
-<div class="modal fade" id="intakeLinkModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-link-45deg"></i> Patient Intake Link</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Generate view -->
-        <div id="intakeGenerate">
-          <p class="small text-muted mb-3">Generate a secure, single-use link for the patient to complete their sleep questionnaire online. The link expires in 72 hours.</p>
-          <button type="button" class="btn btn-primary w-100" id="btnGenerateIntakeLink">
-            <i class="bi bi-plus-circle"></i> Generate New Link
-          </button>
-        </div>
-        <!-- Link display view -->
-        <div id="intakeLinkDisplay" class="d-none">
-          <div class="alert alert-success small">
-            <i class="bi bi-check-circle-fill"></i> Link generated! Copy it below and send to the patient via a secure channel.
-          </div>
-          <div class="input-group mb-2">
-            <input type="text" class="form-control form-control-sm" id="intakeLinkUrl" readonly>
-            <button class="btn btn-outline-secondary btn-sm" type="button" id="btnCopyIntakeLink" title="Copy to clipboard">
-              <i class="bi bi-clipboard"></i>
-            </button>
-          </div>
-          <div class="small text-muted mb-3" id="intakeLinkExpiry"></div>
-          <div class="alert alert-warning small mb-0">
-            <i class="bi bi-shield-lock"></i> <strong>HIPAA reminder:</strong> Send this link only via your practice's secure communication channels (encrypted email, patient portal, or HIPAA-compliant SMS).
-          </div>
-        </div>
-        <!-- Active tokens list -->
-        <div id="intakeTokensList" class="mt-3 d-none">
-          <hr>
-          <h6 class="small fw-semibold text-muted">Active Links</h6>
-          <div id="intakeTokensBody"></div>
-        </div>
-        <!-- Loading spinner -->
-        <div id="intakeLinkSpinner" class="text-center py-3 d-none">
-          <div class="spinner-border spinner-border-sm text-primary"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Patient Portal Modal ===== -->
-<div class="modal fade" id="patientPortalModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-person-badge"></i> Patient Sleep Page</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div id="portalPublicationStatus" class="alert alert-secondary small mb-3">
-          No reviewed patient page has been published yet. Generate the patient report and publish it before sharing a link.
-        </div>
-        <div id="portalPublicationMeta" class="small text-muted mb-3 d-none"></div>
-        <div id="portalGenerate">
-          <p class="small text-muted mb-3">Generate a secure patient-facing page link. The page will always show the most recent clinician-published version of the patient's reviewed report.</p>
-          <button type="button" class="btn btn-primary w-100" id="btnGeneratePortalLink">
-            <i class="bi bi-plus-circle"></i> Generate Patient Page Link
-          </button>
-        </div>
-        <div id="portalLinkDisplay" class="d-none">
-          <div class="alert alert-success small">
-            <i class="bi bi-check-circle-fill"></i> Patient page link generated. Copy it below and send it through your secure communication workflow.
-          </div>
-          <div class="input-group mb-2">
-            <input type="text" class="form-control form-control-sm" id="portalLinkUrl" readonly>
-            <button class="btn btn-outline-secondary btn-sm" type="button" id="btnCopyPortalLink" title="Copy to clipboard">
-              <i class="bi bi-clipboard"></i>
-            </button>
-          </div>
-          <div class="small text-muted mb-3" id="portalLinkExpiry"></div>
-          <div class="alert alert-warning small mb-0">
-            <i class="bi bi-shield-lock"></i> <strong>HIPAA reminder:</strong> This link gives access to the patient's published sleep page. Share it only through approved secure channels.
-          </div>
-        </div>
-        <div id="portalTokensList" class="mt-3 d-none">
-          <hr>
-          <h6 class="small fw-semibold text-muted">Active Patient Page Links</h6>
-          <div id="portalTokensBody"></div>
-        </div>
-        <div id="portalLinkSpinner" class="text-center py-3 d-none">
-          <div class="spinner-border spinner-border-sm text-primary"></div>
-        </div>
-      </div>
-      <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
-        <div class="small text-muted">Patients see only clinician-published content, not the live chart.</div>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ===== Patient List Modal ===== -->
 <div class="modal fade" id="patientListModal" tabindex="-1" aria-labelledby="patientListLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="patientListLabel"><i class="bi bi-people"></i> Patient List</h5>
+        <h5 class="modal-title" id="patientListLabel"><i class="bi bi-search"></i> Find Patient</h5>
         <div class="ms-auto d-flex align-items-center gap-3 me-3">
           <div class="form-check form-switch small mb-0 d-none" id="archivedToggleWrap">
             <input class="form-check-input" type="checkbox" role="switch" id="toggleArchivedPatients">
             <label class="form-check-label" for="toggleArchivedPatients">Show archived</label>
           </div>
-          <div class="form-check form-switch small mb-0" id="reviewQueueToggleWrap">
-            <input class="form-check-input" type="checkbox" role="switch" id="toggleReviewQueuePatients">
-            <label class="form-check-label" for="toggleReviewQueuePatients">Review queue only</label>
-          </div>
           <div style="width:250px;">
-          <input type="text" id="patientSearch" class="form-control form-control-sm" placeholder="Search by name or MRN...">
+          <input type="text" id="patientSearch" class="form-control form-control-sm" placeholder="Name, MRN, or DOB" autocomplete="off">
           </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-3">
-        <div id="patientListLoading" class="text-center py-4">
+        <div id="patientListLoading" class="text-center py-4 d-none">
           <div class="spinner-border text-primary"></div>
           <p class="small text-muted mt-2">Loading patients...</p>
         </div>
-        <div id="patientListEmpty" class="text-center py-4 d-none">
-          <i class="bi bi-inbox text-muted" style="font-size:2rem;"></i>
-          <p class="text-muted mt-2">No patients yet. Click <strong>New Patient</strong> to add one.</p>
+        <div id="patientListEmpty" class="text-center py-4">
+          <i class="bi bi-shield-lock text-muted" style="font-size:2rem;"></i>
+          <p class="text-muted mt-2">Enter a name, MRN, or date of birth to find a patient. Results are limited to 10.</p>
         </div>
-        <table class="table table-hover table-sm mb-0 mt-2" id="patientListTable">
+        <table class="table table-hover table-sm mb-0 mt-2 d-none" id="patientListTable">
           <thead class="table-light">
             <tr>
               <th>Name</th>
@@ -397,12 +219,6 @@
         </button>
         <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnReportSnapshots" title="View saved report snapshots">
           <i class="bi bi-clock-history"></i> Snapshots
-        </button>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="btnIntakeLink" title="Generate a secure intake questionnaire link for the patient">
-          <i class="bi bi-link-45deg"></i> Intake Link
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPortalLink" title="Manage the patient-facing portal page link">
-          <i class="bi bi-person-badge"></i> Patient Page
         </button>
         <span class="text-muted small" id="patientLastSaved"></span>
       </span>
@@ -826,9 +642,6 @@
     </button>
     <button type="button" class="btn btn-outline-primary btn-sm" id="btnSaveReportSnapshot">
       <i class="bi bi-folder-check"></i> Save Snapshot
-    </button>
-    <button type="button" class="btn btn-outline-success btn-sm" id="btnPublishPatientPortal">
-      <i class="bi bi-cloud-check"></i> Publish to Patient Page
     </button>
     <button type="button" class="btn btn-success btn-sm" id="btnDownloadReportPdf">
       <i class="bi bi-file-earmark-pdf"></i> Download PDF
@@ -1344,7 +1157,6 @@ function applyRuntimeMeta(meta) {
     document.getElementById('btnHome').style.display = 'none';
     // Hide DB-dependent buttons
     document.getElementById('btnSavePatient').style.display = 'none';
-    document.getElementById('btnReviewDashboard').style.display = 'none';
     document.getElementById('btnPatientList').style.display = 'none';
     document.getElementById('btnSignOut').style.display = 'none';
     document.getElementById('cardPatientInfo').style.display = 'none';
@@ -1362,7 +1174,6 @@ function applyRuntimeMeta(meta) {
   let currentUserGroups = [];
   let currentUserIsAdmin = false;
   let showArchivedPatients = false;
-  let showReviewQueuePatients = false;
   const adminGroupName = (typeof AWS_CONFIG !== 'undefined' && AWS_CONFIG.adminGroupName) || 'osa-admin';
   const workflowMilestones = [
     'Initial Eval',
@@ -1446,12 +1257,10 @@ function applyRuntimeMeta(meta) {
     currentUserGroups = [];
     currentUserIsAdmin = false;
     showArchivedPatients = false;
-    showReviewQueuePatients = false;
     document.getElementById('mfaCode').value = '';
     document.getElementById('mfaSetupCode').value = '';
     document.getElementById('mfaSetupSecret').textContent = '';
     document.getElementById('toggleArchivedPatients').checked = false;
-    document.getElementById('toggleReviewQueuePatients').checked = false;
     document.getElementById('archivedToggleWrap').classList.add('d-none');
   }
 
@@ -1559,9 +1368,7 @@ function applyRuntimeMeta(meta) {
   });
 
   // ── Patient list ────────────────────────────────────────────
-  const REVIEW_QUEUE_STATUSES = new Set(['review-needed', 'received', 'pending']);
   const patientListModal = new bootstrap.Modal(document.getElementById('patientListModal'));
-  const reviewDashboardModal = new bootstrap.Modal(document.getElementById('reviewDashboardModal'));
   const fieldProvenanceModal = new bootstrap.Modal(document.getElementById('fieldProvenanceModal'));
   const intakeReviewModal = new bootstrap.Modal(document.getElementById('intakeReviewModal'));
   const reportSnapshotsModal = new bootstrap.Modal(document.getElementById('reportSnapshotsModal'));
@@ -1576,42 +1383,18 @@ function applyRuntimeMeta(meta) {
     );
   }
 
-  function queueRank(patient) {
-    if (patient.intakeStatus === 'review-needed') return 0;
-    if (patient.intakeStatus === 'received') return 1;
-    if (patient.intakeStatus === 'pending') return 2;
-    return 3;
-  }
-
-  function getReviewQueuePatients(patients) {
-    return (Array.isArray(patients) ? patients : [])
-      .filter(patient => REVIEW_QUEUE_STATUSES.has(patient.intakeStatus))
-      .sort((a, b) => {
-        const queueDiff = queueRank(a) - queueRank(b);
-        if (queueDiff !== 0) return queueDiff;
-        return (b.updatedAt || '').localeCompare(a.updatedAt || '');
-      });
-  }
-
   document.getElementById('btnHome').addEventListener('click', () => { showView('home'); if (window.OSAHome) window.OSAHome.render(); });
 
   document.getElementById('btnPatientList').addEventListener('click', async () => {
     patientListModal.show();
+    const search = document.getElementById('patientSearch');
+    search.value = '';
     await loadPatientList();
-  });
-
-  document.getElementById('btnReviewDashboard').addEventListener('click', async () => {
-    reviewDashboardModal.show();
-    await loadReviewDashboard();
+    search.focus();
   });
 
   document.getElementById('toggleArchivedPatients').addEventListener('change', async (e) => {
     showArchivedPatients = e.target.checked;
-    await loadPatientList(document.getElementById('patientSearch').value.trim() || undefined);
-  });
-
-  document.getElementById('toggleReviewQueuePatients').addEventListener('change', async (e) => {
-    showReviewQueuePatients = e.target.checked;
     await loadPatientList(document.getElementById('patientSearch').value.trim() || undefined);
   });
 
@@ -1621,30 +1404,29 @@ function applyRuntimeMeta(meta) {
     const tbody = document.getElementById('patientListBody');
     const table = document.getElementById('patientListTable');
 
-    loading.classList.remove('d-none');
-    empty.classList.add('d-none');
+    const normalizedQuery = String(query || '').trim();
+    loading.classList.add('d-none');
+    empty.classList.remove('d-none');
     table.classList.add('d-none');
     tbody.innerHTML = '';
 
+    if (!normalizedQuery) {
+      empty.querySelector('p').textContent = 'Enter a name, MRN, or date of birth to find a patient. Results are limited to 10.';
+      return;
+    }
+
+    loading.classList.remove('d-none');
+    empty.classList.add('d-none');
+
     try {
-      const patients = query
-        ? await OSADatabase.searchPatients(query, showArchivedPatients)
-        : await OSADatabase.listPatients(showArchivedPatients);
-      const filteredPatients = showReviewQueuePatients
-        ? getReviewQueuePatients(patients)
-        : patients.sort((a, b) => {
-            const queueDiff = queueRank(a) - queueRank(b);
-            if (queueDiff !== 0) return queueDiff;
-            return (b.updatedAt || '').localeCompare(a.updatedAt || '');
-          });
+      const patients = await OSADatabase.searchPatients(normalizedQuery, showArchivedPatients);
+      const filteredPatients = patients.slice(0, 10);
 
       loading.classList.add('d-none');
 
       if (!filteredPatients.length) {
         empty.classList.remove('d-none');
-        empty.querySelector('p').textContent = showReviewQueuePatients
-          ? 'No patients currently need intake review.'
-          : 'No patients yet. Click New Patient to add one.';
+        empty.querySelector('p').textContent = 'No matching patients found.';
         return;
       }
 
@@ -1758,100 +1540,6 @@ function applyRuntimeMeta(meta) {
     }
   }
 
-  async function loadReviewDashboard() {
-    const loading = document.getElementById('reviewDashboardLoading');
-    const empty = document.getElementById('reviewDashboardEmpty');
-    const content = document.getElementById('reviewDashboardContent');
-    const body = document.getElementById('reviewDashboardBody');
-    const countNeeded = document.getElementById('reviewDashboardCountNeeded');
-    const countReceived = document.getElementById('reviewDashboardCountReceived');
-    const countPending = document.getElementById('reviewDashboardCountPending');
-
-    loading.classList.remove('d-none');
-    empty.classList.add('d-none');
-    content.classList.add('d-none');
-    body.innerHTML = '';
-
-    try {
-      const patients = await OSADatabase.listPatients(false);
-      const reviewPatients = getReviewQueuePatients(patients);
-      const needed = reviewPatients.filter(patient => patient.intakeStatus === 'review-needed');
-      const received = reviewPatients.filter(patient => patient.intakeStatus === 'received');
-      const pending = reviewPatients.filter(patient => patient.intakeStatus === 'pending');
-
-      countNeeded.textContent = String(needed.length);
-      countReceived.textContent = String(received.length);
-      countPending.textContent = String(pending.length);
-
-      loading.classList.add('d-none');
-
-      if (!reviewPatients.length) {
-        empty.classList.remove('d-none');
-        return;
-      }
-
-      reviewPatients.forEach((patient) => {
-        const tr = document.createElement('tr');
-        const badgeClass = patient.intakeStatus === 'review-needed'
-          ? 'bg-warning-subtle text-warning'
-          : patient.intakeStatus === 'received'
-            ? 'bg-success-subtle text-success'
-            : 'bg-secondary-subtle text-secondary';
-        const statusLabel = patient.intakeStatus === 'review-needed'
-          ? 'Needs Review'
-          : patient.intakeStatus === 'received'
-            ? 'Intake Received'
-            : 'Intake Pending';
-        const pendingCount = Number.isInteger(patient.intakePendingFieldCount) ? patient.intakePendingFieldCount : 0;
-        const reviewAction = patient.intakeStatus === 'review-needed'
-          ? `<button type="button" class="btn btn-sm btn-outline-warning btn-dashboard-review" data-id="${patient.patientId}">
-              <i class="bi bi-clipboard2-check"></i> Review
-            </button>`
-          : '';
-        tr.innerHTML = `
-          <td>
-            <strong>${escHtml(patient.name || '')}</strong>
-            <div class="small text-muted">${escHtml(patient.dob || '')}</div>
-          </td>
-          <td><code>${escHtml(patient.mrn || '—')}</code></td>
-          <td><span class="badge ${badgeClass}">${statusLabel}</span></td>
-          <td>${pendingCount ? `<span class="badge bg-warning-subtle text-warning">${pendingCount}</span>` : '<span class="text-muted">—</span>'}</td>
-          <td class="small text-muted">${escHtml(formatDateTime(patient.intakeReceivedAt))}</td>
-          <td class="small text-muted">${escHtml(formatDateTime(patient.updatedAt))}</td>
-          <td class="text-end">
-            <div class="d-inline-flex gap-1">
-              <button type="button" class="btn btn-sm btn-outline-primary btn-dashboard-open" data-id="${patient.patientId}">
-                <i class="bi bi-box-arrow-in-right"></i> Open
-              </button>
-              ${reviewAction}
-            </div>
-          </td>`;
-        body.appendChild(tr);
-      });
-
-      body.querySelectorAll('.btn-dashboard-open').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          await loadPatient(btn.dataset.id);
-          reviewDashboardModal.hide();
-        });
-      });
-
-      body.querySelectorAll('.btn-dashboard-review').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          await loadPatient(btn.dataset.id);
-          reviewDashboardModal.hide();
-          openIntakeReviewModal();
-        });
-      });
-
-      content.classList.remove('d-none');
-    } catch (err) {
-      loading.classList.add('d-none');
-      empty.classList.remove('d-none');
-      empty.querySelector('p').textContent = 'Could not load the intake review dashboard: ' + err.message;
-    }
-  }
-
   function escHtml(s) {
     const d = document.createElement('div');
     d.textContent = s;
@@ -1863,7 +1551,7 @@ function applyRuntimeMeta(meta) {
     clearTimeout(patientListDebounce);
     patientListDebounce = setTimeout(() => {
       const q = e.target.value.trim();
-      loadPatientList(q || undefined);
+      loadPatientList(q);
     }, 300);
   });
 
@@ -1926,7 +1614,6 @@ function applyRuntimeMeta(meta) {
     const reviewButton = document.getElementById('btnReviewIntake');
     const provenanceButton = document.getElementById('btnFieldProvenance');
     const snapshotButton = document.getElementById('btnReportSnapshots');
-    const portalButton = document.getElementById('btnPortalLink');
     reviewButton.classList.toggle('d-none', !hasPendingIntakeConflicts(patient));
     provenanceButton.classList.toggle('d-none', !patient.patientId);
     snapshotButton.classList.toggle('d-none', !patient.patientId);
@@ -1934,12 +1621,6 @@ function applyRuntimeMeta(meta) {
       ? patient.reportSnapshotCount
       : (Array.isArray(patient.reportSnapshots) ? patient.reportSnapshots.length : 0);
     snapshotButton.innerHTML = `<i class="bi bi-clock-history"></i> Snapshots${snapshotCount ? ` (${snapshotCount})` : ''}`;
-    if (portalButton) {
-      const published = Boolean(patient.patientPortalPublication && patient.patientPortalPublication.patientReportHtml);
-      portalButton.classList.toggle('btn-outline-secondary', !published);
-      portalButton.classList.toggle('btn-outline-success', published);
-      portalButton.innerHTML = `<i class="bi bi-person-badge"></i> Patient Page${published ? ' Published' : ''}`;
-    }
   }
 
   function formatPendingIntakeValue(value) {
@@ -2436,300 +2117,6 @@ function applyRuntimeMeta(meta) {
           if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
         }
       }
-    },
-    async publishPatientPortal({ analysisData, patientReportHtml, reportDate, patientName, triggerEl }) {
-      if (!currentPatientId) {
-        alert('Save the patient chart before publishing a patient page.');
-        return;
-      }
-
-      const button = document.getElementById('btnPublishPatientPortal');
-      const originalHtml = button ? button.innerHTML : '';
-      if (button) {
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Publishing...';
-      }
-
-      try {
-        const patient = await OSADatabase.updatePatient(currentPatientId, {
-          version: currentPatientVersion,
-          reportSnapshot: {
-            analysisData,
-            patientReportHtml,
-            reportDate,
-            patientName,
-          },
-          portalPublication: {
-            analysisData,
-            patientReportHtml,
-            reportDate,
-            patientName,
-          },
-          visitAction: 'Patient portal published',
-        });
-        currentPatientRecord = patient;
-        currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
-        updatePatientBar(patient);
-        renderReportSnapshotsModal(patient);
-        alert('Patient page published. You can now generate or resend the patient page link.');
-      } catch (err) {
-        if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
-          alert('This chart changed before the patient page could be published. Reload the patient record and try again.');
-        } else {
-          alert('Could not publish the patient page: ' + err.message);
-        }
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.innerHTML = originalHtml;
-          if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
-        }
-      }
-    }
-  };
-
-  // ── Intake Link Management ──────────────────────────────────
-  const intakeModal = new bootstrap.Modal(document.getElementById('intakeLinkModal'));
-  const apiBaseUrl = typeof AWS_CONFIG !== 'undefined' ? AWS_CONFIG.apiUrl : '';
-  const runtimeParams = new URLSearchParams(window.location.search);
-  const configuredAppBaseUrl = (typeof AWS_CONFIG !== 'undefined' && AWS_CONFIG.appUrl)
-    ? String(AWS_CONFIG.appUrl).replace(/\/+$/, '')
-    : window.location.origin;
-  const forceLocalWorkflowLinks = runtimeParams.get('testMode') === 'workflow';
-  const intakeLinkBaseOrigin = forceLocalWorkflowLinks ? window.location.origin : configuredAppBaseUrl;
-  const intakeLinkHost = (() => {
-    try {
-      return new URL(intakeLinkBaseOrigin).hostname;
-    } catch (_) {
-      return window.location.hostname;
-    }
-  })();
-  const intakeLinkPath = (intakeLinkHost === '127.0.0.1' || intakeLinkHost === 'localhost')
-    ? '/intake'
-    : '/intake.html';
-  const intakeBaseUrl = new URL(intakeLinkPath, `${intakeLinkBaseOrigin}/`).toString();
-  const patientPortalModal = new bootstrap.Modal(document.getElementById('patientPortalModal'));
-  const portalBaseUrl = new URL('/portal.html', `${intakeLinkBaseOrigin}/`);
-  if (forceLocalWorkflowLinks) {
-    portalBaseUrl.searchParams.set('testMode', 'workflow');
-  }
-
-  function formatPortalPublicationMeta(publication) {
-    if (!publication || !publication.publishedAt) return '';
-    const parts = [`Published ${formatDateTime(publication.publishedAt)}`];
-    if (publication.reportDate) parts.push(`Report date ${publication.reportDate}`);
-    if (publication.publishedBy) parts.push(`by ${publication.publishedBy}`);
-    return parts.join(' • ');
-  }
-
-  function renderPortalPublicationState(patient) {
-    const statusEl = document.getElementById('portalPublicationStatus');
-    const metaEl = document.getElementById('portalPublicationMeta');
-    const generateBtn = document.getElementById('btnGeneratePortalLink');
-    const published = patient && patient.patientPortalPublication && patient.patientPortalPublication.patientReportHtml;
-    if (!statusEl || !metaEl) return;
-
-    if (published) {
-      statusEl.className = 'alert alert-success small mb-3';
-      statusEl.innerHTML = '<i class="bi bi-cloud-check"></i> A reviewed patient page is currently published. New publications will replace what the patient sees at this link.';
-      metaEl.classList.remove('d-none');
-      metaEl.textContent = formatPortalPublicationMeta(patient.patientPortalPublication);
-      if (generateBtn) generateBtn.disabled = false;
-    } else {
-      statusEl.className = 'alert alert-secondary small mb-3';
-      statusEl.textContent = 'No reviewed patient page has been published yet. Generate the patient report and publish it before sharing a link.';
-      metaEl.classList.add('d-none');
-      metaEl.textContent = '';
-      if (generateBtn) generateBtn.disabled = true;
-    }
-  }
-
-  document.getElementById('btnIntakeLink').addEventListener('click', async () => {
-    if (!currentPatientId) {
-      alert('Please save the patient first before generating an intake link.');
-      return;
-    }
-    // Reset modal state
-    document.getElementById('intakeGenerate').classList.remove('d-none');
-    document.getElementById('intakeLinkDisplay').classList.add('d-none');
-    document.getElementById('intakeLinkSpinner').classList.add('d-none');
-    // Load existing tokens
-    loadIntakeTokens(currentPatientId);
-    intakeModal.show();
-  });
-
-  async function generateIntakeLink(patientId) {
-    const result = await OSADatabase.createIntakeToken(patientId);
-    return { link: `${intakeBaseUrl}?t=${encodeURIComponent(result.token)}`, token: result.token, expiresAt: result.expiresAt };
-  }
-
-  document.getElementById('btnGenerateIntakeLink').addEventListener('click', async () => {
-    const btn = document.getElementById('btnGenerateIntakeLink');
-    const spinner = document.getElementById('intakeLinkSpinner');
-    btn.disabled = true;
-    spinner.classList.remove('d-none');
-
-    try {
-      const { link, expiresAt } = await generateIntakeLink(currentPatientId);
-
-      document.getElementById('intakeLinkUrl').value = link;
-      document.getElementById('intakeLinkExpiry').textContent =
-        `Expires: ${new Date(expiresAt).toLocaleString()}`;
-
-      document.getElementById('intakeGenerate').classList.add('d-none');
-      document.getElementById('intakeLinkDisplay').classList.remove('d-none');
-      spinner.classList.add('d-none');
-
-      // Refresh tokens list
-      loadIntakeTokens(currentPatientId);
-    } catch (err) {
-      alert('Failed to generate link: ' + err.message);
-      spinner.classList.add('d-none');
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  document.getElementById('btnCopyIntakeLink').addEventListener('click', () => {
-    const input = document.getElementById('intakeLinkUrl');
-    navigator.clipboard.writeText(input.value).then(() => {
-      const btn = document.getElementById('btnCopyIntakeLink');
-      btn.innerHTML = '<i class="bi bi-check"></i>';
-      setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
-    });
-  });
-
-  async function loadIntakeTokens(patientId) {
-    const container = document.getElementById('intakeTokensList');
-    const body = document.getElementById('intakeTokensBody');
-    try {
-      const tokens = await OSADatabase.listIntakeTokens(patientId);
-      if (!tokens.length) {
-        container.classList.add('d-none');
-        return;
-      }
-      container.classList.remove('d-none');
-      body.innerHTML = tokens.map(t => {
-        const status = t.status;
-        const badgeClass = status === 'active' ? 'bg-success' : status === 'used' ? 'bg-info' : status === 'expired' ? 'bg-secondary' : 'bg-danger';
-        const created = new Date(t.createdAt).toLocaleDateString();
-        const revokeBtn = status === 'active'
-          ? ` <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="revokeToken('${escHtml(t.tokenHash)}')" title="Revoke this link"><i class="bi bi-x-circle"></i></button>`
-          : '';
-        return `<div class="d-flex align-items-center gap-2 mb-1">
-          <span class="badge ${badgeClass}" style="min-width:60px;">${status}</span>
-          <span class="small text-muted">${created}</span>
-          ${t.usedAt ? `<span class="small text-success"><i class="bi bi-check-circle"></i> Submitted ${new Date(t.usedAt).toLocaleDateString()}</span>` : ''}
-          ${revokeBtn}
-        </div>`;
-      }).join('');
-    } catch (err) {
-      container.classList.add('d-none');
-    }
-  }
-
-  // Expose revoke globally for onclick handler
-  window.revokeToken = async function(tokenHash) {
-    if (!confirm('Revoke this intake link? The patient will no longer be able to use it.')) return;
-    try {
-      await OSADatabase.revokeIntakeToken(tokenHash);
-      loadIntakeTokens(currentPatientId);
-    } catch (err) {
-      alert('Failed to revoke: ' + err.message);
-    }
-  };
-
-  document.getElementById('btnPortalLink').addEventListener('click', async () => {
-    if (!currentPatientId) {
-      alert('Please save the patient first before managing a patient page link.');
-      return;
-    }
-    document.getElementById('portalGenerate').classList.remove('d-none');
-    document.getElementById('portalLinkDisplay').classList.add('d-none');
-    document.getElementById('portalLinkSpinner').classList.add('d-none');
-    try {
-      const patient = await OSADatabase.getPatient(currentPatientId);
-      currentPatientRecord = patient;
-      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
-      updatePatientBar(patient);
-      renderPortalPublicationState(patient);
-      await loadPortalTokens(currentPatientId);
-      patientPortalModal.show();
-    } catch (err) {
-      alert('Could not load patient page details: ' + err.message);
-    }
-  });
-
-  document.getElementById('btnGeneratePortalLink').addEventListener('click', async () => {
-    const btn = document.getElementById('btnGeneratePortalLink');
-    const spinner = document.getElementById('portalLinkSpinner');
-    btn.disabled = true;
-    spinner.classList.remove('d-none');
-
-    try {
-      const result = await OSADatabase.createPortalToken(currentPatientId);
-      const url = new URL(portalBaseUrl.toString());
-      url.searchParams.set('t', result.token);
-
-      document.getElementById('portalLinkUrl').value = url.toString();
-      document.getElementById('portalLinkExpiry').textContent =
-        `Expires: ${new Date(result.expiresAt).toLocaleString()}`;
-      document.getElementById('portalGenerate').classList.add('d-none');
-      document.getElementById('portalLinkDisplay').classList.remove('d-none');
-      spinner.classList.add('d-none');
-      await loadPortalTokens(currentPatientId);
-    } catch (err) {
-      alert('Failed to generate patient page link: ' + err.message);
-      spinner.classList.add('d-none');
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  document.getElementById('btnCopyPortalLink').addEventListener('click', () => {
-    const input = document.getElementById('portalLinkUrl');
-    navigator.clipboard.writeText(input.value).then(() => {
-      const btn = document.getElementById('btnCopyPortalLink');
-      btn.innerHTML = '<i class="bi bi-check"></i>';
-      setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
-    });
-  });
-
-  async function loadPortalTokens(patientId) {
-    const container = document.getElementById('portalTokensList');
-    const body = document.getElementById('portalTokensBody');
-    try {
-      const tokens = await OSADatabase.listPortalTokens(patientId);
-      if (!tokens.length) {
-        container.classList.add('d-none');
-        return;
-      }
-      container.classList.remove('d-none');
-      body.innerHTML = tokens.map(t => {
-        const status = t.status;
-        const badgeClass = status === 'active' ? 'bg-success' : status === 'expired' ? 'bg-secondary' : 'bg-danger';
-        const created = new Date(t.createdAt).toLocaleDateString();
-        const revokeBtn = status === 'active'
-          ? ` <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="revokePortalToken('${escHtml(t.tokenHash)}')" title="Revoke this patient page link"><i class="bi bi-x-circle"></i></button>`
-          : '';
-        return `<div class="d-flex align-items-center gap-2 mb-1">
-          <span class="badge ${badgeClass}" style="min-width:60px;">${status}</span>
-          <span class="small text-muted">${created}</span>
-          ${revokeBtn}
-        </div>`;
-      }).join('');
-    } catch (err) {
-      container.classList.add('d-none');
-    }
-  }
-
-  window.revokePortalToken = async function(tokenHash) {
-    if (!confirm('Revoke this patient page link? The patient will no longer be able to open it.')) return;
-    try {
-      await OSADatabase.revokePortalToken(tokenHash);
-      loadPortalTokens(currentPatientId);
-    } catch (err) {
-      alert('Failed to revoke: ' + err.message);
     }
   };
 
@@ -2768,18 +2155,10 @@ function applyRuntimeMeta(meta) {
       if (ok) showView('chart');
       return ok;
     },
-    async createWithIntakeLink({ name, dob }) {
+    async createPatient({ name, dob }) {
       const patient = await OSADatabase.createPatient({ name, dob, status: 'Initial Eval', milestones: ['Initial Eval'], formData: {} });
-      const { link } = await generateIntakeLink(patient.patientId);
-      return { patient, link };
+      return { patient };
     },
-    async getReviewQueue() {
-      const patients = await OSADatabase.listPatients(false);
-      return patients
-        .filter(p => p.intakeStatus === 'review-needed' || p.intakeStatus === 'received')
-        .sort((a, b) => (b.intakeReceivedAt || '').localeCompare(a.intakeReceivedAt || ''));
-    },
-    reviewModalShow() { reviewDashboardModal.show(); loadReviewDashboard(); },
   };
   document.dispatchEvent(new CustomEvent('osa:workspace-ready'));
 

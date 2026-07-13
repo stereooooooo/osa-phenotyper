@@ -1,7 +1,6 @@
 /**
- * OSA Phenotyper – Patient CRUD + Intake Token API (Lambda handler)
- * Patient routes require Cognito JWT via API Gateway authorizer.
- * Token management routes also require Cognito JWT.
+ * OSA Phenotyper – clinician-only patient API (Lambda handler)
+ * Every route requires both the CloudFront origin secret and a Cognito JWT.
  */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -10,12 +9,12 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
   DynamoDBDocumentClient, GetCommand, PutCommand,
-  UpdateCommand, ScanCommand, QueryCommand
+  UpdateCommand, QueryCommand
 } from '@aws-sdk/lib-dynamodb';
-import { randomUUID, randomBytes, createHash } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 
 const TABLE = process.env.TABLE_NAME;
-const TOKEN_TABLE = process.env.TOKEN_TABLE;
+const ORIGIN_VERIFY_SECRET = process.env.ORIGIN_VERIFY_SECRET || '';
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
@@ -28,11 +27,6 @@ const VISIT_FIELD_PREVIEW_LIMIT = 12;
 const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
 const INTAKE_REVIEW_HISTORY_LIMIT = 20;
 const INTAKE_REVIEW_FIELD_PREVIEW_LIMIT = 20;
-const TOKEN_TYPE_INTAKE = 'intake';
-const TOKEN_TYPE_PORTAL = 'portal';
-const INTAKE_TOKEN_LIFETIME_SECONDS = 72 * 60 * 60;
-const PORTAL_TOKEN_LIFETIME_SECONDS = 90 * 24 * 60 * 60;
-const TOKEN_TTL_GRACE_SECONDS = 30 * 24 * 60 * 60;
 const ALLOWED_INTAKE_REVIEW_ACTIONS = new Set(['accept-intake', 'keep-chart']);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
@@ -225,70 +219,6 @@ function buildReportSnapshots(existingSnapshots, payload, user, timestamp) {
   return snapshots.slice(-REPORT_SNAPSHOT_LIMIT);
 }
 
-function extractPatientFirstName(fullName) {
-  const trimmed = String(fullName || '').trim();
-  if (!trimmed) return 'Patient';
-  if (trimmed.includes(',')) {
-    return trimmed.split(',').pop().trim().split(/\s+/)[0] || 'Patient';
-  }
-  return trimmed.split(/\s+/)[0] || 'Patient';
-}
-
-function buildPortalPublication(payload, user, timestamp) {
-  if (!payload || typeof payload !== 'object') return null;
-
-  const patientReportHtml = typeof payload.patientReportHtml === 'string'
-    ? payload.patientReportHtml.trim()
-    : '';
-  if (!patientReportHtml) return null;
-
-  const analysisData = cloneJson(payload.analysisData || {});
-  const analysisJson = JSON.stringify(analysisData);
-  const stage = analysisData.primaryAHI === null || analysisData.primaryAHI === undefined
-    ? 'pre-study'
-    : 'post-study';
-  const primaryAHI = analysisData.primaryAHI ?? null;
-  const severity = analysisData.severity || null;
-  const phenotypes = Array.isArray(analysisData.phen) ? analysisData.phen.slice(0, 20) : [];
-  const patientName = String(payload.patientName || '').trim();
-  const summaryParts = [];
-
-  summaryParts.push(stage === 'pre-study' ? 'Initial sleep evaluation' : 'Reviewed sleep report');
-  if (severity && severity !== 'normal') summaryParts.push(`${severity} OSA`);
-  if (primaryAHI !== null && primaryAHI !== undefined) {
-    summaryParts.push(primaryAHI < 5 ? `AHI ${Math.round(primaryAHI)} (normal range)` : `AHI ${Math.round(primaryAHI)}`);
-  }
-  if (phenotypes.length) summaryParts.push(phenotypes.slice(0, 2).join(', '));
-
-  return {
-    publicationId: randomUUID(),
-    publishedAt: timestamp,
-    publishedBy: user,
-    reportDate: payload.reportDate || timestamp.split('T')[0],
-    patientName,
-    patientFirstName: extractPatientFirstName(patientName),
-    stage,
-    severity,
-    primaryAHI,
-    phenotypes,
-    recTags: Array.isArray(analysisData.recTags) ? analysisData.recTags.map(rec => rec.tag).filter(Boolean).slice(0, 30) : [],
-    summary: summaryParts.filter(Boolean).join(' | ') || 'Reviewed patient report',
-    analysisData,
-    analysisHash: createHash('sha256').update(analysisJson).digest('hex'),
-    patientReportHtml,
-    patientReportHash: createHash('sha256').update(patientReportHtml).digest('hex'),
-    schemaVersion: 1,
-  };
-}
-
-function recordMatchesTokenType(record, tokenType) {
-  const actual = record?.tokenType;
-  if (tokenType === TOKEN_TYPE_INTAKE) {
-    return !actual || actual === TOKEN_TYPE_INTAKE;
-  }
-  return actual === tokenType;
-}
-
 function getMeaningfulChangedFields(previousFormData, nextFormData) {
   const previous = (previousFormData && typeof previousFormData === 'object' && !Array.isArray(previousFormData))
     ? previousFormData
@@ -462,9 +392,15 @@ export async function handler(event) {
   const method = event.requestContext?.http?.method || event.httpMethod;
   const path = event.requestContext?.http?.path || event.path;
   const user = event.requestContext?.authorizer?.jwt?.claims?.email || 'unknown';
-  const userGroups = await getUserGroups(event);
 
   try {
+    const suppliedOriginSecret = event?.headers?.['x-origin-verify'] || event?.headers?.['X-Origin-Verify'] || '';
+    if (!ORIGIN_VERIFY_SECRET || suppliedOriginSecret !== ORIGIN_VERIFY_SECRET) {
+      return fail(event, 'Forbidden', 403);
+    }
+
+    const userGroups = await getUserGroups(event);
+
     if (method === 'OPTIONS') {
       return ok(event, {});
     }
@@ -472,18 +408,13 @@ export async function handler(event) {
     // GET /patients/search?q=...
     if (method === 'GET' && path === '/patients/search') {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      return await searchPatients(event, event.queryStringParameters, userGroups);
+      return await searchPatients(event, event.queryStringParameters, userGroups, user);
     }
     // GET /patients/:id
     if (method === 'GET' && path.match(/^\/patients\/[^/]+$/)) {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const id = path.split('/').pop();
-      return await getPatient(event, id);
-    }
-    // GET /patients
-    if (method === 'GET' && path === '/patients') {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      return await listPatients(event, event.queryStringParameters, userGroups);
+      return await getPatient(event, id, user);
     }
     // POST /patients
     if (method === 'POST' && path === '/patients') {
@@ -503,43 +434,6 @@ export async function handler(event) {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
       const id = path.split('/').pop();
       return await deletePatient(event, id, user);
-    }
-
-    // ── Intake Token Management Routes ──────────────────────
-    // POST /intake-tokens — generate a new intake token for a patient
-    if (method === 'POST' && path === '/intake-tokens') {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      const body = JSON.parse(event.body || '{}');
-      return await createIntakeToken(event, body, user);
-    }
-    // GET /intake-tokens/:patientId — list active tokens for a patient
-    if (method === 'GET' && path.match(/^\/intake-tokens\/[^/]+$/)) {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      const patientId = path.split('/').pop();
-      return await listIntakeTokens(event, patientId);
-    }
-    // DELETE /intake-tokens/:tokenHash — revoke an active token
-    if (method === 'DELETE' && path.match(/^\/intake-tokens\/[^/]+$/)) {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      const tokenHash = path.split('/').pop();
-      return await revokeIntakeToken(event, tokenHash, user);
-    }
-
-    // ── Patient Portal Token Management Routes ─────────────
-    if (method === 'POST' && path === '/portal-tokens') {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      const body = JSON.parse(event.body || '{}');
-      return await createPortalToken(event, body, user);
-    }
-    if (method === 'GET' && path.match(/^\/portal-tokens\/[^/]+$/)) {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      const patientId = path.split('/').pop();
-      return await listPortalTokens(event, patientId);
-    }
-    if (method === 'DELETE' && path.match(/^\/portal-tokens\/[^/]+$/)) {
-      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
-      const tokenHash = path.split('/').pop();
-      return await revokePortalToken(event, tokenHash, user);
     }
 
     return fail(event, 'Not found', 404);
@@ -613,35 +507,19 @@ async function createPatient(event, body, user) {
   return ok(event, item, 201);
 }
 
-async function getPatient(event, id) {
+async function getPatient(event, id, user) {
   const { Item } = await ddb.send(new GetCommand({
     TableName: TABLE,
     Key: { patientId: id },
   }));
   if (!Item || Item.isDeleted) return fail(event, 'Patient not found', 404);
+  console.log(JSON.stringify({
+    action: 'patient_record_viewed',
+    patientId: id,
+    viewedBy: user,
+    timestamp: new Date().toISOString(),
+  }));
   return ok(event, Item);
-}
-
-async function listPatients(event, params, userGroups) {
-  const includeArchived = String(params?.includeArchived || '').toLowerCase();
-  const showArchived = ['1', 'true', 'yes'].includes(includeArchived) && hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME]);
-  const scanParams = {
-    TableName: TABLE,
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
-    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
-  };
-
-  if (!showArchived) {
-    scanParams.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
-    scanParams.ExpressionAttributeValues = { ':isDeletedFalse': false };
-  }
-
-  const { Items } = await ddb.send(new ScanCommand(scanParams));
-  // Sort by most recently updated
-  const sorted = (Items || []).sort((a, b) =>
-    (b.updatedAt || '').localeCompare(a.updatedAt || '')
-  );
-  return ok(event, sorted);
 }
 
 async function updatePatient(event, id, body, user, userGroups) {
@@ -894,7 +772,6 @@ async function updatePatient(event, id, body, user, userGroups) {
     changedRecordFields.push('status');
   }
   if (body.reportSnapshot !== undefined) changedRecordFields.push('reportSnapshots');
-  if (body.portalPublication !== undefined) changedRecordFields.push('patientPortalPublication');
   const changedFormFields = formData !== undefined
     ? getMeaningfulChangedFields(currentFormData, formData)
     : [];
@@ -1022,18 +899,6 @@ async function updatePatient(event, id, body, user, userGroups) {
     updates[':rsc'] = reportSnapshots.length;
     updates[':lrs'] = now;
   }
-  if (body.portalPublication !== undefined) {
-    const portalPublication = buildPortalPublication(body.portalPublication, user, now);
-    if (!portalPublication) {
-      return fail(event, 'A reviewed patient report is required before publishing to the patient portal.');
-    }
-    expr += ', #pp = :pp, #ppat = :ppat';
-    names['#pp'] = 'patientPortalPublication';
-    names['#ppat'] = 'patientPortalPublishedAt';
-    updates[':pp'] = portalPublication;
-    updates[':ppat'] = now;
-  }
-
   if (removeExpr.length) {
     expr += ' REMOVE ' + removeExpr.join(', ');
   }
@@ -1101,260 +966,95 @@ async function deletePatient(event, id, user) {
   return ok(event, { archived: Attributes?.patientId || id });
 }
 
-async function searchPatients(event, params, userGroups) {
-  const q = (params?.q || '').trim().toLowerCase();
+async function searchPatients(event, params, userGroups, user) {
+  const rawQuery = (params?.q || '').trim();
+  const q = rawQuery.toLowerCase();
   if (!q) return ok(event, []);
   const includeArchived = String(params?.includeArchived || '').toLowerCase();
   const showArchived = ['1', 'true', 'yes'].includes(includeArchived) && hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME]);
+  const projection = 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount';
+  const names = { '#n': 'name', '#s': 'status', '#v': 'version' };
+
+  const finishSearch = (items, searchType) => {
+    const results = (items || []).slice(0, 10);
+    console.log(JSON.stringify({
+      action: 'patient_search',
+      searchType,
+      resultCount: results.length,
+      searchedBy: user,
+      timestamp: new Date().toISOString(),
+    }));
+    return ok(event, results);
+  };
+
+  // DOB search is exact-only and backed by a GSI. Never scan the patient table.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawQuery)) {
+    const dobQuery = {
+      TableName: TABLE,
+      IndexName: 'dob-index',
+      ProjectionExpression: projection,
+      KeyConditionExpression: 'dob = :dob',
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: { ':dob': rawQuery, ':isDeletedFalse': false },
+      Limit: 10,
+    };
+    if (!showArchived) dobQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    const { Items } = await ddb.send(new QueryCommand(dobQuery));
+    return finishSearch(Items, 'dob_exact');
+  }
 
   // Try MRN exact match first
   const mrnQuery = {
     TableName: TABLE,
     IndexName: 'mrn-index',
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ProjectionExpression: projection,
     KeyConditionExpression: 'mrn = :mrn',
-    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
-    ExpressionAttributeValues: { ':mrn': q, ':isDeletedFalse': false },
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: { ':mrn': rawQuery, ':isDeletedFalse': false },
+    Limit: 10,
   };
   if (!showArchived) {
     mrnQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
   }
   const { Items: mrnItems } = await ddb.send(new QueryCommand(mrnQuery));
-  if (mrnItems?.length) return ok(event, mrnItems);
+  if (mrnItems?.length) return finishSearch(mrnItems, 'mrn_exact');
 
   // Try exact full-name match via existing nameLower GSI before scanning
   const nameQuery = {
     TableName: TABLE,
     IndexName: 'name-index',
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ProjectionExpression: projection,
     KeyConditionExpression: 'nameLower = :nameLower',
-    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
+    ExpressionAttributeNames: names,
     ExpressionAttributeValues: { ':nameLower': q, ':isDeletedFalse': false },
+    Limit: 10,
   };
   if (!showArchived) {
     nameQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
   }
   const { Items: exactNameItems } = await ddb.send(new QueryCommand(nameQuery));
-  if (exactNameItems?.length) return ok(event, exactNameItems);
+  if (exactNameItems?.length) return finishSearch(exactNameItems, 'name_exact');
 
   // Try scalable prefix search for common last-name / chart-label lookups
   const prefixQuery = {
     TableName: TABLE,
     IndexName: 'name-prefix-index',
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
+    ProjectionExpression: projection,
     KeyConditionExpression: 'nameSearchBucket = :bucket AND begins_with(nameLower, :prefix)',
-    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
+    ExpressionAttributeNames: names,
     ExpressionAttributeValues: {
       ':bucket': buildNameSearchBucket(q),
       ':prefix': q,
       ':isDeletedFalse': false,
     },
+    Limit: 10,
   };
   if (!showArchived) {
     prefixQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
   }
   const { Items: prefixItems } = await ddb.send(new QueryCommand(prefixQuery));
   if (prefixItems?.length) {
-    return ok(event, prefixItems.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+    return finishSearch(prefixItems.sort((a, b) => (a.name || '').localeCompare(b.name || '')), 'name_prefix');
   }
-
-  // Fall back to name scan (fine for small datasets)
-  const nameScan = {
-    TableName: TABLE,
-    ProjectionExpression: 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount',
-    ExpressionAttributeNames: { '#n': 'name', '#s': 'status', '#v': 'version' },
-    ExpressionAttributeValues: { ':q': q, ':isDeletedFalse': false },
-  };
-  nameScan.FilterExpression = showArchived
-    ? 'contains(nameLower, :q)'
-    : '(attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse) AND contains(nameLower, :q)';
-  const { Items: nameItems } = await ddb.send(new ScanCommand(nameScan));
-  return ok(event, nameItems || []);
-}
-
-/* ── Intake Token Management ─────────────────────────────── */
-
-/**
- * POST /intake-tokens
- * Generate a time-limited, single-use intake token for a patient.
- * Token is returned once; only SHA-256 hash is stored.
- */
-async function createPatientScopedToken(event, body, user, {
-  tokenType,
-  lifetimeSeconds,
-  logAction,
-}) {
-  const { patientId } = body;
-  if (!patientId) return fail(event, 'patientId is required');
-
-  // Verify patient exists
-  const { Item: patient } = await ddb.send(new GetCommand({
-    TableName: TABLE,
-    Key: { patientId },
-    ProjectionExpression: '#n, isDeleted',
-    ExpressionAttributeNames: { '#n': 'name' },
-  }));
-  if (!patient || patient.isDeleted) return fail(event, 'Patient not found', 404);
-
-  // Generate 256-bit cryptographically random token
-  const rawToken = randomBytes(32).toString('base64url');
-  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-  const firstName = extractPatientFirstName(patient.name || '');
-
-  const now = new Date();
-  const expiresAt = Math.floor(now.getTime() / 1000) + lifetimeSeconds;
-  const ttl = expiresAt + TOKEN_TTL_GRACE_SECONDS;
-
-  await ddb.send(new PutCommand({
-    TableName: TOKEN_TABLE,
-    Item: {
-      tokenHash,
-      patientId,
-      tokenType,
-      expiresAt,
-      ttl,
-      status: 'active',
-      createdAt: now.toISOString(),
-      createdBy: user,
-      usedAt: null,
-      attempts: 0,
-      patientFirstName: firstName || 'Patient',
-    },
-  }));
-
-  // Audit log (no PHI — only patientId and action)
-  console.log(JSON.stringify({
-    action: logAction,
-    patientId,
-    tokenType,
-    createdBy: user,
-    expiresAt: new Date(expiresAt * 1000).toISOString(),
-    timestamp: now.toISOString(),
-  }));
-
-  return ok(event, {
-    token: rawToken,
-    expiresAt: new Date(expiresAt * 1000).toISOString(),
-  }, 201);
-}
-
-async function createIntakeToken(event, body, user) {
-  return createPatientScopedToken(event, body, user, {
-    tokenType: TOKEN_TYPE_INTAKE,
-    lifetimeSeconds: INTAKE_TOKEN_LIFETIME_SECONDS,
-    logAction: 'intake_token_created',
-  });
-}
-
-async function createPortalToken(event, body, user) {
-  return createPatientScopedToken(event, body, user, {
-    tokenType: TOKEN_TYPE_PORTAL,
-    lifetimeSeconds: PORTAL_TOKEN_LIFETIME_SECONDS,
-    logAction: 'portal_token_created',
-  });
-}
-
-/**
- * GET /intake-tokens/:patientId
- * List active/used tokens for a patient (for clinician revocation UI).
- */
-async function listIntakeTokens(event, patientId) {
-  const { Items } = await ddb.send(new QueryCommand({
-    TableName: TOKEN_TABLE,
-    IndexName: 'patient-index',
-    KeyConditionExpression: 'patientId = :pid',
-    ExpressionAttributeValues: { ':pid': patientId },
-    ProjectionExpression: 'tokenHash, #s, expiresAt, createdAt, createdBy, usedAt',
-    ExpressionAttributeNames: { '#s': 'status' },
-  }));
-
-  const now = Math.floor(Date.now() / 1000);
-  const tokens = (Items || [])
-    .filter(t => recordMatchesTokenType(t, TOKEN_TYPE_INTAKE))
-    .map(t => ({
-    tokenHash: t.tokenHash,
-    status: t.status === 'active' && t.expiresAt <= now ? 'expired' : t.status,
-    expiresAt: new Date(t.expiresAt * 1000).toISOString(),
-    createdAt: t.createdAt,
-    createdBy: t.createdBy,
-    usedAt: t.usedAt,
-    }));
-
-  // Sort by createdAt desc
-  tokens.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return ok(event, tokens);
-}
-
-async function listPortalTokens(event, patientId) {
-  const { Items } = await ddb.send(new QueryCommand({
-    TableName: TOKEN_TABLE,
-    IndexName: 'patient-index',
-    KeyConditionExpression: 'patientId = :pid',
-    ExpressionAttributeValues: { ':pid': patientId },
-    ProjectionExpression: 'tokenHash, #s, expiresAt, createdAt, createdBy, usedAt, tokenType',
-    ExpressionAttributeNames: { '#s': 'status' },
-  }));
-
-  const now = Math.floor(Date.now() / 1000);
-  const tokens = (Items || [])
-    .filter(t => recordMatchesTokenType(t, TOKEN_TYPE_PORTAL))
-    .map(t => ({
-      tokenHash: t.tokenHash,
-      status: t.status === 'active' && t.expiresAt <= now ? 'expired' : t.status,
-      expiresAt: new Date(t.expiresAt * 1000).toISOString(),
-      createdAt: t.createdAt,
-      createdBy: t.createdBy,
-      usedAt: t.usedAt,
-    }));
-
-  tokens.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return ok(event, tokens);
-}
-
-/**
- * DELETE /intake-tokens/:tokenHash
- * Revoke an active token (sets status to 'revoked').
- */
-async function revokeIntakeToken(event, tokenHash, user) {
-  return revokeScopedToken(event, tokenHash, user, TOKEN_TYPE_INTAKE, 'intake_token_revoked');
-}
-
-async function revokePortalToken(event, tokenHash, user) {
-  return revokeScopedToken(event, tokenHash, user, TOKEN_TYPE_PORTAL, 'portal_token_revoked');
-}
-
-async function revokeScopedToken(event, tokenHash, user, tokenType, logAction) {
-  try {
-    const typeCondition = tokenType === TOKEN_TYPE_INTAKE
-      ? '(attribute_not_exists(tokenType) OR tokenType = :tokenType)'
-      : 'tokenType = :tokenType';
-    await ddb.send(new UpdateCommand({
-      TableName: TOKEN_TABLE,
-      Key: { tokenHash },
-      UpdateExpression: 'SET #s = :revoked, revokedAt = :now, revokedBy = :user',
-      ConditionExpression: `#s = :active AND ${typeCondition}`,
-      ExpressionAttributeNames: { '#s': 'status' },
-      ExpressionAttributeValues: {
-        ':revoked': 'revoked',
-        ':active': 'active',
-        ':tokenType': tokenType,
-        ':now': new Date().toISOString(),
-        ':user': user,
-      },
-    }));
-
-    console.log(JSON.stringify({
-      action: logAction,
-      tokenHash: tokenHash.substring(0, 8) + '...',
-      revokedBy: user,
-      timestamp: new Date().toISOString(),
-    }));
-
-    return ok(event, { revoked: true });
-  } catch (err) {
-    if (err.name === 'ConditionalCheckFailedException') {
-      return fail(event, 'Token is not active or does not exist', 404);
-    }
-    throw err;
-  }
+  return finishSearch([], 'none');
 }
