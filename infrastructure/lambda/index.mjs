@@ -995,10 +995,13 @@ async function searchPatients(event, params, userGroups, user) {
       ProjectionExpression: projection,
       KeyConditionExpression: 'dob = :dob',
       ExpressionAttributeNames: names,
-      ExpressionAttributeValues: { ':dob': rawQuery, ':isDeletedFalse': false },
+      ExpressionAttributeValues: { ':dob': rawQuery },
       Limit: 10,
     };
-    if (!showArchived) dobQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    if (!showArchived) {
+      dobQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+      dobQuery.ExpressionAttributeValues[':isDeletedFalse'] = false;
+    }
     const { Items } = await ddb.send(new QueryCommand(dobQuery));
     return finishSearch(Items, 'dob_exact');
   }
@@ -1010,11 +1013,12 @@ async function searchPatients(event, params, userGroups, user) {
     ProjectionExpression: projection,
     KeyConditionExpression: 'mrn = :mrn',
     ExpressionAttributeNames: names,
-    ExpressionAttributeValues: { ':mrn': rawQuery, ':isDeletedFalse': false },
+    ExpressionAttributeValues: { ':mrn': rawQuery },
     Limit: 10,
   };
   if (!showArchived) {
     mrnQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    mrnQuery.ExpressionAttributeValues[':isDeletedFalse'] = false;
   }
   const { Items: mrnItems } = await ddb.send(new QueryCommand(mrnQuery));
   if (mrnItems?.length) return finishSearch(mrnItems, 'mrn_exact');
@@ -1026,11 +1030,12 @@ async function searchPatients(event, params, userGroups, user) {
     ProjectionExpression: projection,
     KeyConditionExpression: 'nameLower = :nameLower',
     ExpressionAttributeNames: names,
-    ExpressionAttributeValues: { ':nameLower': q, ':isDeletedFalse': false },
+    ExpressionAttributeValues: { ':nameLower': q },
     Limit: 10,
   };
   if (!showArchived) {
     nameQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    nameQuery.ExpressionAttributeValues[':isDeletedFalse'] = false;
   }
   const { Items: exactNameItems } = await ddb.send(new QueryCommand(nameQuery));
   if (exactNameItems?.length) return finishSearch(exactNameItems, 'name_exact');
@@ -1045,12 +1050,12 @@ async function searchPatients(event, params, userGroups, user) {
     ExpressionAttributeValues: {
       ':bucket': buildNameSearchBucket(q),
       ':prefix': q,
-      ':isDeletedFalse': false,
     },
     Limit: 10,
   };
   if (!showArchived) {
     prefixQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    prefixQuery.ExpressionAttributeValues[':isDeletedFalse'] = false;
   }
   const { Items: prefixItems } = await ddb.send(new QueryCommand(prefixQuery));
   if (prefixItems?.length) {
