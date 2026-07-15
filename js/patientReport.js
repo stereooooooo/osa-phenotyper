@@ -119,6 +119,75 @@ var PatientReport = (() => {
     return recTags;
   }
 
+  /* Patient recommendations are composed by clinical concepts, not by raw
+     strings. When multiple engine rules describe the same decision, keep the
+     safest/most prerequisite-aware representation. This prevents combinatorial
+     scenarios from repeating or contradicting the same treatment concept. */
+  const PATIENT_REC_CONCEPTS = {
+    'MAD':               { concept: 'oral-appliance', rank: 10 },
+    'MAD-FAVORABLE':     { concept: 'oral-appliance', rank: 20 },
+    'MAD-POOR':          { concept: 'oral-appliance', rank: 30 },
+    'MAD-WORKUP':        { concept: 'oral-appliance', rank: 40 },
+    'MAD-SAFETY-LIMIT':  { concept: 'oral-appliance', rank: 50 },
+    'HNS':               { concept: 'nerve-stimulation', rank: 10 },
+    'INSPIRE-EVAL':      { concept: 'nerve-stimulation', rank: 20 },
+    'HNS-WORKUP':        { concept: 'nerve-stimulation', rank: 30 },
+    'SURG':              { concept: 'airway-surgery', rank: 10 },
+    'SURGALT':           { concept: 'airway-surgery', rank: 20 },
+    'SURGERY-WORKUP':    { concept: 'airway-surgery', rank: 30 },
+    'NASAL-OPT':         { concept: 'nasal-care', rank: 20 },
+    'NASAL-SURG':        { concept: 'nasal-care', rank: 10 },
+    'NASAL-PRIOR':       { concept: 'nasal-care', rank: 10 },
+    'NASAL-WORKUP':      { concept: 'nasal-care', rank: 30 },
+  };
+
+  function canonicalizePatientRecEntries(data) {
+    const entries = getPatientFacingRecEntries(data).filter(entry => entry && entry.tag);
+    const hasHnsWorkup = entries.some(entry => entry.tag === 'HNS-WORKUP');
+    const hasSurgeryWorkup = entries.some(entry => entry.tag === 'SURGERY-WORKUP');
+    const combinedProceduralWorkup = hasHnsWorkup && hasSurgeryWorkup && !(data && data.bmi > 40);
+    let sourceEntries = entries;
+    if (combinedProceduralWorkup) {
+      const proceduralTags = new Set([
+        'HNS', 'INSPIRE-EVAL', 'HNS-WORKUP',
+        'SURG', 'SURGALT', 'SURGERY-WORKUP',
+      ]);
+      const insertAt = Math.max(0, entries.findIndex(entry => proceduralTags.has(entry.tag)));
+      sourceEntries = entries.filter(entry => !proceduralTags.has(entry.tag));
+      sourceEntries.splice(Math.min(insertAt, sourceEntries.length), 0, {
+        tag: 'AIRWAY-PROCEDURE-WORKUP',
+        text: 'Complete the procedure- and device-specific airway evaluation before finalizing surgery or nerve stimulation.',
+      });
+    }
+    const selected = [];
+    const conceptIndexes = new Map();
+    const exactSeen = new Set();
+
+    sourceEntries.forEach(entry => {
+      const exactKey = `${entry.tag}::${entry.text || ''}`;
+      if (exactSeen.has(exactKey)) return;
+      exactSeen.add(exactKey);
+      const rule = PATIENT_REC_CONCEPTS[entry.tag];
+      if (!rule) {
+        selected.push({ entry, rank: 0, concept: null });
+        return;
+      }
+
+      if (!conceptIndexes.has(rule.concept)) {
+        conceptIndexes.set(rule.concept, selected.length);
+        selected.push({ entry, rank: rule.rank, concept: rule.concept });
+        return;
+      }
+
+      const index = conceptIndexes.get(rule.concept);
+      if (rule.rank > selected[index].rank) {
+        selected[index] = { entry, rank: rule.rank, concept: rule.concept };
+      }
+    });
+
+    return selected.map(item => item.entry);
+  }
+
   function hasPatientRecTag(data, tag) {
     return getPatientFacingRecEntries(data).some(entry => entry && entry.tag === tag);
   }
@@ -137,7 +206,7 @@ var PatientReport = (() => {
     }
 
     if (!findings.length) {
-      return 'Your airway exam suggests that anatomy contributes to narrowing during sleep. The exact treatment fit depends on the complete exam, prior treatment, and—when a procedure is being considered—the collapse pattern seen during sleep endoscopy.';
+      return 'Your airway exam suggests that anatomy contributes to narrowing during sleep. The exact treatment fit depends on the complete exam, prior treatment, and—when indicated for the procedure being considered—the collapse pattern seen during sleep endoscopy.';
     }
 
     const findingText = findings.length === 1
@@ -183,11 +252,23 @@ var PatientReport = (() => {
 
   /* ── Dynamic Care Pathway Detection (patient-friendly labels) ─────── */
   function detectPatientPathway(data) {
+    const patientRecs = canonicalizePatientRecEntries(data);
+    const hasPapPlan = patientRecs.some(entry => entry.tag === 'CPAP' || entry.tag.startsWith('CPAP-'));
+    const papState = OSAReportShared.resolvePapState({
+      cpapCurrent: data.cpapCurrent,
+      cpapFailed: data.cpapFailed,
+      cpapWillRetry: data.cpapWillRetry,
+      prefAvoidCpap: data.prefAvoidCpap,
+      hasPapPlan,
+    });
+    const preferredPath = ['starting', 'retrying', 'continuing'].includes(papState) ? 'cpap' : null;
     return OSAReportShared.buildCarePathway({
       milestones: data.milestones,
       studyType: data.studyType,
       hasStudyData: data.primaryAHI !== null && data.primaryAHI !== undefined,
       hasPatientContext: true,
+      papState,
+      preferredPath,
       labels: {
         eval: 'Your Evaluation',
         study: {
@@ -196,8 +277,13 @@ var PatientReport = (() => {
           default: 'Sleep Study',
         },
         cpap: {
-          trial: 'Starting CPAP',
-          followup: 'CPAP Check-in',
+          trial: 'Starting PAP',
+          retry: 'PAP Re-fit / Retry',
+          current: 'Using PAP',
+          completed: 'PAP Tried',
+          considered: 'PAP Considered',
+          followup: 'PAP Check-in',
+          alternatives: 'Reviewing Alternatives',
           ongoing: 'Ongoing Care',
         },
         surgical: {
@@ -279,7 +365,7 @@ var PatientReport = (() => {
     'MAD-FAVORABLE': 'See a sleep dentist about a custom oral appliance.',
     'MAD-POOR': 'Talk with your doctor about whether a custom oral appliance is a good fit for you.',
     'HNS': 'Talk with us about whether a device-specific upper-airway nerve-stimulation evaluation belongs in your plan.',
-    'INSPIRE-EVAL': 'Schedule your nerve-stimulation candidacy evaluation (a sleep endoscopy).',
+    'INSPIRE-EVAL': 'Schedule a device-specific nerve-stimulation candidacy evaluation.',
     'SURG': 'Discuss the surgical options in your plan with your ENT.',
     'SURGALT': 'Discuss the surgical options in your plan with your ENT.',
     'CBTI': 'Begin CBT-I — the structured treatment for insomnia.',
@@ -300,7 +386,7 @@ var PatientReport = (() => {
         ? 'Talk with your doctor about whether a more detailed in-lab sleep study is the right next step.'
         : 'Review these results with your doctor and keep an eye on how you are sleeping.';
     }
-    const entries = getPatientFacingRecEntries(data);
+    const entries = canonicalizePatientRecEntries(data);
     const hasPAPPlan = entries.some(e => e.tag === 'CPAP' || e.tag.startsWith('CPAP-'));
     // Sweetman 2019 supports early CBT-I; MATRICS (Ong 2020) supports concurrent
     // CBT-I + PAP and does not justify delaying PAP. See docs/citations.md.
@@ -868,7 +954,8 @@ ${items}`;
     'SLEEP-STAGE-WORKUP': `<strong>Review REM-Sleep Data Before Ruling Out REM Worsening</strong> — Some patients breathe much worse during REM (dream) sleep than during the rest of the night. Your available data do not clearly separate REM from non-REM breathing yet, so REM-specific treatment decisions should stay flexible until that part of the study is confirmed.`,
     'ENDOTYPE-WORKUP': `<strong>Complete the Detailed Event Breakdown Before Final Endotype Matching</strong> — Some of the more advanced breathing-pattern estimates in sleep apnea depend on knowing how many events were full apneas versus partial obstructions (hypopneas). That breakdown is not fully available yet, so some of the finer endotype-based treatment matching still needs the detailed scoring report before it should be treated as complete.`,
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
-    'HNS-WORKUP': `<strong>Complete the Nerve-Stimulation Evaluation First</strong> — Nerve stimulation remains a possibility—not a recommendation—until sleep endoscopy, prior-treatment history, AHI and central events, BMI, anatomy, current device labeling, and insurance criteria are reviewed.`,
+    'HNS-WORKUP': `<strong>Complete the Nerve-Stimulation Evaluation First</strong> — Nerve stimulation remains a possibility—not a recommendation—until prior-treatment history, AHI and central events, BMI, anatomy, current device labeling, insurance criteria, and any device-required airway evaluation are reviewed. Depending on the device and procedure being considered, that evaluation may include sleep endoscopy (DISE).`,
+    'AIRWAY-PROCEDURE-WORKUP': `<strong>Complete the Procedure-Specific Airway Evaluation First</strong> — Before choosing airway surgery or nerve stimulation, your ENT team should review the complete airway exam, prior treatments, sleep-study findings, and current device or procedure requirements. That evaluation may include sleep endoscopy (DISE), depending on the option being considered.`,
     'NASAL-WORKUP': `<strong>Complete Nasal Assessment Before Ruling Nasal Treatment In or Out</strong> — A blocked or narrow nose can worsen mouth breathing and make CPAP, oral appliances, and surgery recovery harder. Because your nasal symptom and exam data are still incomplete, your ENT team should finish documenting nasal symptoms and anatomy before treating nasal contribution as absent.`,
     'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
     'MAD-SAFETY-LIMIT': `<strong>Oral Appliance May Not Be a Safe Fit Right Now</strong> — Your current dental or jaw findings make an oral appliance less likely to be a safe or practical treatment at this stage. Problems such as limited tooth support, limited jaw movement, or significant TMJ disease can make a mandibular advancement device hard to fit or hard to tolerate. Your care team may still revisit it later if a sleep dentist feels those concerns can be addressed safely.`,
@@ -893,7 +980,7 @@ ${items}`;
     'UARS-EVAL': `<strong>Evaluation for Upper Airway Resistance Syndrome (UARS)</strong> — Your home sleep study did not show obstructive sleep apnea, but your symptoms and some patterns in your results suggest you may have a related condition called upper airway resistance syndrome (UARS). In UARS, the airway narrows enough to disrupt sleep without fully blocking airflow — which means a home test may not detect it. An in-lab sleep study with more detailed monitoring can identify this condition and guide treatment.`,
     'SNORE-ALCOHOL': `<strong>Avoid Alcohol Before Bed</strong> — Alcohol relaxes the muscles in your throat, making snoring worse and increasing the chance of airway collapse during sleep. Avoiding alcohol within 3 hours of bedtime can noticeably reduce snoring and improve sleep quality.`,
     'SNORE-LIFESTYLE': `<strong>Reducing Snoring While We Wait for Results</strong> — There are several things you can start doing now to reduce snoring. <strong>Sleep on your side</strong> — snoring is usually worse on your back because gravity pulls the tongue and soft tissues into the airway. A body pillow or positional device can help. <strong>Avoid alcohol within 3 hours of bedtime</strong> — alcohol relaxes the throat muscles, making snoring louder and more frequent. <strong>Maintain a healthy weight</strong> — even modest weight loss (as little as 5–7 pounds) can noticeably reduce snoring by decreasing tissue bulk around the airway. <strong>Stay active</strong> — regular aerobic exercise may reduce snoring independent of weight loss. <strong>Reduce sedative use</strong> — benzodiazepines and other sedating medications relax the airway and worsen snoring when possible to avoid. These steps form the foundation of snoring management and will also help with any sleep apnea treatment we recommend after your sleep study.`,
-    'INSPIRE-EVAL': `<strong>Nerve-Stimulation Candidacy Evaluation</strong> — You expressed interest in an upper-airway stimulation implant. It is considered only after standard treatments have not worked well enough or could not be used. Device labeling and insurance criteria differ, so your ENT must review the complete treatment history, body-size measures, sleep-study results, and sleep-endoscopy findings before recommending a specific device.`,
+    'INSPIRE-EVAL': `<strong>Nerve-Stimulation Candidacy Evaluation</strong> — You expressed interest in an upper-airway stimulation implant. It is considered only after standard treatments have not worked well enough or could not be used. Device labeling and insurance criteria differ, so your ENT must review the complete treatment history, body-size measures, sleep-study results, anatomy, and any device-required airway evaluation before recommending a specific device.`,
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
     'COMISA-SRT-CAUTION': null,  // Clinical detail
@@ -921,6 +1008,7 @@ ${items}`;
     'ENDOTYPE-WORKUP',
     'ANATOMY-WORKUP',
     'HNS-WORKUP',
+    'AIRWAY-PROCEDURE-WORKUP',
     'NASAL-WORKUP',
     'MAD-WORKUP',
     'CENTRAL-PSG-WORKUP',
@@ -942,14 +1030,6 @@ ${items}`;
     /* Above Capital ENT's current BMI 40 HGNS referral guardrail, omit the patient-facing
        option and let the clinician handle device-specific labeling/payer nuance. */
     if ((tag === 'HNS' || tag === 'INSPIRE-EVAL' || tag === 'HNS-WORKUP') && data && data.bmi > 40) {
-      return null;
-    }
-    /* The surgery workup and the nerve-stimulation workup both explain the same DISE step.
-       When the nerve-stimulation workup card will render, drop the duplicate surgery-workup
-       card so the patient sees one "complete your DISE workup first" item, not two. (At BMI > 40
-       the nerve-stimulation workup is suppressed just above, so the surgery-workup card stays.) */
-    if (tag === 'SURGERY-WORKUP' && data && Array.isArray(data.recTags)
-        && data.recTags.some(r => r.tag === 'HNS-WORKUP') && !(data.bmi > 40)) {
       return null;
     }
     if (tag === 'WEIGHT' && data) {
@@ -985,10 +1065,7 @@ ${items}`;
         if (data.bmi > 40) reasons.push('a BMI above 40');
         const reasonText = reasons.length <= 1 ? (reasons[0] || 'your evaluation')
           : reasons.slice(0, -1).join(' and ');
-        const hnsCaution = data.bmi <= 40
-          ? ' Nerve stimulation should remain only a possible option until sleep endoscopy and the full device-specific candidacy review are complete.'
-          : '';
-        return `<strong>Soft-Tissue Surgery — Honest Candidacy</strong> — Based on ${reasonText}, traditional palate or tonsil surgery is <strong>less likely to fully resolve</strong> your sleep apnea by itself. If PAP remains difficult, your ENT can review other approaches after considering the complete airway exam, sleep endoscopy, and prior-treatment history.${hnsCaution}`;
+        return `<strong>Soft-Tissue Surgery — Honest Candidacy</strong> — Based on ${reasonText}, traditional palate or tonsil surgery is <strong>less likely to fully resolve</strong> your sleep apnea by itself. If PAP remains difficult, your ENT can review other approaches after considering the complete airway exam, prior-treatment history, and any procedure-specific airway evaluation.`;
       }
     }
 
@@ -1012,13 +1089,19 @@ ${items}`;
   }
 
   function renderSectionD(data) {
-    const recTags = getPatientFacingRecEntries(data);
+    const canonicalRecTags = canonicalizePatientRecEntries(data);
+    const isPreStudy = getReportStage(data) === 'pre-study';
+    /* The pre-study evaluation section and 30-day checklist already explain
+       and operationalize the sleep-study decision. Do not repeat the same
+       concept as a treatment card; retain any distinct safe interim actions. */
+    const recTags = isPreStudy
+      ? canonicalRecTags.filter(rec => rec.tag !== 'SLEEP-STUDY')
+      : canonicalRecTags;
     if (recTags.length === 0) return '';
 
     /* Build a deduplicated list, then present only the decisions a patient needs now. */
     const seenDescriptions = new Set();
     const allRecs = [];
-    const isPreStudy = getReportStage(data) === 'pre-study';
     const isNormalStudy = exists(data.primaryAHI) && data.primaryAHI < 5;
 
     if (data.hasCOMISA) {
@@ -1049,7 +1132,7 @@ ${items}`;
     const papFirst = hasPAPPlan && !data.cpapCurrent && !isMildLowHB && !isCpapAvoidant &&
       !(data.cpapFailed && !data.cpapWillRetry);
     const backupTags = new Set(['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'HNS', 'INSPIRE-EVAL', 'SURG', 'SURGALT', 'TONSIL']);
-    const backupWorkupTags = new Set(['HNS-WORKUP', 'SURGERY-WORKUP', 'MAD-WORKUP', 'ANATOMY-WORKUP']);
+    const backupWorkupTags = new Set(['HNS-WORKUP', 'SURGERY-WORKUP', 'AIRWAY-PROCEDURE-WORKUP', 'MAD-WORKUP', 'ANATOMY-WORKUP']);
 
     const conditional = papFirst
       ? allRecs.filter(rec => backupTags.has(rec.tag) || backupWorkupTags.has(rec.tag))
@@ -1164,7 +1247,7 @@ ${items}`;
    * this page is deliberately limited to the five actions most useful right now.
    */
   function renderSectionE(data) {
-    const recTags = getPatientFacingRecEntries(data);
+    const recTags = canonicalizePatientRecEntries(data);
     if (!recTags.length) return '';
 
     const tags = new Set(recTags.map(r => r.tag));
@@ -1227,7 +1310,7 @@ ${items}`;
 
     const hasHNS = tags.has('HNS') || tags.has('INSPIRE-EVAL');
     if (hasHNS && !papFirst && !(data.bmi > 40)) {
-      add('Discuss nerve-stimulation candidacy with your ENT; evaluation usually includes a sleep endoscopy (DISE).', 3);
+      add('Discuss device-specific nerve-stimulation candidacy with your ENT, including whether the option requires sleep endoscopy (DISE).', 3);
     }
 
     if (tags.has('ASV-CONTRA')) {
@@ -1247,7 +1330,8 @@ ${items}`;
         ['POSITION-WORKUP', 'Ask whether the full report captured enough back-sleeping versus side-sleeping data to guide treatment.'],
         ['SLEEP-STAGE-WORKUP', 'Ask whether the REM versus non-REM portion of the study was complete enough to guide treatment.'],
         ['ANATOMY-WORKUP', 'Schedule or complete a full airway exam before anatomy-based treatment decisions are finalized.'],
-        ['HNS-WORKUP', 'Schedule the remaining nerve-stimulation workup steps, including DISE, before treating an implant as a finalized option.'],
+        ['HNS-WORKUP', 'Schedule the remaining device-specific nerve-stimulation workup before treating an implant as a finalized option; ask whether DISE is required for the option being considered.'],
+        ['AIRWAY-PROCEDURE-WORKUP', 'Complete the remaining procedure-specific airway evaluation before choosing surgery or nerve stimulation; this may include DISE.'],
         ['NASAL-WORKUP', 'Review nasal blockage symptoms and complete a nasal exam before nasal treatment is finalized.'],
         ['MAD-WORKUP', 'Ask the sleep dentist to confirm tooth support, jaw movement, and TMJ safety before an oral appliance is finalized.'],
         ['MAD-SAFETY-LIMIT', 'Ask whether current tooth, jaw-movement, or TMJ findings make an oral appliance a poor fit.'],

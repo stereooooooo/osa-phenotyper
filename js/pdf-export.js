@@ -172,6 +172,24 @@ const OSAPdfExport = (() => {
     .pdf-page-unit { display: block; overflow: hidden; }
     .pdf-page-unit > :first-child { margin-top: 0 !important; }
     .pdf-page-unit > :last-child { margin-bottom: 0 !important; }
+
+    /* Applied only when the normal-density paginator would leave a sparse final
+       page and a modest density change can remove that page. This is bounded,
+       print-only compaction—not a fixed two-page rule. */
+    .patient-report.pdf-report-compact { font-size: 12.5px; line-height: 1.48; }
+    .patient-report.pdf-report-compact .report-header { margin-bottom: 14px; padding-bottom: 8px; }
+    .patient-report.pdf-report-compact h2 { margin-top: 16px; margin-bottom: 6px; }
+    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 16px; padding: 10px 14px; }
+    .patient-report.pdf-report-compact .care-summary-card { margin-bottom: 16px; padding: 10px 14px; }
+    .patient-report.pdf-report-compact .ahi-scale { margin: 12px 0; }
+    .patient-report.pdf-report-compact .phenotype-item { margin-bottom: 7px; }
+    .patient-report.pdf-report-compact .treatment-group-label { margin-top: 12px; margin-bottom: 4px; }
+    .patient-report.pdf-report-compact .rec-item { padding: 4px 0; }
+    .patient-report.pdf-report-compact .cpap-context-box,
+    .patient-report.pdf-report-compact .comisa-callout { padding: 9px 11px; margin-bottom: 10px; }
+    .patient-report.pdf-report-compact .checklist-item { margin-bottom: 5px; }
+    .patient-report.pdf-report-compact .report-disclaimer { margin-top: 16px !important; padding-top: 8px !important; }
+
   `;
 
   /**
@@ -254,10 +272,11 @@ const OSAPdfExport = (() => {
     return shell;
   }
 
-  function createPatientPageShell(sourceRoot) {
+  function createPatientPageShell(sourceRoot, densityClass = '') {
     const shell = createPdfRenderShell();
     const report = document.createElement('div');
     report.className = sourceRoot.className;
+    if (densityClass) report.classList.add(densityClass);
     report.style.cssText = 'margin:0; padding:0; max-width:none; background:transparent;';
     if (sourceRoot.hasAttribute('data-patient-name')) {
       report.setAttribute('data-patient-name', sourceRoot.getAttribute('data-patient-name') || '');
@@ -298,6 +317,7 @@ const OSAPdfExport = (() => {
 
         if (child.matches('h2')) {
           const nodes = [child];
+          const trailingUnits = [];
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.cpap-context-box')) {
             nodes.push(children[i + 1]);
             i++;
@@ -314,7 +334,29 @@ const OSAPdfExport = (() => {
             }
             if (
               children[i + 1] instanceof HTMLElement &&
-              children[i + 1].matches('.checklist-group, .whatif-item')
+              children[i + 1].matches('.checklist-group')
+            ) {
+              const checklistGroup = children[i + 1];
+              const checklistItems = [...checklistGroup.children].filter(item =>
+                item instanceof HTMLElement && item.matches('.checklist-item')
+              );
+              if (checklistItems.length > 1 && checklistItems.length === checklistGroup.children.length) {
+                const firstGroup = checklistGroup.cloneNode(false);
+                firstGroup.appendChild(checklistItems[0].cloneNode(true));
+                nodes.push(firstGroup);
+                checklistItems.slice(1).forEach(item => {
+                  const continuationGroup = checklistGroup.cloneNode(false);
+                  continuationGroup.appendChild(item.cloneNode(true));
+                  trailingUnits.push(buildPatientPageUnit([continuationGroup]));
+                });
+              } else {
+                nodes.push(checklistGroup);
+              }
+              i++;
+            }
+            if (
+              children[i + 1] instanceof HTMLElement &&
+              children[i + 1].matches('.whatif-item')
             ) {
               nodes.push(children[i + 1]);
               i++;
@@ -325,6 +367,7 @@ const OSAPdfExport = (() => {
             i++;
           }
           units.push(buildPatientPageUnit(nodes));
+          trailingUnits.forEach(unit => units.push(unit));
           i++;
           continue;
         }
@@ -364,6 +407,79 @@ const OSAPdfExport = (() => {
     return units;
   }
 
+  function measurePatientPagination(reportRoot, units, measureHost, pageFitLimit, densityClass = '') {
+    const measure = createPatientPageShell(reportRoot, densityClass);
+    measureHost.appendChild(measure.shell);
+    const shellChrome = Math.ceil(measure.shell.getBoundingClientRect().height);
+    const clones = units.map(unit => {
+      const clone = unit.cloneNode(true);
+      measure.report.appendChild(clone);
+      return clone;
+    });
+
+    const reportTop = measure.report.getBoundingClientRect().top;
+    const tops = clones.map(clone => clone.getBoundingClientRect().top - reportTop);
+    const bottoms = clones.map(clone => clone.getBoundingClientRect().bottom - reportTop);
+    measureHost.removeChild(measure.shell);
+
+    const contentLimit = Math.max(1, pageFitLimit - shellChrome);
+    const groups = [];
+    let group = [];
+    let groupStartIndex = 0;
+    let pageStartTop = 0;
+    units.forEach((unit, index) => {
+      if (group.length && (bottoms[index] - pageStartTop) > contentLimit) {
+        groups.push({ units: group, startIndex: groupStartIndex, endIndex: index - 1 });
+        group = [];
+        groupStartIndex = index;
+        pageStartTop = tops[index];
+      }
+      group.push(unit);
+    });
+    if (group.length) {
+      groups.push({ units: group, startIndex: groupStartIndex, endIndex: units.length - 1 });
+    }
+
+    const fills = groups.map(groupInfo => {
+      const height = bottoms[groupInfo.endIndex] - tops[groupInfo.startIndex];
+      return Math.max(0, Math.min(1, height / contentLimit));
+    });
+    return { groups, fills, densityClass, tops, bottoms, contentLimit };
+  }
+
+  function rebalanceSparsePatientTail(plan) {
+    if (!plan || plan.groups.length < 2) return plan;
+    const groups = plan.groups.map(group => ({ ...group, units: [...group.units] }));
+    const fills = [...plan.fills];
+    const lastIndex = groups.length - 1;
+    const tail = groups[lastIndex];
+    const previous = groups[lastIndex - 1];
+
+    /* When a report genuinely needs multiple pages, avoid a greedy split that
+       leaves the last page looking accidental. Shift whole semantic units from
+       the prior page until the tail is useful, while keeping both pages under
+       capacity and the prior page at least 45% full. */
+    while (fills[lastIndex] < 0.38 && previous.units.length > 1) {
+      const movedIndex = previous.endIndex;
+      const previousEnd = movedIndex - 1;
+      const prospectivePreviousFill = previousEnd >= previous.startIndex
+        ? (plan.bottoms[previousEnd] - plan.tops[previous.startIndex]) / plan.contentLimit
+        : 0;
+      const prospectiveTailFill =
+        (plan.bottoms[tail.endIndex] - plan.tops[movedIndex]) / plan.contentLimit;
+      if (prospectivePreviousFill < 0.45 || prospectiveTailFill > 1) break;
+
+      const moved = previous.units.pop();
+      previous.endIndex = previousEnd;
+      tail.units.unshift(moved);
+      tail.startIndex = movedIndex;
+      fills[lastIndex - 1] = prospectivePreviousFill;
+      fills[lastIndex] = prospectiveTailFill;
+    }
+
+    return { ...plan, groups, fills };
+  }
+
   function paginatePatientReport(reportRoot, pageCssHeight) {
     const units = collectPatientReportUnits(reportRoot);
     const measureHost = document.createElement('div');
@@ -372,45 +488,31 @@ const OSAPdfExport = (() => {
     const pageFitLimit = Math.max(1, pageCssHeight - 24);
 
     try {
-      // ── One write pass: stack every unit in a single measuring shell ──
-      const measure = createPatientPageShell(reportRoot);
-      measureHost.appendChild(measure.shell);
-      const shellChrome = Math.ceil(measure.shell.getBoundingClientRect().height); // empty-shell overhead
-      const clones = units.map(unit => {
-        const clone = unit.cloneNode(true);
-        measure.report.appendChild(clone);
-        return clone;
-      });
+      const normalPlan = measurePatientPagination(reportRoot, units, measureHost, pageFitLimit);
+      let chosenPlan = normalPlan;
+      const lastFill = normalPlan.fills[normalPlan.fills.length - 1] || 1;
 
-      // ── One read pass: cache each unit's top/bottom within the report ──
-      // Reading all rects after all appends avoids the per-unit reflow the
-      // previous append-then-measure loop forced.
-      const reportTop = measure.report.getBoundingClientRect().top;
-      const tops = clones.map(c => c.getBoundingClientRect().top - reportTop);
-      const bottoms = clones.map(c => c.getBoundingClientRect().bottom - reportTop);
-      measureHost.removeChild(measure.shell);
+      /* Only try denser typography when the normal plan produces a genuinely
+         sparse tail. Accept compact mode only when it removes a page; longer
+         reports keep normal type and as many pages as their content requires. */
+      if (normalPlan.groups.length > 1 && lastFill < 0.42) {
+        const compactPlan = measurePatientPagination(
+          reportRoot,
+          units,
+          measureHost,
+          pageFitLimit,
+          'pdf-report-compact'
+        );
+        if (compactPlan.groups.length < normalPlan.groups.length) chosenPlan = compactPlan;
 
-      // ── Assign pages from cached numbers (no further layout reads) ──
-      // Same greedy fit as before: a unit starts a new page when the running
-      // content height would overflow and the page already holds ≥1 unit.
-      const contentLimit = Math.max(1, pageFitLimit - shellChrome);
-      const pageGroups = [];
-      let group = [];
-      let pageStartTop = 0;
-      units.forEach((unit, i) => {
-        if (group.length && (bottoms[i] - pageStartTop) > contentLimit) {
-          pageGroups.push(group);
-          group = [];
-          pageStartTop = tops[i];
-        }
-        group.push(unit);
-      });
-      if (group.length) pageGroups.push(group);
+      }
+
+      chosenPlan = rebalanceSparsePatientTail(chosenPlan);
 
       // ── Build the real page shells from the assignment ──
-      const pages = pageGroups.map(groupUnits => {
-        const page = createPatientPageShell(reportRoot);
-        groupUnits.forEach(u => page.report.appendChild(u.cloneNode(true)));
+      const pages = chosenPlan.groups.map(groupInfo => {
+        const page = createPatientPageShell(reportRoot, chosenPlan.densityClass);
+        groupInfo.units.forEach(unit => page.report.appendChild(unit.cloneNode(true)));
         return page.shell;
       });
 
@@ -447,11 +549,26 @@ const OSAPdfExport = (() => {
      text underneath the page image. The image covers this white text completely;
      assistive tools and EHR indexers can still extract it. Full PDF/UA tagging is
      not supported by the current jsPDF/html2canvas stack. */
+  function normalizeSearchablePdfText(value) {
+    return String(value || '')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201c\u201d]/g, '"')
+      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-')
+      .replace(/\u2026/g, '...')
+      .replace(/\u2265/g, '>=')
+      .replace(/\u2264/g, '<=')
+      .replace(/\u00d7/g, 'x')
+      .replace(/\u00b1/g, '+/-')
+      .replace(/\u2192/g, '->')
+      .replace(/\u00b7/g, '-')
+      .replace(/\u00a0/g, ' ');
+  }
+
   function addSearchableTextLayer(pdf, shell, margin, usableWidth, usableHeight) {
     const report = shell.querySelector('.patient-report');
     if (!report) return;
     const chunks = [];
-    const blockSelector = 'h1, h2, h3, p, li, .report-header, .report-summary-card, .care-pathway, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer';
+    const blockSelector = 'h1, h2, h3, p, li, .report-header, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer';
     const walk = node => {
       if (node.nodeType === Node.TEXT_NODE) {
         chunks.push(node.nodeValue || '');
@@ -464,8 +581,7 @@ const OSAPdfExport = (() => {
       if (block) chunks.push('\n');
     };
     walk(report);
-    const text = chunks.join('')
-      .replace(/\u00a0/g, ' ')
+    const text = normalizeSearchablePdfText(chunks.join(''))
       .replace(/[ \t]+/g, ' ')
       .replace(/ *\n */g, '\n')
       .replace(/\n{3,}/g, '\n\n')
@@ -481,7 +597,19 @@ const OSAPdfExport = (() => {
     pdf.text(lines.slice(0, maxLines), margin, margin + 3, { lineHeightFactor: 1.02 });
   }
 
-  async function exportFromHTML(html, filename, addFooter = false, footerDate = null) {
+  function finalizePdf(pdf, filename, download) {
+    const result = {
+      filename,
+      pageCount: pdf.getNumberOfPages(),
+    };
+    if (download) {
+      pdf.save(filename);
+      return result;
+    }
+    return Object.assign(result, { dataUri: pdf.output('datauristring') });
+  }
+
+  async function exportFromHTML(html, filename, addFooter = false, footerDate = null, download = true) {
     if (window.OSALibs && window.OSALibs.loadPdfExport) {
       try { await window.OSALibs.loadPdfExport(); } catch (e) { /* fall through to the guard below */ }
     }
@@ -532,6 +660,10 @@ const OSAPdfExport = (() => {
           const pxPerMm = pageCanvas.width / usableWidth;
           const destH = pageCanvas.height / pxPerMm;
           const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+          // Establish an opaque page background before the hidden text layer.
+          // Some PDF renderers otherwise treat the unused page area as transparent.
+          pdf.setFillColor(255, 255, 255);
+          pdf.rect(0, 0, pageWidth, pageHeight, 'F');
           addSearchableTextLayer(pdf, patientPages[i], margin, usableWidth, usableHeight);
           pdf.addImage(pageImg, 'JPEG', margin, margin, usableWidth, destH);
 
@@ -543,8 +675,7 @@ const OSAPdfExport = (() => {
           }
         }
 
-        pdf.save(filename);
-        return;
+        return finalizePdf(pdf, filename, download);
       }
 
       // Collect break points from the DOM before html2canvas renders
@@ -618,7 +749,7 @@ const OSAPdfExport = (() => {
         pageNum++;
       }
 
-      pdf.save(filename);
+      return finalizePdf(pdf, filename, download);
     } finally {
       document.body.removeChild(container);
     }
@@ -665,7 +796,7 @@ const OSAPdfExport = (() => {
   /**
    * Build and export the new patient report PDF from overlay content.
    */
-  function exportPatientReportPDF() {
+  function exportPatientReportPDF(options = {}) {
     const el = document.getElementById('reportPreviewContent');
     if (!el) return;
 
@@ -686,7 +817,7 @@ const OSAPdfExport = (() => {
     const dateStr = clone.getAttribute('data-report-date') || new Date().toISOString().split('T')[0];
     const filename = `Sleep_Report_${safeName}_${dateStr}.pdf`;
 
-    return exportFromHTML(clone.outerHTML, filename, true, dateStr);
+    return exportFromHTML(clone.outerHTML, filename, true, dateStr, options.download !== false);
   }
 
   return { exportClinicianPDF, exportPatientReportPDF };

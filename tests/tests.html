@@ -97,6 +97,13 @@ group('Shared Report Helpers');
 assert(typeof OSAReportShared === 'object', 'OSAReportShared exists');
 assert(typeof OSAReportShared.buildCarePathway === 'function', 'buildCarePathway helper exists');
 assert(typeof OSAReportShared.detectUARS === 'function', 'detectUARS helper exists');
+assert(typeof OSAReportShared.resolvePapState === 'function', 'resolvePapState helper exists');
+
+assertEqual(OSAReportShared.resolvePapState({ cpapCurrent: true, cpapFailed: true }), 'continuing', 'Current PAP use takes precedence over historical failure');
+assertEqual(OSAReportShared.resolvePapState({ cpapFailed: true, cpapWillRetry: true }), 'retrying', 'Failed PAP with retry intent resolves to retrying');
+assertEqual(OSAReportShared.resolvePapState({ cpapFailed: true }), 'discontinued', 'Failed PAP without retry intent resolves to discontinued');
+assertEqual(OSAReportShared.resolvePapState({ prefAvoidCpap: true, hasPapPlan: true }), 'avoiding', 'Preference to avoid PAP is not mislabeled as starting PAP');
+assertEqual(OSAReportShared.resolvePapState({ hasPapPlan: true }), 'starting', 'A new PAP plan resolves to starting');
 
 let sharedUars = OSAReportShared.detectUARS({ ahi: 3, rdi: 12, arInd: 8, ess: 12, isi: 4 });
 assert(sharedUars.isUARS, 'Shared UARS helper detects symptomatic normal-AHI patient with elevated RDI');
@@ -122,6 +129,42 @@ const patientPathway = OSAReportShared.buildCarePathway({
 assertEqual(patientPathway.detectedPath, 'cpap', 'Shared pathway helper detects CPAP pathway');
 assertEqual(patientPathway.stages[1].label, 'Home Sleep Test', 'Shared pathway helper applies study-type-specific label');
 assert(patientPathway.currentIdx >= 2, 'Shared pathway helper advances beyond study stage once study data exists');
+
+const retryPathway = OSAReportShared.buildCarePathway({
+  milestones: ['Initial Eval', 'Study Reviewed', 'CPAP Trial'],
+  studyType: 'watchpat',
+  hasStudyData: true,
+  hasPatientContext: true,
+  papState: 'retrying',
+  labels: {
+    eval: 'Your Evaluation',
+    study: { psg: 'Lab Sleep Study', watchpat: 'Home Sleep Test', default: 'Sleep Study' },
+    cpap: { trial: 'Starting PAP', retry: 'PAP Re-fit / Retry', followup: 'PAP Check-in', ongoing: 'Ongoing Care' },
+    surgical: { planning: 'Planning', dise: 'DISE', surgery: 'Procedure', postop: 'Recovery', efficacy: 'Follow-up Study' },
+    mad: { referral: 'Oral Appliance Referral', followup: 'Follow-up', efficacy: 'Follow-up Study' },
+    generic: { planning: 'Next Steps', treatment: 'Your Treatment' }
+  }
+});
+assertEqual(retryPathway.stages[2].label, 'PAP Re-fit / Retry', 'PAP retry pathway uses state-aware language');
+
+const discontinuedPathway = OSAReportShared.buildCarePathway({
+  milestones: ['Initial Eval', 'Study Reviewed', 'CPAP Trial'],
+  studyType: 'watchpat',
+  hasStudyData: true,
+  hasPatientContext: true,
+  papState: 'discontinued',
+  labels: {
+    eval: 'Your Evaluation',
+    study: { psg: 'Lab Sleep Study', watchpat: 'Home Sleep Test', default: 'Sleep Study' },
+    cpap: { trial: 'Starting PAP', completed: 'PAP Tried', followup: 'PAP Check-in', alternatives: 'Reviewing Alternatives', ongoing: 'Ongoing Care' },
+    surgical: { planning: 'Planning', dise: 'DISE', surgery: 'Procedure', postop: 'Recovery', efficacy: 'Follow-up Study' },
+    mad: { referral: 'Oral Appliance Referral', followup: 'Follow-up', efficacy: 'Follow-up Study' },
+    generic: { planning: 'Next Steps', treatment: 'Your Treatment' }
+  }
+});
+assertEqual(discontinuedPathway.stages[2].label, 'PAP Tried', 'Completed PAP trial is labeled as history, not a new start');
+assertEqual(discontinuedPathway.stages[3].label, 'Reviewing Alternatives', 'Discontinued PAP pathway moves to alternatives review');
+assert(discontinuedPathway.currentIdx >= 3, 'Discontinued PAP pathway advances beyond the completed trial');
 
 // ── Validation ────────────────────────────────────────────────
 group('Field Validation');
@@ -510,6 +553,19 @@ assert(!reportHtml.includes('normal sleep apnea'), 'Returning normal-AHI summary
 assert(reportHtml.includes('Your Sleep Study Summary'), 'Returning normal-AHI reports use a neutral sleep-study summary heading');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: null,
+  ahi: null,
+  severity: '',
+  recTags: [
+    { tag: 'SLEEP-STUDY', text: 'Complete a sleep study.' },
+    { tag: 'NASAL-OPT', text: 'Begin safe nasal support.' },
+  ],
+}));
+assert(reportHtml.includes("Why We're Recommending a Sleep Study"), 'Pre-study report explains the study decision in its dedicated evaluation section');
+assert(!reportHtml.includes('<strong>Sleep Study</strong>'), 'Pre-study report does not repeat the sleep-study concept as a treatment card');
+assert(reportHtml.includes('<strong>Nasal Treatment</strong>'), 'Pre-study report retains distinct safe interim support actions');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 3,
   ahi: 3,
   severity: 'normal',
@@ -611,7 +667,38 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'HNS-WORKUP', text: 'Complete the Inspire/HGNS workup before finalizing candidacy.' }],
 }));
 assert(reportHtml.includes('Complete the Nerve-Stimulation Evaluation First'), 'HNS workup tag renders a patient-friendly treatment explanation');
-assert(reportHtml.includes('Schedule the remaining nerve-stimulation workup steps'), 'HNS workup tag adds a practical checklist step when DISE is not yet scheduled');
+assert(reportHtml.includes('Schedule the remaining device-specific nerve-stimulation workup'), 'HNS workup tag adds a practical checklist step when the device workup is incomplete');
+assert(reportHtml.includes('may include sleep endoscopy (DISE)') && !reportHtml.includes('evaluation usually includes'), 'Nerve-stimulation workup treats DISE as device-specific rather than universal');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [
+    { tag: 'HNS', text: 'Consider nerve stimulation.' },
+    { tag: 'HNS-WORKUP', text: 'Complete the device-specific workup first.' },
+  ],
+}));
+assert((reportHtml.match(/Complete the Nerve-Stimulation Evaluation First/g) || []).length === 1, 'Nerve-stimulation concept renders once when both candidacy and workup tags fire');
+assert(!reportHtml.includes('Upper-Airway Nerve Stimulation</strong>'), 'Prerequisite nerve-stimulation workup supersedes a premature treatment card');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  recTags: [
+    { tag: 'SURGALT', text: 'Consider airway surgery.' },
+    { tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning.' },
+    { tag: 'HNS', text: 'Consider nerve stimulation.' },
+    { tag: 'HNS-WORKUP', text: 'Complete the device-specific workup first.' },
+  ],
+}));
+assert((reportHtml.match(/Complete the Procedure-Specific Airway Evaluation First/g) || []).length === 1, 'Overlapping surgery and nerve-stimulation workups consolidate into one procedural prerequisite');
+assert(!reportHtml.includes('Complete DISE-Guided Surgical Planning First') && !reportHtml.includes('Complete the Nerve-Stimulation Evaluation First'), 'Combined procedural workup suppresses narrower duplicate cards');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  bmi: 42,
+  recTags: [
+    { tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning.' },
+    { tag: 'HNS-WORKUP', text: 'Complete the device-specific workup first.' },
+  ],
+}));
+assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'BMI guardrail preserves the independent surgery workup when nerve stimulation is suppressed');
+assert(!reportHtml.includes('Complete the Procedure-Specific Airway Evaluation First') && !reportHtml.includes('Complete the Nerve-Stimulation Evaluation First'), 'BMI guardrail does not reintroduce nerve stimulation through a combined workup card');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'NASAL-WORKUP', text: 'Complete a nasal symptom and airway review before ruling nasal treatment in or out.' }],
@@ -702,6 +789,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
 assert(reportHtml.includes('Begin CBT-I and arrange a PAP re-fitting in parallel'), 'Severe COMISA summary starts CBT-I and PAP re-fitting in parallel');
+assert(reportHtml.includes('PAP Re-fit / Retry') && !reportHtml.includes('Starting CPAP'), 'Care journey reflects PAP retry state instead of presenting a new start');
 assert(reportHtml.includes('mask discomfort or fit and trouble falling or staying asleep'), 'PAP retry copy uses the patient’s documented barriers');
 assert(reportHtml.includes('Weight is one modifiable contributor'), 'BMI-linked weight factor appears among contributors when weight treatment is recommended');
 assert(reportHtml.includes('a higher tongue position') && reportHtml.includes('a mild set-back lower jaw'), 'Anatomy contributor uses the entered FTP and jaw findings');

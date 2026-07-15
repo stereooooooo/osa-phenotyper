@@ -362,7 +362,7 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
   if (domainKeys.has('hns-workup')) {
     ['HNS', 'INSPIRE-EVAL'].forEach(tag => suppressedTags.add(tag));
     prependedEntries.push({
-      text: 'Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.',
+      text: 'Complete the device-specific HGNS workup, including any required DISE and staging inputs, before finalizing candidacy or expected response.',
       tag: 'HNS-WORKUP',
     });
   }
@@ -652,7 +652,7 @@ function buildHGNSAssessment(ctx) {
     }
   } else {
     // No DISE data entered
-    result.unfavorable.push({ factor: 'DISE not performed', detail: 'Drug-induced sleep endoscopy is required before HGNS implantation. DISE findings — particularly the presence or absence of CCC at the velum — are the most direct anatomical predictor of response.', cite: 'FDA label; Vanderveken 2017' });
+    result.unfavorable.push({ factor: 'Device-specific airway evaluation incomplete', detail: 'Drug-induced sleep endoscopy is required for some HGNS devices and remains useful for defining collapse anatomy and expected response. Confirm the current device-specific evaluation requirements before final candidacy is assigned.', cite: 'FDA device-specific labeling; Vanderveken 2017' });
   }
 
   // Therapeutic CPAP pressure
@@ -699,12 +699,12 @@ function buildHGNSAssessment(ctx) {
   if (result.assessment === '') {
     // Only set if not already set by hard-stop criteria
     const favCount = result.favorable.length;
-    const unfavCount = result.unfavorable.filter(u => u.factor !== 'DISE not performed').length;
+    const unfavCount = result.unfavorable.filter(u => u.factor !== 'Device-specific airway evaluation incomplete').length;
     const dise_missing = !hasDISEData;
 
     if (dise_missing && eligible) {
-      result.assessment = 'Potentially eligible — DISE required';
-      result.assessmentDetail = `Based on available data (${favCount} favorable, ${unfavCount} unfavorable factors), this patient may be a candidate for HGNS. Drug-induced sleep endoscopy is required before final determination. Velar CCC contraindicates unilateral Inspire; if present, do not assume another HGNS system is appropriate without reviewing current device-specific labeling.`;
+      result.assessment = 'Potentially eligible — device-specific workup incomplete';
+      result.assessmentDetail = `Based on available data (${favCount} favorable, ${unfavCount} unfavorable factors), this patient may be a candidate for HGNS. Confirm the current device-specific airway-evaluation requirements before final determination; some systems require DISE, and DISE findings can materially affect treatment selection and expected response. Velar CCC contraindicates unilateral Inspire; if present, do not assume another HGNS system is appropriate without reviewing current device-specific labeling.`;
     } else if (eligible && unfavCount === 0 && favCount >= 2) {
       result.assessment = 'Strong candidate';
       result.assessmentDetail = `This patient has ${favCount} favorable factors and no significant unfavorable findings. The evidence supports a high likelihood of HGNS success (STAR trial: 66% overall success with Sher criteria; higher in patients with multiple favorable predictors).`;
@@ -764,7 +764,7 @@ function renderHGNSHTML(hgns) {
     'Candidate with caveats':           'bg-warning text-dark',
     'Marginal candidate':               'bg-warning text-dark',
     'Not a candidate':                  'bg-danger',
-    'Potentially eligible — DISE required': 'bg-info text-dark'
+    'Potentially eligible — device-specific workup incomplete': 'bg-info text-dark'
   };
   const badgeClass = badgeMap[hgns.assessment] || 'bg-secondary';
 
@@ -1719,11 +1719,19 @@ function buildClinicianReport(f, m, T){
   const milestones = [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value);
 
   const studyTypeVal = document.querySelector('input[name="studyType"]:checked')?.value;
+  const carePapState = OSAReportShared.resolvePapState({
+    cpapCurrent,
+    cpapFailed,
+    cpapWillRetry,
+    prefAvoidCpap,
+    hasPapPlan: guardedRecEntries.some(entry => entry.tag === 'CPAP' || entry.tag.startsWith('CPAP-')),
+  });
   const { stages: careStages, currentIdx: currentStageIdx } = OSAReportShared.buildCarePathway({
     milestones,
     studyType: studyTypeVal,
     hasStudyData: exists(ahi),
     hasPatientContext: Boolean(document.getElementById('patientName')?.value),
+    papState: carePapState,
     labels: {
       eval: 'Evaluation',
       study: {
@@ -1733,7 +1741,12 @@ function buildClinicianReport(f, m, T){
       },
       cpap: {
         trial: 'CPAP Trial',
+        retry: 'PAP Re-fit / Retry',
+        current: 'Using PAP',
+        completed: 'PAP Tried',
+        considered: 'PAP Considered',
         followup: 'CPAP Follow-up',
+        alternatives: 'Alternatives Review',
         ongoing: 'Ongoing',
       },
       surgical: {

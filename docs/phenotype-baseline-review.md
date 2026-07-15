@@ -350,7 +350,7 @@ _Updated 2026-07-15 (v5): nerve-stimulation logic is device-specific. Complete c
 - Review REM/NREM staging data before concluding that REM-specific worsening is absent.
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete the upper-airway anatomy exam (BMI, tonsil size, and Friedman tongue position) before finalizing surgery- or anatomy-matched therapy recommendations.
-- Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.
+- Complete the device-specific HGNS workup, including any required DISE and staging inputs, before finalizing candidacy or expected response.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 25. Poor Inspire (BMI)
@@ -366,7 +366,7 @@ _Updated 2026-07-15 (v5): nerve-stimulation logic is device-specific. Complete c
 - Review REM/NREM staging data before concluding that REM-specific worsening is absent.
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete the upper-airway anatomy exam (BMI, tonsil size, and Friedman tongue position) before finalizing surgery- or anatomy-matched therapy recommendations.
-- Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.
+- Complete the device-specific HGNS workup, including any required DISE and staging inputs, before finalizing candidacy or expected response.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 26. Interested in Inspire
@@ -383,7 +383,7 @@ _Updated 2026-07-15 (v5): nerve-stimulation logic is device-specific. Complete c
 - Review REM/NREM staging data before concluding that REM-specific worsening is absent.
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete the upper-airway anatomy exam (BMI, tonsil size, and Friedman tongue position) before finalizing surgery- or anatomy-matched therapy recommendations.
-- Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.
+- Complete the device-specific HGNS workup, including any required DISE and staging inputs, before finalizing candidacy or expected response.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 27. BMI 26 mild insomnia
@@ -494,7 +494,7 @@ _Updated 2026-07-15 (v5): nerve-stimulation logic is device-specific. Complete c
 - Review REM/NREM staging data before concluding that REM-specific worsening is absent.
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete the upper-airway anatomy exam (BMI, tonsil size, and Friedman tongue position) before finalizing surgery- or anatomy-matched therapy recommendations.
-- Complete the Inspire/HGNS workup with DISE and all required staging inputs before finalizing candidacy or expected response.
+- Complete the device-specific HGNS workup, including any required DISE and staging inputs, before finalizing candidacy or expected response.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
 ### 35. Mild OSA, no oxygen metrics

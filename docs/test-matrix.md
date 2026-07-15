@@ -78,8 +78,11 @@
 | 39 | FTP handoff to patient report | Pre-study or OSA patient with FTP III/IV — Section A / exam language should explicitly mention the Friedman Tongue Position finding |
 | 40 | Low-HB wording guardrail | Mild OSA with measured low hypoxic burden — report should use uncertainty-aware language ("reasonable first-line alternatives"), not "works just as well" certainty language |
 | 41 | Patient PDF metadata | Exported patient PDF filename should use patient name + report date, and per-page footer date should match the report date rather than export time |
-| 42 | Patient PDF pagination | Long patient report with care pathway and prioritized checklist — target 3 pages (4 maximum), prefer section/card boundaries, avoid splitting mid-rec-item, and keep `Your First 30 Days` with its first action |
+| 42 | Patient PDF pagination | Patient reports use content-driven length rather than a fixed target: typical reports should remain readable in 1–2 pages, content-rich reports may use 3+ pages, print-only compaction is accepted only when it eliminates a sparse trailing page, and irreducible sparse tails are rebalanced across the final two pages without splitting treatment cards |
 | 43 | Severe COMISA patient-report focus | Severe OSA + insomnia + PAP retry + nasal/weight/alternative recommendations — summary starts CBT-I and PAP re-fitting in parallel, MAD/HNS appear only under `If PAP Remains Difficult`, checklist has no more than five actions, saline includes safe-water wording, and repetitive `What If` content is omitted |
+| 44 | PAP state-aware care journey | Starting, continuing, retrying, discontinued, and preference-avoidant PAP histories should produce distinct pathway labels and should never relabel a documented retry as a first-time PAP start |
+| 45 | Treatment-concept deduplication | Multiple tags for the same clinical concept should collapse by prerequisite severity; overlapping surgery/HGNS workups should render one procedure-specific prerequisite unless a device guardrail requires an independent pathway |
+| 46 | Device-specific HGNS workup wording | Patient and clinician reports should describe DISE and other airway evaluation as device/procedure-specific, while retaining Inspire-specific CCC exclusion and BMI/AHI/PAP-history guardrails |
 
 Normal-AHI wording check: returning post-study summaries should say the study did not show evidence of obstructive sleep apnea, not `normal sleep apnea`.
 

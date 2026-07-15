@@ -9,11 +9,13 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="../js/config.js"></script>
-  <script src="../js/report-shared.js"></script>
-  <script src="../js/patientReport.js"></script>
-  <script src="../js/pdf-export.js"></script>
+  <script src="../js/report-shared.js?v=global-report-rules-6"></script>
+  <script src="../js/patientReport.js?v=global-report-rules-6"></script>
+  <script src="../js/pdf-export.js?v=global-report-rules-7"></script>
   <script>
-    const fixture = {
+    const params = new URLSearchParams(window.location.search);
+    const scenario = params.get('scenario') || 'retry';
+    const retryFixture = {
       patientName: 'TESTPATIENT, Morgan',
       reportDate: '2026-07-15',
       studyType: 'watchpat',
@@ -59,18 +61,81 @@
         { tag: 'CPAP', text: 'Retry PAP.' },
         { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
         { tag: 'WEIGHT', text: 'Weight management.' },
-        { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
+        { tag: 'SURGALT', text: 'Consider airway surgery after full evaluation.' },
         { tag: 'HNS-WORKUP', text: 'Complete the device-specific nerve-stimulation workup before finalizing candidacy.' },
         { tag: 'ENDOTYPE-WORKUP', text: 'Review detailed event data.' }
       ],
       recs: [],
       why: {},
-      milestones: ['Initial Eval', 'Study Reviewed'],
+      milestones: ['Initial Eval', 'Study Reviewed', 'CPAP Trial'],
       insufficientDataDomains: []
     };
+    const fixtures = {
+      retry: retryFixture,
+      'pre-study': Object.assign({}, retryFixture, {
+        patientName: 'TESTPATIENT, PreStudy',
+        primaryAHI: null,
+        ahi: null,
+        severity: '',
+        nadir: null,
+        odi: null,
+        t90: null,
+        hasCOMISA: false,
+        cpapFailed: false,
+        cpapWillRetry: false,
+        cpapReasons: [],
+        phen: [],
+        recTags: [
+          { tag: 'SLEEP-STUDY', text: 'Schedule a sleep study.' },
+          { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
+        ],
+        milestones: ['Initial Eval', 'Study Ordered'],
+      }),
+      maximal: Object.assign({}, retryFixture, {
+        patientName: 'TESTPATIENT, Maximal',
+        phen: [
+          'High Anatomical Contribution',
+          'Low Arousal Threshold',
+          'High Loop Gain',
+          'Poor Muscle Responsiveness',
+          'Positional OSA',
+          'REM-Predominant OSA',
+          'High Hypoxic Burden',
+          'Nasal-Resistance Contributor',
+        ],
+        recTags: [
+          { tag: 'CBTI', text: 'Treat insomnia.' },
+          { tag: 'CPAP', text: 'Retry PAP.' },
+          { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
+          { tag: 'WEIGHT', text: 'Weight management.' },
+          { tag: 'POS', text: 'Use positional therapy.' },
+          { tag: 'MAD-POOR', text: 'Consider an oral appliance as combination therapy.' },
+          { tag: 'SURGALT', text: 'Consider airway surgery after full evaluation.' },
+          { tag: 'SURGERY-WORKUP', text: 'Complete procedure-specific airway planning.' },
+          { tag: 'HNS', text: 'Consider nerve stimulation.' },
+          { tag: 'HNS-WORKUP', text: 'Complete device-specific nerve-stimulation workup.' },
+        ],
+      }),
+    };
+    const fixture = fixtures[scenario] || fixtures.retry;
     document.getElementById('reportPreviewContent').innerHTML = PatientReport.generateReportHTML(fixture);
     window.fixtureReady = true;
-    if (new URLSearchParams(window.location.search).get('export') === '1') {
+    if (params.get('render') === '1') {
+      window.addEventListener('load', () => {
+        setTimeout(async () => {
+          window.generatedPdf = await OSAPdfExport.exportPatientReportPDF({ download: false });
+          const pdfData = document.createElement('textarea');
+          pdfData.id = 'generatedPdfData';
+          pdfData.hidden = true;
+          pdfData.textContent = window.generatedPdf?.dataUri || '';
+          document.body.appendChild(pdfData);
+          document.documentElement.setAttribute('data-pdf-pages', String(window.generatedPdf?.pageCount || ''));
+          document.documentElement.setAttribute('data-pdf-filename', window.generatedPdf?.filename || '');
+          document.documentElement.setAttribute('data-pdf-ready', 'true');
+        }, 750);
+      });
+    }
+    if (params.get('export') === '1') {
       window.addEventListener('load', () => {
         setTimeout(() => OSAPdfExport.exportPatientReportPDF(), 750);
       });
