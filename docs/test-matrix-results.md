@@ -1,17 +1,18 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 15, 2026
-**Latest app version:** staging build `920d52e` (`feat(report): focus patient sleep roadmap`)
+**Latest app version:** staging build `186487f` (`fix(report): tighten clinical safety and PDF output`)
 
 ---
 
-## July 15, 2026 Focused Patient-Report Revision
+## July 15, 2026 Patient-Report Safety and PDF Revision
 
-- Headless regression suite: **306 assertions passed**.
-- Added severe-COMISA coverage for concurrent CBT-I/PAP start, PAP-conditional MAD/HGNS alternatives, safe nasal-rinse water, technical-endotype suppression, and a maximum of five first-month actions.
+- Headless regression suite: **313 assertions passed**.
+- Added severe-COMISA coverage for concurrent/sequential CBT-I/PAP planning, documented PAP barriers, anatomy-specific wording, weight as a modifiable contributor, oxygen burden as an outcome/risk marker, and device-specific HGNS language.
 - Exercised the real jsPDF/html2canvas export path with `tests/patient-report-pdf-fixture.html`.
-- Final representative severe-COMISA report: **3 letter-size pages**, with every page rendered and inspected; no clipping, overflow, orphaned headings, duplicate footer, or split treatment cards found.
-- Patient copy was recalibrated against Sweetman/MATRICS COMISA trials, SAVE/adherence evidence, FDA Genio labeling, FDA nasal-irrigation guidance, and the 2024 nasal-surgery systematic review; citations are tracked in `docs/citations.md`.
-- Deployed to clinician-only staging and verified CloudFront is serving build `920d52e` and the new report wording.
+- Final representative severe-COMISA report: **2 letter-size pages**, rendered and inspected page by page; no clipping, orphaned headings, split conditional-treatment group, or sparse trailing page found.
+- PDF output now includes selectable/searchable text beneath the pixel-faithful visual layer, document metadata, higher-contrast pathway text, and `Page x of y` footers. The current jsPDF stack does not provide full PDF/UA tagging.
+- Patient and clinician copy was recalibrated against Sweetman/MATRICS COMISA trials and current FDA Inspire/Genio labeling; citations are tracked in `docs/citations.md`.
+- Deployed to clinician-only staging and verified CloudFront is serving build `186487f` and the corrected report/PDF code.
 
 ---
 
