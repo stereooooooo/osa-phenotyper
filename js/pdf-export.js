@@ -117,6 +117,7 @@ const OSAPdfExport = (() => {
 
     /* Patient report styles for PDF */
     .patient-report { margin: 0; padding: 0; max-width: none; background: transparent; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.6; color: #374151; }
+    .patient-report p { margin-top: 0; margin-bottom: 10px; }
     .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #1F3A5C; }
     .patient-report .report-logo { height: 44px; width: auto; }
     .patient-report .report-meta { text-align: right; font-size: 12px; color: #6B7280; }
@@ -126,9 +127,9 @@ const OSAPdfExport = (() => {
     .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 26px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
     .report-terms { margin: 0 0 22px; padding: 11px 0 13px; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; }
     .report-terms h2 { margin: 0 0 9px; padding: 0; border: 0; font-size: 13px; }
-    .report-terms-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 20px; margin: 0; }
-    .report-term { display: block; break-inside: avoid; }
-    .report-term dt { margin: 0 0 2px; color: #1F3A5C; font-size: 10.5px; font-weight: 700; line-height: 1.4; }
+    .report-terms-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 20px; margin: 0; }
+    .report-term { display: flex; flex-direction: column; gap: 2px; break-inside: avoid; }
+    .report-term dt { margin: 0; color: #1F3A5C; font-size: 10.5px; font-weight: 700; line-height: 1.4; }
     .report-term dd { margin: 0; color: #526173; font-size: 10px; line-height: 1.45; }
     .report-summary-card { margin: 0 0 22px; padding: 13px 15px; background: #eef3f8; border: 1px solid #cbd5e1; border-radius: 6px; }
     .report-summary-finding { margin: 0; color: #1a2b42; font-size: 14px; line-height: 1.58; }
@@ -145,7 +146,7 @@ const OSAPdfExport = (() => {
     .ahi-scale-zone.severe { background: #ef4444; flex: 30; }
     .ahi-scale-marker-row { position: relative; height: 24px; margin-top: 4px; }
     .ahi-scale-marker { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11px; font-weight: 700; color: #1F3A5C; }
-    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px; }
+    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 18px; }
     .phenotype-icon { font-size: 18px; color: #1F3A5C; flex-shrink: 0; margin-top: 2px; }
     .treatment-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 6px; }
     .rec-item { padding: 7px 0; border-bottom: 1px solid #f3f4f6; }
@@ -179,9 +180,12 @@ const OSAPdfExport = (() => {
     /* Care summary card */
     .care-summary-card { background: #f0f2f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; }
     .care-summary-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; margin-bottom: 4px; }
-    .pdf-page-unit { display: block; overflow: hidden; }
-    .pdf-page-unit > :first-child { margin-top: 0 !important; }
-    .pdf-page-unit > :last-child { margin-bottom: 0 !important; }
+    .pdf-section-continuation { margin: 0 0 14px; color: #6B7280; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    /* Each semantic unit participates in normal document rhythm. Flow-root keeps
+       child margins measurable by the paginator instead of collapsing outside
+       the unit. Only the first unit on a new page loses its top margin. */
+    .pdf-page-unit { display: flow-root; overflow: hidden; }
+    .patient-report > .pdf-page-unit:first-child > :first-child { margin-top: 0 !important; }
 
     /* Applied only when the normal-density paginator would leave a sparse final
        page and a modest density change can remove that page. This is bounded,
@@ -300,9 +304,10 @@ const OSAPdfExport = (() => {
     return { shell, report };
   }
 
-  function buildPatientPageUnit(nodes) {
+  function buildPatientPageUnit(nodes, sectionLabel = '') {
     const wrapper = document.createElement('div');
     wrapper.className = 'pdf-page-unit';
+    if (sectionLabel) wrapper.setAttribute('data-pdf-section-label', sectionLabel);
     nodes.forEach(node => wrapper.appendChild(node.cloneNode(true)));
     return wrapper;
   }
@@ -318,11 +323,13 @@ const OSAPdfExport = (() => {
       }
 
       const children = [...section.children];
+      const sectionLabel = section.querySelector(':scope > h2')?.textContent?.trim() || '';
+      const makeUnit = nodes => buildPatientPageUnit(nodes, sectionLabel);
       let i = 0;
       while (i < children.length) {
         const child = children[i];
         if (!(child instanceof HTMLElement)) {
-          units.push(buildPatientPageUnit([child]));
+          units.push(makeUnit([child]));
           i++;
           continue;
         }
@@ -359,7 +366,7 @@ const OSAPdfExport = (() => {
                 checklistItems.slice(1).forEach(item => {
                   const continuationGroup = checklistGroup.cloneNode(false);
                   continuationGroup.appendChild(item.cloneNode(true));
-                  trailingUnits.push(buildPatientPageUnit([continuationGroup]));
+                  trailingUnits.push(makeUnit([continuationGroup]));
                 });
               } else {
                 nodes.push(checklistGroup);
@@ -378,7 +385,7 @@ const OSAPdfExport = (() => {
             nodes.push(children[i + 1]);
             i++;
           }
-          units.push(buildPatientPageUnit(nodes));
+          units.push(makeUnit(nodes));
           trailingUnits.forEach(unit => units.push(unit));
           i++;
           continue;
@@ -396,11 +403,11 @@ const OSAPdfExport = (() => {
             nodes.push(children[i]);
             i++;
           }
-          units.push(buildPatientPageUnit(nodes));
+          units.push(makeUnit(nodes));
           continue;
         }
 
-        units.push(buildPatientPageUnit([child]));
+        units.push(makeUnit([child]));
         i++;
       }
     });
@@ -522,8 +529,18 @@ const OSAPdfExport = (() => {
       chosenPlan = rebalanceSparsePatientTail(chosenPlan);
 
       // ── Build the real page shells from the assignment ──
-      const pages = chosenPlan.groups.map(groupInfo => {
+      const pages = chosenPlan.groups.map((groupInfo, pageIndex) => {
         const page = createPatientPageShell(reportRoot, chosenPlan.densityClass);
+        const firstLabel = groupInfo.units[0]?.getAttribute('data-pdf-section-label') || '';
+        const previousGroup = chosenPlan.groups[pageIndex - 1];
+        const previousLabel = previousGroup?.units[previousGroup.units.length - 1]
+          ?.getAttribute('data-pdf-section-label') || '';
+        if (pageIndex > 0 && firstLabel && firstLabel === previousLabel) {
+          const continuation = document.createElement('div');
+          continuation.className = 'pdf-section-continuation';
+          continuation.textContent = `${firstLabel} (continued)`;
+          page.report.appendChild(continuation);
+        }
         groupInfo.units.forEach(unit => page.report.appendChild(unit.cloneNode(true)));
         return page.shell;
       });
@@ -580,7 +597,7 @@ const OSAPdfExport = (() => {
     const report = shell.querySelector('.patient-report');
     if (!report) return;
     const chunks = [];
-    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer';
+    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer, .pdf-section-continuation';
     const walk = node => {
       if (node.nodeType === Node.TEXT_NODE) {
         chunks.push(node.nodeValue || '');

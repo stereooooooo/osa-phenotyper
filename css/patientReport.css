@@ -86,15 +86,17 @@ body.report-preview-open {
 .patient-report .report-terms-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem 1.5rem;
+  gap: 0.75rem 1.5rem;
   margin: 0;
 }
 .patient-report .report-term {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   break-inside: avoid;
 }
 .patient-report .report-term dt {
-  margin: 0 0 0.15rem;
+  margin: 0;
   color: #1F3A5C;
   font-size: 0.82rem;
   font-weight: 700;
@@ -206,7 +208,7 @@ body.report-preview-open {
   display: flex;
   gap: 0.75rem;
   align-items: flex-start;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 .patient-report .report-section {
   display: block;
