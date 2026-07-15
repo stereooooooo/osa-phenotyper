@@ -500,7 +500,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   severity: 'normal',
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
-assert(reportHtml.includes('did <strong>not show evidence of obstructive sleep apnea</strong> (AHI 3)'), 'Returning normal-AHI summary says the study did not show evidence of obstructive sleep apnea');
+assert(reportHtml.includes('did not find obstructive sleep apnea'), 'Returning normal-AHI summary says the study did not find obstructive sleep apnea');
 assert(!reportHtml.includes('normal sleep apnea'), 'Returning normal-AHI summary never says "normal sleep apnea"');
 assert(reportHtml.includes('Your Sleep Study Summary'), 'Returning normal-AHI reports use a neutral sleep-study summary heading');
 
@@ -567,14 +567,14 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
 assert(reportHtml.includes('dipped lower than we like to see during the night'), 'High-hypoxic-burden explanation uses calibrated oxygen wording');
-assert(reportHtml.includes('helps confirm treatment is bringing those levels into a safer range'), 'High-hypoxic-burden explanation keeps follow-up language probabilistic');
+assert(reportHtml.includes('follow-up testing especially important') && reportHtml.includes('confirm that your breathing and oxygen improve'), 'High-hypoxic-burden explanation keeps follow-up language action-oriented and probabilistic');
 assert(!reportHtml.includes('fall well below normal'), 'High-hypoxic-burden explanation avoids overly alarmist oxygen language');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'OXYGEN-WORKUP', text: 'Review full oxygen metrics before finalizing cardiovascular risk.' }],
 }));
 assert(reportHtml.includes('Complete Oxygen-Risk Review'), 'Oxygen workup tag renders a patient-friendly treatment explanation');
-assert(reportHtml.includes('review the full oxygen portion of your sleep study report'), 'Oxygen workup tag adds a practical checklist step');
+assert(reportHtml.includes('review the full oxygen portion of the sleep study'), 'Oxygen workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'POSITION-WORKUP', text: 'Review positional tracking or repeat the study with positional data before concluding that sleep position does not matter.' }],
@@ -586,13 +586,13 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'SLEEP-STAGE-WORKUP', text: 'Review REM/NREM staging data before concluding that REM-specific worsening is absent.' }],
 }));
 assert(reportHtml.includes('Review REM-Sleep Data Before Ruling Out REM Worsening'), 'Sleep-stage workup tag renders a patient-friendly treatment explanation');
-assert(reportHtml.includes('REM versus non-REM portion of your study'), 'Sleep-stage workup tag adds a practical checklist step');
+assert(reportHtml.includes('REM versus non-REM portion of the study'), 'Sleep-stage workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ENDOTYPE-WORKUP', text: 'Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.' }],
 }));
-assert(reportHtml.includes('Complete the Detailed Event Breakdown Before Final Endotype Matching'), 'Endotype workup tag renders a patient-friendly treatment explanation');
-assert(reportHtml.includes('apnea-versus-hypopnea breakdown needed to fully interpret'), 'Endotype workup tag adds a practical checklist step');
+assert(!reportHtml.includes('Complete the Detailed Event Breakdown Before Final Endotype Matching'), 'Technical endotype workup stays in the clinician report');
+assert(!reportHtml.includes('apnea-versus-hypopnea breakdown needed to interpret'), 'Technical endotype workup does not become a patient checklist item');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ANATOMY-WORKUP', text: 'Complete the upper-airway anatomy exam before finalizing anatomy-based treatments.' }],
@@ -622,7 +622,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'MAD-SAFETY-LIMIT', text: 'Current dental or jaw findings make an oral appliance a limited or potentially unsafe option until a sleep-dentist review says otherwise.' }],
 }));
 assert(reportHtml.includes('Oral Appliance May Not Be a Safe Fit Right Now'), 'MAD safety-limit tag renders a patient-friendly contraindication explanation');
-assert(reportHtml.includes('poor fit before treating it as a real option'), 'MAD safety-limit tag adds a practical checklist step');
+assert(reportHtml.includes('make an oral appliance a poor fit'), 'MAD safety-limit tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ASV-SAFETY', text: 'If ASV is being considered, confirm LVEF is above 45% first.' }],
@@ -641,7 +641,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'CENTRAL-PSG-WORKUP', text: 'Because the central-breathing instability was inferred from a home sleep test, confirm it on in-lab PSG before finalizing ASV or other central-directed therapy.' }],
 }));
 assert(reportHtml.includes('Confirm Central-Breathing Findings With a Lab Sleep Study'), 'Central-PSG workup tag renders a patient-friendly confirmation explanation');
-assert(reportHtml.includes('central-breathing signals seen on your home sleep study') && reportHtml.includes('ASV'), 'Central-PSG workup tag adds a practical checklist step before advanced PAP decisions');
+assert(reportHtml.includes('central-breathing signals from the home study') && reportHtml.includes('advanced PAP'), 'Central-PSG workup tag adds a practical checklist step before advanced PAP decisions');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' }],
@@ -663,9 +663,39 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   ],
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
-assert(reportHtml.includes('Complete Before Finalizing Other Options'), 'Workup recommendations render in their own treatment-plan group');
-assert(reportHtml.indexOf('Start Now') < reportHtml.indexOf('Complete Before Finalizing Other Options'), 'Actual treatment actions lead before prerequisite workups');
+assert(reportHtml.includes('If PAP Remains Difficult'), 'Backup therapy and related workup render under the conditional PAP pathway');
+assert(reportHtml.indexOf('Start Now') < reportHtml.indexOf('If PAP Remains Difficult'), 'Actual treatment actions lead before conditional alternatives');
 assert(reportHtml.indexOf('CPAP Therapy') < reportHtml.indexOf('Complete DISE-Guided Surgical Planning First'), 'Primary therapies appear before workup items in the treatment plan');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 33,
+  ahi: 33,
+  severity: 'severe',
+  nadir: 82,
+  hasCOMISA: true,
+  cpapFailed: true,
+  cpapWillRetry: true,
+  phen: ['High Anatomical Contribution', 'High Hypoxic Burden', 'Nasal-Resistance Contributor'],
+  recTags: [
+    { tag: 'CBTI', text: 'Treat insomnia.' },
+    { tag: 'CPAP', text: 'Retry PAP.' },
+    { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
+    { tag: 'WEIGHT', text: 'Weight management.' },
+    { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
+    { tag: 'HNS', text: 'Consider nerve stimulation.' },
+    { tag: 'ENDOTYPE-WORKUP', text: 'Review detailed event data.' },
+  ],
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('Begin CBT-I and arrange a PAP re-fitting in parallel'), 'Severe COMISA summary starts CBT-I and PAP re-fitting in parallel');
+assert(reportHtml.includes('If PAP Remains Difficult'), 'MAD and HNS are presented as conditional backups when PAP is being retried');
+assert(reportHtml.indexOf('If PAP Remains Difficult') < reportHtml.indexOf('Oral Appliance Therapy'), 'Conditional backup label appears before oral-appliance details');
+assert(!reportHtml.includes('Sleepio') && !reportHtml.includes('SomRyst'), 'Patient report does not endorse named digital CBT-I products');
+assert(!reportHtml.includes('4+ hours') && !reportHtml.includes('health protection'), 'Patient report avoids a categorical four-hour health-protection claim');
+assert(reportHtml.includes('distilled, sterile, or previously boiled and cooled water'), 'Nasal-rinse action includes the safe-water instruction');
+assert((reportHtml.match(/class="checklist-item"/g) || []).length <= 5, 'First 30 Days checklist is capped at five actions');
+assert(!reportHtml.includes('<h2>What If…?</h2>'), 'Condensed patient report omits the repetitive What If section');
+assert(!reportHtml.includes('apnea-versus-hypopnea breakdown needed to interpret'), 'Technical endotype workup stays out of the checklist when treatment actions are already present');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');

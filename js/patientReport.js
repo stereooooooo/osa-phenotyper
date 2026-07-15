@@ -236,7 +236,7 @@ var PatientReport = (() => {
     'INSPIRE-EVAL': 'Schedule your nerve-stimulation candidacy evaluation (a sleep endoscopy).',
     'SURG': 'Discuss the surgical options in your plan with your ENT.',
     'SURGALT': 'Discuss the surgical options in your plan with your ENT.',
-    'CBTI': 'Start CBT-I — the program for insomnia — as your first step.',
+    'CBTI': 'Begin CBT-I — the structured treatment for insomnia.',
     'POS': 'Try sleeping on your side (positional therapy) as a first step.',
     'WEIGHT': 'Begin a weight-management plan with your doctor’s support.',
     'NASAL-OPT': 'Start nasal treatment to make breathing — and any therapy — easier.',
@@ -254,10 +254,20 @@ var PatientReport = (() => {
         ? 'Talk with your doctor about whether a more detailed in-lab sleep study is the right next step.'
         : 'Review these results with your doctor and keep an eye on how you are sleeping.';
     }
+    const entries = getPatientFacingRecEntries(data);
+    const hasPAPPlan = entries.some(e => e.tag === 'CPAP' || e.tag.startsWith('CPAP-'));
+    // Sweetman 2019 supports early CBT-I; MATRICS (Ong 2020) supports concurrent
+    // CBT-I + PAP and does not justify delaying PAP. See docs/citations.md.
+    if (data.hasCOMISA && hasPAPPlan && !(data.cpapFailed && !data.cpapWillRetry)) {
+      return data.cpapCurrent
+        ? 'Begin CBT-I while continuing PAP, and address any mask or nasal comfort issues with your care team.'
+        : data.cpapFailed && data.cpapWillRetry
+          ? 'Begin CBT-I and arrange a PAP re-fitting in parallel.'
+          : 'Begin CBT-I and arrange your PAP setup in parallel.';
+    }
     // Established CPAP user: the action is continuity, not a new fitting.
     if (data.cpapCurrent) return 'Keep using your CPAP, and bring any comfort issues to your next visit so we can fine-tune it.';
     // Otherwise follow the report's own recommendation priority — first one the patient actually sees.
-    const entries = getPatientFacingRecEntries(data);
     for (const e of entries) {
       if (patientFriendlyRec(e.tag, e.text || '', data) === null) continue;  // suppressed / not shown
       if (NEXT_STEP_ACTIONS[e.tag]) return NEXT_STEP_ACTIONS[e.tag];
@@ -278,7 +288,7 @@ var PatientReport = (() => {
       const sev = ahiSeverityLabel(ahi);  // mild | moderate | severe
       finding = `Your sleep study shows <strong>${sev} sleep apnea</strong>.`;
       meaning = sev === 'severe'
-        ? 'At this level it adds real strain on your heart and body over time — and treatment can make a big difference.'
+        ? 'At this level, treatment is important because severe OSA is associated with cardiovascular and daytime-function risks.'
         : sev === 'moderate'
           ? 'It is interrupting your sleep often enough to affect your health and energy, and treatment helps.'
           : 'Even at this level, treating it can improve how rested you feel and protect your long-term health.';
@@ -557,7 +567,7 @@ Many people with sleep apnea feel sleepy during the day — and your results sug
     } else if (!isNormalStudy && (subtype.includes('disturbed') || subtype.includes('comisa'))) {
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: COMISA (Insomnia + Sleep Apnea)</strong><br>
-Your results show a pattern called COMISA — comorbid insomnia and obstructive sleep apnea. This means you have both difficulty sleeping (insomnia) and breathing interruptions during sleep (sleep apnea), and the two conditions can make each other worse. People with COMISA often have trouble falling asleep or staying asleep, and may feel anxious about sleep itself. Treating just one condition without addressing the other often leads to incomplete improvement. Your care plan will be designed to address both.</p>`;
+You have both insomnia and breathing interruptions during sleep. Your plan addresses both conditions.</p>`;
     } else if (!isNormalStudy && subtype.includes('minimal')) {
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: Minimally Symptomatic</strong><br>
@@ -725,7 +735,7 @@ ${subtypeHtml}`;
     };
 
     const descMap = {
-      'High Anatomical Contribution': `The physical shape of your airway — things like enlarged tonsils, a set-back jaw, or extra throat tissue — leaves less room for air when your muscles relax in sleep. Treatments that physically open the airway (an oral appliance, surgery, or an upper-airway nerve-stimulation implant) often work especially well here.`,
+      'High Anatomical Contribution': `The shape of your airway — such as enlarged tonsils, a set-back jaw, or extra throat tissue — leaves less room for air during sleep. The best anatomy-based option depends on your exam, collapse pattern, prior treatment, and candidacy.`,
 
       'Low Arousal Threshold': `Your brain wakes up easily when breathing gets hard. That sounds helpful, but it cuts short your airway muscles' chance to reopen on their own, leaving many brief, fragmented wake-ups. Treatments that steady your breathing — so the brain doesn't have to step in so often — tend to help.`,
 
@@ -737,9 +747,9 @@ ${subtypeHtml}`;
 
       'REM-Predominant OSA': `Your breathing problems cluster in REM (dream) sleep, when your brain relaxes the muscles that hold the airway open. Because REM is key for memory and mood, disruptions there affect how you feel. CPAP is particularly good at protecting REM sleep.`,
 
-      'High Hypoxic Burden': `Your oxygen dipped lower than we like to see during the night. Over time that adds stress to the heart and blood vessels, so your plan pays extra attention to steadying your breathing and oxygen. Follow-up testing helps confirm treatment is bringing those levels into a safer range.`,
+      'High Hypoxic Burden': `Your oxygen dipped lower than we like to see during the night. This makes effective treatment and follow-up testing especially important so we can confirm that your breathing and oxygen improve.`,
 
-      'Nasal-Resistance Contributor': `Narrowing or blockage in your nose makes breathing through it harder and can push you toward mouth-breathing in sleep, which makes the throat easier to collapse. Treating the nose — with medication, allergy care, or surgery — helps your other treatments work better.`,
+      'Nasal-Resistance Contributor': `Narrowing or blockage in your nose can make PAP or an oral appliance harder to tolerate. Nasal treatment can improve comfort and airflow, but it usually supports — rather than replaces — treatment for sleep apnea itself.`,
 
       'Elevated Delta Heart Rate': `Your heart rate swings sharply through the night — spiking when breathing is blocked, dropping when it reopens. Those repeated jolts strain the heart and, over years, raise blood pressure and rhythm risks. Effective treatment usually calms these swings back toward normal.`,
     };
@@ -783,7 +793,9 @@ ${items}`;
 
   /* ── Patient-friendly descriptions keyed by recommendation tag ── */
   const recDescriptions = {
-    'CPAP': `<strong>CPAP Therapy</strong> — CPAP (Continuous Positive Airway Pressure) is the most widely studied and effective treatment for obstructive sleep apnea. It uses a gentle stream of air delivered through a mask to keep your airway open while you sleep. Modern CPAP machines are quiet, compact, and have features like auto-adjusting pressure and heated humidifiers to improve comfort. Most people notice better energy and sleep quality within the first few weeks of consistent use.`,
+    // SAVE + the 2023 IPD adherence meta-analysis support dose-aware language,
+    // not a categorical "four hours = health protection" promise.
+    'CPAP': `<strong>PAP Therapy</strong> — PAP uses gentle air pressure through a mask to keep your airway open. It is generally the most effective treatment for preventing breathing events across sleep stages and positions. Many patients notice better alertness or sleep quality with consistent use, although the timing varies.`,
     'CPAP-ALT': null,  // Merged into CPAP context — not shown as standalone
     'CPAP-PREF': null,  // Merged into CPAP context
     'CPAP-OPT': null,  // Merged into CPAP context
@@ -791,10 +803,10 @@ ${items}`;
     'CPAP-HUMID': null,  // Merged into CPAP context
     'CPAP-RETITRATE': null,  // Merged into CPAP context
     'CPAP-FIXED': null,  // Merged into CPAP context
-    'MAD': `<strong>Oral Appliance Therapy</strong> — An oral appliance (also called a mandibular advancement device) is a custom-fitted mouthguard worn during sleep. It gently moves your lower jaw forward to keep the airway open. Oral appliances are a good option for many patients, especially those with mild to moderate sleep apnea, and research shows they achieve similar improvements in quality of life and blood pressure as CPAP due to better adherence. They are made by a sleep dentist and adjusted over several visits. A follow-up sleep study is recommended to confirm the appliance is working effectively.`,
-    'MAD-FAVORABLE': `<strong>Oral Appliance Therapy (Favorable Candidate)</strong> — An oral appliance is a custom-fitted mouthguard worn during sleep that gently repositions your lower jaw forward to keep the airway open. Based on your profile, you are a <strong>particularly good candidate</strong> for this treatment. Research shows that patients like you — with your combination of sleep apnea severity, body type, and sleep patterns — tend to respond very well to oral appliance therapy. In fact, studies show that oral appliances achieve similar improvements in quality of life, daytime energy, and blood pressure as CPAP, largely because patients find them easier to use consistently. Your sleep dentist will custom-fit the device and adjust it over several visits, followed by a sleep study to confirm it is working.`,
-    'MAD-POOR': `<strong>Oral Appliance Therapy</strong> — An oral appliance is a custom-fitted mouthguard worn during sleep that repositions the lower jaw forward to help keep the airway open. While oral appliances can help many patients, your profile suggests this treatment <strong>may not be sufficient on its own</strong> for your level of sleep apnea. Patients with more severe OSA, higher BMI, or certain breathing patterns tend to have a lower success rate with oral appliances alone. That said, an oral appliance can still play a role as part of a combined treatment approach — for example, alongside positional therapy or after weight loss. This is worth discussing with your doctor if other options are not tolerated.`,
-    'POS': `<strong>Positional Therapy</strong> — Because your sleep apnea is significantly worse when sleeping on your back, changing your sleep position can make a real difference. Positional therapy devices (such as a vibrating alarm worn on the back or a specially shaped pillow) remind you to sleep on your side. For some patients, this alone can cut the number of breathing events in half or more. It is often used alongside other treatments for the best results.`,
+    'MAD': `<strong>Oral Appliance Therapy</strong> — A sleep dentist fits a custom device that moves the lower jaw forward during sleep. It is a reasonable option for selected patients, especially when PAP is not tolerated; follow-up sleep testing is needed to confirm effectiveness.`,
+    'MAD-FAVORABLE': `<strong>Oral Appliance Therapy (Favorable Profile)</strong> — Your clinical profile includes features associated with a better chance of response to a custom jaw-advancement device. A sleep dentist should confirm dental and jaw safety, and follow-up testing is needed to measure the result.`,
+    'MAD-POOR': `<strong>Oral Appliance Therapy</strong> — A custom jaw-advancement device may help, but your profile suggests it may not control your sleep apnea well enough by itself. It can still be discussed as a backup or combination option if PAP is not tolerated.`,
+    'POS': `<strong>Positional Therapy</strong> — Your breathing is worse on your back. A positional device or pillow can help you stay on your side and may be used alone or with another treatment, depending on the study results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
     'OXYGEN-WORKUP': `<strong>Complete Oxygen-Risk Review</strong> — Part of your sleep-study oxygen data is still incomplete or has not yet been reviewed in full. Before we call your oxygen-related risk low or move CPAP lower on the list, your care team should confirm your oxygen desaturation index (ODI), time below 90%, lowest oxygen level, and any available hypoxic-burden metrics from the full report.`,
     'POSITION-WORKUP': `<strong>Review Positional Data Before Ruling Position In or Out</strong> — Your available sleep-study report does not clearly show how your breathing changed on your back compared with your side. Before we decide that positional therapy is irrelevant, your care team may need to review the full study or repeat testing with better positional tracking.`,
@@ -809,14 +821,14 @@ ${items}`;
     'ASV-SAFETY': `<strong>Confirm Heart-Function Safety Before ASV</strong> — Some advanced PAP devices, especially ASV, are only appropriate after your care team confirms that your heart function is in a safe range. If ASV comes up as an option, your sleep specialist may review a recent echocardiogram or ask for heart-function testing first.`,
     'ASV-CONTRA': `<strong>Reduced Heart Function Makes ASV Unsafe Right Now</strong> — One type of advanced PAP therapy, ASV, is not considered safe when the heart’s pumping function is reduced below the accepted safety range. If your plan still needs help for central-breathing instability, that discussion should stay with your sleep specialist and heart team rather than treating ASV as a routine option.`,
     'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
-    'HNS': `<strong>Upper-Airway Nerve Stimulation</strong> — A small implanted device gently activates the nerve to your tongue during sleep to keep the airway open — no mask, no airflow. Several FDA-approved systems exist (for example, Inspire and Genio). It's an option for moderate-to-severe sleep apnea not well controlled by CPAP, for patients with a BMI of 40 or below (insurance coverage varies, and some plans require a lower BMI). A brief sleep endoscopy helps your ENT confirm whether it's a good fit.`,
+    'HNS': `<strong>Upper-Airway Nerve Stimulation</strong> — An implanted device activates tongue muscles during sleep. It is considered for selected patients whose sleep apnea is not adequately treated with standard options; candidacy depends on FDA criteria, anatomy, BMI, prior treatment, and usually a sleep endoscopy (DISE).`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
-    'NASAL-OPT': `<strong>Nasal Treatment</strong> — Treating nasal obstruction can improve airflow and make other sleep apnea therapies work better. Depending on your anatomy, options may include nasal steroid sprays, allergy treatment, nasal dilator strips, or surgical procedures such as septoplasty (to straighten a deviated septum) or turbinate reduction (to shrink enlarged nasal tissue). Your ENT surgeon will review your specific anatomy and recommend the most appropriate approach.`,
+    'NASAL-OPT': `<strong>Nasal Treatment</strong> — Medication, allergy care, nasal dilators, or surgery may improve airflow and make PAP or an oral appliance easier to use. Nasal treatment usually supports rather than replaces treatment for sleep apnea itself.`,
     'NASAL-SURG': null,  // Merged into NASAL-OPT
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`,
-    'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the gold-standard, non-medication treatment for insomnia. It works by changing the thoughts and habits that interfere with sleep — things like irregular sleep schedules, spending too much time in bed, or anxiety about sleep. CBT-I is highly effective and its benefits last long-term, unlike sleep medications. It can be done with a therapist in-person or through a validated digital program.`,
-    'SURGALT': `<strong>Soft-Tissue Airway Surgery</strong> — For sleep apnea related to the structure of the throat — such as enlarged tonsils or excess soft tissue — procedures like tonsillectomy or palate surgery can open the airway and reduce breathing events during sleep. A brief sleep endoscopy under light sedation lets your ENT see exactly where the airway collapses and choose the most appropriate procedure for you.`,
+    'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — CBT-I is the first-line behavioral treatment for chronic insomnia. It changes sleep habits and thoughts that keep insomnia going, and its benefits can persist after treatment. It can be delivered by a trained therapist or a validated digital program; medication may still be appropriate for selected patients.`,
+    'SURGALT': `<strong>Airway Surgery</strong> — Surgery may help when the procedure is matched to the site and pattern of collapse. Your exam, prior treatment, and often a sleep endoscopy (DISE) guide that decision.`,
     'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you, and if ASV is being considered they may need to confirm that your heart function is in a safe range first.`,
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
@@ -830,7 +842,7 @@ ${items}`;
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
     'COMISA-SRT-CAUTION': null,  // Clinical detail
-    'SURG': `<strong>Soft-Tissue Airway Surgery</strong> — For sleep apnea related to the structure of the throat — such as enlarged tonsils or excess soft tissue — procedures like tonsillectomy or palate surgery can open the airway and reduce breathing events during sleep. A brief sleep endoscopy under light sedation lets your ENT see exactly where the airway collapses and choose the most appropriate procedure for you.`,
+    'SURG': `<strong>Airway Surgery</strong> — Surgery may help when the procedure is matched to the site and pattern of collapse. Your exam, prior treatment, and often a sleep endoscopy (DISE) guide that decision.`,
     'SOFT-TISSUE-REVISION': null,  // Clinical detail
     'SOFT-TISSUE-STRONG': null,  // Merged into tonsil/surgery recs
     'SOFT-TISSUE-CONSIDER': null,
@@ -846,7 +858,7 @@ ${items}`;
   /* Tags that are sub-items of CPAP — should not render as standalone recs */
   const cpapSubTags = new Set(['CPAP-ALT','CPAP-PREF','CPAP-OPT','CPAP-DESENTIZE','CPAP-HUMID','CPAP-RETITRATE','CPAP-FIXED']);
   const nasalSubTags = new Set(['NASAL-SURG','NASAL-PRIOR']);
-  const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','HB-URG','DHR-TX']);
+  const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','HB-URG','DHR-TX','ENDOTYPE-WORKUP']);
   const workupTags = new Set([
     'OXYGEN-WORKUP',
     'POSITION-WORKUP',
@@ -890,7 +902,7 @@ ${items}`;
       const support = data.bmi >= 30
         ? 'Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).'
         : 'Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.';
-      return `<strong>Weight Management</strong> — ${lead}Excess weight is one of the most significant reversible risk factors for sleep apnea. Even a modest reduction in body weight — as little as 10% — can meaningfully reduce the number of breathing events per hour. Losing weight can also improve how well other treatments (like CPAP or oral appliances) work. ${support}`;
+      return `<strong>Weight Management</strong> — ${lead}Weight loss can reduce sleep apnea severity and improve how well other treatments work, but the amount of improvement varies from person to person. ${support}`;
     }
 
     /* Mild + Low HB: de-emphasized CPAP description with uncertainty-aware language */
@@ -903,17 +915,7 @@ ${items}`;
       const limitedAlts = (data.bmi > 40) || data.hasConcentricCollapse ||
         (data.friedmanStage === 'III' || data.friedmanStage === 'IV');
       if (limitedAlts) {
-        return `<strong>CPAP Therapy — Why It Matters Most for You</strong> — We know CPAP has been difficult for you, and we take that seriously. But for your level of sleep apnea, CPAP is still the most effective treatment we have — and some of the alternatives that work well for other patients are less likely to work in your case. That's why finding a way to make CPAP work for you is so important.`
-          + `<br><br>Here's why CPAP is so effective: it keeps your airway open continuously throughout the night — every breath, every sleep stage, every position. No other treatment can match that level of protection for severe sleep apnea.`
-          + `<br><br>Many people struggle with CPAP at first. The most common reasons include mask discomfort, air pressure feeling too high, dry mouth, or feeling claustrophobic. The good news is that today's CPAP machines are very different from older models. Strategies that can help:`
-          + `<ul style="margin:0.5rem 0;padding-left:1.5rem;">`
-          + `<li><strong>Mask fitting</strong> — There are dozens of mask styles (nasal pillows, nasal masks, full-face masks). A different style can make a dramatic difference in comfort.</li>`
-          + `<li><strong>Auto-adjusting pressure (APAP)</strong> — These machines start at a low pressure and only increase when needed, making it easier to fall asleep.</li>`
-          + `<li><strong>Heated humidification</strong> — Reduces dry mouth, nasal congestion, and throat irritation.</li>`
-          + `<li><strong>Ramp feature</strong> — Starts at very low pressure and gradually increases as you fall asleep.</li>`
-          + `<li><strong>Treating nasal obstruction</strong> — If your nose is blocked, fixing that first makes CPAP much more tolerable.</li>`
-          + `</ul>`
-          + `We strongly encourage you to work with your sleep team on a structured CPAP retry plan. Even partial use (4+ hours per night) provides significant health protection for severe sleep apnea.`;
+        return `<strong>PAP Therapy — Why It Matters Most for You</strong> — We know PAP has been difficult. For severe sleep apnea, it remains the most reliable way to prevent breathing events across sleep stages and positions, while some alternatives may be less effective for your profile. A structured retry can focus on the exact barrier — mask fit, pressure comfort, dryness, claustrophobia, or nasal blockage. Use PAP whenever you sleep; benefits generally increase with nightly duration.`;
       }
     }
 
@@ -962,13 +964,12 @@ ${items}`;
     const recTags = getPatientFacingRecEntries(data);
     if (recTags.length === 0) return '';
 
-    /* ── Build deduplicated, ordered rec list ── */
+    /* Build a deduplicated list, then present only the decisions a patient needs now. */
     const seenDescriptions = new Set();
-    const allRecs = [];  // {html, tag}
+    const allRecs = [];
     const isPreStudy = getReportStage(data) === 'pre-study';
     const isNormalStudy = exists(data.primaryAHI) && data.primaryAHI < 5;
 
-    /* For COMISA patients: ensure CBT-I appears first */
     if (data.hasCOMISA) {
       const cbtiEntry = recTags.find(r => r.tag === 'CBTI');
       if (cbtiEntry) {
@@ -977,7 +978,6 @@ ${items}`;
       }
     }
 
-    /* Process remaining recs in order */
     for (const { text, tag } of recTags) {
       const html = patientFriendlyRec(tag, text, data);
       if (!html || seenDescriptions.has(html)) continue;
@@ -987,68 +987,74 @@ ${items}`;
 
     if (allRecs.length === 0) return '';
 
-    /* Mild + Low HB: move CPAP after alternatives so lifestyle/MAD/positional lead */
     const isMildLowHB = data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden;
     const isCpapAvoidant = data.prefAvoidCpap && !data.cpapFailed;
-    if (isMildLowHB || isCpapAvoidant) {
-      const cpapIdx = allRecs.findIndex(r => r.tag === 'CPAP');
-      if (cpapIdx >= 0 && cpapIdx < allRecs.length - 1) {
-        const [cpapRec] = allRecs.splice(cpapIdx, 1);
-        allRecs.push(cpapRec);  // move to end → falls into "Discuss" group
-      }
+    if (data.hasCOMISA) {
+      const priority = new Map([['CBTI', 0], ['CPAP', 1], ['NASAL-OPT', 2], ['WEIGHT', 3]]);
+      allRecs.sort((a, b) => (priority.get(a.tag) ?? 20) - (priority.get(b.tag) ?? 20));
     }
 
-    const workupRecs = allRecs.filter(rec => workupTags.has(rec.tag));
-    const actionableRecs = allRecs.filter(rec => !workupTags.has(rec.tag));
+    const hasPAPPlan = recTags.some(r => r.tag === 'CPAP' || r.tag.startsWith('CPAP-'));
+    const papFirst = hasPAPPlan && !data.cpapCurrent && !isMildLowHB && !isCpapAvoidant &&
+      !(data.cpapFailed && !data.cpapWillRetry);
+    const backupTags = new Set(['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'HNS', 'INSPIRE-EVAL', 'SURG', 'SURGALT', 'TONSIL']);
+    const backupWorkupTags = new Set(['HNS-WORKUP', 'SURGERY-WORKUP', 'MAD-WORKUP', 'ANATOMY-WORKUP']);
 
-    /* ── Split into Start Now / Discuss With Your Doctor ── */
-    const shouldHoldCpapForDiscuss = (isMildLowHB || isCpapAvoidant) &&
-      actionableRecs.length > 1 &&
-      actionableRecs[actionableRecs.length - 1]?.tag === 'CPAP';
-    const splitAt = shouldHoldCpapForDiscuss
-      ? Math.min(3, actionableRecs.length - 1)
-      : Math.min(3, actionableRecs.length);
-    const startNow = actionableRecs.slice(0, splitAt);
-    const discuss  = actionableRecs.slice(splitAt);
+    const conditional = papFirst
+      ? allRecs.filter(rec => backupTags.has(rec.tag) || backupWorkupTags.has(rec.tag))
+      : [];
+    const workups = allRecs.filter(rec => workupTags.has(rec.tag) && !conditional.includes(rec));
+    let actions = allRecs.filter(rec => !workupTags.has(rec.tag) && !conditional.includes(rec));
+
+    if (isMildLowHB || isCpapAvoidant) {
+      const cpap = actions.find(rec => rec.tag === 'CPAP');
+      actions = actions.filter(rec => rec.tag !== 'CPAP');
+      if (cpap) actions.push(cpap);
+    }
+
+    const startNow = actions.slice(0, 3);
+    /* Supporting changes already become concrete checklist actions below; do not
+       repeat them as a second block just because three primary therapies came first. */
+    const discuss = actions.slice(3, 5).filter(rec => !['WEIGHT', 'NASAL-OPT', 'POS'].includes(rec.tag));
+    const conditionalShown = conditional.slice(0, 2);
+    const workupsShown = workups.slice(0, 1);
 
     const sectionTitle = (isPreStudy || isNormalStudy) ? 'Your Next Steps' : 'Your Treatment Plan';
     let output = `\n<h2>${sectionTitle}</h2>`;
 
-    /* ── CPAP context for non-compliant patients — BEFORE the rec list ── */
     const limitedAlternatives = (data.bmi > 40) || data.hasConcentricCollapse ||
       (data.friedmanStage === 'III' || data.friedmanStage === 'IV');
     if (data.cpapFailed && !data.cpapWillRetry && data.severity?.toLowerCase() === 'severe' && limitedAlternatives) {
       output += `
 <div class="cpap-context-box">
-  <strong>An honest conversation about your options.</strong> We know CPAP has been difficult for you, and we take that seriously. For your level of sleep apnea, though, CPAP provides the most reliable protection — and some alternatives that work well for other patients may be less effective in your case. That's why we want to work with you on strategies to make CPAP more comfortable, while also exploring every other option available. Your treatment plan below includes both CPAP guidance and alternative approaches.
+  <strong>An honest conversation about PAP.</strong> PAP has been difficult, and some alternatives may be less effective for your profile. We will respect your experience while reviewing ways to improve comfort and the most appropriate non-PAP options.
 </div>`;
     } else if (data.cpapFailed && !data.cpapWillRetry) {
       output += `
 <div class="cpap-context-box">
-  <strong>We hear you on CPAP.</strong> We know CPAP hasn't worked well for you in the past, and you're not alone — many people struggle with CPAP masks, pressure, or comfort. Your treatment plan below leads with non-CPAP options that may be a better fit for you. We've also included information about CPAP because it remains the most studied treatment, and CPAP technology has improved significantly in recent years. But our first goal is to find a treatment that works for your life.
+  <strong>We hear you on PAP.</strong> Your plan leads with non-PAP options that fit your anatomy, health, and preferences.
 </div>`;
     } else if (data.cpapFailed && data.cpapWillRetry) {
       output += `
 <div class="cpap-context-box">
-  <strong>Giving CPAP another try.</strong> We know CPAP was difficult for you before. Since you're open to trying again, we'll work to make this attempt different — with better mask fitting, optimized pressure settings, and strategies to address the specific issues you experienced. We've also included non-CPAP alternatives in case you decide CPAP still isn't right for you.
+  <strong>Giving PAP another try.</strong> This attempt will focus on the barrier you experienced — mask fit, pressure, dryness, claustrophobia, or nasal blockage — with backup options available if it remains difficult.
 </div>`;
     } else if (data.prefAvoidCpap && !data.cpapFailed) {
       output += `
 <div class="cpap-context-box">
-  <strong>We understand your preference on CPAP.</strong> We know CPAP is not your first choice, and that's okay. Your treatment plan leads with alternatives that may work well for you. We've included information about CPAP because it remains the most effective option for certain severity levels, but we'll focus on finding a treatment that fits your preferences and lifestyle.
+  <strong>We understand your preference.</strong> Your plan leads with reasonable non-PAP options while keeping PAP available if you need it.
 </div>`;
     } else if (data.cpapCurrent) {
       output += `
 <div class="cpap-context-box">
-  <strong>Building on your current CPAP therapy.</strong> You are already using CPAP, which is a great foundation. The recommendations below are designed to work alongside your CPAP and may help improve your results further. We'll discuss whether any adjustments to your current therapy are needed at your follow-up.
+  <strong>Building on your current PAP therapy.</strong> These recommendations support comfort and results; your follow-up will determine whether settings or equipment need adjustment.
 </div>`;
     }
 
-    /* ── Mild + Low HB: alternatives-first context ── */
     if (isMildLowHB) {
       output += `
 <div class="cpap-context-box" style="border-left-color: #198754;">
-  <strong>Why you have good options beyond CPAP.</strong> Your sleep apnea is in the mild range, and your overnight oxygen levels stayed in a lower-risk zone. For patients with this profile, treatments like an oral appliance, positional therapy, and weight management can be reasonable first-line alternatives to CPAP, especially when they fit the patient's goals and are followed with repeat assessment. Your plan below starts with those options while keeping CPAP available if needed.
+  <strong>You have reasonable options beyond PAP.</strong> With mild sleep apnea and a lower-risk oxygen profile, an oral appliance, positional therapy, or weight management may be appropriate first steps when paired with follow-up assessment.
 </div>`;
     }
 
@@ -1057,19 +1063,17 @@ ${items}`;
     } else if (isNormalStudy) {
       output += `\n<p>Based on your symptoms and the patterns seen on your sleep study, these are the most helpful next steps to discuss or begin now.</p>`;
     } else {
-      output += `\n<p>Based on your evaluation, your care team has put together a plan tailored to your results. These recommendations are ordered by priority.</p>`;
+      output += `\n<p>These are the highest-priority parts of your plan. Your clinician view keeps the full technical detail.</p>`;
     }
 
-    /* ── COMISA callout ── */
     if (data.hasCOMISA) {
       output += `
 <div class="comisa-callout">
-  <strong>About your insomnia and sleep apnea (COMISA)</strong>
-  <p style="margin:0.4rem 0 0;">You have both insomnia and obstructive sleep apnea — a combination called COMISA (co-morbid insomnia and sleep apnea) that affects roughly 30–50% of people with OSA. These two conditions feed each other: insomnia makes it harder to fall asleep and stay asleep, and sleep apnea fragments whatever sleep you do get. Insomnia also makes it significantly harder to adjust to CPAP therapy. That's why your plan includes CBT-I (cognitive behavioral therapy for insomnia) as a priority — treating the insomnia alongside the sleep apnea leads to better outcomes for both.</p>
+  <strong>You have both insomnia and sleep apnea (COMISA).</strong>
+  <p style="margin:0.4rem 0 0;">CBT-I treats the insomnia while PAP treats the breathing problem. When PAP is part of your plan, begin both pathways together unless your clinician recommends a different sequence.</p>
 </div>`;
     }
 
-    /* ── Start Now group ── */
     if (startNow.length > 0) {
       output += `\n<div class="treatment-group-label">Start Now</div>`;
       startNow.forEach(rec => {
@@ -1077,15 +1081,20 @@ ${items}`;
       });
     }
 
-    /* ── Complete Before Finalizing Other Options group ── */
-    if (workupRecs.length > 0) {
-      output += `\n<div class="treatment-group-label">Complete Before Finalizing Other Options</div>`;
-      workupRecs.forEach(rec => {
+    if (conditionalShown.length > 0) {
+      output += `\n<div class="treatment-group-label">If PAP Remains Difficult</div>`;
+      conditionalShown.forEach(rec => {
         output += `\n<div class="rec-item">${rec.html}</div>`;
       });
     }
 
-    /* ── Discuss With Your Doctor group ── */
+    if (workupsShown.length > 0) {
+      output += `\n<div class="treatment-group-label">Complete Before Finalizing Other Options</div>`;
+      workupsShown.forEach(rec => {
+        output += `\n<div class="rec-item">${rec.html}</div>`;
+      });
+    }
+
     if (discuss.length > 0) {
       output += `\n<div class="treatment-group-label">Discuss With Your Doctor</div>`;
       discuss.forEach(rec => {
@@ -1099,294 +1108,123 @@ ${items}`;
   /* ══════════════════════════════════════════════════════════════════════════
      SECTION E — Your First 30 Days
      ══════════════════════════════════════════════════════════════════════════ */
+  /**
+   * A focused patient checklist. The clinician report retains the full workup list;
+   * this page is deliberately limited to the five actions most useful right now.
+   */
   function renderSectionE(data) {
     const recTags = getPatientFacingRecEntries(data);
-    if (recTags.length === 0) return '';
+    if (!recTags.length) return '';
 
     const tags = new Set(recTags.map(r => r.tag));
-    const hasCPAP = tags.has('CPAP') || tags.has('CPAP-OPT') || tags.has('CPAP-FIXED');
-    const checkItems = [];
-
-    /* ── Detect patient pathway from milestones ── */
-    const ms = Array.isArray(data.milestones) ? data.milestones : [];
-    const surgicalKeys = ['DISE Scheduled', 'DISE Completed', 'Surgery Scheduled', 'Post-Op'];
-    const isSurgicalPathway = surgicalKeys.some(k => ms.includes(k));
-    const diseScheduled = ms.includes('DISE Scheduled');
-    const diseCompleted = ms.includes('DISE Completed');
-    const surgeryScheduled = ms.includes('Surgery Scheduled');
-    const isEstablishedPatient = ms.some(m => m !== 'Initial Eval') ||
-      data.cpapCurrent || data.cpapFailed || data.priorMAD || data.priorUPPP || data.priorInspire;
+    const actions = [];
+    const add = (text, priority = 5) => {
+      if (!text || actions.some(item => item.text === text)) return;
+      actions.push({ text, priority });
+    };
+    const hasPAP = tags.has('CPAP') || [...tags].some(tag => tag.startsWith('CPAP-'));
+    const papFirst = hasPAP && !data.cpapCurrent &&
+      !(data.cpapFailed && !data.cpapWillRetry) && !data.prefAvoidCpap &&
+      !(data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden);
+    const hasNasal = tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR');
 
     if (tags.has('SLEEP-STUDY')) {
-      const studyLabel = data.studyType === 'psg'
-        ? 'in-lab sleep study'
-        : data.studyType === 'watchpat'
-          ? 'home sleep study'
-          : 'sleep study';
-      checkItems.push({ text: `Schedule your ${studyLabel} and complete it as soon as you can so we can confirm whether sleep apnea is present and choose the right treatment.`, group: 'treatment' });
+      const studyLabel = data.studyType === 'psg' ? 'in-lab sleep study' : data.studyType === 'watchpat' ? 'home sleep study' : 'sleep study';
+      add(`Schedule your ${studyLabel}, then arrange a visit to review the results and choose treatment.`, 0);
     }
 
-    if (tags.has('OXYGEN-WORKUP')) {
-      checkItems.push({
-        text: 'Ask your care team to review the full oxygen portion of your sleep study report so your overnight oxygen burden and cardiovascular-risk discussion can be finalized accurately.',
-        group: 'treatment'
-      });
+    if (data.hasCOMISA && tags.has('CBTI') && hasPAP && !(data.cpapFailed && !data.cpapWillRetry)) {
+      const papAction = data.cpapCurrent
+        ? 'continue PAP and bring any comfort problems to your care team'
+        : data.cpapFailed && data.cpapWillRetry
+          ? 'arrange a PAP re-fitting'
+          : 'arrange your PAP setup';
+      add(`Begin CBT-I with a trained therapist or validated digital program, and ${papAction} in parallel.`, 0);
+    } else if (tags.has('CBTI')) {
+      add('Begin CBT-I with a trained therapist or validated digital program.', 0);
     }
 
-    if (tags.has('POSITION-WORKUP')) {
-      checkItems.push({
-        text: 'Ask whether the full sleep-study report captured enough back-sleeping versus side-sleeping data, and whether repeat positional tracking would change your treatment options.',
-        group: 'treatment'
-      });
-    }
-
-    if (tags.has('SLEEP-STAGE-WORKUP')) {
-      checkItems.push({
-        text: 'Ask your care team whether the REM versus non-REM portion of your study was complete enough to judge if your sleep apnea is worse during dream sleep.',
-        group: 'treatment'
-      });
-    }
-
-    if (tags.has('ENDOTYPE-WORKUP')) {
-      checkItems.push({
-        text: 'Ask whether the detailed scoring report includes the apnea-versus-hypopnea breakdown needed to fully interpret the more advanced breathing-pattern estimates in your plan.',
-        group: 'treatment'
-      });
-    }
-
-    if (tags.has('CENTRAL-PSG-WORKUP')) {
-      const studyLabel = data.studyType === 'watchpat' ? 'home sleep study' : 'sleep study';
-      checkItems.push({
-        text: `Ask whether the central-breathing signals seen on your ${studyLabel} should be confirmed with an in-lab sleep study before advanced PAP options such as ASV are considered.`,
-        group: 'treatment'
-      });
-    }
-
-    if (tags.has('ANATOMY-WORKUP')) {
-      checkItems.push({
-        text: 'Schedule or complete a full airway exam with your ENT team so tonsil size, Friedman tongue position, and other anatomy findings are documented before surgery-based decisions are finalized.',
-        group: 'treatment'
-      });
-    }
-
-    if (tags.has('NASAL-WORKUP')) {
-      checkItems.push({
-        text: 'Review nasal blockage symptoms and complete a nasal exam so your team can tell whether nasal treatment could improve breathing or treatment comfort.',
-        group: 'treatment'
-      });
-    }
-
-    /* CBT-I first for COMISA patients */
-    if (data.hasCOMISA && tags.has('CBTI')) {
-      checkItems.push({ text: 'Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away. Starting CBT-I early can also make it easier to use CPAP or other treatments later.', group: 'everyone' });
-    }
-
-    /* CPAP — but different messaging for non-compliant/avoidant patients */
-    const limitedAlts = (data.bmi > 40) || data.hasConcentricCollapse ||
-      (data.friedmanStage === 'III' || data.friedmanStage === 'IV');
-    if (hasCPAP) {
-      if (data.cpapFailed && !data.cpapWillRetry && data.severity?.toLowerCase() === 'severe' && limitedAlts) {
-        // Severe patients with limited alternatives — encourage CPAP retry
-        checkItems.push({ text: 'Schedule a CPAP consultation to discuss a fresh start — ask about auto-adjusting (APAP) machines, nasal pillow masks, and heated humidification.', group: 'treatment' });
-        checkItems.push({ text: 'Practice wearing the mask for 20–30 minutes during relaxing activities (TV, reading) before trying overnight use.', group: 'treatment' });
-        checkItems.push({ text: 'If nasal congestion is an issue, talk to your doctor about treating it first — this can make CPAP significantly more comfortable.', group: 'treatment' });
-      } else if ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed)) {
-        // Don't lead with CPAP setup for patients who don't want it
-        // Instead, add it further down as a "consider" item
-      } else if (data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
-        // Mild + low HB: don't lead with CPAP — alternatives are equally effective
-        // CPAP added further down as a fallback option
+    if (hasPAP && !(data.hasCOMISA && tags.has('CBTI')) && !(data.cpapFailed && !data.cpapWillRetry) && !data.prefAvoidCpap) {
+      if (data.cpapCurrent) {
+        add('Use PAP whenever you sleep and ask your care team to address mask, pressure, dryness, or nasal comfort problems.', 0);
       } else if (data.cpapFailed && data.cpapWillRetry) {
-        checkItems.push({ text: 'Schedule a CPAP re-fitting appointment — ask about newer mask styles and auto-adjusting machines that may address your prior concerns.', group: 'treatment' });
-        checkItems.push({ text: 'Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.', group: 'treatment' });
-      } else if (!data.cpapFailed) {
-        checkItems.push({ text: 'Schedule your CPAP setup appointment with the equipment supplier.', group: 'treatment' });
-        checkItems.push({ text: 'Try wearing your mask for 20–30 minutes while watching TV or reading before your first night — this helps your brain get used to the sensation.', group: 'treatment' });
-        checkItems.push({ text: 'Aim to use CPAP for at least 4 hours every night. Consistent use, even when imperfect, leads to better results over time.', group: 'treatment' });
+        add('Arrange a PAP re-fitting focused on the exact barrier from your first attempt, such as mask fit, pressure, dryness, or nasal blockage.', 0);
+      } else {
+        add('Arrange your PAP setup and use it whenever you sleep; benefits generally increase with nightly duration.', 0);
       }
     }
 
-    /* Oral appliance — skip if patient already tried MAD, and skip for surgical
-       pathway patients unless MAD is specifically recommended (not just SURGALT) */
-    const hasMADTag = tags.has('MAD') || tags.has('MAD-FAVORABLE') || tags.has('MAD-POOR');
-    const hasMADFromText = recTags.some(r => r.text.toLowerCase().includes('mandibular'));
-    if (!data.priorMAD && (hasMADTag || hasMADFromText) && !isSurgicalPathway) {
-      checkItems.push({ text: 'Schedule a consultation with a sleep dentist to begin the process of fitting your custom oral appliance.', group: 'treatment' });
-    }
-    if (tags.has('MAD-WORKUP')) {
-      checkItems.push({ text: 'Ask the sleep dentist to confirm that you have enough healthy tooth support, enough jaw movement, and no major TMJ issue before finalizing an oral appliance.', group: 'treatment' });
-    }
-    if (tags.has('MAD-SAFETY-LIMIT')) {
-      checkItems.push({ text: 'Ask whether your current tooth support, jaw movement, or TMJ symptoms make an oral appliance a poor fit before treating it as a real option.', group: 'treatment' });
+    if (hasNasal) {
+      // FDA nasal-irrigation safety guidance: distilled, sterile, or boiled/cooled water.
+      add('Start the nasal plan recommended by your clinician. For saline rinses, use only distilled, sterile, or previously boiled and cooled water.', 1);
     }
 
-    /* Positional */
-    if (tags.has('POS')) {
-      checkItems.push({ text: 'Try a positional sleep device or body pillow to help you stay off your back during sleep.', group: 'treatment' });
-      checkItems.push({ text: 'Keep a brief note of what position you wake up in for one week — this will help us see how well the positional therapy is working.', group: 'treatment' });
-    }
-
-    /* Weight */
     if (tags.has('WEIGHT')) {
-      const firstWeightStep = data.weightLossReadiness === 'ready'
-        ? 'Choose one concrete weight-management step to start this week — for example, setting a 5–10 pound short-term goal, planning meals, or starting a regular walking routine.'
-        : data.weightLossReadiness === 'considering'
-          ? 'Spend a few minutes deciding what feels most realistic right now: a small nutrition change, a walking goal, or a conversation with your doctor about structured support.'
-          : data.weightLossReadiness === 'not-ready'
-            ? 'Write down one reason weight change could matter for your sleep or health, and one barrier you want your care team to help you work around when you are ready.'
-            : 'Set a realistic short-term goal of losing 5–10 pounds and identify one dietary change you can make this week.';
-      checkItems.push({ text: firstWeightStep, group: 'everyone' });
-      checkItems.push({
-        text: data.bmi >= 30
-          ? 'Ask your doctor about a referral to a registered dietitian, a structured weight management program, or medical weight loss options such as GLP-1 medications (for eligible patients).'
-          : 'Ask your doctor about a referral to a registered dietitian or a structured weight management program for added support.',
-        group: 'everyone'
-      });
+      add(data.bmi >= 30
+        ? 'Choose one realistic weight-management step and discuss dietitian, structured-program, or medication support if appropriate.'
+        : 'Choose one realistic nutrition or activity step and ask whether structured weight-management support would help.', 2);
     }
 
-    /* Nasal */
-    if (tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR')) {
-      checkItems.push({ text: 'Begin saline nasal rinses (such as a neti pot or squeeze bottle) once or twice daily to reduce nasal inflammation and improve airflow.', group: 'everyone' });
-      checkItems.push({ text: 'Schedule a follow-up appointment in 4–6 weeks to review your sleep study results, discuss your nasal anatomy and whether a procedure might help, and see how you are responding to nasal saline rinses.', group: 'everyone' });
+    if (tags.has('POS')) {
+      add('Use a positional device or body pillow to stay off your back, then note whether you can maintain side-sleeping.', 3);
     }
 
-    /* Upper-airway nerve stimulation — milestone-aware. Excluded entirely above BMI 40
-       (no device is available there), matching the report's Section D handling. */
-    if ((tags.has('HNS') || tags.has('INSPIRE-EVAL')) && !(data.bmi && data.bmi > 40)) {
-      if (diseCompleted) {
-        /* DISE already done — next step is reviewing results and scheduling the implant if a candidate */
-        checkItems.push({ text: 'Your sleep endoscopy (DISE) results will be reviewed with you. If the findings confirm you are a candidate, the next step is scheduling the implant procedure.', group: 'treatment' });
-      } else if (diseScheduled) {
-        /* DISE is upcoming — attend the appointment */
-        checkItems.push({ text: 'Attend your upcoming sleep endoscopy (DISE) appointment — this brief procedure under light sedation lets your surgeon see exactly how your airway behaves during sleep and determine whether a nerve-stimulation implant is the right option for you.', group: 'treatment' });
-      } else if (isSurgicalPathway) {
-        /* On surgical pathway but DISE not yet scheduled — schedule it */
-        checkItems.push({ text: 'Schedule a sleep endoscopy (DISE) with your ENT surgeon — this brief procedure under light sedation is needed to evaluate your airway and determine whether an upper-airway nerve-stimulation implant (such as Inspire or Genio) is right for you.', group: 'treatment' });
-      } else {
-        /* Not on surgical pathway yet — schedule evaluation */
-        checkItems.push({ text: 'Schedule a nerve-stimulation candidacy evaluation with your ENT surgeon, which includes a sleep endoscopy (DISE) to assess your airway anatomy and determine whether you qualify for the implant procedure.', group: 'treatment' });
-      }
+    const hasMAD = tags.has('MAD') || tags.has('MAD-FAVORABLE') || tags.has('MAD-POOR');
+    if (hasMAD && !data.priorMAD && !papFirst) {
+      add('Schedule a sleep-dentist consultation for a custom oral appliance and plan follow-up testing after adjustment.', 3);
     }
 
-    if (tags.has('HNS-WORKUP') && !tags.has('HNS') && !tags.has('INSPIRE-EVAL') && !(data.bmi && data.bmi > 40)) {
-      if (diseCompleted) {
-        checkItems.push({ text: 'Review your completed DISE and staging results with your ENT surgeon before deciding whether an upper-airway nerve-stimulation implant is truly a good fit.', group: 'treatment' });
-      } else if (diseScheduled) {
-        checkItems.push({ text: 'Attend your upcoming DISE appointment so your airway pattern can be documented before any nerve-stimulation decision is made.', group: 'treatment' });
-      } else {
-        checkItems.push({ text: 'Schedule the remaining nerve-stimulation workup steps, including DISE and any missing staging measurements, before treating it as a finalized option.', group: 'treatment' });
-      }
+    const hasHNS = tags.has('HNS') || tags.has('INSPIRE-EVAL');
+    if (hasHNS && !papFirst && !(data.bmi > 40)) {
+      add('Discuss nerve-stimulation candidacy with your ENT; evaluation usually includes a sleep endoscopy (DISE).', 3);
     }
 
-    /* Drop the surgery DISE item only when the nerve-stim workup item actually renders
-       (it covers the same DISE step). At BMI > 40 the nerve-stim item is suppressed, so keep this. */
-    if (tags.has('SURGERY-WORKUP') && !(tags.has('HNS-WORKUP') && !(data.bmi && data.bmi > 40))) {
-      checkItems.push({ text: 'Schedule or complete a sleep endoscopy (DISE) before choosing a specific airway surgery, so the procedure can be matched to the exact collapse pattern.', group: 'treatment' });
-    }
-
-    if (tags.has('ASV-SAFETY')) {
-      checkItems.push({ text: 'If advanced PAP such as ASV is discussed, ask whether a recent echocardiogram or other heart-function result is needed before that option is considered safe.', group: 'treatment' });
-    }
     if (tags.has('ASV-CONTRA')) {
-      checkItems.push({ text: 'Ask whether your current heart-function result changes the plan for central-breathing instability and whether any non-ASV options or cardiology review are needed instead.', group: 'treatment' });
+      add('Ask your sleep and heart teams which non-ASV options are appropriate because reduced heart function can make ASV unsafe.', -1);
+    } else if (tags.has('ASV-SAFETY')) {
+      add('Before ASV is considered, confirm whether a recent echocardiogram or heart-function result is needed.', -1);
+    } else if (tags.has('CENTRAL-PSG-WORKUP')) {
+      add('Ask whether central-breathing signals from the home study should be confirmed with an in-lab study before advanced PAP is chosen.', -1);
     }
 
-    /* UARS */
-    if (tags.has('UARS-EVAL')) {
-      checkItems.push({ text: 'Ask your doctor about scheduling an in-lab overnight sleep study (polysomnography) to evaluate for upper airway resistance syndrome.', group: 'treatment' });
+    /* If the report contains only a prerequisite workup, give the patient one clear task.
+       Technical endotype workups stay in the clinician report when treatment is already underway. */
+    const hasTreatmentAction = actions.length > 0;
+    if (!hasTreatmentAction) {
+      const workupActions = [
+        ['OXYGEN-WORKUP', 'Ask your care team to review the full oxygen portion of the sleep study before oxygen-related risk is finalized.'],
+        ['POSITION-WORKUP', 'Ask whether the full report captured enough back-sleeping versus side-sleeping data to guide treatment.'],
+        ['SLEEP-STAGE-WORKUP', 'Ask whether the REM versus non-REM portion of the study was complete enough to guide treatment.'],
+        ['ANATOMY-WORKUP', 'Schedule or complete a full airway exam before anatomy-based treatment decisions are finalized.'],
+        ['HNS-WORKUP', 'Schedule the remaining nerve-stimulation workup steps, including DISE, before treating an implant as a finalized option.'],
+        ['NASAL-WORKUP', 'Review nasal blockage symptoms and complete a nasal exam before nasal treatment is finalized.'],
+        ['MAD-WORKUP', 'Ask the sleep dentist to confirm tooth support, jaw movement, and TMJ safety before an oral appliance is finalized.'],
+        ['MAD-SAFETY-LIMIT', 'Ask whether current tooth, jaw-movement, or TMJ findings make an oral appliance a poor fit.'],
+        ['SURGERY-WORKUP', 'Schedule or complete a sleep endoscopy (DISE) before choosing a specific airway surgery.'],
+      ];
+      const match = workupActions.find(([tag]) => tags.has(tag));
+      if (match) add(match[1], 0);
     }
 
-    /* Inspire optimization (prior implant) */
-    if (tags.has('INSPIRE-OPT') && data.priorInspire) {
-      checkItems.push({ text: 'Schedule a follow-up with your Inspire specialist to verify device activation and optimize settings.', group: 'treatment' });
+    const isSurgicalPathway = Array.isArray(data.milestones) && data.milestones.some(m =>
+      ['DISE Scheduled', 'DISE Completed', 'Surgery Scheduled', 'Post-Op'].includes(m));
+    if (!isSurgicalPathway) {
+      add(getReportStage(data) === 'pre-study'
+        ? 'Schedule follow-up after the sleep study so you can review the results together.'
+        : 'Schedule follow-up in 4–6 weeks to review progress, troubleshoot barriers, and adjust the plan.', 9);
     }
 
-    /* Hypoxic burden urgency — only for new patients who aren't already established
-       in care. Established patients already have a treatment plan in motion. */
-    if (tags.has('HB-URG') && !isEstablishedPatient) {
-      checkItems.push({ text: 'Schedule your first treatment appointment as soon as possible — your oxygen levels during sleep need prompt attention for your heart health.', group: 'everyone' });
-    }
-
-    /* Mild lifestyle-first */
-    if (tags.has('MILD-LIFESTYLE')) {
-      checkItems.push({ text: 'Start with lifestyle changes: sleep on your side, maintain a healthy weight, keep your nose clear, and avoid alcohol before bed.', group: 'treatment' });
-      checkItems.push({ text: 'Schedule a repeat sleep study in 6–12 months to reassess after lifestyle modifications.', group: 'treatment' });
-    }
-
-    /* CBT-I (non-COMISA — already handled above for COMISA) */
-    if (!data.hasCOMISA && tags.has('CBTI')) {
-      checkItems.push({ text: 'Ask your doctor for a referral to a CBT-I therapist, or explore a validated digital CBT-I program (such as Sleepio or SomRyst) to get started right away.', group: 'everyone' });
-    }
-
-    /* CPAP as lower-priority for mild + low HB patients */
-    if (hasCPAP && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
-      checkItems.push({ text: 'CPAP is also an option if other treatments don\'t provide enough improvement. Ask your doctor about it at your follow-up if needed.', group: 'consider' });
-    }
-
-    /* CPAP as lower-priority for non-compliant/avoidant patients —
-       but skip if severe+limitedAlts path already added detailed CPAP retry steps above */
-    const alreadyHasCPAPRetry = data.cpapFailed && !data.cpapWillRetry &&
-      data.severity?.toLowerCase() === 'severe' && limitedAlts;
-    if (hasCPAP && !alreadyHasCPAPRetry && ((data.cpapFailed && !data.cpapWillRetry) || (data.prefAvoidCpap && !data.cpapFailed))) {
-      checkItems.push({ text: 'If you are open to trying CPAP in the future, ask about newer auto-adjusting machines and mask styles — the technology has improved significantly. Treating nasal obstruction first can also make CPAP more comfortable.', group: 'consider' });
-    }
-
-    /* Follow-up — skip for surgical pathway (their next steps are DISE/surgery,
-       not a generic 4-6 week follow-up). Combine with nasal if both would appear. */
-    const hasNasalFollowUp = tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR');
-    if (isSurgicalPathway) {
-      /* Surgical pathway patients: next step is DISE or surgery — already covered above */
-    } else if (hasNasalFollowUp) {
-      /* Nasal follow-up already scheduled above — just add the timeline */
-    } else {
-      checkItems.push({
-        text: getReportStage(data) === 'pre-study'
-          ? 'Schedule a follow-up appointment after your sleep study so we can review the results together and decide on the right treatment plan.'
-          : 'Schedule a follow-up appointment in 4–6 weeks to review your progress and adjust your treatment plan if needed.',
-        group: 'everyone'
-      });
-    }
-
-    const seenChecklistItems = new Set();
-    const uniqueCheckItems = checkItems.filter(ci => {
-      const key = ci.group + '::' + ci.text;
-      if (seenChecklistItems.has(key)) return false;
-      seenChecklistItems.add(key);
-      return true;
-    });
-
-    const GROUP_META = {
-      everyone:  { label: 'For Everyone',      subtitle: 'These steps are helpful regardless of which treatment you choose.' },
-      treatment: { label: 'For Your Treatment', subtitle: 'These steps are specific to the treatment plan your doctor recommended.' },
-      consider:  { label: 'Worth Considering',  subtitle: null }
-    };
-    const GROUP_ORDER = ['everyone', 'treatment', 'consider'];
-
-    let itemsHTML = '';
-    for (const groupKey of GROUP_ORDER) {
-      const groupItems = uniqueCheckItems.filter(ci => ci.group === groupKey);
-      if (groupItems.length === 0) continue;
-      const meta = GROUP_META[groupKey];
-      itemsHTML += `\n<div class="checklist-group">`;
-      itemsHTML += `\n<div class="checklist-group-label">${esc(meta.label)}</div>`;
-      if (meta.subtitle) {
-        itemsHTML += `\n<p class="checklist-group-subtitle">${esc(meta.subtitle)}</p>`;
-      }
-      groupItems.forEach(ci => {
-        itemsHTML += `\n<div class="checklist-item">
-  <div class="checklist-box"></div>
-  <div>${esc(ci.text)}</div>
-</div>`;
-      });
-      itemsHTML += `\n</div>`;
-    }
-
-    if (!itemsHTML) return '';
+    const topFive = actions
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, 5);
+    if (!topFive.length) return '';
 
     return `
 <h2>Your First 30 Days</h2>
-<p>Here is a practical checklist to help you get started. Check off each item as you complete it.</p>
-${itemsHTML}`;
+<p>Focus on these steps first. Your care team can add detail as treatment progresses.</p>
+<div class="checklist-group">
+  ${topFive.map(item => `<div class="checklist-item"><div class="checklist-box"></div><div>${esc(item.text)}</div></div>`).join('')}
+</div>`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
@@ -1414,7 +1252,7 @@ ${itemsHTML}`;
       items.push(`
 <div class="whatif-item">
   <strong>What if you lost weight?</strong>
-  <p style="margin:0.4rem 0 0;">Reaching a healthier weight often lowers sleep apnea — sometimes by a third or more — and makes other treatments work better. Even a 10% drop in weight can ease the strain on your airway, heart, and joints.</p>
+  <p style="margin:0.4rem 0 0;">Weight loss often lowers sleep apnea severity and can make other treatments work better, but the amount of improvement varies from person to person.</p>
 </div>`);
     } else if (showWeight && isPreStudy) {
       items.push(`
@@ -1449,7 +1287,7 @@ ${itemsHTML}`;
       items.push(`
 <div class="whatif-item">
   <strong>What if your nasal obstruction were treated?</strong>
-  <p style="margin:0.4rem 0 0;">A blocked nose doesn't cause sleep apnea by itself, but it makes the airway easier to collapse and CPAP or an oral appliance harder to use. Treating it — with medication, allergy care, or surgery — can make those treatments work better and sometimes reduces events on its own.</p>
+  <p style="margin:0.4rem 0 0;">Treating nasal blockage can improve airflow and make PAP or an oral appliance easier to use. It usually supports rather than replaces treatment for sleep apnea itself.</p>
 </div>`);
     }
 
@@ -1489,15 +1327,13 @@ ${items.join('')}`;
        "Understanding Your Results" and the clinician report; here we give the why + the hope. */
     return `
 <h2>Why This Matters</h2>
-<p>Sleep apnea at this level puts real, repeated stress on your heart and body every night — even though you don't feel it happening. Over time, untreated apnea raises the risk of high blood pressure, heart disease, and stroke, along with everyday problems like poor focus and low energy.</p>
-<p>The good news: treating it lowers that strain. Most people feel more rested within a few weeks of starting effective treatment, and sticking with it is one of the most valuable things you can do for your long-term health. We'll use follow-up testing to make sure your treatment is doing its job.</p>`;
+<p>Sleep apnea at this level is associated with cardiovascular and daytime-function risks. Effective treatment can improve breathing and symptoms, but individual response and timing vary. Follow-up testing will confirm whether your chosen treatment is controlling the breathing events and oxygen drops.</p>`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
      FOOTER
      ══════════════════════════════════════════════════════════════════════════ */
   function renderFooter(data) {
-    const dateStr = formatDate(data.reportDate);
     /* Inline styles (not a CSS class) so the disclaimer survives the PDF pipeline,
        which strips external stylesheets. Quiet/muted by design to avoid adding to
        the report's visual density. */
@@ -1505,9 +1341,7 @@ ${items.join('')}`;
 <div class="report-disclaimer" style="margin-top:1.5rem;padding-top:0.85rem;border-top:1px solid #e2e8f0;font-size:0.78rem;line-height:1.55;color:#64748b;">
   This summary was prepared to help you understand your sleep evaluation and plan your next steps with your care team. It is not a final diagnosis or a substitute for medical advice \u2014 please review it with your doctor before making decisions about your care. If you ever have chest pain, severe trouble breathing, or another medical emergency, call 911.
 </div>
-<div class="report-footer">
-  Prepared by Capital ENT${dateStr ? ' \u00b7 ' + dateStr : ''}
-</div>`;
+`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
@@ -1518,7 +1352,6 @@ ${items.join('')}`;
       renderHeader(data),
       renderSummaryCard(data),
       renderCarePathway(data),
-      renderCareSummary(data),
       renderSectionA(data),
       renderSectionB(data),
       renderSectionB2(data),
@@ -1528,7 +1361,6 @@ ${items.join('')}`;
       renderSectionC(data),
       renderSectionD(data),
       renderSectionE(data),
-      renderSectionF(data),
       renderSectionG(data),
       renderFooter(data),
     ].filter(Boolean).map((sectionHtml, index) =>

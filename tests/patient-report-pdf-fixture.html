@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Patient Report PDF Fixture</title>
+</head>
+<body>
+  <div id="reportPreviewContent"></div>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/report-shared.js"></script>
+  <script src="../js/patientReport.js"></script>
+  <script src="../js/pdf-export.js"></script>
+  <script>
+    const fixture = {
+      patientName: 'TESTPATIENT, Morgan',
+      reportDate: '2026-07-15',
+      studyType: 'watchpat',
+      primaryAHI: 33,
+      ahi: 33,
+      severity: 'severe',
+      subtype: 'Disturbed Sleep',
+      bmi: 34,
+      ess: 13,
+      isi: 19,
+      nadir: 82,
+      odi: 31,
+      t90: 4.8,
+      remPahi: 45,
+      nremPahi: 28,
+      supPahi: 41,
+      nonSupPahi: 25,
+      hasCOMISA: true,
+      cpapFailed: true,
+      cpapWillRetry: true,
+      cpapCurrent: false,
+      prefAvoidCpap: false,
+      priorMAD: false,
+      priorUPPP: false,
+      priorInspire: false,
+      lowHypoxicBurden: false,
+      hasConcentricCollapse: false,
+      friedmanStage: 'III',
+      weightLossReadiness: 'ready',
+      phen: [
+        'High Anatomical Contribution',
+        'Low Arousal Threshold',
+        'High Hypoxic Burden',
+        'Nasal-Resistance Contributor'
+      ],
+      recTags: [
+        { tag: 'CBTI', text: 'Treat insomnia.' },
+        { tag: 'CPAP', text: 'Retry PAP.' },
+        { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
+        { tag: 'WEIGHT', text: 'Weight management.' },
+        { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
+        { tag: 'HNS', text: 'Consider upper-airway nerve stimulation.' },
+        { tag: 'ENDOTYPE-WORKUP', text: 'Review detailed event data.' }
+      ],
+      recs: [],
+      why: {},
+      milestones: ['Initial Eval', 'Study Reviewed'],
+      insufficientDataDomains: []
+    };
+    document.getElementById('reportPreviewContent').innerHTML = PatientReport.generateReportHTML(fixture);
+    window.fixtureReady = true;
+  </script>
+</body>
+</html>

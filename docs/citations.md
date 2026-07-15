@@ -2,7 +2,7 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-06-11
+**Last updated:** 2026-07-15
 
 ---
 
@@ -49,7 +49,8 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| CBT-I before CPAP for COMISA | Sweetman A, et al. "Cognitive and Behavioral Therapy for Insomnia Increases the Use of CPAP in OSA." *J Clin Sleep Med.* 2019;15(9):1365-1370. | CBT-I prioritized first for COMISA patients |
+| CBT-I before PAP can improve PAP acceptance/use in COMISA | Sweetman A, et al. "Cognitive and Behavioral Therapy for Insomnia Increases the Use of CPAP in OSA." *J Clin Sleep Med.* 2019;15(9):1365-1370. PMID 31403168. | Supports offering CBT-I early; does not require delaying PAP when OSA severity warrants prompt treatment |
+| Sequential or concurrent CBT-I plus PAP improves insomnia outcomes but did not significantly improve PAP adherence | Ong JC, et al. "A Randomized Controlled Trial of CBT-I and PAP for OSA and Comorbid Insomnia: Main Outcomes From the MATRICS Study." *Sleep.* 2020;43(9):zsaa041. PMID 32170307. | Patient report starts CBT-I and PAP in parallel for COMISA when PAP is indicated, rather than presenting CBT-I as a prerequisite |
 | COMISA prevalence 30-50% of OSA | Lack L, et al. "Comorbid Insomnia and Sleep Apnea." *Sleep Med Rev.* 2023;69:101767. | COMISA callout in patient report |
 | Insomnia as strongest predictor of CPAP non-adherence | Sweetman 2019 | CBT-I sequencing rationale |
 
@@ -88,8 +89,8 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Ji 2026 clinical severity staging (neck + BMI + AHI) | Ji J, et al. "Clinical Severity Staging System and Response to HNS." *JAMA Otolaryngol.* 2026;:2844563. | HNS Stage I-IV with response rate prediction (91%→38%) |
 | Current FDA Inspire indication expansion (AHI 15-100, BMI ≤40, PAP/BiPAP intolerance required) | U.S. Food and Drug Administration. "Inspire Upper Airway Stimulation – P130008/S090." Approved June 8, 2023. | HGNS gating: AHI 15-100 (Inspire), documented PAP failure/intolerance required. CCC is an **Inspire-specific** (unilateral) contraindication only — **not** an absolute HGNS exclusion (see Genio rows). |
 | Concentric palatal collapse contraindicates the **unilateral** Inspire device | Strollo PJ, et al. "Upper-Airway Stimulation for OSA." *N Engl J Med.* 2014;370(2):139-49. (STAR — CCC excluded from trial) | DISE check: velar CCC → contraindicates Inspire; route to bilateral stimulation (Genio) instead of excluding nerve stim (`buildHGNSAssessment`, `mapTreatments`, candidacy badges) |
-| **Bilateral HGNS (Genio / Nyxoah) is indicated for complete concentric collapse (CCC)** | Eastwood PR, Bennett KE, Walsh JH, et al. "Bilateral hypoglossal nerve stimulation for treatment of adult OSA." *Eur Respir J.* 2020;55(1):1901320 (BETTER SLEEP, foundational bilateral HGNS); Nyxoah ACCCESS pivotal trial (NCT05592002) + BETTER SLEEP "with and without CCC" (NCT03763682) + CE-mark CCC indication. ENT review 2026-06-13. | CCC no longer hard-blocks nerve stim: CCC patients are routed to the bilateral Genio device (FDA AHI range 15–65) rather than excluded (`buildHGNSAssessment`, `mapTreatments`, candidacy badges, patient report) |
-| **BMI > 40 excludes ALL hypoglossal nerve stimulation devices** | No FDA-approved HGNS device (Inspire P130008 or Genio) is indicated above BMI 40; payer criteria are frequently stricter. ENT review 2026-06-13. | Hard exclusion: BMI > 40 → no INSPIRE-EVAL/HNS rec emitted and HGNS card marks "not a candidate"; weight reduction to ≤ 40 required first (`js/config.js` `hgns.bmiMax`, `mapTreatments`, `buildHGNSAssessment`) |
+| **Bilateral HGNS (Genio / Nyxoah) is FDA-approved for selected adults with AHI 15–65 after failure, intolerance, or ineligibility for standard treatments** | U.S. Food and Drug Administration. "Genio System 2.1 — P240024." Decision Aug 8, 2025; Eastwood PR, et al. "Bilateral hypoglossal nerve stimulation for treatment of adult OSA." *Eur Respir J.* 2020;55(1):1901320. | Patient report presents Genio/HGNS as a conditional option after standard treatments, not an immediate parallel choice; FDA labeling includes PAP, oral appliances, lifestyle treatment, and pharmacotherapy in the standard-treatment history |
+| **BMI > 40 is currently an app-level conservative HGNS referral guardrail, not a universal Genio label cutoff** | Inspire P130008/S090 includes BMI ≤40. The original Genio P240024 approval statement specifies AHI and prior-treatment criteria but does not state a BMI ceiling; payer criteria and evidence limits may still be stricter. | Current engine behavior remains a conservative global BMI >40 exclusion (`js/config.js` `hgns.bmiMax`). This should be treated as a Capital ENT governance/payer policy and reviewed separately, not described as an FDA-wide contraindication. |
 | HNS evaluation criteria and outcomes | Kent DT, et al. "Evaluation of HNS Treatment in OSA." *JAMA Otolaryngol.* 2019;145(11):1044-1052. | HNS recommendation logic |
 | Endotypic predictors of HGNS response | Op de Beeck S, Wellman A, Dieltjens M, et al. "Endotypic Mechanisms of Successful Hypoglossal Nerve Stimulation for OSA." *Am J Respir Crit Care Med.* 2021;203(6):746-755. | Higher arousal threshold and higher muscle compensation predict HGNS response; low ArTH / low muscle compensation are cautionary, not favorable |
 
@@ -119,7 +120,15 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | Tirzepatide (Zepbound) for moderate-severe OSA in adults with obesity | Malhotra A, et al. "Tirzepatide for the Treatment of Obstructive Sleep Apnea and Obesity." *N Engl J Med.* 2024;391:1193-1205 (SURMOUNT-OSA); U.S. FDA. "FDA Approves First Medication for Obstructive Sleep Apnea." Dec 20, 2024. | Clinician recommendation explicitly names a GLP-1/tirzepatide (Zepbound) evaluation for obesity (BMI ≥30) **with moderate-to-severe OSA (AHI ≥15)** — matching the FDA OSA indication. Patient-facing GLP-1/Zepbound mention gated to BMI ≥30. Mild obese OSA gets generic weight counseling. |
-| 10% weight loss → meaningful AHI reduction | Peppard PE, et al. "Longitudinal Study of Moderate Weight Change and SDB." *JAMA.* 2000;284(23):3015-21. | Weight loss what-if projection (30% AHI reduction) |
+| 10% weight loss was associated with an estimated 26% reduction in AHI at the cohort level | Peppard PE, et al. "Longitudinal Study of Moderate Weight Change and SDB." *JAMA.* 2000;284(23):3015-21. PMID 11122588. | Patient report states that weight loss can reduce severity while emphasizing that individual response varies; it does not promise a fixed reduction |
+
+## Patient-Report Counseling & Safety Guardrails
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| PAP cardiovascular outcome evidence is adherence-sensitive and not a categorical four-hour guarantee | McEvoy RD, et al. "CPAP for Prevention of Cardiovascular Events in Obstructive Sleep Apnea." *N Engl J Med.* 2016;375:919-931 (SAVE); Sánchez-de-la-Torre M, et al. "Adherence to CPAP Treatment and the Risk of Recurrent Cardiovascular Events: A Meta-Analysis." *JAMA.* 2023;330(13):1255-1265. PMID 37787793. | Replaces “4+ hours provides significant health protection” with “use PAP whenever you sleep; benefits generally increase with nightly duration” |
+| Isolated nasal surgery improves symptoms, nasal resistance, and PAP use more consistently than it changes AHI | Correa EJ, et al. "Role of Nasal Surgery in Adult Obstructive Sleep Apnea: A Systematic Review." *Int Arch Otorhinolaryngol.* 2024;28(3):e310-e321. PMID 39268344. | Nasal treatment is described as an adjunct that improves airflow and treatment tolerance, not as a stand-alone OSA cure |
+| Safe nasal irrigation requires distilled, sterile, or previously boiled and cooled water | U.S. Food and Drug Administration. "Is Rinsing Your Sinuses With Neti Pots Safe?" Content current Apr 28, 2025. | Adds a safe-water instruction wherever the patient checklist recommends saline irrigation |
 
 ## UARS (Upper Airway Resistance Syndrome)
 

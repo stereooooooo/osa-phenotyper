@@ -1,6 +1,16 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** April 2, 2026
-**Latest app version:** commit `1a11170` (`feat: add runtime environment labeling`)
+**Latest smoke test:** July 15, 2026
+**Latest app version:** pending deployment from `codex/precision-sleep-v1`
+
+---
+
+## July 15, 2026 Focused Patient-Report Revision
+
+- Headless regression suite: **306 assertions passed**.
+- Added severe-COMISA coverage for concurrent CBT-I/PAP start, PAP-conditional MAD/HGNS alternatives, safe nasal-rinse water, technical-endotype suppression, and a maximum of five first-month actions.
+- Exercised the real jsPDF/html2canvas export path with `tests/patient-report-pdf-fixture.html`.
+- Final representative severe-COMISA report: **3 letter-size pages**, with every page rendered and inspected; no clipping, overflow, orphaned headings, duplicate footer, or split treatment cards found.
+- Patient copy was recalibrated against Sweetman/MATRICS COMISA trials, SAVE/adherence evidence, FDA Genio labeling, FDA nasal-irrigation guidance, and the 2024 nasal-surgery systematic review; citations are tracked in `docs/citations.md`.
 
 ---
 

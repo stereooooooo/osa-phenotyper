@@ -78,7 +78,8 @@
 | 39 | FTP handoff to patient report | Pre-study or OSA patient with FTP III/IV — Section A / exam language should explicitly mention the Friedman Tongue Position finding |
 | 40 | Low-HB wording guardrail | Mild OSA with measured low hypoxic burden — report should use uncertainty-aware language ("reasonable first-line alternatives"), not "works just as well" certainty language |
 | 41 | Patient PDF metadata | Exported patient PDF filename should use patient name + report date, and per-page footer date should match the report date rather than export time |
-| 42 | Patient PDF pagination | Long patient report with care pathway, checklist groups, and multiple what-if cards — page breaks should prefer section/card boundaries, avoid splitting mid-rec-item, and keep `Your First 30 Days` / `What If…?` headings with their first block |
+| 42 | Patient PDF pagination | Long patient report with care pathway and prioritized checklist — target 3 pages (4 maximum), prefer section/card boundaries, avoid splitting mid-rec-item, and keep `Your First 30 Days` with its first action |
+| 43 | Severe COMISA patient-report focus | Severe OSA + insomnia + PAP retry + nasal/weight/alternative recommendations — summary starts CBT-I and PAP re-fitting in parallel, MAD/HNS appear only under `If PAP Remains Difficult`, checklist has no more than five actions, saline includes safe-water wording, and repetitive `What If` content is omitted |
 
 Normal-AHI wording check: returning post-study summaries should say the study did not show evidence of obstructive sleep apnea, not `normal sleep apnea`.
 
