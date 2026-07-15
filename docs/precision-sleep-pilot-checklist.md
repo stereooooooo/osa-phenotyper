@@ -1,0 +1,65 @@
+# Precision Sleep v1 — Current-Patient Pilot Checklist
+
+Use this checklist for a limited 20–30 patient pilot. The current clinician-only staging environment is synthetic-data-only and must not be used for this cohort.
+
+## Before any PHI
+
+- [ ] Deploy a separate `CLINICAL PILOT` stack, patient table, Cognito pool, logs, and CloudFront distribution.
+- [ ] Confirm every AWS service in the pilot data flow is covered by the Capital ENT AWS BAA.
+- [ ] Complete and document the HIPAA security risk analysis for the pilot workflow.
+- [ ] Complete the controls in `docs/clinician-only-architecture.md` under **Required production controls outside the code**.
+- [ ] Create individual accounts only for pilot clinicians/staff; require and test MFA.
+- [ ] Restrict pilot access to managed Capital ENT devices and approved remote-access practices.
+- [ ] Configure and test alarms for authentication failures, API errors, WAF blocks, and unexpected request volume.
+- [ ] Test one DynamoDB recovery and one audit-log retrieval.
+- [ ] Confirm the footer reads `CLINICAL PILOT` and shows the expected build.
+- [ ] Obtain clinical, privacy/security, and operational approval to begin the limited cohort.
+
+## One synthetic rehearsal
+
+- [ ] Create, find, save, and reload one synthetic chart.
+- [ ] Generate clinician and patient reports.
+- [ ] Save and reopen a report snapshot.
+- [ ] Save and reopen one structured follow-up.
+- [ ] Archive and restore the synthetic chart as an administrator.
+- [ ] Confirm a clinician cannot perform administrator-only archive/restore actions.
+- [ ] Confirm the EHR report-delivery workflow and downtime fallback.
+
+## Per-patient workflow
+
+1. Verify the patient in the EHR before creating or opening the hub chart.
+2. Search by exact MRN, DOB, or name; confirm two identifiers before editing.
+3. Save the baseline evaluation and review missing-data warnings.
+4. Generate the profile and reports; apply clinician judgment before using recommendations.
+5. Save the report snapshot when the report is discussed or distributed.
+6. Upload the reviewed patient report through the EHR's approved workflow.
+7. Complete the official note, orders, prescriptions, and communication in the EHR.
+8. At follow-up, record one structured checkpoint and update source clinical data when appropriate.
+
+## Feature freeze
+
+- Pilot target: 20–30 current sleep patients.
+- Do not add requested enhancements during the cohort unless a defect blocks safe use.
+- Record requests in a backlog with no patient identifiers.
+- Review the backlog and pilot measures only after the cohort is complete.
+
+## Pilot review
+
+- [ ] Report snapshot completion rate
+- [ ] Follow-up completion within 90 days
+- [ ] Treatment-pathway distribution
+- [ ] Response and adherence distribution
+- [ ] ESS, ISI, weight, and AHI changes when available
+- [ ] Median clinician time in the hub
+- [ ] Defects, confusing fields, and missing workflow steps
+- [ ] Security, access, alert, and audit events
+- [ ] Decision: stop, revise, extend pilot, or launch the branded program
+
+## Stop immediately if
+
+- The wrong chart is displayed or data appears under the wrong patient.
+- Saved data or follow-ups cannot be reliably reloaded.
+- Any workforce member can access data or actions outside their role.
+- PHI appears in an unapproved channel, log, issue, email, or browser surface.
+- Monitoring, recovery, authentication, or the EHR fallback is unavailable during the pilot.
+

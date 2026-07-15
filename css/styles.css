@@ -233,6 +233,15 @@ fieldset legend {
   font-weight: 400;
   letter-spacing: 0.02em;
 }
+.osa-nav-title small {
+  display: block;
+  color: rgba(255,255,255,0.62);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
 .osa-btn-outline-light {
   color: #fff;
   border: 1px solid rgba(255,255,255,0.5);
@@ -244,6 +253,153 @@ fieldset legend {
   background: rgba(255,255,255,0.1);
   border-color: #fff;
   color: #fff;
+}
+
+/* ── Precision Sleep v1 workspace ───────────────────────────── */
+.precision-eyebrow {
+  color: var(--osa-crimson);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.precision-home-heading {
+  border-bottom: 1px solid var(--osa-gray-border);
+  padding: 2rem 0 1.5rem;
+}
+.precision-home-heading h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -0.04em;
+  margin: 0.3rem 0 0.45rem;
+}
+.precision-home-heading p {
+  color: var(--osa-gray-body);
+  margin: 0;
+  max-width: 44rem;
+}
+.precision-home-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: 2rem;
+}
+.precision-home-workspace > section {
+  min-width: 0;
+  padding: 0 2rem 0 0;
+}
+.precision-home-workspace > section + section {
+  border-left: 1px solid var(--osa-gray-border);
+  padding: 0 0 0 2rem;
+}
+.precision-profile {
+  background: var(--osa-white);
+  border-block: 1px solid var(--osa-gray-border);
+  padding: 1.5rem 0;
+}
+.precision-profile-heading {
+  align-items: end;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.65fr);
+  padding: 0 1.25rem 1.25rem;
+}
+.precision-profile-heading h2 {
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  letter-spacing: -0.025em;
+  margin: 0.2rem 0 0;
+}
+.precision-profile-heading p {
+  color: var(--osa-gray-body);
+  font-size: 0.8rem;
+  margin: 0;
+}
+.precision-profile-row {
+  align-items: start;
+  border-top: 1px solid var(--osa-gray-border);
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(9rem, 0.8fr) minmax(10rem, 0.85fr) minmax(16rem, 2fr);
+  padding: 0.8rem 1.25rem;
+}
+.precision-profile-label {
+  color: var(--osa-navy);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.precision-profile-signal {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.precision-profile-row[data-tone="strong"] .precision-profile-signal { color: var(--osa-crimson); }
+.precision-profile-row[data-tone="relevant"] .precision-profile-signal { color: var(--osa-navy-light); }
+.precision-profile-row[data-tone="quiet"] .precision-profile-signal { color: #4b5563; }
+.precision-profile-row[data-tone="pending"] .precision-profile-signal { color: #9a6700; }
+.precision-profile-detail {
+  color: var(--osa-gray-body);
+  font-size: 0.82rem;
+}
+.precision-followup-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#followupModal .modal-header .text-muted {
+  color: rgba(255,255,255,0.72) !important;
+}
+.precision-followup-row {
+  align-items: start;
+  border-top: 1px solid var(--osa-gray-border);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 7rem minmax(0, 1fr) minmax(9rem, 0.65fr);
+  padding: 0.85rem 0;
+}
+.precision-followup-date {
+  color: var(--osa-navy);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.precision-followup-action {
+  color: var(--osa-navy);
+  font-size: 0.82rem;
+}
+.precision-followup-action span {
+  color: var(--osa-gray-body);
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.precision-followup-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+.precision-followup-metrics span {
+  background: var(--osa-gray-light);
+  border-radius: 999px;
+  color: var(--osa-navy);
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+}
+@media (max-width: 767.98px) {
+  .precision-home-workspace,
+  .precision-profile-heading,
+  .precision-profile-row,
+  .precision-followup-row {
+    grid-template-columns: 1fr;
+  }
+  .precision-home-workspace > section { padding: 0 0 1.5rem; }
+  .precision-home-workspace > section + section {
+    border-left: 0;
+    border-top: 1px solid var(--osa-gray-border);
+    padding: 1.5rem 0 0;
+  }
+  .precision-followup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 479.98px) {
+  .precision-followup-grid { grid-template-columns: 1fr; }
 }
 .osa-runtime-badge {
   display: inline-flex;

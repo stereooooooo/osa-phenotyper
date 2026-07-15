@@ -2219,6 +2219,10 @@ document.getElementById('form').addEventListener('submit', e => {
     if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
   }
 
+  document.dispatchEvent(new CustomEvent('osa:analysis-complete', {
+    detail: { analysisData: lastAnalysisData },
+  }));
+
   /* Smooth scroll to results area */
   const scrollTarget = isPreStudy ? triggerEl : clinEl;
   if (scrollTarget) window.scrollTo({ top: scrollTarget.offsetTop - 80, behavior:'smooth' });

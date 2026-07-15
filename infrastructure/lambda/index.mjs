@@ -27,7 +27,13 @@ const VISIT_FIELD_PREVIEW_LIMIT = 12;
 const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
 const INTAKE_REVIEW_HISTORY_LIMIT = 20;
 const INTAKE_REVIEW_FIELD_PREVIEW_LIMIT = 20;
+const FOLLOWUP_LIMIT = 20;
 const ALLOWED_INTAKE_REVIEW_ACTIONS = new Set(['accept-intake', 'keep-chart']);
+const FOLLOWUP_TREATMENTS = new Set(['PAP', 'Oral appliance', 'Weight / GLP-1', 'Positional therapy', 'Nasal treatment', 'Airway surgery', 'Hypoglossal stimulation', 'CBT-I', 'Observation / other']);
+const FOLLOWUP_STATUSES = new Set(['Planned', 'Started', 'Active', 'Paused', 'Completed']);
+const FOLLOWUP_RESPONSES = new Set(['Better', 'No meaningful change', 'Worse', 'Not assessed']);
+const FOLLOWUP_ADHERENCE = new Set(['Using as planned', 'Partial use', 'Not using', 'Not applicable']);
+const FOLLOWUP_NEXT_ACTIONS = new Set(['Continue current plan', 'Optimize current treatment', 'Reassess barriers', 'Repeat sleep study', 'Change treatment pathway', 'Schedule procedure', 'Refer / coordinate care', 'No action documented']);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
 
@@ -169,6 +175,52 @@ function sanitizeIntakeReview(rawReview, currentPendingOverrides) {
   });
 
   return { note, resolutions };
+}
+
+function sanitizeOptionalNumber(value, min, max, { integer = false } = {}) {
+  if (value === null || value === undefined || value === '') return { value: null };
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max || (integer && !Number.isInteger(parsed))) {
+    return { error: true };
+  }
+  return { value: parsed };
+}
+
+function sanitizeFollowupEntry(rawEntry, user, timestamp) {
+  const raw = (rawEntry && typeof rawEntry === 'object' && !Array.isArray(rawEntry)) ? rawEntry : {};
+  const date = String(raw.date || '').trim();
+  const treatment = String(raw.treatment || '').trim();
+  const status = String(raw.status || '').trim();
+  const response = String(raw.response || '').trim();
+  const adherence = String(raw.adherence || '').trim();
+  const nextAction = String(raw.nextAction || '').trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T12:00:00Z`))) return null;
+  if (!FOLLOWUP_TREATMENTS.has(treatment) || !FOLLOWUP_STATUSES.has(status)) return null;
+  if (!FOLLOWUP_RESPONSES.has(response) || !FOLLOWUP_ADHERENCE.has(adherence) || !FOLLOWUP_NEXT_ACTIONS.has(nextAction)) return null;
+
+  const weight = sanitizeOptionalNumber(raw.weight, 50, 700);
+  const ess = sanitizeOptionalNumber(raw.ess, 0, 24, { integer: true });
+  const isi = sanitizeOptionalNumber(raw.isi, 0, 28, { integer: true });
+  const ahi = sanitizeOptionalNumber(raw.ahi, 0, 200);
+  if (weight.error || ess.error || isi.error || ahi.error) return null;
+
+  return {
+    followupId: randomUUID(),
+    date,
+    treatment,
+    status,
+    response,
+    adherence,
+    nextAction,
+    ...(weight.value !== null ? { weight: weight.value } : {}),
+    ...(ess.value !== null ? { ess: ess.value } : {}),
+    ...(isi.value !== null ? { isi: isi.value } : {}),
+    ...(ahi.value !== null ? { ahi: ahi.value } : {}),
+    recordedAt: timestamp,
+    recordedBy: user,
+    schemaVersion: 1,
+  };
 }
 
 function filterPendingMetadata(existing, pendingKeys) {
@@ -600,6 +652,12 @@ async function updatePatient(event, id, body, user, userGroups) {
   const currentFieldHistory = (Item.fieldProvenanceHistory && typeof Item.fieldProvenanceHistory === 'object' && !Array.isArray(Item.fieldProvenanceHistory))
     ? cloneJson(Item.fieldProvenanceHistory)
     : {};
+  const followupEntry = body.followupEntry !== undefined
+    ? sanitizeFollowupEntry(body.followupEntry, user, now)
+    : null;
+  if (body.followupEntry !== undefined && !followupEntry) {
+    return fail(event, 'Follow-up entry is incomplete or contains an invalid value.');
+  }
   let remainingPendingOverrides = currentPendingOverrides;
   let remainingPendingProvenance = currentPendingProvenance;
 
@@ -772,6 +830,7 @@ async function updatePatient(event, id, body, user, userGroups) {
     changedRecordFields.push('status');
   }
   if (body.reportSnapshot !== undefined) changedRecordFields.push('reportSnapshots');
+  if (followupEntry) changedRecordFields.push('followups');
   const changedFormFields = formData !== undefined
     ? getMeaningfulChangedFields(currentFormData, formData)
     : [];
@@ -898,6 +957,18 @@ async function updatePatient(event, id, body, user, userGroups) {
     updates[':rs'] = reportSnapshots;
     updates[':rsc'] = reportSnapshots.length;
     updates[':lrs'] = now;
+  }
+  if (followupEntry) {
+    const followups = Array.isArray(Item.followups) ? cloneJson(Item.followups) : [];
+    followups.push(followupEntry);
+    const retainedFollowups = followups.slice(-FOLLOWUP_LIMIT);
+    expr += ', #fu = :fu, #fuc = :fuc, #lfu = :lfu';
+    names['#fu'] = 'followups';
+    names['#fuc'] = 'followupCount';
+    names['#lfu'] = 'latestFollowupAt';
+    updates[':fu'] = retainedFollowups;
+    updates[':fuc'] = retainedFollowups.length;
+    updates[':lfu'] = now;
   }
   if (removeExpr.length) {
     expr += ' REMOVE ' + removeExpr.join(', ');

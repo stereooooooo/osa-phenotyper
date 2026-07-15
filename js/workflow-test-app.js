@@ -77,6 +77,7 @@
   const store = new Map();
   let patientSeq = 1;
   let snapshotSeq = 1;
+  let followupSeq = 1;
 
   function patientClone(patient) {
     return clone(patient);
@@ -167,6 +168,8 @@
       fieldProvenanceHistory: {},
       reportSnapshots: [],
       reportSnapshotCount: 0,
+      followups: [],
+      followupCount: 0,
       isDeleted: false,
       deletedAt: null,
     };
@@ -226,6 +229,17 @@
         patient.reportSnapshotCount = patient.reportSnapshots.length;
       }
 
+      if (data && data.followupEntry !== undefined) {
+        const entry = clone(data.followupEntry || {});
+        entry.followupId = `followup-${followupSeq++}`;
+        entry.recordedAt = updatedAt;
+        entry.recordedBy = actor();
+        entry.schemaVersion = 1;
+        patient.followups = [...(patient.followups || []), entry].slice(-20);
+        patient.followupCount = patient.followups.length;
+        patient.latestFollowupAt = updatedAt;
+      }
+
       if (data && Object.prototype.hasOwnProperty.call(data, 'name')) patient.name = data.name || '';
       if (data && Object.prototype.hasOwnProperty.call(data, 'dob')) patient.dob = data.dob || '';
       if (data && Object.prototype.hasOwnProperty.call(data, 'mrn')) patient.mrn = data.mrn || '';
@@ -239,6 +253,9 @@
       patient.version += 1;
       persistTestState();
       return patientClone(patient);
+    },
+    async addFollowup(id, version, followupEntry) {
+      return workflowDb.updatePatient(id, { version, followupEntry, visitAction: 'Follow-up recorded' });
     },
     async reviewIntakeChanges(id, version, review) {
       const patient = getPatientOrThrow(id);
@@ -340,6 +357,7 @@
       store.clear();
       patientSeq = 1;
       snapshotSeq = 1;
+      followupSeq = 1;
     },
     injectPendingIntake(id, overrides) {
       const patient = getPatientOrThrow(id);

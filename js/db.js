@@ -65,6 +65,14 @@ const OSADatabase = (function () {
     });
   }
 
+  async function addFollowup(id, version, followupEntry) {
+    return updatePatient(id, {
+      version,
+      followupEntry,
+      visitAction: 'Follow-up recorded',
+    });
+  }
+
   async function reviewIntakeChanges(id, version, review) {
     return apiFetch(`/patients/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -158,6 +166,7 @@ const OSADatabase = (function () {
     getPatient,
     createPatient,
     updatePatient,
+    addFollowup,
     reviewIntakeChanges,
     restorePatient,
     deletePatient,

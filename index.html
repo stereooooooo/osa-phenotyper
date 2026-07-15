@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net https://cognito-idp.us-east-2.amazonaws.com https://dk259m1syu2bu.cloudfront.net; worker-src 'self' blob: https://cdn.jsdelivr.net">
-<title>OSA Phenotyper &bull; Capital&nbsp;ENT</title>
+<title>Precision Sleep Hub &bull; Capital&nbsp;ENT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -22,8 +22,8 @@
     <div class="card-body p-4">
       <div class="text-center mb-4">
         <img src="capentlogo.svg" alt="Capital ENT logo" style="height:50px;" class="mb-2">
-        <h5 class="mb-0">OSA Phenotyper</h5>
-        <small class="text-muted">Sign in to continue</small>
+        <h5 class="mb-0">Precision Sleep Hub</h5>
+        <small class="text-muted">Capital ENT clinical workspace</small>
       </div>
       <div id="loginError" class="alert alert-danger d-none small"></div>
 
@@ -90,13 +90,13 @@
   <div class="container-fluid">
     <a class="navbar-brand d-flex align-items-center gap-2" href="#">
       <img src="capentlogo.svg" alt="Capital ENT logo" style="height:40px;">
-      <span class="osa-nav-title d-none d-md-inline">OSA Phenotyper</span>
+      <span class="osa-nav-title d-none d-md-inline">Precision Sleep <small>Clinical Hub</small></span>
       <span class="osa-runtime-badge d-none" id="runtimeEnvBadge"></span>
     </a>
     <div class="d-flex align-items-center gap-2">
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnHome"><i class="bi bi-house"></i> Home</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-search"></i> Find Patient</button>
-      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New / clear</button>
+      <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New chart</button>
       <span class="text-light small d-none d-md-inline ms-2" id="userEmail"></span>
       <button class="btn btn-sm btn-outline-light no-print" id="btnSignOut" title="Sign out"><i class="bi bi-box-arrow-right"></i></button>
     </div>
@@ -105,7 +105,7 @@
 
 <div class="osa-runtime-banner d-none" id="runtimeEnvironmentBanner" role="status" aria-live="polite"></div>
 
-<!-- ===== Front-Desk Home View (populated by later task) ===== -->
+<!-- ===== Precision Sleep Home View ===== -->
 <div id="homeView" class="d-none container py-4" style="max-width: 880px;"></div>
 
 <!-- ===== Patient List Modal ===== -->
@@ -219,6 +219,9 @@
         </button>
         <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnReportSnapshots" title="View saved report snapshots">
           <i class="bi bi-clock-history"></i> Snapshots
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnFollowups" title="Record or review structured follow-ups">
+          <i class="bi bi-arrow-repeat"></i> Follow-ups
         </button>
         <span class="text-muted small" id="patientLastSaved"></span>
       </span>
@@ -566,6 +569,7 @@
 
 <hr class="my-5">
 <div id="patientSummary"></div>
+<div id="precisionSleepProfile" class="mt-4" aria-live="polite"></div>
 <div id="patientReportTrigger" class="text-center my-3" style="display:none;">
   <button type="button" class="btn btn-outline-primary btn-lg" id="btnGenerateReport">
     <i class="bi bi-file-earmark-text"></i> Generate Patient Report
@@ -580,7 +584,7 @@
 <footer class="osa-footer">
   <div class="container text-center">
     <p class="mb-1">Capital ENT &amp; Sinus Center</p>
-    <p class="small osa-footer-muted mb-0">&copy; 2025 &bull; OSA Phenotyper is a clinical decision-support tool and does not replace professional judgment.</p>
+    <p class="small osa-footer-muted mb-0">&copy; 2026 &bull; Precision Sleep Hub is a clinical decision-support tool and does not replace professional judgment.</p>
     <p class="small osa-footer-meta mb-0" id="runtimeFooterMeta"></p>
   </div>
 </footer>
@@ -754,6 +758,49 @@
   </div>
 </div>
 
+<!-- Structured Follow-up Modal -->
+<div class="modal fade" id="followupModal" tabindex="-1" aria-labelledby="followupModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="followupModalLabel"><i class="bi bi-arrow-repeat"></i> Precision Sleep Follow-up</h5>
+          <p class="small text-muted mb-0">Capture treatment progress and the next clinical action without duplicating the EHR note.</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="followupForm" novalidate>
+          <div class="precision-followup-grid">
+            <div><label class="form-label required" for="followupDate">Follow-up date</label><input class="form-control" type="date" id="followupDate" required></div>
+            <div><label class="form-label required" for="followupTreatment">Primary pathway</label><select class="form-select" id="followupTreatment" required><option value="">Select</option><option>PAP</option><option>Oral appliance</option><option>Weight / GLP-1</option><option>Positional therapy</option><option>Nasal treatment</option><option>Airway surgery</option><option>Hypoglossal stimulation</option><option>CBT-I</option><option>Observation / other</option></select></div>
+            <div><label class="form-label required" for="followupStatus">Pathway status</label><select class="form-select" id="followupStatus" required><option value="">Select</option><option>Planned</option><option>Started</option><option>Active</option><option>Paused</option><option>Completed</option></select></div>
+            <div><label class="form-label required" for="followupResponse">Patient response</label><select class="form-select" id="followupResponse" required><option value="">Select</option><option>Better</option><option>No meaningful change</option><option>Worse</option><option>Not assessed</option></select></div>
+            <div><label class="form-label required" for="followupAdherence">Use / adherence</label><select class="form-select" id="followupAdherence" required><option value="">Select</option><option>Using as planned</option><option>Partial use</option><option>Not using</option><option>Not applicable</option></select></div>
+            <div><label class="form-label required" for="followupNextAction">Next action</label><select class="form-select" id="followupNextAction" required><option value="">Select</option><option>Continue current plan</option><option>Optimize current treatment</option><option>Reassess barriers</option><option>Repeat sleep study</option><option>Change treatment pathway</option><option>Schedule procedure</option><option>Refer / coordinate care</option><option>No action documented</option></select></div>
+            <div><label class="form-label" for="followupWeight">Weight (lb)</label><input class="form-control" type="number" id="followupWeight" min="50" max="700" step="0.1"></div>
+            <div><label class="form-label" for="followupEss">ESS</label><input class="form-control" type="number" id="followupEss" min="0" max="24" step="1"></div>
+            <div><label class="form-label" for="followupIsi">ISI</label><input class="form-control" type="number" id="followupIsi" min="0" max="28" step="1"></div>
+            <div><label class="form-label" for="followupAhi">Repeat AHI</label><input class="form-control" type="number" id="followupAhi" min="0" max="200" step="0.1"></div>
+          </div>
+          <div class="small text-muted mt-3">Use the EHR for narrative documentation, orders, prescriptions, messages, and billing. This entry is a structured program checkpoint.</div>
+          <div id="followupFormError" class="alert alert-danger small py-2 mt-3 mb-0 d-none" role="alert"></div>
+        </form>
+        <hr class="my-4">
+        <div class="d-flex align-items-baseline justify-content-between gap-3 mb-2">
+          <h6 class="mb-0">Recent follow-ups</h6>
+          <span class="small text-muted">Newest first · up to 20 retained</span>
+        </div>
+        <div id="followupHistory" class="precision-followup-history"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="btnSaveFollowup"><i class="bi bi-check2-circle"></i> Save follow-up</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js" integrity="sha384-YkDOkBg8dBira7f28t9KbD0tG5OnnuU540fRBz8JgorAXLJOwtakyHNV7m36RDG4" crossorigin="anonymous"></script>
 <script>
@@ -812,6 +859,7 @@ window.OSALibs = (function () {
 <script src="js/patientReport.js"></script>
 <script src="js/app.js"></script>
 <script src="js/home.js"></script>
+<script src="js/precision-sleep.js"></script>
 <script>
 /* ── Hide form fields for disabled features (e.g. ΔHR) ─────────── */
 if (!(typeof OSA_CONFIG !== 'undefined' && OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate)) {
@@ -845,6 +893,7 @@ document.getElementById('priorCpap').addEventListener('change', function() {
 function resetWorkspaceUiState() {
   document.getElementById('form').reset();
   document.getElementById('patientSummary').innerHTML = '';
+  document.getElementById('precisionSleepProfile').innerHTML = '';
   document.getElementById('clinicianReport').innerHTML = '';
   const alerts = document.getElementById('validationAlerts');
   if (alerts) alerts.innerHTML = '';
@@ -1580,8 +1629,10 @@ function applyRuntimeMeta(meta) {
 
     if (clearReports) {
       document.getElementById('patientSummary').innerHTML = '';
+      document.getElementById('precisionSleepProfile').innerHTML = '';
       document.getElementById('clinicianReport').innerHTML = '';
     }
+    document.dispatchEvent(new CustomEvent('osa:patient-updated', { detail: { patient } }));
 
     if (scrollToTop) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1614,13 +1665,19 @@ function applyRuntimeMeta(meta) {
     const reviewButton = document.getElementById('btnReviewIntake');
     const provenanceButton = document.getElementById('btnFieldProvenance');
     const snapshotButton = document.getElementById('btnReportSnapshots');
+    const followupButton = document.getElementById('btnFollowups');
     reviewButton.classList.toggle('d-none', !hasPendingIntakeConflicts(patient));
     provenanceButton.classList.toggle('d-none', !patient.patientId);
     snapshotButton.classList.toggle('d-none', !patient.patientId);
+    followupButton.classList.toggle('d-none', !patient.patientId);
     const snapshotCount = Number.isInteger(patient.reportSnapshotCount)
       ? patient.reportSnapshotCount
       : (Array.isArray(patient.reportSnapshots) ? patient.reportSnapshots.length : 0);
     snapshotButton.innerHTML = `<i class="bi bi-clock-history"></i> Snapshots${snapshotCount ? ` (${snapshotCount})` : ''}`;
+    const followupCount = Number.isInteger(patient.followupCount)
+      ? patient.followupCount
+      : (Array.isArray(patient.followups) ? patient.followups.length : 0);
+    followupButton.innerHTML = `<i class="bi bi-arrow-repeat"></i> Follow-ups${followupCount ? ` (${followupCount})` : ''}`;
   }
 
   function formatPendingIntakeValue(value) {
@@ -1926,6 +1983,7 @@ function applyRuntimeMeta(meta) {
     document.getElementById('btnReviewIntake').classList.add('d-none');
     document.getElementById('btnFieldProvenance').classList.add('d-none');
     document.getElementById('btnReportSnapshots').classList.add('d-none');
+    document.getElementById('btnFollowups').classList.add('d-none');
     document.getElementById('patientName').value = '';
     document.getElementById('patientDob').value = '';
     document.getElementById('patientMrn').value = '';
@@ -1976,6 +2034,7 @@ function applyRuntimeMeta(meta) {
       currentPatientRecord = patient;
       updatePatientBar(patient);
       renderIntakeReviewAlert(patient);
+      document.dispatchEvent(new CustomEvent('osa:patient-updated', { detail: { patient } }));
       btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
       setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000);
     } catch (err) {
@@ -2150,6 +2209,18 @@ function applyRuntimeMeta(meta) {
 
   window.OSAWorkspace = {
     showView,
+    getCurrentPatient() {
+      return currentPatientRecord;
+    },
+    async addFollowup(entry) {
+      if (!currentPatientId || !currentPatientRecord) throw new Error('Save or open a patient chart first.');
+      const patient = await OSADatabase.addFollowup(currentPatientId, currentPatientVersion, entry);
+      currentPatientRecord = patient;
+      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+      updatePatientBar(patient);
+      document.dispatchEvent(new CustomEvent('osa:patient-updated', { detail: { patient } }));
+      return patient;
+    },
     async openChart(patientId) {
       const ok = await loadPatient(patientId);
       if (ok) showView('chart');

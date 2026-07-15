@@ -8,9 +8,14 @@
     const root = document.getElementById('homeView');
     if (!root) return;
     root.innerHTML = `
-      <div class="row g-3 mt-1">
-        <div class="col-md-6"><div class="card h-100"><div class="card-body" id="homeNewPatient"></div></div></div>
-        <div class="col-md-6"><div class="card h-100"><div class="card-body" id="homeSearch"></div></div></div>
+      <header class="precision-home-heading">
+        <div class="precision-eyebrow">Capital ENT Precision Sleep</div>
+        <h1>Clinical workspace</h1>
+        <p>Open a patient to assess the drivers of OSA, build a treatment plan, and track response over time.</p>
+      </header>
+      <div class="precision-home-workspace">
+        <section id="homeNewPatient" aria-labelledby="homeNewPatientTitle"></section>
+        <section id="homeSearch" aria-labelledby="homeSearchTitle"></section>
       </div>`;
     renderNewPatient();
     renderSearch();
@@ -18,10 +23,11 @@
   function renderNewPatient() {
     const box = document.getElementById('homeNewPatient');
     box.innerHTML = `
-      <h3 class="h6 mb-2"><i class="bi bi-person-plus me-1"></i>New patient</h3>
-      <label class="form-label small mb-1">Patient name</label>
+      <h2 class="h5 mb-1" id="homeNewPatientTitle">Start a chart</h2>
+      <p class="small text-muted mb-3">Use for a new Precision Sleep evaluation.</p>
+      <label class="form-label small mb-1" for="homeNewName">Patient name</label>
       <input type="text" id="homeNewName" class="form-control mb-2" placeholder="Last, First" autocomplete="off">
-      <label class="form-label small mb-1">Date of birth</label>
+      <label class="form-label small mb-1" for="homeNewDob">Date of birth</label>
       <input type="date" id="homeNewDob" class="form-control mb-3">
       <button type="button" id="homeCreateBtn" class="btn btn-primary w-100"><i class="bi bi-person-plus me-1"></i>Create patient chart</button>
       <div id="homeNewResult" class="mt-2"></div>`;
@@ -53,7 +59,9 @@
   function renderSearch() {
     const box = document.getElementById('homeSearch');
     box.innerHTML = `
-      <h3 class="h6 mb-2"><i class="bi bi-search me-1"></i>Find a patient</h3>
+      <h2 class="h5 mb-1" id="homeSearchTitle">Continue care</h2>
+      <p class="small text-muted mb-3">Search directly; the app never exposes a bulk patient roster.</p>
+      <label class="visually-hidden" for="homeSearchInput">Search name, MRN, or date of birth</label>
       <input type="text" id="homeSearchInput" class="form-control" placeholder="Search name, MRN, or date of birth" autocomplete="off">
       <div id="homeSearchResults" class="mt-2"></div>`;
     document.getElementById('homeSearchInput').addEventListener('input', (e) => {

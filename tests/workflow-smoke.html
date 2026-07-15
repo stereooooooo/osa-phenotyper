@@ -95,6 +95,9 @@ async function run() {
   click(win, '#form button[type="submit"]');
   await waitFor(() => win.OSAReportState && win.OSAReportState.getLastAnalysisData(), 'analysis');
   assertEqual(win.OSAReportState.getLastAnalysisData().primaryAHI, 28, 'Clinical analysis still runs');
+  await waitFor(() => doc.querySelectorAll('#precisionSleepProfile .precision-profile-row').length === 6, 'precision sleep profile');
+  assert(doc.getElementById('precisionSleepProfile').textContent.includes('Qualitative clinical signals'), 'Profile explicitly avoids causal percentages');
+  assert(doc.getElementById('precisionSleepProfile').textContent.includes('Weight & metabolic'), 'Profile organizes the assessment into patient-friendly domains');
   click(win, '#btnGenerateReport');
   await waitFor(() => doc.getElementById('reportOverlay').classList.contains('active'), 'report overlay');
   assert(doc.getElementById('reportPreviewContent').textContent.includes('Workflow QA Patient'), 'Patient report preview is generated for clinician distribution');
@@ -102,6 +105,23 @@ async function run() {
   await waitFor(() => win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshotCount === 1, 'snapshot saved');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshotCount, 1, 'Report snapshot stays in the chart');
   click(win, '#btnCloseReport');
+
+  click(win, '#btnFollowups');
+  await waitFor(() => doc.getElementById('followupModal').classList.contains('show'), 'follow-up modal');
+  setValue(win, '#followupTreatment', 'PAP');
+  setValue(win, '#followupStatus', 'Active');
+  setValue(win, '#followupResponse', 'Better');
+  setValue(win, '#followupAdherence', 'Using as planned');
+  setValue(win, '#followupNextAction', 'Continue current plan');
+  setValue(win, '#followupEss', '7');
+  click(win, '#btnSaveFollowup');
+  await waitFor(() => win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].followupCount === 1, 'follow-up saved');
+  const followup = win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].followups[0];
+  assertEqual(followup.treatment, 'PAP', 'Structured follow-up stores the active treatment pathway');
+  assertEqual(followup.ess, 7, 'Structured follow-up stores optional outcome measures');
+  await waitFor(() => doc.getElementById('followupHistory').textContent.includes('Continue current plan'), 'follow-up history rendered');
+  assert(doc.getElementById('followupHistory').textContent.includes('Continue current plan'), 'Saved follow-up immediately appears in longitudinal history');
+  win.bootstrap.Modal.getInstance(doc.getElementById('followupModal')).hide();
 
   click(win, '#btnClearForm');
   click(win, '#btnPatientList');

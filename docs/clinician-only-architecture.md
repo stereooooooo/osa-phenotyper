@@ -36,6 +36,15 @@ The API Gateway default hostname remains technically addressable on the internet
 3. Staff upload the report to the EHR for portal delivery, or use an approved email process after patient approval and in accordance with Capital ENT policy.
 4. The OSA app does not retain delivery addresses, send email, host patient pages, or create bearer links.
 
+## Precision Sleep v1 longitudinal workflow
+
+- The hub stores structured follow-up checkpoints, not narrative encounter notes.
+- Each checkpoint records the treatment pathway, pathway status, patient response, adherence, next action, and optional weight/ESS/ISI/AHI.
+- Values are server-validated against fixed choices and clinical ranges; arbitrary follow-up text is not accepted.
+- The API adds the authenticated workforce identity and timestamp. The client cannot choose them.
+- Each chart retains at most 20 checkpoints to bound item growth and limit unnecessary longitudinal PHI.
+- The EHR remains the legal record for the full note, prescriptions, orders, patient communication, scheduling, and billing.
+
 Ordinary unencrypted email should not be treated as the default. The EHR is the preferred distribution channel because it keeps identity verification and delivery auditability in the existing clinical system.
 
 ## Low-cost AWS posture
