@@ -237,6 +237,17 @@ Resources:
       ResponseHeadersPolicyConfig:
         Name: !Sub 'osa-security-headers-${ClinicName}'
         Comment: Security headers for the clinician-only OSA application
+        CustomHeadersConfig:
+          Items:
+            - Header: Cache-Control
+              Value: 'no-cache, no-store, must-revalidate'
+              Override: true
+            - Header: Pragma
+              Value: 'no-cache'
+              Override: true
+            - Header: Expires
+              Value: '0'
+              Override: true
         SecurityHeadersConfig:
           ContentTypeOptions:
             Override: true
