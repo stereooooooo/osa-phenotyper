@@ -1,6 +1,18 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 15, 2026
-**Latest app version:** staging build `736c31a` (`feat(report): define terms and improve pacing`)
+**Latest app version:** staging build `a447bb3` (`fix(report): restore PDF spacing rhythm`)
+
+---
+
+## July 15, 2026 Patient Report Layout Follow-Up
+
+- Headless regression suite: **345 assertions passed**.
+- Restored predictable paragraph and section spacing in the PDF by keeping each pagination unit's child margins measurable instead of zeroing the first and last margins of every unit.
+- Stacked each terminology label above its definition in both preview and PDF layouts, eliminating uneven label widths and narrow definition columns.
+- Added automatic, patient-readable continuation labels when a report section crosses a page, such as `Your Sleep Apnea Summary (continued)` and `Your Treatment Plan (continued)`.
+- Rechecked the real jsPDF/html2canvas path with PAP-retry severe COMISA (**3 pages**), pre-study evaluation (**2 pages**), and maximal eight-phenotype (**4 pages**) fixtures. All nine pages were rendered and inspected for spacing rhythm, clipping, page continuity, sparse tails, and orphaned content.
+- `pdfinfo` confirmed Letter-size output with no embedded JavaScript; `pdftotext` confirmed searchable content and no prohibited Unicode dash characters across all three fixture PDFs.
+- Deployed to clinician-only synthetic-data staging and verified CloudFront serves build `a447bb3`, the updated glossary styles, and the continuation-aware paginator.
 
 ---
 
