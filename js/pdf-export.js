@@ -116,14 +116,24 @@ const OSAPdfExport = (() => {
     .osa-section-title { color: #1F3A5C; font-weight: 700; border-bottom: 2px solid #C8102E; padding-bottom: 4px; display: inline-block; }
 
     /* Patient report styles for PDF */
-    .patient-report { margin: 0; padding: 0; max-width: none; background: transparent; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.55; color: #374151; }
-    .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #1F3A5C; }
+    .patient-report { margin: 0; padding: 0; max-width: none; background: transparent; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.6; color: #374151; }
+    .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #1F3A5C; }
     .patient-report .report-logo { height: 44px; width: auto; }
     .patient-report .report-meta { text-align: right; font-size: 12px; color: #6B7280; }
     .patient-report .report-patient-name { font-weight: 600; color: #374151; }
     .patient-report .report-section { display: block; margin: 0; padding: 0; }
     .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
-    .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 20px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
+    .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 26px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
+    .report-terms { margin: 0 0 22px; padding: 11px 0 13px; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; }
+    .report-terms h2 { margin: 0 0 9px; padding: 0; border: 0; font-size: 13px; }
+    .report-terms-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 20px; margin: 0; }
+    .report-term { display: block; break-inside: avoid; }
+    .report-term dt { margin: 0 0 2px; color: #1F3A5C; font-size: 10.5px; font-weight: 700; line-height: 1.4; }
+    .report-term dd { margin: 0; color: #526173; font-size: 10px; line-height: 1.45; }
+    .report-summary-card { margin: 0 0 22px; padding: 13px 15px; background: #eef3f8; border: 1px solid #cbd5e1; border-radius: 6px; }
+    .report-summary-finding { margin: 0; color: #1a2b42; font-size: 14px; line-height: 1.58; }
+    .report-summary-next-step { margin: 8px 0 0; color: #1a2b42; font-size: 13px; line-height: 1.55; }
+    .report-summary-next-step strong { color: #1F3A5C; }
     .ahi-scale { margin: 16px 0; }
     .ahi-scale-bar { display: flex; height: 40px; border-radius: 6px; overflow: hidden; }
     .ahi-scale-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 600; color: #fff; gap: 1px; }
@@ -135,10 +145,10 @@ const OSAPdfExport = (() => {
     .ahi-scale-zone.severe { background: #ef4444; flex: 30; }
     .ahi-scale-marker-row { position: relative; height: 24px; margin-top: 4px; }
     .ahi-scale-marker { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11px; font-weight: 700; color: #1F3A5C; }
-    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 9px; }
+    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px; }
     .phenotype-icon { font-size: 18px; color: #1F3A5C; flex-shrink: 0; margin-top: 2px; }
     .treatment-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 6px; }
-    .rec-item { padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+    .rec-item { padding: 7px 0; border-bottom: 1px solid #f3f4f6; }
     .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
     .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
     .checklist-group { margin-bottom: 10px; }
@@ -147,13 +157,13 @@ const OSAPdfExport = (() => {
     .checklist-group-label:first-of-type { margin-top: 0; }
     .checklist-group-subtitle { font-size: 11px; color: #9ca3af; margin-top: 0; margin-bottom: 6px; font-style: italic; }
     .whatif-item { background: #f0f9ff; border: 1px solid #bfd0e2; padding: 10px 12px; margin-bottom: 10px; border-radius: 6px; }
-    .cpap-context-box { background: #fef3c7; border: 1px solid #e0b84f; padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; font-size: 13px; }
-    .comisa-callout { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; font-size: 13px; }
-    .risk-summary { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin: 10px 0 12px; color: #334155; }
+    .cpap-context-box { background: #fef3c7; border: 1px solid #e0b84f; padding: 12px 14px; margin-bottom: 15px; border-radius: 6px; font-size: 13px; }
+    .comisa-callout { background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 14px; margin-bottom: 15px; border-radius: 6px; font-size: 13px; }
+    .risk-summary { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 14px; margin: 13px 0 17px; color: #334155; }
     .report-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #6B7280; text-align: center; }
 
     /* Care pathway bar */
-    .care-pathway { margin: 0 0 20px; padding: 12px 16px; background: #f8fafc; border: 1px solid #E5E7EB; border-radius: 8px; }
+    .care-pathway { margin: 0 0 22px; padding: 12px 16px; background: #f8fafc; border: 1px solid #E5E7EB; border-radius: 8px; }
     .pathway-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-bottom: 8px; }
     .pathway-steps { display: flex; align-items: center; justify-content: center; gap: 3px 0; flex-wrap: wrap; }
     .pathway-step { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px; font-weight: 500; padding: 3px 6px; border-radius: 16px; }
@@ -176,17 +186,19 @@ const OSAPdfExport = (() => {
     /* Applied only when the normal-density paginator would leave a sparse final
        page and a modest density change can remove that page. This is bounded,
        print-only compaction—not a fixed two-page rule. */
-    .patient-report.pdf-report-compact { font-size: 12.5px; line-height: 1.48; }
-    .patient-report.pdf-report-compact .report-header { margin-bottom: 14px; padding-bottom: 8px; }
-    .patient-report.pdf-report-compact h2 { margin-top: 16px; margin-bottom: 6px; }
-    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 16px; padding: 10px 14px; }
-    .patient-report.pdf-report-compact .care-summary-card { margin-bottom: 16px; padding: 10px 14px; }
+    .patient-report.pdf-report-compact { font-size: 12.5px; line-height: 1.52; }
+    .patient-report.pdf-report-compact .report-header { margin-bottom: 16px; padding-bottom: 8px; }
+    .patient-report.pdf-report-compact h2 { margin-top: 20px; margin-bottom: 7px; }
+    .patient-report.pdf-report-compact .report-terms { margin-bottom: 18px; padding: 9px 0 11px; }
+    .patient-report.pdf-report-compact .report-summary-card { margin-bottom: 18px; padding: 11px 13px; }
+    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 18px; padding: 10px 14px; }
+    .patient-report.pdf-report-compact .care-summary-card { margin-bottom: 18px; padding: 10px 14px; }
     .patient-report.pdf-report-compact .ahi-scale { margin: 12px 0; }
-    .patient-report.pdf-report-compact .phenotype-item { margin-bottom: 7px; }
+    .patient-report.pdf-report-compact .phenotype-item { margin-bottom: 12px; }
     .patient-report.pdf-report-compact .treatment-group-label { margin-top: 12px; margin-bottom: 4px; }
-    .patient-report.pdf-report-compact .rec-item { padding: 4px 0; }
+    .patient-report.pdf-report-compact .rec-item { padding: 5px 0; }
     .patient-report.pdf-report-compact .cpap-context-box,
-    .patient-report.pdf-report-compact .comisa-callout { padding: 9px 11px; margin-bottom: 10px; }
+    .patient-report.pdf-report-compact .comisa-callout { padding: 10px 12px; margin-bottom: 12px; }
     .patient-report.pdf-report-compact .checklist-item { margin-bottom: 5px; }
     .patient-report.pdf-report-compact .report-disclaimer { margin-top: 16px !important; padding-top: 8px !important; }
 
@@ -204,11 +216,11 @@ const OSAPdfExport = (() => {
    */
   function findBreakPoints(container, canvasScale) {
     const structuredBlocks = container.querySelectorAll(
-      '.report-header, .report-section, .care-pathway, .care-summary-card, .ahi-scale, ' +
+      '.report-header, .report-section, .report-terms, .report-term, .report-summary-card, .care-pathway, .care-summary-card, .ahi-scale, ' +
       '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .report-footer'
     );
     const flowBlocks = container.querySelectorAll(
-      'h2, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, p, ul, ol'
+      'h2, h3, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, p, ul, ol'
     );
     const containerTop = container.getBoundingClientRect().top;
     const points = [0];
@@ -315,7 +327,7 @@ const OSAPdfExport = (() => {
           continue;
         }
 
-        if (child.matches('h2')) {
+        if (child.matches('h2, h3')) {
           const nodes = [child];
           const trailingUnits = [];
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.cpap-context-box')) {
@@ -458,8 +470,8 @@ const OSAPdfExport = (() => {
     /* When a report genuinely needs multiple pages, avoid a greedy split that
        leaves the last page looking accidental. Shift whole semantic units from
        the prior page until the tail is useful, while keeping both pages under
-       capacity and the prior page at least 45% full. */
-    while (fills[lastIndex] < 0.38 && previous.units.length > 1) {
+       capacity and the prior page at least 42% full. */
+    while (fills[lastIndex] < 0.5 && previous.units.length > 1) {
       const movedIndex = previous.endIndex;
       const previousEnd = movedIndex - 1;
       const prospectivePreviousFill = previousEnd >= previous.startIndex
@@ -467,7 +479,7 @@ const OSAPdfExport = (() => {
         : 0;
       const prospectiveTailFill =
         (plan.bottoms[tail.endIndex] - plan.tops[movedIndex]) / plan.contentLimit;
-      if (prospectivePreviousFill < 0.45 || prospectiveTailFill > 1) break;
+      if (prospectivePreviousFill < 0.42 || prospectiveTailFill > 1) break;
 
       const moved = previous.units.pop();
       previous.endIndex = previousEnd;
@@ -568,7 +580,7 @@ const OSAPdfExport = (() => {
     const report = shell.querySelector('.patient-report');
     if (!report) return;
     const chunks = [];
-    const blockSelector = 'h1, h2, h3, p, li, .report-header, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer';
+    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer';
     const walk = node => {
       if (node.nodeType === Node.TEXT_NODE) {
         chunks.push(node.nodeValue || '');

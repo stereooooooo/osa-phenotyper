@@ -63,6 +63,11 @@ Conditional sections based on data presence:
 - **Section F**: What If scenarios (weight, positional, nasal)
 - **Section G**: Why This Matters (severe AHI or HB metrics)
 
+## Patient Handout Writing Rules
+- Define every clinical acronym or potentially unfamiliar medical term before its first use. The report's conditional terminology guide must appear before the clinical narrative and include only terms used in that patient's report.
+- Never use em dashes or other typographic dash characters in patient handouts. Use commas, colons, parentheses, semicolons, or ASCII hyphens for ranges.
+- Favor readable pacing over an arbitrary page target. Content-rich reports may use additional pages rather than compressing text, cards, and section transitions.
+
 ## CPAP Handling
 Four patient states with different report behavior:
 1. **CPAP-failed, won't retry**: "We hear you on CPAP" box, alternatives first, CPAP last in checklist

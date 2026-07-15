@@ -68,6 +68,203 @@ var PatientReport = (() => {
     return val !== null && val !== undefined && val !== '';
   }
 
+  /* Patient-facing terminology is defined before the clinical narrative. Keep
+     this list conditional so a short report does not become a generic medical
+     dictionary. Entries are ordered by their first appearance in the report. */
+  const PATIENT_TERMINOLOGY = [
+    {
+      label: 'Obstructive sleep apnea (OSA)',
+      patterns: [/obstructive sleep apnea/i, /\bOSA\b/],
+      definition: 'The airway narrows or closes during sleep and repeatedly interrupts breathing.',
+    },
+    {
+      label: 'AHI',
+      patterns: [/\bAHI\b/, /Apnea-Hypopnea Index/i],
+      definition: 'Apnea-Hypopnea Index: the average number of times breathing stops or becomes shallow per hour of sleep.',
+    },
+    {
+      label: 'PAP',
+      patterns: [/\bPAP\b/],
+      definition: 'Positive airway pressure: a mask device that uses gentle air pressure to keep the airway open.',
+    },
+    {
+      label: 'CPAP',
+      patterns: [/\bCPAP\b/],
+      definition: 'Continuous positive airway pressure: a common type of PAP treatment that keeps the airway open with air pressure.',
+    },
+    {
+      label: 'CBT-I',
+      patterns: [/\bCBT-I\b/, /Cognitive Behavioral Therapy for Insomnia/i],
+      definition: 'Cognitive Behavioral Therapy for Insomnia: a structured, first-line treatment for ongoing insomnia.',
+    },
+    {
+      label: 'COMISA',
+      patterns: [/\bCOMISA\b/],
+      definition: 'Insomnia and sleep apnea occurring together. The care plan needs to address both conditions.',
+    },
+    {
+      label: 'BMI',
+      patterns: [/\bBMI\b/, /body mass index/i],
+      definition: 'Body mass index: a height-and-weight measure used as one factor in treatment planning.',
+    },
+    {
+      label: 'DISE',
+      patterns: [/\bDISE\b/, /drug-induced sleep endoscopy/i],
+      definition: 'Drug-induced sleep endoscopy: an exam that shows where the airway collapses during sedated sleep.',
+    },
+    {
+      label: 'REM sleep',
+      patterns: [/\bREM(?:-Sleep| sleep)?\b/],
+      definition: 'Rapid eye movement sleep: the dream-sleep stage when airway-supporting muscles relax more.',
+    },
+    {
+      label: 'NREM sleep',
+      patterns: [/\bNREM\b/, /non-REM/i],
+      definition: 'Non-REM sleep: the sleep stages outside of REM dream sleep.',
+    },
+    {
+      label: 'ODI',
+      patterns: [/\bODI\b/, /oxygen desaturation index/i],
+      definition: 'Oxygen Desaturation Index: the number of oxygen drops recorded per hour.',
+    },
+    {
+      label: 'RDI',
+      patterns: [/\bRDI\b/, /respiratory disturbance index/i],
+      definition: 'Respiratory Disturbance Index: the number of breathing-related sleep disruptions per hour.',
+    },
+    {
+      label: 'UARS',
+      patterns: [/\bUARS\b/, /upper airway resistance syndrome/i],
+      definition: 'Upper airway resistance syndrome: airway narrowing that disrupts sleep without meeting the usual event threshold for sleep apnea.',
+    },
+    {
+      label: 'ASV',
+      patterns: [/\bASV\b/],
+      definition: 'Adaptive servo-ventilation: an advanced PAP mode that adjusts support from breath to breath.',
+    },
+    {
+      label: 'BiPAP',
+      patterns: [/\bBiPAP\b/i],
+      definition: 'Bilevel positive airway pressure: PAP treatment with different pressures for breathing in and out.',
+    },
+    {
+      label: 'PSG',
+      patterns: [/\bPSG\b/],
+      definition: 'Polysomnography: a detailed sleep study performed in a sleep laboratory.',
+    },
+    {
+      label: 'HNS or HGNS',
+      patterns: [/\bHNS\b/, /\bHGNS\b/],
+      definition: 'Hypoglossal nerve stimulation: an implanted treatment that activates tongue muscles during sleep.',
+    },
+    {
+      label: 'TMJ',
+      patterns: [/\bTMJ\b/],
+      definition: 'Temporomandibular joint: the jaw joint just in front of the ear.',
+    },
+    {
+      label: 'GLP-1 therapy',
+      patterns: [/\bGLP-1\b/i],
+      definition: 'A class of prescription medication that can support weight loss for eligible patients.',
+    },
+    {
+      label: 'Friedman tongue position or stage',
+      patterns: [/Friedman (?:Tongue Position|tongue position|Stage|stage)/],
+      definition: 'An airway classification based on tongue position and, for the stage, tonsil size and body size. It helps guide treatment discussions.',
+    },
+    {
+      label: 'Hypoxic burden',
+      patterns: [/hypoxic burden/i, /hypoxic-burden/i],
+      definition: 'A measure of the depth and duration of oxygen drops caused by breathing interruptions during sleep.',
+    },
+    {
+      label: 'Central breathing events or periodic breathing',
+      patterns: [/central (?:breathing )?events?/i, /central sleep apnea/i, /periodic breathing/i, /central-breathing/i],
+      definition: 'Breathing pauses or cycles caused by unstable breathing signals rather than only by a blocked airway.',
+    },
+    {
+      label: 'Echocardiogram',
+      patterns: [/echocardiogram/i],
+      definition: 'An ultrasound test that shows how the heart is structured and how well it pumps.',
+    },
+    {
+      label: 'Cardiovascular',
+      patterns: [/cardiovascular/i],
+      definition: 'Related to the heart and blood vessels.',
+    },
+    {
+      label: 'Mandibular advancement device',
+      patterns: [/mandibular advancement device/i],
+      definition: 'A custom oral appliance that moves the lower jaw forward during sleep to help keep the airway open.',
+    },
+    {
+      label: 'UPPP',
+      patterns: [/\bUPPP\b/],
+      definition: 'Uvulopalatopharyngoplasty: surgery that reshapes tissue in the palate and throat to enlarge the airway.',
+    },
+    {
+      label: 'General anesthesia',
+      patterns: [/general anesthesia/i],
+      definition: 'Medication that keeps a patient fully asleep and unaware during a procedure.',
+    },
+    {
+      label: 'Endotype',
+      patterns: [/\bendotype\b/i, /endotype-based/i],
+      definition: 'An underlying breathing-control or airway behavior pattern that may help match treatment.',
+    },
+  ];
+
+  function reportTextFromHTML(html) {
+    return String(html || '')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ');
+  }
+
+  function terminologyMatchIndex(text, entry) {
+    return entry.patterns.reduce((firstIndex, pattern) => {
+      pattern.lastIndex = 0;
+      const match = pattern.exec(text);
+      return match && (firstIndex < 0 || match.index < firstIndex) ? match.index : firstIndex;
+    }, -1);
+  }
+
+  function renderTerminologyGuide(reportBodyHTML) {
+    const reportText = reportTextFromHTML(reportBodyHTML);
+    const usedTerms = PATIENT_TERMINOLOGY
+      .map(entry => ({ ...entry, firstIndex: terminologyMatchIndex(reportText, entry) }))
+      .filter(entry => entry.firstIndex >= 0)
+      .sort((a, b) => a.firstIndex - b.firstIndex);
+
+    if (!usedTerms.length) return '';
+
+    const termsHTML = usedTerms.map(entry => `
+      <div class="report-term">
+        <dt>${esc(entry.label)}</dt>
+        <dd>${esc(entry.definition)}</dd>
+      </div>`).join('');
+
+    return `
+<aside class="report-terms" aria-labelledby="report-terms-heading">
+  <h2 id="report-terms-heading">Terms used in this report</h2>
+  <dl class="report-terms-list">${termsHTML}
+  </dl>
+</aside>`;
+  }
+
+  /* Patient handout writing rule: em dashes and other typographic dash
+     characters are prohibited. The targeted replacements preserve natural
+     sentence rhythm, and the final fallback guarantees ASCII punctuation. */
+  function normalizePatientHandoutPunctuation(html) {
+    return String(html || '')
+      .replace(/<strong>([^<]*)\s+—\s+([^<]*)<\/strong>/g, '<strong>$1: $2</strong>')
+      .replace(/<\/strong>\s*—\s*/g, '</strong>: ')
+      .replace(/\s*—\s*/g, ', ')
+      .replace(/[\u2010-\u2013\u2015\u2212]/g, '-');
+  }
+
   function weightReadinessLead(data) {
     if (!data) return '';
     if (data.weightLossReadiness === 'ready') {
@@ -427,9 +624,9 @@ var PatientReport = (() => {
     }
     const nextStep = summaryNextStep(data);
     return `
-<div class="report-summary-card" style="margin:0 0 1.25rem;padding:1rem 1.15rem;background:#eef3f8;border:1px solid #cbd5e1;border-radius:6px;">
-  <p style="margin:0;font-size:1.05rem;line-height:1.5;color:#1a2b42;">${finding}${meaning ? ' ' + meaning : ''}</p>
-  <p style="margin:0.6rem 0 0;font-size:1rem;line-height:1.45;color:#1a2b42;"><strong style="color:#1F3A5C;">Your most important next step:</strong> ${nextStep}</p>
+<div class="report-summary-card">
+  <p class="report-summary-finding">${finding}${meaning ? ' ' + meaning : ''}</p>
+  <p class="report-summary-next-step"><strong>Your most important next step:</strong> ${nextStep}</p>
 </div>`;
   }
 
@@ -1487,8 +1684,7 @@ ${items.join('')}`;
      MAIN ENTRY POINT
      ══════════════════════════════════════════════════════════════════════════ */
   function generateReportHTML(data) {
-    const sections = [
-      renderHeader(data),
+    const reportBodySections = [
       renderSummaryCard(data),
       renderCarePathway(data),
       renderSectionA(data),
@@ -1501,10 +1697,16 @@ ${items.join('')}`;
       renderSectionD(data),
       renderSectionE(data),
       renderFooter(data),
+    ].filter(Boolean);
+    const sections = [
+      renderHeader(data),
+      renderTerminologyGuide(reportBodySections.join('')),
+      ...reportBodySections,
     ].filter(Boolean).map((sectionHtml, index) =>
       `<section class="report-section report-section-${index + 1}">${sectionHtml}</section>`
     );
-    return '<div class="patient-report" data-patient-name="' + esc(data.patientName || '') + '" data-report-date="' + esc(data.reportDate || '') + '">' + sections.join('') + '</div>';
+    const reportHTML = '<div class="patient-report" data-patient-name="' + esc(data.patientName || '') + '" data-report-date="' + esc(data.reportDate || '') + '">' + sections.join('') + '</div>';
+    return normalizePatientHandoutPunctuation(reportHTML);
   }
 
   return { generateReportHTML, getReportStage };

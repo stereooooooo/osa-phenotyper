@@ -83,6 +83,9 @@
 | 44 | PAP state-aware care journey | Starting, continuing, retrying, discontinued, and preference-avoidant PAP histories should produce distinct pathway labels and should never relabel a documented retry as a first-time PAP start |
 | 45 | Treatment-concept deduplication | Multiple tags for the same clinical concept should collapse by prerequisite severity; overlapping surgery/HGNS workups should render one procedure-specific prerequisite unless a device guardrail requires an independent pathway |
 | 46 | Device-specific HGNS workup wording | Patient and clinician reports should describe DISE and other airway evaluation as device/procedure-specific, while retaining Inspire-specific CCC exclusion and BMI/AHI/PAP-history guardrails |
+| 47 | Patient terminology before first use | The conditional `Terms used in this report` guide appears before the clinical narrative, defines every supported acronym or difficult term used later (including AHI, PAP, CBT-I, COMISA, BMI, and DISE when present), and omits unrelated terms |
+| 48 | Patient handout punctuation | Generated patient handout HTML contains no em dashes, en dashes, nonbreaking hyphens, or other typographic dash characters; ranges use ASCII hyphens and prose uses natural punctuation |
+| 49 | Patient report reading pace | Summary, pathway, risk callouts, contributors, and treatment cards retain comfortable spacing; pagination may add a page instead of over-compressing a content-rich report |
 
 Normal-AHI wording check: returning post-study summaries should say the study did not show evidence of obstructive sleep apnea, not `normal sleep apnea`.
 

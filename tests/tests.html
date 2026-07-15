@@ -630,7 +630,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
 assert(!reportHtml.slice(reportHtml.indexOf("What's Contributing"), reportHtml.indexOf('Your Treatment Plan')).includes('oxygen burden'), 'Oxygen burden is not presented as a cause in the contributor section');
-assert(reportHtml.includes('That is a consequence of the breathing interruptions—not a cause of sleep apnea'), 'Oxygen burden is correctly framed as an outcome/risk marker');
+assert(reportHtml.includes('That is a consequence of the breathing interruptions, not a cause of sleep apnea'), 'Oxygen burden is correctly framed as an outcome/risk marker');
 assert(reportHtml.indexOf('Why This Matters') < reportHtml.indexOf('elevated oxygen burden'), 'Oxygen-burden explanation appears in the risk section');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
@@ -723,6 +723,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Confirm Heart-Function Safety Before ASV'), 'ASV safety tag renders a patient-friendly safety explanation');
 assert(reportHtml.includes('echocardiogram') || reportHtml.includes('heart-function result'), 'ASV safety tag adds a practical checklist step');
+assert(reportHtml.indexOf('<dt>ASV</dt>') >= 0 && reportHtml.indexOf('<dt>ASV</dt>') < reportHtml.indexOf('report-summary-card') && reportHtml.indexOf('<dt>Echocardiogram</dt>') >= 0 && reportHtml.indexOf('<dt>Echocardiogram</dt>') < reportHtml.indexOf('report-summary-card'), 'ASV and echocardiogram are defined before their clinical use');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ASV-CONTRA', text: 'Documented reduced ejection fraction makes ASV unsafe right now.' }],
@@ -736,6 +737,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('Confirm Central-Breathing Findings With a Lab Sleep Study'), 'Central-PSG workup tag renders a patient-friendly confirmation explanation');
 assert(reportHtml.includes('central-breathing signals from the home study') && reportHtml.includes('advanced PAP'), 'Central-PSG workup tag adds a practical checklist step before advanced PAP decisions');
+assert(reportHtml.indexOf('<dt>Central breathing events or periodic breathing</dt>') >= 0 && reportHtml.indexOf('<dt>Central breathing events or periodic breathing</dt>') < reportHtml.indexOf('report-summary-card'), 'Central breathing terminology is defined before its clinical use');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' }],
@@ -783,7 +785,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
     { tag: 'NASAL-OPT', text: 'Treat nasal obstruction.' },
     { tag: 'WEIGHT', text: 'Weight management.' },
     { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
-    { tag: 'HNS', text: 'Consider nerve stimulation.' },
+    { tag: 'HNS-WORKUP', text: 'Complete the device-specific nerve-stimulation workup.' },
     { tag: 'ENDOTYPE-WORKUP', text: 'Review detailed event data.' },
   ],
   milestones: ['Initial Eval', 'Study Reviewed'],
@@ -803,6 +805,15 @@ assert(reportHtml.includes('distilled, sterile, or previously boiled and cooled 
 assert((reportHtml.match(/class="checklist-item"/g) || []).length <= 5, 'First 30 Days checklist is capped at five actions');
 assert(!reportHtml.includes('<h2>What If…?</h2>'), 'Condensed patient report omits the repetitive What If section');
 assert(!reportHtml.includes('apnea-versus-hypopnea breakdown needed to interpret'), 'Technical endotype workup stays out of the checklist when treatment actions are already present');
+const terminologyIndex = reportHtml.indexOf('Terms used in this report');
+const summaryIndex = reportHtml.indexOf('report-summary-card');
+assert(terminologyIndex >= 0 && terminologyIndex < summaryIndex, 'Conditional terminology guide appears before the clinical narrative');
+['AHI', 'PAP', 'CBT-I', 'COMISA', 'BMI', 'DISE'].forEach(term => {
+  const terminologyHTML = reportHtml.slice(terminologyIndex, summaryIndex);
+  assert(terminologyHTML.includes(`<dt>${term}</dt>`) || terminologyHTML.includes(`<dt>${term} `), `${term} is defined before its first clinical use`);
+});
+assert(!reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
+assert(!/[\u2010-\u2015\u2212]/.test(reportHtml), 'Patient handout output contains no typographic dash characters');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');
