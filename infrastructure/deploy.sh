@@ -23,6 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_FILE="${SCRIPT_DIR}/template.yaml"
 PACKAGED_TEMPLATE="/tmp/osa-phenotyper-${CLINIC}-packaged.yaml"
 WAF_RULES_FILE="/tmp/osa-phenotyper-${CLINIC}-cloudfront-waf-rules.json"
+VERSIONED_INDEX="/tmp/osa-phenotyper-${CLINIC}-index.html"
 WEB_ROOT="${SCRIPT_DIR}/.."
 WAF_REGION="us-east-1"
 WAF_NAME="osa-edge-waf-${CLINIC}"
@@ -275,6 +276,15 @@ sync_static_site() {
     --include "js/*" \
     --include "img/*" \
     --include "capentlogo.svg" \
+    >/dev/null
+
+  # Browsers cache static resources independently from index.html. Stamp every
+  # local CSS/JS URL with the release build so a deployment cannot mix a new
+  # HTML shell with stale JavaScript, CSS, or runtime configuration.
+  sed "s/__OSA_BUILD_ID__/${BUILD_ID}/g" "${WEB_ROOT}/index.html" > "${VERSIONED_INDEX}"
+  aws s3 cp "${VERSIONED_INDEX}" "s3://${WEB_APP_BUCKET}/index.html" \
+    --content-type "text/html; charset=utf-8" \
+    --cache-control "no-cache, no-store, must-revalidate" \
     >/dev/null
 }
 
