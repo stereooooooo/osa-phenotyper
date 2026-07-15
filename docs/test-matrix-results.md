@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 15, 2026
-**Latest app version:** pending deployment from `codex/precision-sleep-v1`
+**Latest app version:** staging build `920d52e` (`feat(report): focus patient sleep roadmap`)
 
 ---
 
@@ -11,6 +11,7 @@
 - Exercised the real jsPDF/html2canvas export path with `tests/patient-report-pdf-fixture.html`.
 - Final representative severe-COMISA report: **3 letter-size pages**, with every page rendered and inspected; no clipping, overflow, orphaned headings, duplicate footer, or split treatment cards found.
 - Patient copy was recalibrated against Sweetman/MATRICS COMISA trials, SAVE/adherence evidence, FDA Genio labeling, FDA nasal-irrigation guidance, and the 2024 nasal-surgery systematic review; citations are tracked in `docs/citations.md`.
+- Deployed to clinician-only staging and verified CloudFront is serving build `920d52e` and the new report wording.
 
 ---
 
