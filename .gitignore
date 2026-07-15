@@ -10,6 +10,7 @@ node_modules/
 # Test PDFs and sample files
 Test Data/
 *.pdf
+tmp/
 
 # Superpowers working files
 .superpowers/

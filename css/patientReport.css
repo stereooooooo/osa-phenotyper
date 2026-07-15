@@ -173,10 +173,10 @@ body.report-preview-open {
 /* ── CPAP Context Box ── */
 .patient-report .cpap-context-box {
   background: #fef3c7;
-  border-left: 3px solid #f59e0b;
+  border: 1px solid #e0b84f;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  border-radius: 0 6px 6px 0;
+  border-radius: 6px;
   font-size: 0.9rem;
 }
 
@@ -188,6 +188,15 @@ body.report-preview-open {
   margin-bottom: 1rem;
   border-radius: 6px;
   font-size: 0.9rem;
+}
+
+.patient-report .risk-summary {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0 1rem;
+  color: #334155;
 }
 
 /* ── Checklist ── */
@@ -234,10 +243,10 @@ body.report-preview-open {
 /* ── What-If Scenarios ── */
 .patient-report .whatif-item {
   background: #f0f9ff;
-  border-left: 3px solid #1F3A5C;
+  border: 1px solid #bfd0e2;
   padding: 0.75rem 1rem;
   margin-bottom: 0.75rem;
-  border-radius: 0 6px 6px 0;
+  border-radius: 6px;
 }
 
 /* ── Care Pathway (Patient Report) ── */
@@ -288,9 +297,9 @@ body.report-preview-open {
 }
 .patient-report .pathway-active .pathway-icon { color: #fff; }
 .patient-report .pathway-upcoming {
-  color: #c4c8cf;
+  color: #6B7280;
 }
-.patient-report .pathway-upcoming .pathway-icon { color: #d1d5db; }
+.patient-report .pathway-upcoming .pathway-icon { color: #94A3B8; }
 .patient-report .pathway-line {
   display: inline-block;
   width: 20px;

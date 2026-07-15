@@ -558,7 +558,7 @@ function buildHGNSAssessment(ctx) {
   }
   if (exists(bmi) && bmi > H.bmiMax) {
     eligible = false;
-    result.eligibilityIssues.push(`BMI ${bmi} exceeds ${H.bmiMax}. No hypoglossal nerve stimulation device (Inspire or Genio) is currently available above BMI ${H.bmiMax} — nerve stimulation is excluded until weight reduction brings BMI ≤ ${H.bmiMax} (payer criteria may be stricter).`);
+    result.eligibilityIssues.push(`BMI ${bmi} exceeds Capital ENT's current HGNS referral guardrail of ${H.bmiMax}. Device labeling, evidence limits, and payer criteria differ; reassess after weight reduction or specialist review rather than describing this as a universal device contraindication.`);
   }
   if (!cpapFailed) {
     eligible = false;
@@ -581,13 +581,13 @@ function buildHGNSAssessment(ctx) {
     result.eligibilityIssues.push(`Central apnea index is ${centralPct.toFixed(0)}% of total AHI, exceeding the ${H.centralPct}% threshold. HGNS targets obstructive events; predominantly central apnea requires a different approach.`);
   }
 
-  // CCC at velum — device-specific consideration, NOT an absolute contraindication.
-  // Velar CCC contraindicates the unilateral Inspire device, but bilateral HGNS
-  // (Genio / Nyxoah) is indicated for CCC, so CCC no longer excludes nerve stim —
-  // it routes the patient toward the bilateral device.
+  // CCC at the velum is device-specific. It contraindicates unilateral Inspire.
+  // Current US Genio labeling says safety/effectiveness in CCC is not established,
+  // so the app must not auto-route a CCC patient to Genio. FDA P130008/S090;
+  // FDA Genio P240024 patient labeling and SSED (2025).
   const hasCCC = (vDeg === '2' && vPat === 'Concentric');
   if (hasCCC) {
-    result.unfavorable.push({ factor: 'Complete concentric collapse (velum)', detail: 'Velar CCC on DISE contraindicates the unilateral Inspire device (tongue protrusion cannot open a circumferentially collapsing soft palate). It is NOT an absolute contraindication to nerve stimulation: bilateral hypoglossal stimulation (Genio / Nyxoah) is indicated for CCC. Route CCC candidates toward the bilateral device rather than excluding stimulation.', cite: 'Eastwood 2020 BETTER SLEEP; Nyxoah ACCCESS (NCT05592002)' });
+    result.unfavorable.push({ factor: 'Complete concentric collapse (velum)', detail: 'Velar CCC on DISE contraindicates unilateral Inspire. Do not automatically substitute Genio: current US Genio labeling states that safety and effectiveness in CCC have not been established. Review current device-specific labeling and other anatomical treatment options.', cite: 'FDA Inspire P130008/S090; FDA Genio P240024 (2025)' });
   }
 
   result.eligible = eligible;
@@ -606,7 +606,7 @@ function buildHGNSAssessment(ctx) {
     } else if (bmi <= H.bmiIdeal) {
       result.favorable.push({ factor: 'BMI ≤ 35', detail: `BMI ${bmi} is within the expanded real-world ADHERE range. ADHERE data shows 8.5% decrease in odds of success per unit BMI increase.`, cite: 'Heiser 2019 ADHERE' });
     } else if (bmi <= H.bmiMax) {
-      result.unfavorable.push({ factor: 'BMI 35–40', detail: `BMI ${bmi} is above the ideal range. Patients with BMI 32–35 had 75% lower odds of treatment response vs ≤ 32 (OR 0.25). Effectiveness at this BMI depends heavily on absence of CCC on DISE.`, cite: 'Washington Univ. cohort; Steffen 2022' });
+      result.unfavorable.push({ factor: 'BMI 35–40', detail: `BMI ${bmi} is above the range with the strongest response data. Higher BMI lowers expected response and payer criteria may be stricter. Inspire labeling extends through BMI 40; current US Genio labeling says safety and effectiveness above BMI 32 have not been established.`, cite: 'FDA Inspire P130008/S090; FDA Genio P240024 (2025)' });
     }
   }
 
@@ -704,7 +704,7 @@ function buildHGNSAssessment(ctx) {
 
     if (dise_missing && eligible) {
       result.assessment = 'Potentially eligible — DISE required';
-      result.assessmentDetail = `Based on available data (${favCount} favorable, ${unfavCount} unfavorable factors), this patient may be a candidate for HGNS. Drug-induced sleep endoscopy is required before final determination — the velar collapse pattern guides device selection (concentric collapse contraindicates the unilateral Inspire device but is treatable with bilateral Genio stimulation).`;
+      result.assessmentDetail = `Based on available data (${favCount} favorable, ${unfavCount} unfavorable factors), this patient may be a candidate for HGNS. Drug-induced sleep endoscopy is required before final determination. Velar CCC contraindicates unilateral Inspire; if present, do not assume another HGNS system is appropriate without reviewing current device-specific labeling.`;
     } else if (eligible && unfavCount === 0 && favCount >= 2) {
       result.assessment = 'Strong candidate';
       result.assessmentDetail = `This patient has ${favCount} favorable factors and no significant unfavorable findings. The evidence supports a high likelihood of HGNS success (STAR trial: 66% overall success with Sher criteria; higher in patients with multiple favorable predictors).`;
@@ -1033,7 +1033,7 @@ function mapTreatments(f, m, T){
     if (cpapCurrent) {
       pushRec(recs,'Continue current CPAP/APAP therapy; optimize settings based on phenotype findings.','CPAP');
     } else if (cpapFailed && cpapRefused) {
-      pushRec(recs,`Prior CPAP trial unsuccessful \u2014 prioritize alternatives: mandibular-advancement device, site-directed surgery${exists(bmi) && bmi > T.hgns.bmiMax ? '' : ', or nerve stimulation (Inspire/Genio)'}.`,'CPAP-ALT');
+      pushRec(recs,'Prior CPAP trial unsuccessful — prioritize appropriate alternatives such as a mandibular-advancement device, site-directed surgery, or a device-specific nerve-stimulation evaluation when criteria are met.','CPAP-ALT');
     } else if (cpapWillRetry) {
       const issues = cpapReasons.map(r => {
         const map = CPAP_ISSUE_LABELS;
@@ -1066,7 +1066,7 @@ function mapTreatments(f, m, T){
       case 'High Anatomical Contribution':
         cpapRec();
         if((!cpapFailed && !prefAvoidCpap) || cpapWillRetry) {
-          pushRec(recs,`If CPAP fails or not tolerated: mandibular-advancement device or site-directed surgery${exists(bmi) && bmi > T.hgns.bmiMax ? '' : ' / nerve stimulation (Inspire/Genio)'}.`,'SURGALT');
+          pushRec(recs,'If CPAP fails or is not tolerated: consider a mandibular-advancement device, site-directed surgery, or device-specific nerve-stimulation evaluation when eligibility criteria are met.','SURGALT');
         }
         if(cpapFailed && cpapReasons.length) cpapComfortRecs();
         break;
@@ -1086,7 +1086,7 @@ function mapTreatments(f, m, T){
         break;
       case 'Poor Muscle Responsiveness':
         if(cpapFailed && exists(ahi) && ahi >= T.hgns.ahiMin && ahi <= T.hgns.ahiMax && !(exists(bmi) && bmi > T.hgns.bmiMax)) {
-          pushRec(recs,'Hypoglossal-nerve stimulation (Inspire\u00AE, or Genio for concentric collapse) may be worth discussing for poor muscle responsiveness when PAP intolerance is documented and BMI is \u2264 40.','HNS');
+          pushRec(recs,'A device-specific hypoglossal-nerve stimulation evaluation may be considered after documented PAP intolerance. Final candidacy depends on AHI, central-event burden, BMI, DISE pattern, current labeling, and payer criteria.','HNS');
         }
         break;
       case 'Positional OSA':
@@ -1186,18 +1186,18 @@ function mapTreatments(f, m, T){
   }
   /* Friedman Stage III: recommend tongue base procedures / HNS / MMA instead of UPPP */
   if(friedmanStage === 'III' && exists(ahi) && ahi >= 15){
-    pushRec(recs,'Friedman Stage III (high tongue position, small tonsils) — UPPP unlikely to succeed. Consider tongue base surgery, hypoglossal nerve stimulation (Inspire, or Genio for concentric collapse), or MMA depending on DISE findings and candidacy.','FRIEDMAN-III-ALT');
+    pushRec(recs,'Friedman Stage III (high tongue position, small tonsils) — isolated palatal surgery is unlikely to succeed. Consider tongue-base surgery, device-specific hypoglossal-nerve stimulation evaluation, or MMA depending on DISE findings and candidacy.','FRIEDMAN-III-ALT');
   }
 
   /* Prior treatment-aware Inspire recommendation */
   if(priorInspire) {
     pushRec(recs,'Inspire\u00AE already in place \u2014 verify activation and optimize settings.','INSPIRE-OPT');
   } else if(prefInspire && !priorInspire && cpapFailed && exists(ahi) && ahi >= T.hgns.ahiMin && ahi <= T.hgns.ahiMax && !(exists(bmi) && bmi > T.hgns.bmiMax)) {
-    /* CCC no longer blocks: it routes to the bilateral device (Genio) instead of
-       Inspire. BMI > 40 is excluded above (no nerve-stim device available there). */
+    /* Device-specific evaluation only. CCC contraindicates unilateral Inspire;
+       current US Genio labeling does not establish safety/effectiveness in CCC. */
     const inspireEvalText = hasConcentricCollapse
-      ? 'Patient interested in upper-airway nerve stimulation \u2014 evaluate candidacy (documented PAP intolerance, AHI 15\u2013100, BMI \u2264 40). DISE shows complete concentric collapse: the unilateral Inspire\u00AE device is contraindicated, so route toward bilateral hypoglossal stimulation (Genio / Nyxoah), which is indicated for CCC (FDA AHI 15\u201365).'
-      : 'Patient interested in upper-airway nerve stimulation \u2014 evaluate candidacy (documented PAP intolerance, AHI 15\u2013100, BMI \u2264 40). Inspire\u00AE is the typical device; Genio is the bilateral alternative, and the option when DISE shows concentric collapse.';
+      ? 'Patient is interested in upper-airway nerve stimulation. DISE shows complete concentric collapse, which contraindicates unilateral Inspire. Do not automatically route to Genio: current US labeling does not establish Genio safety or effectiveness in CCC. Review current device-specific labeling and alternative anatomical treatments.'
+      : `Patient is interested in upper-airway nerve stimulation. Complete a device-specific candidacy evaluation including documented PAP intolerance, AHI and central-event burden, BMI, DISE pattern, and payer criteria.${exists(bmi) && bmi > 32 ? ' Current US Genio labeling does not establish safety or effectiveness above BMI 32.' : ''}`;
     pushRec(recs,inspireEvalText,'INSPIRE-EVAL');
   }
 
@@ -1347,8 +1347,10 @@ function mapTreatments(f, m, T){
   const hasCOMISA = exists(isi) && isi >= 15 && exists(ahi) && ahi >= 5;
   const sleepyCOMISA = hasCOMISA && exists(ess) && ess >= 15;   // high daytime sleepiness + insomnia
   if (hasCOMISA) {
-    // CBTi-FIRST sequencing per Sweetman 2019 RCT: sequential CBTi → CPAP yields higher acceptance/adherence
-    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): Initiate CBT-I BEFORE starting CPAP (Sweetman 2019 — sequential CBT-I then CPAP yields higher CPAP acceptance and adherence than concurrent start). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst). Target 4–6 sessions before CPAP initiation.', 'CBTI');
+    // Offer CBT-I early. Sweetman 2019 supports CBT-I before PAP; MATRICS (Ong
+    // 2020) found no significant sequential-vs-concurrent difference. Do not
+    // universally delay effective OSA therapy when clinical urgency is high.
+    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Sweetman 2019; Ong/MATRICS 2020).', 'CBTI');
     // APAP preferred over fixed CPAP for COMISA
     pushRec(recs, 'Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).', 'COMISA-PAP');
     // Sleep restriction safety caveat for sleepy COMISA
@@ -1453,7 +1455,8 @@ function buildClinicianReport(f, m, T){
     const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
     let comisaBullets = `<strong>COMISA — ${comisaSeverity} (ISI ${isi}) + OSA</strong>
       <ul class="mb-1 mt-1">
-        <li>Start CBT-I first (4–6 sessions), then initiate CPAP <small class="text-muted">(Sweetman 2019 RCT)</small></li>
+        <li>Start CBT-I promptly; begin PAP concurrently or sequentially based on OSA severity, oxygen burden, access, and patient preference <small class="text-muted">(Sweetman 2019; MATRICS 2020)</small></li>
+        <li>Do not delay effective OSA treatment when severe disease, substantial hypoxemia, or safety-sensitive sleepiness creates urgency</li>
         <li>Use APAP over fixed CPAP; set EPR/flex to max, enable ramp (min 4–5, max 15–16)</li>
         <li>Avoid sedative-hypnotics as monotherapy (worsen OSA); if hypnotic bridge needed, ensure concurrent PAP</li>`;
     if(sleepyCOMISA){
@@ -1500,7 +1503,7 @@ function buildClinicianReport(f, m, T){
   const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>${diseTable}` : '';
 
   const followUps = [];
-  if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI at 4–6 weeks post-CBT-I</li><li>Initiate APAP after CBT-I course (typically 4–6 sessions)</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor CPAP adherence at 1, 4, and 12 weeks (insomnia = top predictor of abandonment)</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
+  if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI 4–6 weeks after CBT-I begins</li><li>Start or continue PAP on the individualized concurrent/sequential plan</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor PAP adherence at 1, 4, and 12 weeks</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
   if(hasLowAr && !hasCOMISA) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
@@ -1810,10 +1813,12 @@ function buildClinicianReport(f, m, T){
   if (friedmanStage)
     txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
   if (hnsStage) {
+    const cccBadge = hasConcentricCollapse ? ' <span class="badge bg-warning text-dark">DISE: CCC — Inspire contraindicated; Genio evidence/labeling not established for CCC</span>' : '';
+    const bmiBadge = exists(bmi) && bmi > T.hgns.bmiMax ? ' <span class="badge bg-danger">BMI >40 — above current Capital ENT HGNS referral guardrail</span>' : '';
     if (hnsStage.insufficient) {
-      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HGNS (Inspire / Genio) Candidacy (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based candidacy tier.${hasConcentricCollapse ? ' <span class="badge bg-warning text-dark">DISE: Concentric collapse — Inspire contraindicated; use bilateral HGNS (Genio)</span>' : ''}${exists(bmi) && bmi > T.hgns.bmiMax ? ' <span class="badge bg-danger">BMI >40 — nerve stim excluded (no device available)</span>' : ''}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HGNS device-specific candidacy (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based response tier.${cccBadge}${bmiBadge}</div>`);
     } else {
-      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HGNS (Inspire / Genio) Candidacy — Stage ${hnsStage.stage}: ${hnsStage.favorability}</strong>${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all factors favorable)'}<br><small class="text-muted">Qualitative tier adapted from Ji 2026 (single-center, n=119, C=0.68; needs external validation). Confirm candidacy with DISE.</small>${hasConcentricCollapse ? ' <span class="badge bg-warning text-dark">DISE: Concentric collapse — Inspire contraindicated; use bilateral HGNS (Genio)</span>' : ''}${exists(bmi) && bmi > T.hgns.bmiMax ? ' <span class="badge bg-danger">BMI >40 — nerve stim excluded (no device available)</span>' : ''}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HGNS response tier — Stage ${hnsStage.stage}: ${hnsStage.favorability}</strong>${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all factors favorable)'}<br><small class="text-muted">Qualitative tier adapted from Ji 2026 (single-center, n=119, C=0.68; needs external validation). This is not device eligibility; confirm with DISE and current device-specific labeling.</small>${cccBadge}${bmiBadge}</div>`);
     }
   }
   txCandidacyParts.push(`<div class="alert alert-${priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMAD ? ' — <em>Prior MAD trial; score reflects profile suitability only</em>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
@@ -2163,6 +2168,7 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapFailed,
     cpapWillRetry,
     cpapHelped,
+    cpapReasons,
     prefAvoidCpap,
     priorMAD,
     priorJaw,

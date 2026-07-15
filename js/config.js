@@ -122,14 +122,15 @@ const OSA_CONFIG = {
       noseBorderline: 15        // low confidence
     },
 
-    // HGNS (hypoglossal nerve stimulation) candidacy thresholds.
-    // CCC (complete concentric collapse at the velum) is NOT gated here: it is an
-    // Inspire-specific (unilateral) contraindication only — bilateral HGNS
-    // (Genio / Nyxoah) is indicated for CCC, so CCC must not exclude nerve stim.
+    // HGNS (hypoglossal nerve stimulation) app-level referral thresholds.
+    // CCC is device-specific: it contraindicates unilateral Inspire. Current US
+    // Genio labeling states that safety/effectiveness in CCC is not established,
+    // so CCC must never auto-route a patient to Genio. FDA P130008/S090;
+    // FDA P240024 patient labeling and SSED (2025).
     hgns: {
       ahiMin:           15,    // FDA lower bound (Inspire 15-100; Genio FDA range is 15-65)
       ahiMax:           100,   // FDA upper limit (Inspire)
-      bmiMax:           40,    // Device-availability ceiling for ALL HGNS devices (Inspire & Genio); BMI >40 excludes nerve stim entirely. Payer criteria may be stricter.
+      bmiMax:           40,    // Capital ENT referral guardrail aligned to Inspire's expanded labeling; not universal. Genio safety/effectiveness is not established above BMI 32; payer criteria vary.
       bmiIdeal:         35,    // STAR/ADHERE favorable cutoff
       bmiStar:          32,    // original STAR criterion
       papLow:           8,     // cmH₂O; Lee 2019 — 92% success rate below this

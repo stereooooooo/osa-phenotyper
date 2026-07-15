@@ -2,7 +2,7 @@
 
 _Regenerated 2026-06-11 after the clinical-logic refinements (ranked plan, gated workups, MAD demotion, Zepbound, ΔHR off) plus the DISE-not-always-required fix (thin Friedman-I + large tonsils → tonsillectomy ± expansion pharyngoplasty without DISE). Recommendations are in plan order; `*-WORKUP` caveats sort last._
 
-_Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13). Complete concentric collapse (CCC) at the velum no longer suppresses nerve stimulation — the unilateral Inspire device is contraindicated in CCC, but bilateral stimulation (Genio / Nyxoah) is indicated, so CCC candidates are routed to Genio instead of excluded. BMI > 40 now excludes nerve stimulation entirely (no device, Inspire or Genio, is available above BMI 40). New profiles **#38 (CCC velar candidate)** and **#39 (BMI > 40 exclusion)** lock this behavior; see [docs/citations.md](citations.md) for evidence._
+_Updated 2026-07-15 (v5): nerve-stimulation logic is device-specific. Complete concentric collapse (CCC) contraindicates unilateral Inspire; the app no longer routes CCC automatically to Genio because current US Genio labeling states that safety/effectiveness in CCC are not established. BMI >40 remains a Capital ENT referral guardrail rather than a universal device contraindication. Profiles **#38 (CCC device-specific review)** and **#39 (BMI >40 guardrail)** lock this behavior; see [docs/citations.md](citations.md) for evidence._
 
 ---
 
@@ -108,7 +108,7 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 **Plan (ranked):** `CBTI, COMISA-PAP, COMISA-SRT-CAUTION, CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
 **Recommendations (in order):**
-- COMISA detected (ISI ≥ 15 + OSA): Initiate CBT-I BEFORE starting CPAP (Sweetman 2019 — sequential CBT-I then CPAP yields higher CPAP acceptance and adherence than concurrent start). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst). Target 4–6 sessions before CPAP initiation.
+- COMISA detected (ISI ≥15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020).
 - Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).
 - Caution: High ESS + high ISI — full sleep restriction therapy is unsafe due to excessive daytime sleepiness. Use modified CBT-I (stimulus control + cognitive restructuring first; introduce sleep compression gradually rather than restriction).
 - Alternative PAP (BiPAP, ASV) if willing to reconsider
@@ -154,7 +154,7 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 **Plan (ranked):** `CBTI, COMISA-PAP, CPAP, MAD-FAVORABLE, MILD-LIFESTYLE, MAD-WORKUP`
 
 **Recommendations (in order):**
-- COMISA detected (ISI ≥ 15 + OSA): Initiate CBT-I BEFORE starting CPAP (Sweetman 2019 — sequential CBT-I then CPAP yields higher CPAP acceptance and adherence than concurrent start). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst). Target 4–6 sessions before CPAP initiation.
+- COMISA detected (ISI ≥15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020).
 - Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).
 - Start CPAP/APAP
 - Oral appliance therapy (MAD) — favorable candidate based on profile
@@ -167,7 +167,7 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 **Plan (ranked):** `CBTI, COMISA-PAP, COMISA-SRT-CAUTION, CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
 **Recommendations (in order):**
-- COMISA detected (ISI ≥ 15 + OSA): Initiate CBT-I BEFORE starting CPAP (Sweetman 2019 — sequential CBT-I then CPAP yields higher CPAP acceptance and adherence than concurrent start). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst). Target 4–6 sessions before CPAP initiation.
+- COMISA detected (ISI ≥15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020).
 - Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).
 - Caution: High ESS + high ISI — full sleep restriction therapy is unsafe due to excessive daytime sleepiness. Use modified CBT-I (stimulus control + cognitive restructuring first; introduce sleep compression gradually rather than restriction).
 - Start CPAP/APAP
@@ -533,7 +533,7 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
-### 38. CCC velar candidate (Genio) — _new 2026-06-18_
+### 38. CCC device-specific review — _updated 2026-07-15_
 **Patient:** M, BMI 30, AHI 28, ESS 14 / ISI 5, tonsils 2, FTP II, neck 15.5, DISE velum **CCC** (degree 2), prior CPAP failed (won't retry), prefers nerve stimulation  
 **Phenotypes:** _none_  
 **Plan (ranked):** `CPAP, WEIGHT, SURG, INSPIRE-EVAL, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
@@ -542,7 +542,7 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 - Alternative PAP (BiPAP, ASV) if willing to reconsider
 - Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).
 - Surgical correction of correctable airway blockage
-- Patient interested in upper-airway nerve stimulation — evaluate candidacy (documented PAP intolerance, AHI 15–100, BMI ≤ 40). DISE shows complete concentric collapse: the unilateral Inspire® device is contraindicated, so route toward bilateral hypoglossal stimulation (Genio / Nyxoah), which is indicated for CCC (FDA AHI 15–65).
+- Patient is interested in upper-airway nerve stimulation. DISE shows complete concentric collapse, which contraindicates unilateral Inspire. Do not automatically route to Genio: current US labeling does not establish Genio safety or effectiveness in CCC. Review current device-specific labeling and alternative anatomical treatments.
 - Custom oral appliance (MAD)
 - Before finalizing oral appliance therapy, have a sleep dentist confirm adequate dentition, jaw movement, and TMJ safety.
 - Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.
@@ -551,7 +551,7 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
-**Clinical note:** CCC at the velum no longer suppresses nerve stimulation. Inspire is contraindicated for CCC, so the engine keeps the candidacy recommendation but routes the patient toward the bilateral Genio device. Because DISE + anatomy + staging are all complete here, the HNS/anatomy workup caveats correctly do **not** fire.
+**Clinical note:** CCC at the velum contraindicates unilateral Inspire. The engine retains a device-specific specialist review but does not select Genio automatically because its current US labeling does not establish safety/effectiveness in CCC. Because DISE + anatomy + staging are complete, the generic missing-workup caveats do not fire.
 
 ### 39. Nerve-stim excluded (BMI > 40) — _new 2026-06-18_
 **Patient:** M, BMI 42, AHI 40, ESS 16 / ISI 5, tonsils 2, FTP II, neck 17, DISE velum AP (degree 1), prior CPAP failed (won't retry), prefers nerve stimulation  
@@ -569,4 +569,4 @@ _Updated 2026-06-18 (v4): nerve-stimulation gating change (ENT review 2026-06-13
 - Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.
 - Complete a nasal symptom and airway review before ruling nasal treatment in or out or assuming it will not affect treatment tolerance.
 
-**Clinical note:** BMI > 40 excludes nerve stimulation entirely — no device (Inspire or Genio) is available above BMI 40 — so despite a complete workup and patient interest, no `HNS` / `INSPIRE-EVAL` / `HNS-WORKUP` appears and the plan leads with weight management. The generic CPAP-failure alternatives line also correctly drops nerve stimulation at this BMI.
+**Clinical note:** BMI >40 is above the current Capital ENT HGNS referral guardrail, so no patient-facing `HNS` / `INSPIRE-EVAL` / `HNS-WORKUP` appears and the plan leads with weight management. This is an app governance rule, not a claim that every device is universally contraindicated above BMI 40.

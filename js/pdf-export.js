@@ -116,14 +116,14 @@ const OSAPdfExport = (() => {
     .osa-section-title { color: #1F3A5C; font-weight: 700; border-bottom: 2px solid #C8102E; padding-bottom: 4px; display: inline-block; }
 
     /* Patient report styles for PDF */
-    .patient-report { margin: 0; padding: 0; max-width: none; background: transparent; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.65; color: #374151; }
-    .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #1F3A5C; }
-    .patient-report .report-logo { height: 48px; width: auto; }
+    .patient-report { margin: 0; padding: 0; max-width: none; background: transparent; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.55; color: #374151; }
+    .patient-report .report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #1F3A5C; }
+    .patient-report .report-logo { height: 44px; width: auto; }
     .patient-report .report-meta { text-align: right; font-size: 12px; color: #6B7280; }
     .patient-report .report-patient-name { font-weight: 600; color: #374151; }
     .patient-report .report-section { display: block; margin: 0; padding: 0; }
     .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
-    .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 24px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
+    .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 20px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
     .ahi-scale { margin: 16px 0; }
     .ahi-scale-bar { display: flex; height: 40px; border-radius: 6px; overflow: hidden; }
     .ahi-scale-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 600; color: #fff; gap: 1px; }
@@ -135,10 +135,10 @@ const OSAPdfExport = (() => {
     .ahi-scale-zone.severe { background: #ef4444; flex: 30; }
     .ahi-scale-marker-row { position: relative; height: 24px; margin-top: 4px; }
     .ahi-scale-marker { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11px; font-weight: 700; color: #1F3A5C; }
-    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+    .phenotype-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 9px; }
     .phenotype-icon { font-size: 18px; color: #1F3A5C; flex-shrink: 0; margin-top: 2px; }
     .treatment-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 6px; }
-    .rec-item { padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
+    .rec-item { padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
     .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
     .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
     .checklist-group { margin-bottom: 10px; }
@@ -146,10 +146,11 @@ const OSAPdfExport = (() => {
     .checklist-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 4px; }
     .checklist-group-label:first-of-type { margin-top: 0; }
     .checklist-group-subtitle { font-size: 11px; color: #9ca3af; margin-top: 0; margin-bottom: 6px; font-style: italic; }
-    .whatif-item { background: #f0f9ff; border-left: 3px solid #1F3A5C; padding: 10px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
-    .cpap-context-box { background: #fef3c7; border-left: 3px solid #f59e0b; padding: 10px 12px; margin-bottom: 12px; border-radius: 0 6px 6px 0; font-size: 13px; }
+    .whatif-item { background: #f0f9ff; border: 1px solid #bfd0e2; padding: 10px 12px; margin-bottom: 10px; border-radius: 6px; }
+    .cpap-context-box { background: #fef3c7; border: 1px solid #e0b84f; padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; font-size: 13px; }
     .comisa-callout { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; font-size: 13px; }
-    .report-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #9ca3af; text-align: center; }
+    .risk-summary { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; margin: 10px 0 12px; color: #334155; }
+    .report-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #6B7280; text-align: center; }
 
     /* Care pathway bar */
     .care-pathway { margin: 0 0 20px; padding: 12px 16px; background: #f8fafc; border: 1px solid #E5E7EB; border-radius: 8px; }
@@ -161,8 +162,8 @@ const OSAPdfExport = (() => {
     .pathway-completed .pathway-icon { color: #22c55e; }
     .pathway-active { background: #1F3A5C; color: #fff; font-weight: 600; }
     .pathway-active .pathway-icon { color: #fff; }
-    .pathway-upcoming { color: #c4c8cf; }
-    .pathway-upcoming .pathway-icon { color: #d1d5db; }
+    .pathway-upcoming { color: #6B7280; }
+    .pathway-upcoming .pathway-icon { color: #94A3B8; }
     .pathway-line { display: inline-block; width: 14px; height: 2px; background: #E5E7EB; flex-shrink: 1; min-width: 6px; }
 
     /* Care summary card */
@@ -297,16 +298,31 @@ const OSAPdfExport = (() => {
 
         if (child.matches('h2')) {
           const nodes = [child];
+          if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.cpap-context-box')) {
+            nodes.push(children[i + 1]);
+            i++;
+          }
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('p')) {
             nodes.push(children[i + 1]);
             i++;
             if (
               children[i + 1] instanceof HTMLElement &&
-              children[i + 1].matches('.phenotype-item, .checklist-group, .whatif-item')
+              children[i + 1].matches('.phenotype-item')
             ) {
               nodes.push(children[i + 1]);
               i++;
             }
+            if (
+              children[i + 1] instanceof HTMLElement &&
+              children[i + 1].matches('.checklist-group, .whatif-item')
+            ) {
+              nodes.push(children[i + 1]);
+              i++;
+            }
+          }
+          if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.comisa-callout')) {
+            nodes.push(children[i + 1]);
+            i++;
           }
           units.push(buildPatientPageUnit(nodes));
           i++;
@@ -314,8 +330,18 @@ const OSAPdfExport = (() => {
         }
 
         if (child.matches('.treatment-group-label') && children[i + 1] instanceof HTMLElement && children[i + 1].matches('.rec-item')) {
-          units.push(buildPatientPageUnit([child, children[i + 1]]));
-          i += 2;
+          const nodes = [child];
+          const keepWholeGroup = /If PAP Remains Difficult|Complete Before/i.test(child.textContent || '');
+          i++;
+          if (children[i] instanceof HTMLElement && children[i].matches('.rec-item')) {
+            nodes.push(children[i]);
+            i++;
+          }
+          while (keepWholeGroup && children[i] instanceof HTMLElement && children[i].matches('.rec-item')) {
+            nodes.push(children[i]);
+            i++;
+          }
+          units.push(buildPatientPageUnit(nodes));
           continue;
         }
 
@@ -323,6 +349,17 @@ const OSAPdfExport = (() => {
         i++;
       }
     });
+
+    // Keep the closing clinical-risk note and disclaimer together so the report
+    // cannot end with an orphaned disclaimer or a nearly empty final page.
+    if (units.length >= 2) {
+      const last = units[units.length - 1];
+      const previous = units[units.length - 2];
+      if (last.querySelector('.report-disclaimer') && previous.textContent.includes('Why This Matters')) {
+        [...last.children].forEach(child => previous.appendChild(child.cloneNode(true)));
+        units.pop();
+      }
+    }
 
     return units;
   }
@@ -406,6 +443,44 @@ const OSAPdfExport = (() => {
     }
   }
 
+  /* Keep the visual rendering pixel-faithful while adding selectable/searchable
+     text underneath the page image. The image covers this white text completely;
+     assistive tools and EHR indexers can still extract it. Full PDF/UA tagging is
+     not supported by the current jsPDF/html2canvas stack. */
+  function addSearchableTextLayer(pdf, shell, margin, usableWidth, usableHeight) {
+    const report = shell.querySelector('.patient-report');
+    if (!report) return;
+    const chunks = [];
+    const blockSelector = 'h1, h2, h3, p, li, .report-header, .report-summary-card, .care-pathway, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer';
+    const walk = node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        chunks.push(node.nodeValue || '');
+        return;
+      }
+      if (!(node instanceof HTMLElement) || node.matches('img, .bi, .pathway-icon')) return;
+      const block = node.matches(blockSelector);
+      if (block) chunks.push('\n');
+      [...node.childNodes].forEach(walk);
+      if (block) chunks.push('\n');
+    };
+    walk(report);
+    const text = chunks.join('')
+      .replace(/\u00a0/g, ' ')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    if (!text) return;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(5);
+    pdf.setTextColor(255, 255, 255);
+    const lines = pdf.splitTextToSize(text, usableWidth);
+    const lineHeightMm = 1.8;
+    const maxLines = Math.max(1, Math.floor((usableHeight - 4) / lineHeightMm));
+    pdf.text(lines.slice(0, maxLines), margin, margin + 3, { lineHeightFactor: 1.02 });
+  }
+
   async function exportFromHTML(html, filename, addFooter = false, footerDate = null) {
     if (window.OSALibs && window.OSALibs.loadPdfExport) {
       try { await window.OSALibs.loadPdfExport(); } catch (e) { /* fall through to the guard below */ }
@@ -427,6 +502,13 @@ const OSAPdfExport = (() => {
       const canvasScale = 1.5;
       const { jsPDF } = jspdf;
       const pdf = new jsPDF('p', 'mm', 'letter');
+      pdf.setProperties({
+        title: 'Capital ENT Sleep Report',
+        subject: 'Patient sleep evaluation and treatment summary',
+        author: 'Capital ENT & Sinus Center',
+        creator: 'Capital ENT Precision Sleep Clinical Hub',
+      });
+      if (typeof pdf.setLanguage === 'function') pdf.setLanguage('en-US');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
@@ -450,12 +532,13 @@ const OSAPdfExport = (() => {
           const pxPerMm = pageCanvas.width / usableWidth;
           const destH = pageCanvas.height / pxPerMm;
           const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+          addSearchableTextLayer(pdf, patientPages[i], margin, usableWidth, usableHeight);
           pdf.addImage(pageImg, 'JPEG', margin, margin, usableWidth, destH);
 
           if (addFooter) {
             pdf.setFontSize(8);
-            pdf.setTextColor(156, 163, 175);
-            const footerText = 'Prepared by Capital ENT \u00B7 ' + formatPdfDate(footerDate);
+            pdf.setTextColor(107, 114, 128);
+            const footerText = 'Prepared by Capital ENT \u00B7 ' + formatPdfDate(footerDate) + ` \u00B7 Page ${i + 1} of ${patientPages.length}`;
             pdf.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
           }
         }

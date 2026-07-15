@@ -477,6 +477,7 @@ function buildReportData(overrides = {}) {
     cpapWillRetry: false,
     cpapCurrent: false,
     cpapHelped: '',
+    cpapReasons: [],
     prefAvoidCpap: false,
     priorMAD: false,
     priorUPPP: false,
@@ -485,6 +486,10 @@ function buildReportData(overrides = {}) {
     lowHypoxicBurden: false,
     hasConcentricCollapse: false,
     friedmanStage: null,
+    hnsStage: null,
+    tonsils: null,
+    ftp: null,
+    retrognathia: '',
     subtype: 'OSA',
   }, overrides);
 }
@@ -531,6 +536,7 @@ assert(!reportHtml.includes('What may still be refined'), 'Data limitations call
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   phen: [],
+  recTags: [],
   insufficientDataDomains: [
     { key: 'nasal', patient: 'We do not yet have a full nasal symptom or exam assessment entered.' },
     { key: 'delta-heart-rate', patient: 'We have not yet entered the extra overnight heart-rate reactivity measure.' }
@@ -564,11 +570,12 @@ assert(reportHtml.includes('GLP-1 therapies'), 'BMI 30+ keeps GLP-1 language ava
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   phen: ['High Hypoxic Burden'],
+  hbAreaPH: 80,
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
-assert(reportHtml.includes('dipped lower than we like to see during the night'), 'High-hypoxic-burden explanation uses calibrated oxygen wording');
-assert(reportHtml.includes('follow-up testing especially important') && reportHtml.includes('confirm that your breathing and oxygen improve'), 'High-hypoxic-burden explanation keeps follow-up language action-oriented and probabilistic');
-assert(!reportHtml.includes('fall well below normal'), 'High-hypoxic-burden explanation avoids overly alarmist oxygen language');
+assert(!reportHtml.slice(reportHtml.indexOf("What's Contributing"), reportHtml.indexOf('Your Treatment Plan')).includes('oxygen burden'), 'Oxygen burden is not presented as a cause in the contributor section');
+assert(reportHtml.includes('That is a consequence of the breathing interruptions—not a cause of sleep apnea'), 'Oxygen burden is correctly framed as an outcome/risk marker');
+assert(reportHtml.indexOf('Why This Matters') < reportHtml.indexOf('elevated oxygen burden'), 'Oxygen-burden explanation appears in the risk section');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'OXYGEN-WORKUP', text: 'Review full oxygen metrics before finalizing cardiovascular risk.' }],
@@ -675,6 +682,13 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   hasCOMISA: true,
   cpapFailed: true,
   cpapWillRetry: true,
+  cpapReasons: ['cpapMask', 'cpapSleep'],
+  bmi: 32.8,
+  tonsils: 2,
+  ftp: 'IV',
+  retrognathia: 'mild',
+  friedmanStage: 'III',
+  hnsStage: { stage: 'IV', favorability: 'least favorable', details: ['neck >16"', 'BMI ≥30', 'AHI >30'] },
   phen: ['High Anatomical Contribution', 'High Hypoxic Burden', 'Nasal-Resistance Contributor'],
   recTags: [
     { tag: 'CBTI', text: 'Treat insomnia.' },
@@ -688,6 +702,11 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
 assert(reportHtml.includes('Begin CBT-I and arrange a PAP re-fitting in parallel'), 'Severe COMISA summary starts CBT-I and PAP re-fitting in parallel');
+assert(reportHtml.includes('mask discomfort or fit and trouble falling or staying asleep'), 'PAP retry copy uses the patient’s documented barriers');
+assert(reportHtml.includes('Weight is one modifiable contributor'), 'BMI-linked weight factor appears among contributors when weight treatment is recommended');
+assert(reportHtml.includes('a higher tongue position') && reportHtml.includes('a mild set-back lower jaw'), 'Anatomy contributor uses the entered FTP and jaw findings');
+assert(!reportHtml.includes('enlarged tonsils that narrow the throat'), 'Anatomy contributor does not call grade-2 tonsils enlarged');
+assert(!reportHtml.includes('better fit may be Inspire') && !reportHtml.includes('route toward bilateral'), 'Patient report avoids prematurely favoring or routing to a nerve-stimulation device');
 assert(reportHtml.includes('If PAP Remains Difficult'), 'MAD and HNS are presented as conditional backups when PAP is being retried');
 assert(reportHtml.indexOf('If PAP Remains Difficult') < reportHtml.indexOf('Oral Appliance Therapy'), 'Conditional backup label appears before oral-appliance details');
 assert(!reportHtml.includes('Sleepio') && !reportHtml.includes('SomRyst'), 'Patient report does not endorse named digital CBT-I products');
