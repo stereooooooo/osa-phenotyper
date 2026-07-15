@@ -1,6 +1,19 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 15, 2026
-**Latest app version:** staging build `186487f` (`fix(report): tighten clinical safety and PDF output`)
+**Latest app version:** staging build `a0c718b` (`feat(report): generalize clinical report composition`)
+
+---
+
+## July 15, 2026 Global Report-Composition Revision
+
+- Headless regression suite: **334 assertions passed**.
+- Replaced one-off PAP wording with a shared state model covering new start, active use, retry, discontinued therapy, and preference to avoid PAP; the Morgan-like case now reads `PAP Re-fit / Retry` instead of `Starting CPAP`.
+- Patient recommendations now consolidate by clinical concept and prerequisite severity. Duplicate oral-appliance, airway-surgery, nasal, and nerve-stimulation tags cannot produce competing cards; overlapping surgery/HGNS prerequisites collapse into one procedure-specific airway evaluation unless a safety guardrail requires separate handling.
+- HGNS language now preserves Inspire-specific CCC/AHI/BMI/PAP-history rules while describing DISE and other candidacy testing as device/procedure-specific rather than universally identical across systems.
+- PDF length is content-driven. Normal-density output is retained by default; modest print-only compaction is accepted only when it removes a sparse page, and irreducible sparse tails are rebalanced without forcing maximal reports into an arbitrary page target.
+- Exercised the real jsPDF/html2canvas path with three contrasting fixtures: PAP-retry severe COMISA (**2 pages**), pre-study evaluation (**2 balanced pages**), and maximal multi-phenotype plan (**3 pages**). All seven pages were rendered and inspected; no clipping, black/transparent page regions, orphaned headings, or malformed AHI scale text was found.
+- `pdfinfo` confirmed Letter page size, no embedded JavaScript, and no encryption; `pdftotext` confirmed searchable state labels, study rationale, combined procedure workup language, and separated AHI zone labels/ranges. The current raster-plus-hidden-text stack remains untagged and is not full PDF/UA.
+- Deployed to clinician-only staging and verified CloudFront serves build `a0c718b` plus the new PAP-state, concept-canonicalization, device-specific workup, and adaptive-pagination code.
 
 ---
 
