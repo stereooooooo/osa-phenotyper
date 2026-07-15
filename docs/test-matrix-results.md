@@ -1,6 +1,18 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 15, 2026
-**Latest app version:** staging build `a0c718b` (`feat(report): generalize clinical report composition`)
+**Latest app version:** staging build `736c31a` (`feat(report): define terms and improve pacing`)
+
+---
+
+## July 15, 2026 Patient Terminology and Reading-Pace Revision
+
+- Headless regression suite: **345 assertions passed**.
+- Added a conditional `Terms used in this report` guide before the clinical narrative. Terms are selected from the actual report, ordered by first occurrence, and defined in plain language. Coverage includes OSA, AHI, PAP/CPAP, CBT-I, COMISA, BMI, DISE, REM/NREM, ODI/RDI, UARS, ASV/BiPAP, PSG, HGNS, TMJ, GLP-1 therapy, Friedman staging, hypoxic burden, central-breathing terminology, echocardiography, cardiovascular language, mandibular advancement devices, UPPP, general anesthesia, and endotypes.
+- Added a report-wide output invariant that removes em dashes, en dashes, nonbreaking hyphens, and related typographic dash characters from every patient handout branch. Prose uses commas, colons, parentheses, or semicolons, and numeric ranges use ASCII hyphens.
+- Increased line height, section spacing, contributor spacing, treatment-row padding, and callout padding in both preview and PDF styles. The paginator retains content-driven length, rebalances sparse final pages with whole semantic units, and now keeps level-two and level-three headings with their first paragraph.
+- Exercised the real jsPDF/html2canvas path with PAP-retry severe COMISA (**3 pages**), pre-study evaluation (**2 pages**), and maximal multi-phenotype (**3 pages**) fixtures. All eight pages were rendered and inspected for clipping, crowding, split treatment cards, malformed severity scales, sparse-tail balance, and orphaned headings.
+- `pdfinfo` confirmed Letter-size output with no embedded JavaScript; `pdftotext` confirmed searchable content and no prohibited Unicode dash characters across all three fixture PDFs.
+- Deployed to clinician-only synthetic-data staging and verified CloudFront serves versioned assets for build `736c31a`, including the terminology guide, punctuation safeguard, expanded spacing, and heading-aware pagination.
 
 ---
 
