@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 16, 2026
-**Latest app version:** staging build `2846b36` (`fix(report): complete patient terminology definitions`)
+**Latest app version:** staging build `6887acb` (`fix(report): align patient plans across clinical states`)
 
 ---
 
@@ -13,7 +13,7 @@
 - Kept the AHI explanation and severity scale together, expanded sparse-page selection rules, and removed unit overflow clipping that could trim the first characters of a page-leading heading.
 - Re-rendered five synthetic reports through the real jsPDF/html2canvas path: severe COMISA with PAP retry (**3 pages**), mild positional OSA with PAP avoidance (**3 pages**), normal AHI with possible UARS (**2 pages**), moderate COMISA after a declined PAP retry (**4 pages**), and anatomy-forward surgical preference (**3 pages**). All 15 pages were inspected for content hierarchy, clipping, spacing, continuation labels, and contradictions.
 - `pdfinfo` confirmed Letter-size output with no embedded JavaScript or encryption. Searchable-text checks confirmed all five scenario-specific priorities and found no prohibited Unicode dash characters.
-- Staging deployment: pending final verified build.
+- Deployed to clinician-only staging and verified CloudFront serves build `6887acb`; the live `patientReport.js` and `pdf-export.js` checksums match the tested local files.
 
 ---
 
