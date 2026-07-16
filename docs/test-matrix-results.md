@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 16, 2026
-**Latest app version:** staging build `6a92566` (`fix: guard REM phenotyping and rebalance reports`)
+**Latest app version:** staging build `81a2f9c` (`fix: rebalance conditional report pagination`)
 
 ---
 
