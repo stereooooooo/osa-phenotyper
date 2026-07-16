@@ -4,6 +4,19 @@
 
 ---
 
+## July 16, 2026 Five-Scenario Patient Report Audit
+
+- Headless regression suite: **371 assertions passed**.
+- Corrected recommendation composition so treatment options and their prerequisite workups remain distinct. A dental, airway, or device evaluation can no longer erase the treatment choice it is meant to assess.
+- Added state-aware priorities for mild PAP-avoidant patients, completed PAP trials without retry intent, and anatomy-forward patients who prefer a surgical discussion. Summary cards, treatment groups, first-30-day checklists, and care journeys now use the same active pathway.
+- Added strong-anatomy contributor language, uncertainty-aware mild/minimally symptomatic wording, concise UARS follow-through, and patient-specific mild-treatment option lists.
+- Kept the AHI explanation and severity scale together, expanded sparse-page selection rules, and removed unit overflow clipping that could trim the first characters of a page-leading heading.
+- Re-rendered five synthetic reports through the real jsPDF/html2canvas path: severe COMISA with PAP retry (**3 pages**), mild positional OSA with PAP avoidance (**3 pages**), normal AHI with possible UARS (**2 pages**), moderate COMISA after a declined PAP retry (**4 pages**), and anatomy-forward surgical preference (**3 pages**). All 15 pages were inspected for content hierarchy, clipping, spacing, continuation labels, and contradictions.
+- `pdfinfo` confirmed Letter-size output with no embedded JavaScript or encryption. Searchable-text checks confirmed all five scenario-specific priorities and found no prohibited Unicode dash characters.
+- Staging deployment: pending final verified build.
+
+---
+
 ## July 16, 2026 Patient Terminology Completion
 
 - Headless regression suite: **349 assertions passed**.

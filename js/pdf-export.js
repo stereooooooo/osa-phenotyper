@@ -184,7 +184,7 @@ const OSAPdfExport = (() => {
     /* Each semantic unit participates in normal document rhythm. Flow-root keeps
        child margins measurable by the paginator instead of collapsing outside
        the unit. Only the first unit on a new page loses its top margin. */
-    .pdf-page-unit { display: flow-root; overflow: hidden; }
+    .pdf-page-unit { display: flow-root; overflow: visible; }
     .patient-report > .pdf-page-unit:first-child > :first-child { margin-top: 0 !important; }
 
     /* Applied only when the normal-density paginator would leave a sparse final
@@ -344,6 +344,10 @@ const OSAPdfExport = (() => {
           const nodes = [child];
           const trailingUnits = [];
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.cpap-context-box')) {
+            nodes.push(children[i + 1]);
+            i++;
+          }
+          if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.ahi-summary-block')) {
             nodes.push(children[i + 1]);
             i++;
           }
@@ -521,6 +525,11 @@ const OSAPdfExport = (() => {
     }, 0);
   }
 
+  function patientSparsePageScore(plan) {
+    if (!plan || !plan.fills.length) return 0;
+    return plan.fills.reduce((score, fill) => score + Math.max(0, 0.42 - fill), 0);
+  }
+
   function paginatePatientReport(reportRoot, pageCssHeight) {
     const units = collectPatientReportUnits(reportRoot);
     const measureHost = document.createElement('div');
@@ -532,11 +541,12 @@ const OSAPdfExport = (() => {
       const normalPlan = measurePatientPagination(reportRoot, units, measureHost, pageFitLimit);
       let chosenPlan = normalPlan;
       const lastFill = normalPlan.fills[normalPlan.fills.length - 1] || 1;
+      const normalSparseScore = patientSparsePageScore(normalPlan);
 
       /* Only try denser typography when the normal plan produces a genuinely
          sparse tail. Accept compact mode only when it removes a page; longer
          reports keep normal type and as many pages as their content requires. */
-      if (normalPlan.groups.length > 1 && lastFill < 0.42) {
+      if (normalPlan.groups.length > 1 && (lastFill < 0.42 || normalSparseScore > 0)) {
         const compactPlan = measurePatientPagination(
           reportRoot,
           units,
@@ -544,7 +554,12 @@ const OSAPdfExport = (() => {
           pageFitLimit,
           'pdf-report-compact'
         );
-        if (compactPlan.groups.length < normalPlan.groups.length) chosenPlan = compactPlan;
+        const compactImprovesBalance = compactPlan.groups.length === normalPlan.groups.length &&
+          patientPageBreakPenalty(compactPlan) <= patientPageBreakPenalty(normalPlan) &&
+          patientSparsePageScore(compactPlan) + 0.04 < normalSparseScore;
+        if (compactPlan.groups.length < normalPlan.groups.length || compactImprovesBalance) {
+          chosenPlan = compactPlan;
+        }
       }
 
       /* A modest density adjustment may improve a clinically linked page

@@ -677,7 +677,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   ],
 }));
 assert((reportHtml.match(/Complete the Nerve-Stimulation Evaluation First/g) || []).length === 1, 'Nerve-stimulation concept renders once when both candidacy and workup tags fire');
-assert(!reportHtml.includes('Upper-Airway Nerve Stimulation</strong>'), 'Prerequisite nerve-stimulation workup supersedes a premature treatment card');
+assert(reportHtml.includes('Upper-Airway Nerve Stimulation</strong>'), 'Nerve-stimulation option remains visible while its prerequisite workup is shown separately');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [
@@ -689,6 +689,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert((reportHtml.match(/Complete the Procedure-Specific Airway Evaluation First/g) || []).length === 1, 'Overlapping surgery and nerve-stimulation workups consolidate into one procedural prerequisite');
 assert(!reportHtml.includes('Complete DISE-Guided Surgical Planning First') && !reportHtml.includes('Complete the Nerve-Stimulation Evaluation First'), 'Combined procedural workup suppresses narrower duplicate cards');
+assert(reportHtml.includes('Airway Surgery</strong>') && reportHtml.includes('Upper-Airway Nerve Stimulation</strong>'), 'Combined procedural workup does not erase the treatment options it is meant to evaluate');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   bmi: 42,
@@ -805,17 +806,110 @@ assert(reportHtml.includes('distilled, sterile, or previously boiled and cooled 
 assert((reportHtml.match(/class="checklist-item"/g) || []).length <= 5, 'First 30 Days checklist is capped at five actions');
 assert(!reportHtml.includes('<h2>What If…?</h2>'), 'Condensed patient report omits the repetitive What If section');
 assert(!reportHtml.includes('apnea-versus-hypopnea breakdown needed to interpret'), 'Technical endotype workup stays out of the checklist when treatment actions are already present');
-const terminologyIndex = reportHtml.indexOf('Terms used in this report');
-const summaryIndex = reportHtml.indexOf('report-summary-card');
+const terminologyReportHtml = reportHtml;
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 9,
+  ahi: 9,
+  severity: 'mild',
+  lowHypoxicBurden: true,
+  prefAvoidCpap: true,
+  subtype: 'Minimally Symptomatic',
+  phen: ['Positional OSA'],
+  recTags: [
+    { tag: 'CPAP', text: 'Use PAP.' },
+    { tag: 'POS', text: 'Use positional therapy.' },
+    { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
+    { tag: 'MAD-WORKUP', text: 'Confirm oral appliance safety.' },
+  ],
+}));
+const mildStartIndex = reportHtml.indexOf('Start Now');
+const mildWorkupIndex = reportHtml.indexOf('Complete Before Finalizing Other Options');
+const mildDiscussIndex = reportHtml.indexOf('Discuss With Your Doctor');
+assert(!reportHtml.includes('Get fitted for CPAP'), 'Mild PAP-avoidant summary does not contradict the stated preference');
+assert(reportHtml.includes('Try sleeping on your side'), 'Mild positional summary leads with positional therapy');
+assert(!reportHtml.slice(mildStartIndex, mildWorkupIndex).includes('PAP Therapy'), 'Deferred PAP does not appear under Start Now');
+assert(mildDiscussIndex >= 0 && reportHtml.slice(mildDiscussIndex).includes('PAP Therapy'), 'Deferred PAP remains available under Discuss With Your Doctor');
+assert(reportHtml.includes('Oral Appliance Therapy (Favorable Profile)') && reportHtml.includes('Confirm Oral Appliance Safety First'), 'Oral-appliance option and prerequisite both remain visible');
+assert(!reportHtml.includes('quiet toll') && !reportHtml.includes('investment in your long-term health'), 'Mild lower-oxygen-risk report avoids categorical long-term-risk language');
+assert(!reportHtml.includes('or weight management may be appropriate'), 'Mild options box lists only treatments actually recommended for that patient');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
+  studyType: 'watchpat',
+  ess: 14,
+  patRdi: 14,
+  recTags: [{ tag: 'UARS-EVAL', text: 'Discuss detailed testing.' }],
+}));
+assert((reportHtml.match(/<strong>Detailed Sleep Evaluation<\/strong>/g) || []).length === 1, 'Possible-UARS report converts the repeated explanation into one concise action card');
+assert(reportHtml.includes('Arrange a visit to discuss whether an in-lab sleep study'), 'Possible-UARS checklist gives a concrete next step');
+assert(reportHtml.includes('this section focuses on sleep disruption that a home sleep test may not fully capture'), 'Possible-UARS section advances the explanation instead of repeating the normal result');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 24,
+  ahi: 24,
+  severity: 'moderate',
+  hasCOMISA: true,
+  cpapFailed: true,
+  cpapWillRetry: false,
+  cpapReasons: ['cpapClaustro'],
+  recTags: [
+    { tag: 'CBTI', text: 'Treat insomnia.' },
+    { tag: 'CPAP', text: 'Use PAP.' },
+    { tag: 'MAD', text: 'Consider an oral appliance.' },
+    { tag: 'MAD-WORKUP', text: 'Confirm oral appliance safety.' },
+    { tag: 'SURGALT', text: 'Consider airway surgery.' },
+    { tag: 'SURGERY-WORKUP', text: 'Complete surgical planning.' },
+  ],
+}));
+assert(reportHtml.includes('non-PAP options below') && !reportHtml.includes('Begin both pathways in parallel'), 'COMISA guidance respects a completed PAP trial without retry intent');
+assert(reportHtml.includes('Oral Appliance Therapy</strong>') && reportHtml.includes('Airway Surgery</strong>'), 'PAP-declined plan retains actual non-PAP treatment options');
+assert(reportHtml.includes('Confirm Oral Appliance Safety First') && reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'PAP-declined plan retains distinct safety workups');
+assert(!reportHtml.includes('If PAP remains difficult, your ENT'), 'PAP-declined surgery copy does not describe the completed PAP trial as a future condition');
+assert(reportHtml.includes('Schedule an ENT visit to discuss which airway procedures'), 'PAP-declined checklist operationalizes the surgery discussion');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 18,
+  ahi: 18,
+  severity: 'moderate',
+  bmi: 24,
+  tonsils: 4,
+  ftp: 'I',
+  friedmanStage: 'I',
+  subtype: 'Minimally Symptomatic',
+  phen: ['Low Arousal Threshold'],
+  recTags: [
+    { tag: 'CPAP', text: 'Use PAP.' },
+    { tag: 'SOFT-TISSUE-STRONG', text: 'Strong soft-tissue candidate.' },
+    { tag: 'SURG', text: 'Discuss tonsil and palate surgery.' },
+    { tag: 'SURG-PREF', text: 'Patient prefers surgery.' },
+    { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
+    { tag: 'MAD-WORKUP', text: 'Confirm oral appliance safety.' },
+  ],
+}));
+const surgicalStartIndex = reportHtml.indexOf('Start Now');
+const surgicalWorkupIndex = reportHtml.indexOf('Complete Before Finalizing Other Options');
+const surgicalDiscussIndex = reportHtml.indexOf('Discuss With Your Doctor');
+assert(reportHtml.includes('Schedule an ENT visit to review tonsil and palate surgery'), 'Anatomy-forward summary turns surgical preference into a consultation action');
+assert(reportHtml.includes('enlarged tonsils') && reportHtml.includes('The shape of your airway'), 'Strong tonsil anatomy appears in the contributor explanation even without the broad anatomy phenotype');
+assert(reportHtml.slice(surgicalStartIndex, surgicalWorkupIndex).includes('Tonsil and Palate Surgery Consultation'), 'Strong anatomy and surgical preference place consultation under Start Now');
+assert(surgicalDiscussIndex >= 0 && reportHtml.slice(surgicalDiscussIndex).includes('PAP Therapy'), 'Surgery-forward report still presents PAP for shared decision-making');
+assert(reportHtml.includes('does not guarantee that surgery will fully control sleep apnea'), 'Surgery-forward report preserves uncertainty and avoids promising cure');
+assert(reportHtml.includes('Planning Your Treatment') && !reportHtml.includes('Starting PAP'), 'Surgery-forward care journey matches the active shared-decision pathway');
+
+const terminologyIndex = terminologyReportHtml.indexOf('Terms used in this report');
+const summaryIndex = terminologyReportHtml.indexOf('report-summary-card');
 assert(terminologyIndex >= 0 && terminologyIndex < summaryIndex, 'Conditional terminology guide appears before the clinical narrative');
 ['AHI', 'PAP', 'CBT-I', 'COMISA', 'BMI', 'DISE', 'Oral appliance', 'Nerve stimulation'].forEach(term => {
-  const terminologyHTML = reportHtml.slice(terminologyIndex, summaryIndex);
+  const terminologyHTML = terminologyReportHtml.slice(terminologyIndex, summaryIndex);
   assert(terminologyHTML.includes(`<dt>${term}</dt>`) || terminologyHTML.includes(`<dt>${term} `), `${term} is defined before its first clinical use`);
 });
-assert(reportHtml.includes('a treatment that uses a machine and mask to deliver gentle air pressure'), 'PAP terminology accurately describes both the machine and mask');
-assert(reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>Oxygen burden</dt>'), 'Oxygen burden is defined before its first clinical use');
-assert(!reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
-assert(!/[\u2010-\u2015\u2212]/.test(reportHtml), 'Patient handout output contains no typographic dash characters');
+assert(terminologyReportHtml.includes('a treatment that uses a machine and mask to deliver gentle air pressure'), 'PAP terminology accurately describes both the machine and mask');
+assert(terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>Oxygen burden</dt>'), 'Oxygen burden is defined before its first clinical use');
+assert(!terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
+assert(!/[\u2010-\u2015\u2212]/.test(terminologyReportHtml), 'Patient handout output contains no typographic dash characters');
 
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');
