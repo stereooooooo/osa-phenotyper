@@ -95,7 +95,7 @@ var PatientReport = (() => {
     {
       label: 'CBT-I',
       patterns: [/\bCBT-I\b/, /Cognitive Behavioral Therapy for Insomnia/i],
-      definition: 'Cognitive Behavioral Therapy for Insomnia: a structured, first-line treatment for ongoing insomnia.',
+      definition: 'Cognitive Behavioral Therapy for Insomnia: a structured treatment recommended early for ongoing insomnia.',
     },
     {
       label: 'COMISA',
@@ -173,8 +173,8 @@ var PatientReport = (() => {
       definition: 'An airway classification based on tongue position and, for the stage, tonsil size and body size. It helps guide treatment discussions.',
     },
     {
-      label: 'Hypoxic burden',
-      patterns: [/hypoxic burden/i, /hypoxic-burden/i],
+      label: 'Oxygen burden',
+      patterns: [/oxygen burden/i, /hypoxic burden/i, /hypoxic-burden/i],
       definition: 'A measure of the depth and duration of oxygen drops caused by breathing interruptions during sleep.',
     },
     {
@@ -617,7 +617,7 @@ var PatientReport = (() => {
       const sev = ahiSeverityLabel(ahi);  // mild | moderate | severe
       finding = `Your sleep study shows <strong>${sev} sleep apnea</strong>.`;
       meaning = sev === 'severe'
-        ? 'At this level, treatment is important because severe OSA is associated with cardiovascular and daytime-function risks.'
+        ? 'At this level, treatment is important because severe OSA is associated with risks to heart health and daytime functioning.'
         : sev === 'moderate'
           ? 'It is interrupting your sleep often enough to affect your health and energy, and treatment helps.'
           : 'Even at this level, treating it can improve how rested you feel and protect your long-term health.';
@@ -1104,7 +1104,7 @@ ${renderSectionG(data)}`;
         key: 'Weight & metabolic health',
         icon: 'bi-activity',
         label: 'Weight is one modifiable contributor',
-        desc: `At a BMI of ${bmiText}, weight likely adds to airway narrowing and sleep-apnea severity. It is not the only cause. Supported weight management can reduce severity and may help other treatments work better, although the amount of improvement varies.`,
+        desc: `At a BMI of ${bmiText}, weight likely adds to airway narrowing and sleep apnea severity. It is not the only cause. Supported weight management can reduce severity and may help other treatments work better, although the amount of improvement varies.`,
       };
       const anatomyIndex = factorItems.findIndex(item => item.key === 'High Anatomical Contribution');
       factorItems.splice(anatomyIndex >= 0 ? anatomyIndex + 1 : 0, 0, weightItem);
@@ -1162,11 +1162,11 @@ ${items}`;
     'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
     'HNS': `<strong>Upper-Airway Nerve Stimulation</strong> — An implanted device activates tongue muscles during sleep. It is considered only for selected patients after standard treatments have not controlled sleep apnea or could not be used. A full workup is needed because anatomy, BMI, neck size, AHI, prior treatment, and other health conditions can affect both eligibility and the chance of response.`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is an important modifiable contributor to sleep apnea for many people. A reduction in body weight can reduce breathing-event frequency and may improve how well other treatments work, although response varies. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
-    'NASAL-OPT': `<strong>Nasal Treatment</strong> — Medication, allergy care, nasal dilators, or surgery may improve airflow and treatment comfort. Nasal care usually supports rather than replaces sleep-apnea treatment.`,
+    'NASAL-OPT': `<strong>Nasal Treatment</strong> — Medication, allergy care, nasal dilators, or surgery may improve airflow and treatment comfort. Nasal care usually supports rather than replaces sleep apnea treatment.`,
     'NASAL-SURG': null,  // Merged into NASAL-OPT
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — If your tonsils are significantly enlarged, removing them can dramatically open the back of the throat and reduce or even eliminate sleep apnea in appropriate candidates. Tonsillectomy is a same-day surgical procedure performed under general anesthesia. Recovery typically takes 1–2 weeks. For patients with large tonsils, this can be one of the most impactful single-step treatments available.`,
-    'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — This first-line insomnia treatment changes the habits and thoughts that keep insomnia going. It can be delivered by a trained therapist or a validated digital program.`,
+    'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — This recommended insomnia treatment changes the habits and thoughts that keep insomnia going. It can be delivered by a trained therapist or a validated digital program.`,
     'SURGALT': `<strong>Airway Surgery</strong> — Surgery may help when the procedure is matched to the site and pattern of collapse. Your exam, prior treatment, and often a sleep endoscopy (DISE) guide that decision.`,
     'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you, and if ASV is being considered they may need to confirm that your heart function is in a safe range first.`,
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
@@ -1239,7 +1239,7 @@ ${items}`;
 
     /* Mild + Low HB: de-emphasized CPAP description with uncertainty-aware language */
     if (tag === 'CPAP' && data && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
-      return `<strong>CPAP Therapy</strong> — CPAP is an effective treatment for sleep apnea at all severity levels. However, for mild sleep apnea with your oxygen profile, other approaches — such as an oral appliance or positional therapy — may be reasonable first-line options and can provide similar patient-centered improvement for many people. CPAP remains an option if you prefer it or if other treatments don't provide enough improvement. If you do try CPAP, modern machines with auto-adjusting pressure and heated humidifiers make it much more comfortable than older models.`;
+      return `<strong>CPAP Therapy</strong> — CPAP is an effective treatment for sleep apnea at all severity levels. However, for mild sleep apnea with your oxygen profile, other approaches — such as an oral appliance or positional therapy — may be reasonable initial options and can provide similar patient-centered improvement for many people. CPAP remains an option if you prefer it or if other treatments don't provide enough improvement. If you do try CPAP, modern machines with auto-adjusting pressure and heated humidifiers make it much more comfortable than older models.`;
     }
 
     /* Enhanced CPAP description for severe patients with limited alternatives */
@@ -1662,7 +1662,7 @@ ${items.join('')}`;
       : '';
     return `
 <div class="risk-summary" role="note">
-  <strong>Why This Matters:</strong> Sleep apnea at this level is associated with cardiovascular and daytime-function risks.${oxygenBurdenNote} Follow-up testing will confirm whether treatment is controlling the breathing events and oxygen drops.
+  <strong>Why This Matters:</strong> Sleep apnea at this level is associated with risks to heart health and daytime functioning.${oxygenBurdenNote} Follow-up testing will confirm whether treatment is controlling the breathing events and oxygen drops.
 </div>`;
   }
 

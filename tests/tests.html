@@ -812,6 +812,7 @@ assert(terminologyIndex >= 0 && terminologyIndex < summaryIndex, 'Conditional te
   const terminologyHTML = reportHtml.slice(terminologyIndex, summaryIndex);
   assert(terminologyHTML.includes(`<dt>${term}</dt>`) || terminologyHTML.includes(`<dt>${term} `), `${term} is defined before its first clinical use`);
 });
+assert(reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>Oxygen burden</dt>'), 'Oxygen burden is defined before its first clinical use');
 assert(!reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
 assert(!/[\u2010-\u2015\u2212]/.test(reportHtml), 'Patient handout output contains no typographic dash characters');
 

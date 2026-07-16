@@ -191,13 +191,19 @@ const OSAPdfExport = (() => {
        page and a modest density change can remove that page. This is bounded,
        print-only compaction—not a fixed two-page rule. */
     .patient-report.pdf-report-compact { font-size: 12.5px; line-height: 1.52; }
-    .patient-report.pdf-report-compact .report-header { margin-bottom: 16px; padding-bottom: 8px; }
+    .patient-report.pdf-report-compact .report-header { margin-bottom: 14px; padding-bottom: 8px; }
+    .patient-report.pdf-report-compact .report-logo { height: 40px; }
     .patient-report.pdf-report-compact h2 { margin-top: 20px; margin-bottom: 7px; }
-    .patient-report.pdf-report-compact .report-terms { margin-bottom: 18px; padding: 9px 0 11px; }
-    .patient-report.pdf-report-compact .report-summary-card { margin-bottom: 18px; padding: 11px 13px; }
-    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 18px; padding: 10px 14px; }
+    .patient-report.pdf-report-compact .report-terms { margin-bottom: 15px; padding: 7px 0 9px; }
+    .patient-report.pdf-report-compact .report-terms h2 { margin-bottom: 7px; }
+    .patient-report.pdf-report-compact .report-terms-list { gap: 6px 18px; }
+    .patient-report.pdf-report-compact .report-term { gap: 1px; }
+    .patient-report.pdf-report-compact .report-term dt { font-size: 10px; line-height: 1.3; }
+    .patient-report.pdf-report-compact .report-term dd { font-size: 9.5px; line-height: 1.35; }
+    .patient-report.pdf-report-compact .report-summary-card { margin-bottom: 15px; padding: 10px 13px; }
+    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 15px; padding: 9px 14px; }
     .patient-report.pdf-report-compact .care-summary-card { margin-bottom: 18px; padding: 10px 14px; }
-    .patient-report.pdf-report-compact .ahi-scale { margin: 12px 0; }
+    .patient-report.pdf-report-compact .ahi-scale { margin: 9px 0; }
     .patient-report.pdf-report-compact .phenotype-item { margin-bottom: 12px; }
     .patient-report.pdf-report-compact .treatment-group-label { margin-top: 12px; margin-bottom: 4px; }
     .patient-report.pdf-report-compact .rec-item { padding: 5px 0; }
@@ -499,6 +505,22 @@ const OSAPdfExport = (() => {
     return { ...plan, groups, fills };
   }
 
+  function patientPageBreakPenalty(plan) {
+    if (!plan || plan.groups.length < 2) return 0;
+    return plan.groups.slice(1).reduce((penalty, groupInfo) => {
+      const firstUnit = groupInfo.units[0];
+      if (!firstUnit) return penalty;
+
+      /* The severity scale explains the AHI paragraph immediately before it.
+         Starting a page with the scale makes the reader look backward for its
+         meaning and leaves an unnecessarily sparse prior page. This is a soft
+         preference, not a hard keep-together rule, so very long summaries can
+         still paginate naturally. */
+      if (firstUnit.querySelector('.ahi-scale')) return penalty + 4;
+      return penalty;
+    }, 0);
+  }
+
   function paginatePatientReport(reportRoot, pageCssHeight) {
     const units = collectPatientReportUnits(reportRoot);
     const measureHost = document.createElement('div');
@@ -523,7 +545,29 @@ const OSAPdfExport = (() => {
           'pdf-report-compact'
         );
         if (compactPlan.groups.length < normalPlan.groups.length) chosenPlan = compactPlan;
+      }
 
+      /* A modest density adjustment may improve a clinically linked page
+         break even when the report still needs the same number of pages. Use
+         it only when it removes a known comprehension break, such as placing
+         the AHI scale on the page after its explanation. */
+      if (chosenPlan === normalPlan && normalPlan.groups.length > 1) {
+        const normalPenalty = patientPageBreakPenalty(normalPlan);
+        if (normalPenalty > 0) {
+          const compactPlan = measurePatientPagination(
+            reportRoot,
+            units,
+            measureHost,
+            pageFitLimit,
+            'pdf-report-compact'
+          );
+          if (
+            compactPlan.groups.length <= normalPlan.groups.length &&
+            patientPageBreakPenalty(compactPlan) < normalPenalty
+          ) {
+            chosenPlan = compactPlan;
+          }
+        }
       }
 
       chosenPlan = rebalanceSparsePatientTail(chosenPlan);

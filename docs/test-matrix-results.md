@@ -4,6 +4,17 @@
 
 ---
 
+## July 15, 2026 Patient Report Pagination and Terminology Follow-Up
+
+- Headless regression suite: **346 assertions passed**.
+- Added a conditional `Oxygen burden` definition so the risk summary cannot introduce that concept before explaining it.
+- Replaced remaining patient-facing compound jargon such as `daytime-function`, `sleep-apnea treatment`, and `first-line` with more natural plain language.
+- Added a soft page-break quality rule. When normal spacing would separate the AHI severity scale from its explanation, the PDF uses a bounded compact layout that keeps the linked information together without forcing a fixed page count.
+- Re-rendered the real jsPDF/html2canvas path for PAP-retry severe COMISA (**3 pages**), pre-study evaluation (**2 pages**), and maximal eight-phenotype (**4 pages**). All nine pages were inspected for clipping, spacing, continuation labels, orphaned content, and readability.
+- `pdfinfo` confirmed Letter-size output with no embedded JavaScript; searchable-text checks confirmed the new terminology and continuation labels and found no prohibited Unicode dash characters.
+
+---
+
 ## July 15, 2026 Patient Report Layout Follow-Up
 
 - Headless regression suite: **345 assertions passed**.
