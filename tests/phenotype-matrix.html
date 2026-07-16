@@ -218,6 +218,13 @@ async function runMatrix() {
   await waitFor(() => !doc.getElementById('appContainer').classList.contains('d-none'), 'app visible');
   await waitFor(() => win.OSAReportState, 'report state ready');
 
+  await win.OSALibs.loadPdfParsing();
+  assert(!!(win.pdfjsLib && win.pdfjsLib.GlobalWorkerOptions), 'Self-hosted PDF.js and worker configuration load from the clinician app origin');
+  await win.OSALibs.loadPdfExport();
+  assert(!!(win.jspdf && win.html2canvas), 'Self-hosted jsPDF and html2canvas load from the clinician app origin');
+  const csp = doc.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || '';
+  assert(!csp.includes('cdn.jsdelivr.net') && !csp.includes('fonts.googleapis.com'), 'Clinician CSP does not allow public script, style, or font CDNs');
+
   for (const p of PROFILES) {
     applyProfile(win, doc, p);
     doc.querySelector('#form button[type="submit"]').click();

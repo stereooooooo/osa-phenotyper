@@ -23,6 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_FILE="${SCRIPT_DIR}/template.yaml"
 PACKAGED_TEMPLATE="/tmp/osa-phenotyper-${CLINIC}-packaged.yaml"
 WAF_RULES_FILE="/tmp/osa-phenotyper-${CLINIC}-cloudfront-waf-rules.json"
+WAF_ALERT_POLICY_FILE="/tmp/osa-phenotyper-${CLINIC}-waf-alert-topic-policy.json"
 VERSIONED_INDEX="/tmp/osa-phenotyper-${CLINIC}-index.html"
 WEB_ROOT="${SCRIPT_DIR}/.."
 WAF_REGION="us-east-1"
@@ -84,6 +85,11 @@ deployment_label_for() {
 
 DEPLOYMENT_ENVIRONMENT="${OSA_DEPLOYMENT_ENVIRONMENT:-$(infer_deployment_environment "${CLINIC} ${STACK_NAME} ${ALLOWED_ORIGINS}")}"
 DEPLOYMENT_LABEL="${OSA_DEPLOYMENT_LABEL:-$(deployment_label_for "${DEPLOYMENT_ENVIRONMENT}")}"
+if [[ "${DEPLOYMENT_ENVIRONMENT}" == "pilot" || "${DEPLOYMENT_ENVIRONMENT}" == "production" ]]; then
+  ENABLE_OPERATIONAL_ALERTS="true"
+else
+  ENABLE_OPERATIONAL_ALERTS="false"
+fi
 BUILD_ID="${OSA_BUILD_ID:-$(git -C "${WEB_ROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')}"
 DEPLOYED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
@@ -266,6 +272,92 @@ ensure_cloudfront_waf() {
     --output text)
 }
 
+ensure_waf_operational_alerts() {
+  if [[ "${ENABLE_OPERATIONAL_ALERTS}" != "true" ]]; then
+    return
+  fi
+
+  local account_id
+  local topic_name
+  local topic_arn
+  local existing_subscription
+  local alarm_name
+  account_id=$(aws sts get-caller-identity --query Account --output text --region "${WAF_REGION}")
+  topic_name="osa-edge-alerts-${CLINIC}"
+  alarm_name="osa-${CLINIC}-waf-blocks"
+
+  topic_arn=$(aws sns create-topic \
+    --name "${topic_name}" \
+    --attributes KmsMasterKeyId=alias/aws/sns \
+    --region "${WAF_REGION}" \
+    --query TopicArn \
+    --output text)
+
+  cat > "${WAF_ALERT_POLICY_FILE}" <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OwnerAccess",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::${account_id}:root" },
+      "Action": "SNS:*",
+      "Resource": "${topic_arn}"
+    },
+    {
+      "Sid": "AllowCloudWatchAlarmPublish",
+      "Effect": "Allow",
+      "Principal": { "Service": "cloudwatch.amazonaws.com" },
+      "Action": "SNS:Publish",
+      "Resource": "${topic_arn}",
+      "Condition": {
+        "StringEquals": { "aws:SourceAccount": "${account_id}" },
+        "ArnLike": { "aws:SourceArn": "arn:aws:cloudwatch:${WAF_REGION}:${account_id}:alarm:${alarm_name}" }
+      }
+    }
+  ]
+}
+EOF
+
+  aws sns set-topic-attributes \
+    --topic-arn "${topic_arn}" \
+    --attribute-name Policy \
+    --attribute-value "file://${WAF_ALERT_POLICY_FILE}" \
+    --region "${WAF_REGION}"
+
+  existing_subscription=$(aws sns list-subscriptions-by-topic \
+    --topic-arn "${topic_arn}" \
+    --region "${WAF_REGION}" \
+    --query "Subscriptions[?Protocol=='email' && Endpoint=='${ADMIN_EMAIL}'] | [0].SubscriptionArn" \
+    --output text)
+  if [[ -z "${existing_subscription}" || "${existing_subscription}" == "None" ]]; then
+    aws sns subscribe \
+      --topic-arn "${topic_arn}" \
+      --protocol email \
+      --notification-endpoint "${ADMIN_EMAIL}" \
+      --region "${WAF_REGION}" \
+      >/dev/null
+  fi
+
+  aws cloudwatch put-metric-alarm \
+    --alarm-name "${alarm_name}" \
+    --alarm-description "One or more CloudFront WAF blocks in five minutes; contains no PHI" \
+    --namespace AWS/WAFV2 \
+    --metric-name BlockedRequests \
+    --dimensions "Name=WebACL,Value=${WAF_NAME}" "Name=Region,Value=Global" \
+    --statistic Sum \
+    --period 300 \
+    --evaluation-periods 1 \
+    --datapoints-to-alarm 1 \
+    --threshold 1 \
+    --comparison-operator GreaterThanOrEqualToThreshold \
+    --treat-missing-data notBreaching \
+    --alarm-actions "${topic_arn}" \
+    --region "${WAF_REGION}"
+
+  echo "  WAF alerts   : ${alarm_name} -> ${ADMIN_EMAIL} (subscription confirmation required)"
+}
+
 sync_static_site() {
   echo "  Syncing static app to s3://${WEB_APP_BUCKET}..."
   aws s3 sync "${WEB_ROOT}" "s3://${WEB_APP_BUCKET}" \
@@ -275,6 +367,7 @@ sync_static_site() {
     --include "css/*" \
     --include "js/*" \
     --include "img/*" \
+    --include "vendor/*" \
     --include "capentlogo.svg" \
     >/dev/null
 
@@ -310,6 +403,7 @@ create_artifact_bucket_if_needed
 echo ""
 echo "[2/7] Ensuring CloudFront WAF..."
 ensure_cloudfront_waf
+ensure_waf_operational_alerts
 
 echo ""
 echo "[3/7] Packaging CloudFormation template..."
@@ -330,6 +424,7 @@ aws cloudformation deploy \
     AllowedOrigins="${ALLOWED_ORIGINS}" \
     CloudFrontWebAclArn="${CLOUDFRONT_WAF_ARN}" \
     ApiOriginSecret="${API_ORIGIN_SECRET}" \
+    EnableOperationalAlerts="${ENABLE_OPERATIONAL_ALERTS}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "${REGION}" \
   --no-fail-on-empty-changeset
@@ -441,6 +536,7 @@ echo "  Artifacts    : ${ARTIFACT_BUCKET}"
 echo "  Site bucket  : ${WEB_APP_BUCKET}"
 echo "  Distribution : ${WEB_APP_DISTRIBUTION_ID}"
 echo "  Patient table: ${PATIENT_TABLE}"
+echo "  Ops alerts   : ${ENABLE_OPERATIONAL_ALERTS}"
 echo ""
 echo "  Config written to: js/aws-config.js"
 echo ""
@@ -460,3 +556,4 @@ echo ""
 # Cleanup
 rm -f "${PACKAGED_TEMPLATE}"
 rm -f "${WAF_RULES_FILE}"
+rm -f "${WAF_ALERT_POLICY_FILE}"

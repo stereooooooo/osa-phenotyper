@@ -11,7 +11,10 @@ Use this checklist for a limited 20–30 patient pilot. The current clinician-on
 - [ ] Create individual accounts only for pilot clinicians/staff; require and test MFA.
 - [ ] Restrict pilot access to managed Capital ENT devices and approved remote-access practices.
 - [ ] Configure and test alarms for authentication failures, API errors, WAF blocks, and unexpected request volume.
+- [ ] Confirm both regional and CloudFront/WAF SNS email subscriptions; receive one PHI-free test alert.
 - [ ] Test one DynamoDB recovery and one audit-log retrieval.
+- [ ] Confirm all browser libraries, fonts, and PDF workers load from the private app origin; no public CDN is allowed by CSP.
+- [ ] Confirm no public intake, patient portal, bearer-link, or anonymous patient API is deployed.
 - [ ] Confirm the footer reads `CLINICAL PILOT` and shows the expected build.
 - [ ] Obtain clinical, privacy/security, and operational approval to begin the limited cohort.
 
@@ -24,6 +27,7 @@ Use this checklist for a limited 20–30 patient pilot. The current clinician-on
 - [ ] Archive and restore the synthetic chart as an administrator.
 - [ ] Confirm a clinician cannot perform administrator-only archive/restore actions.
 - [ ] Confirm the EHR report-delivery workflow and downtime fallback.
+- [ ] Confirm ordinary email is not the default report-delivery path.
 
 ## Per-patient workflow
 
@@ -62,4 +66,3 @@ Use this checklist for a limited 20–30 patient pilot. The current clinician-on
 - Any workforce member can access data or actions outside their role.
 - PHI appears in an unapproved channel, log, issue, email, or browser surface.
 - Monitoring, recovery, authentication, or the EHR fallback is unavailable during the pilot.
-

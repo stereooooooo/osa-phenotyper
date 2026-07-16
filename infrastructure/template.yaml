@@ -30,9 +30,17 @@ Parameters:
     NoEcho: true
     MinLength: 32
     Description: Shared secret CloudFront adds to API origin requests to prevent direct API endpoint bypass
+  EnableOperationalAlerts:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Provision PHI-free operational alerting for pilot and production environments
 
 Conditions:
   UseCloudFrontWebAcl: !Not [!Equals [!Ref CloudFrontWebAclArn, '']]
+  OperationalAlertsEnabled: !Equals [!Ref EnableOperationalAlerts, 'true']
 
 Resources:
 
@@ -615,6 +623,123 @@ Resources:
       RetentionInDays: 2557
       KmsKeyId: !GetAtt EncryptionKey.Arn
 
+  # ─── PHI-free operational alerting ─────────────────────────
+  # Email alerts contain only resource/alarm names and aggregate counts. They
+  # never include chart identifiers, request bodies, search values, or clinical
+  # data. The subscription must be confirmed by the initial administrator.
+  OperationalAlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: OperationalAlertsEnabled
+    Properties:
+      TopicName: !Sub 'osa-operational-alerts-${ClinicName}'
+      DisplayName: OSA Pilot Alerts
+      KmsMasterKeyId: alias/aws/sns
+
+  OperationalAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: OperationalAlertsEnabled
+    Properties:
+      TopicArn: !Ref OperationalAlertTopic
+      Protocol: email
+      Endpoint: !Ref AdminEmail
+
+  AuthorizationFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: OperationalAlertsEnabled
+    Properties:
+      LogGroupName: !Ref HttpApiAccessLogGroup
+      FilterPattern: '{ ($.status = 401) || ($.status = 403) }'
+      MetricTransformations:
+        - MetricNamespace: !Sub 'OSAPhenotyper/${ClinicName}'
+          MetricName: AuthorizationFailures
+          MetricValue: '1'
+          DefaultValue: 0
+
+  AuthorizationFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: OperationalAlertsEnabled
+    Properties:
+      AlarmName: !Sub 'osa-${ClinicName}-authorization-failures'
+      AlarmDescription: More than five rejected authorization attempts in five minutes; contains no PHI
+      Namespace: !Sub 'OSAPhenotyper/${ClinicName}'
+      MetricName: AuthorizationFailures
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OperationalAlertTopic
+
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: OperationalAlertsEnabled
+    Properties:
+      AlarmName: !Sub 'osa-${ClinicName}-lambda-errors'
+      AlarmDescription: One or more patient API Lambda errors in five minutes; contains no PHI
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PatientApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OperationalAlertTopic
+
+  ApiServerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: OperationalAlertsEnabled
+    Properties:
+      AlarmName: !Sub 'osa-${ClinicName}-api-5xx'
+      AlarmDescription: One or more API server errors in five minutes; contains no PHI
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref HttpApi
+        - Name: Stage
+          Value: '$default'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OperationalAlertTopic
+
+  UnexpectedRequestVolumeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: OperationalAlertsEnabled
+    Properties:
+      AlarmName: !Sub 'osa-${ClinicName}-unexpected-request-volume'
+      AlarmDescription: More than 500 API requests in five minutes; contains no PHI
+      Namespace: AWS/ApiGateway
+      MetricName: Count
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref HttpApi
+        - Name: Stage
+          Value: '$default'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 500
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OperationalAlertTopic
+
   # ─── CloudTrail Audit Logging ───────────────────────────────
   AuditLogBucket:
     Type: AWS::S3::Bucket
@@ -730,6 +855,11 @@ Outputs:
   CloudFrontWafArn:
     Description: CloudFront-scope WAF ARN provided at deploy time
     Value: !Ref CloudFrontWebAclArn
+
+  OperationalAlertTopicArn:
+    Condition: OperationalAlertsEnabled
+    Description: Regional PHI-free operational alert topic; email subscription requires confirmation
+    Value: !Ref OperationalAlertTopic
 
   AdminGroup:
     Description: Cognito admin group name

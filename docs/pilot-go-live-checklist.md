@@ -1,97 +1,105 @@
 # Clinical Pilot Go-Live Checklist
 
-## Purpose
-Use this checklist before the first real patient is entered into the OSA Phenotyper pilot workflow at Capital ENT & Sinus Center.
+Use this checklist before the first real patient is entered into the clinician-only Precision Sleep Hub. This is a supervised limited-pilot approval, not a claim of zero risk or blanket HIPAA compliance.
 
-This is a supervised pilot checklist, not a production sign-off. The tool remains clinical decision support and does not replace physician judgment.
+## Pilot identification
 
-## Pilot Scope
-- Pilot environment: `STAGING` / CloudFront-hosted validation surface
-- Current validated build: `1a11170`
-- Current staging URL: `https://dk259m1syu2bu.cloudfront.net`
-- Intended pilot use: physician-supervised clinical testing with limited patient volume and an agreed fallback workflow
+- Approved pilot URL: ____________________
+- Approved build: ____________________
+- Stack name: `osa-phenotyper-capital-ent-precision-sleep-pilot`
+- Intended cohort: 20-30 current Capital ENT sleep patients
+- Clinical owner: ____________________
+- Security/privacy owner: ____________________
+- Technical owner: ____________________
+- Backup technical owner: ____________________
+- Approved first-PHI date: ____________________
 
-## Go / No-Go Gates
-- [ ] Latest staging redeploy completed and runtime footer shows the expected build ID.
-- [ ] CloudFront sign-in works for at least one clinician and one admin account.
-- [ ] MFA is enrolled and verified for every pilot clinician account.
-- [ ] Patient save/load/search works on the hosted surface.
-- [ ] Patient-report preview works on the hosted surface.
-- [ ] Snapshot save works on the hosted surface.
-- [ ] One trusted manual `Download PDF` click works on the hosted surface after the latest deploy.
-- [ ] One hosted intake-link generation and public intake submission cycle is re-run after the latest deploy.
-- [ ] One intake-review accept/keep cycle is re-run after the latest deploy.
-- [ ] Pilot staff know the fallback workflow if the app is unavailable.
-- [ ] Pilot staff know how to report defects and who owns triage.
+## Mandatory go/no-go gates
 
-## Environment And Access
-- [ ] Pilot uses the intended hosted URL only, not GitHub Pages and not an old bookmarked MVP link.
-- [ ] Runtime banner clearly reads `STAGING` or the approved pilot label.
-- [ ] `osa-admin` and `osa-clinician` group memberships are reviewed and current.
-- [ ] No shared clinician logins are used.
-- [ ] At least one admin account is available for archive/restore and intake-review escalation.
-- [ ] Test accounts are separated from real patient accounts in the pilot plan.
+- [ ] Separate pilot CloudFront distribution, Cognito pool, DynamoDB table, KMS key, logs, and WAF are deployed.
+- [ ] Runtime banner reads `CLINICAL PILOT`; footer build matches the approved commit.
+- [ ] Capital ENT retains evidence that the AWS BAA covers the pilot AWS account.
+- [ ] The system-specific risk analysis has been reviewed and signed.
+- [ ] Capital ENT has approved the pilot users, managed devices, remote-access path, EHR delivery path, downtime workflow, and incident process.
+- [ ] Every workforce account is individual and has verified MFA; no shared login exists.
+- [ ] Admin membership is limited and reviewed.
+- [ ] Regional and WAF alert email subscriptions are confirmed and a PHI-free test alert was received.
+- [ ] One synthetic DynamoDB restore drill and one audit-log retrieval are documented.
+- [ ] The complete synthetic workflow rehearsal below passes.
 
-## Clinical Safety Checks
-- [ ] The physician understands that unresolved-data guardrails are expected behavior, not bugs to work around.
-- [ ] The physician knows where to see provenance and intake-review history before relying on patient-submitted values.
-- [ ] The physician knows where to find saved report snapshots.
-- [ ] The physician agrees not to use the app as the sole source for final surgical/device decisions when prerequisite workup is still flagged.
-- [ ] The physician agrees to document final treatment decisions independently in the chart / EMR.
+Any unchecked mandatory gate means **NO GO for real PHI**.
 
-## Pilot Workflow Rehearsal
-- [ ] Create a new hosted patient chart.
-- [ ] Save the chart.
-- [ ] Reload the chart from the patient list.
-- [ ] Generate clinician analysis.
-- [ ] Open the patient report preview.
-- [ ] Save a report snapshot.
-- [ ] Download a PDF manually.
-- [ ] Generate an intake link.
-- [ ] Submit the intake link from a separate browser session.
-- [ ] Review one intake conflict with both `accept-intake` and `keep-chart` decisions.
-- [ ] Confirm provenance history updates after review.
+## Hosted security acceptance
 
-## Patient Communication Workflow
-- [ ] Intake links are only sent through an approved secure communication channel.
-- [ ] Pilot clinicians know that the intake link is single-use and expires after 72 hours.
-- [ ] Staff have a standard message for resending or regenerating an expired intake link.
-- [ ] Patient-facing PDFs are reviewed before being handed out or uploaded.
+- [ ] CloudFront serves HTTPS only with HSTS, anti-framing, no-referrer, and MIME-sniffing protections.
+- [ ] WAF is attached and API rate limiting is active.
+- [ ] The default API Gateway hostname rejects a request that lacks the CloudFront origin secret.
+- [ ] CloudFront `/patients` and `/patients/search` reject requests without a valid Cognito token.
+- [ ] CORS allows only the pilot CloudFront origin.
+- [ ] There is no bulk patient-list route; searches remain bounded to 10 results.
+- [ ] Lambda IAM has no DynamoDB `Scan` permission.
+- [ ] DynamoDB uses the pilot KMS key and PITR is enabled.
+- [ ] CloudTrail is logging management plus DynamoDB data events with log validation.
+- [ ] Lambda and API logs use the configured retention and KMS encryption.
+- [ ] No patient content or search value appears in sample logs or alert messages.
+- [ ] No public intake, patient portal, magic link, or anonymous API route is deployed.
+- [ ] Production HTML and CSP contain no public JavaScript, CSS, font, or PDF-worker CDN.
 
-## Monitoring And Audit
-- [ ] A named owner checks CloudWatch / CloudTrail / API access logs during the pilot window.
-- [ ] A named owner checks for WAF false positives during the pilot window.
-- [ ] A named owner reviews snapshot persistence and intake-review activity if any pilot issue is reported.
-- [ ] A named owner is responsible for account lockout / MFA reset support.
+## Synthetic clinician workflow rehearsal
 
-## Fallback Workflow
-- [ ] If the app is unavailable, clinicians revert to the standard sleep-medicine workflow and documented clinical judgment.
-- [ ] If PDF export fails, clinicians do not delay care; they use the clinician analysis plus manual documentation and retry the PDF later.
-- [ ] If intake submission fails, staff can complete the chart manually during the visit.
-- [ ] If provenance or intake review looks wrong, clinicians should treat the conflicting field as unresolved and verify it directly with the patient or source study.
+- [ ] Sign in as an administrator with MFA.
+- [ ] Sign in as a non-admin clinician with MFA.
+- [ ] Create a clearly labeled synthetic chart.
+- [ ] Save, find, reload, and re-analyze the chart.
+- [ ] Generate clinician and patient reports.
+- [ ] Edit the patient report, save a snapshot, reopen it, and manually download the PDF.
+- [ ] Save and reopen one structured follow-up.
+- [ ] Archive and restore the synthetic chart as an administrator.
+- [ ] Confirm the clinician cannot perform administrator-only archive/restore actions.
+- [ ] Confirm record-view, search, write, snapshot, and archive/restore activity can be found in the audit trail.
+- [ ] Remove the synthetic chart or retain it with an unmistakable `SYNTHETIC` identifier according to the approved test-data procedure.
 
-## Stop Conditions
-Stop the live pilot and revert to fallback workflow if any of these occur:
-- [ ] Authentication failure blocks multiple clinicians.
-- [ ] Saved charts do not reload reliably.
-- [ ] Patient-report snapshots fail to persist.
-- [ ] PDF export fails on a real trusted browser click after a fresh deploy.
-- [ ] Intake submissions or intake reviews behave inconsistently on real pilot patients.
-- [ ] The runtime label is missing or the wrong environment is shown.
-- [ ] Any evidence suggests PHI exposure, wrong-patient loading, or corrupted chart persistence.
+## Clinical workflow agreement
 
-## Day-Of-Pilot Runbook
-1. Confirm the hosted URL and runtime label before the first patient.
-2. Log in and verify the clinician account plus MFA.
-3. Open one non-patient test chart and verify load/save quickly.
-4. Use the app only in supervised physician workflow.
-5. Save a snapshot for any patient-facing report that is handed out or used in discussion.
-6. Log any defect immediately with the patient MRN removed from the issue text unless the report channel is explicitly secure.
-7. Review the pilot issue queue at the end of the day.
+- [ ] Verify the patient in the EHR and confirm two identifiers before editing a hub chart.
+- [ ] Treat unresolved-data flags as required clinical review, not fields to bypass.
+- [ ] Review every recommendation and patient report before use.
+- [ ] Do not use the hub as the sole basis for surgery, device candidacy, or prescribing.
+- [ ] Save a report snapshot when a report is discussed or distributed.
+- [ ] Upload reviewed reports through the approved EHR workflow.
+- [ ] Complete the official note, orders, prescriptions, and communication in the EHR.
+- [ ] Do not put patient identifiers in GitHub, ordinary issue trackers, or unapproved support messages.
 
-## Recommended Pilot Sign-Off
-- Pilot clinical owner:
-- Pilot technical owner:
-- Backup technical owner:
-- Date approved for first live patient:
-- Notes / exceptions:
+## Monitoring and support
+
+- [ ] A named owner reviews alarms and WAF false positives during the pilot.
+- [ ] A named owner performs account lockout and MFA-reset support.
+- [ ] A named owner reviews access at least quarterly and immediately disables separated workforce users.
+- [ ] Pilot staff know how to report a suspected privacy/security incident immediately.
+- [ ] Pilot staff know the EHR-based downtime fallback and will not delay care because the hub is unavailable.
+
+## Stop conditions
+
+Stop the live pilot and revert to the normal EHR workflow if any of these occur:
+
+- Wrong chart, wrong-patient data, or corrupted persistence is observed.
+- Saved charts, snapshots, or structured follow-ups cannot be reliably reloaded.
+- Any workforce member can access records or actions outside the approved role.
+- PHI appears in a log, alert, issue tracker, email, browser asset request, or another unapproved channel.
+- MFA, monitoring, recovery, audit retrieval, or the EHR fallback is unavailable.
+- A material report or clinical-logic defect could affect patient care.
+- The runtime label or build does not match the approved pilot release.
+
+## Final authorization
+
+- [ ] GO
+- [ ] NO GO
+- [ ] GO with documented exceptions
+
+Exceptions or compensating controls: __________________________________________
+
+Clinical owner signature: ____________________  Date: __________
+
+Security/privacy owner signature: ____________________  Date: __________
+
+Technical owner signature: ____________________  Date: __________
