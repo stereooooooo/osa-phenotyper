@@ -518,6 +518,52 @@ const OSAPdfExport = (() => {
     return { ...plan, groups, fills };
   }
 
+  function measureIsolatedPatientUnits(reportRoot, units, measureHost, densityClass = '') {
+    const measure = createPatientPageShell(reportRoot, densityClass);
+    units.forEach(unit => measure.report.appendChild(unit.cloneNode(true)));
+    measureHost.appendChild(measure.shell);
+    const height = Math.ceil(measure.shell.getBoundingClientRect().height);
+    measureHost.removeChild(measure.shell);
+    return height;
+  }
+
+  function mergePatientPagesThatActuallyFit(reportRoot, plan, measureHost, pageFitLimit) {
+    if (!plan || plan.groups.length < 2) return plan;
+    const groups = plan.groups.map(group => ({ ...group, units: [...group.units] }));
+
+    /* The greedy pass measures units in one continuous document. A heading or
+       label that later becomes the first unit on a page loses its top margin in
+       the real page shell, so two neighboring groups can occasionally fit even
+       though the continuous-flow estimate said they did not. Re-measure
+       adjacent groups in an isolated page shell and merge only when the exact
+       rendered height fits. Working from the tail first removes underfilled
+       continuation pages without pulling the report opening out of balance. */
+    let changed = true;
+    while (changed && groups.length > 1) {
+      changed = false;
+      for (let index = groups.length - 2; index >= 0; index--) {
+        const combinedUnits = [...groups[index].units, ...groups[index + 1].units];
+        const combinedHeight = measureIsolatedPatientUnits(
+          reportRoot,
+          combinedUnits,
+          measureHost,
+          plan.densityClass
+        );
+        if (combinedHeight > pageFitLimit) continue;
+
+        groups.splice(index, 2, {
+          units: combinedUnits,
+          startIndex: groups[index].startIndex,
+          endIndex: groups[index + 1].endIndex,
+        });
+        changed = true;
+        break;
+      }
+    }
+
+    return { ...plan, groups };
+  }
+
   function patientPageBreakPenalty(plan) {
     if (!plan || plan.groups.length < 2) return 0;
     return plan.groups.slice(1).reduce((penalty, groupInfo) => {
@@ -599,6 +645,12 @@ const OSAPdfExport = (() => {
       }
 
       chosenPlan = rebalanceSparsePatientTail(chosenPlan);
+      chosenPlan = mergePatientPagesThatActuallyFit(
+        reportRoot,
+        chosenPlan,
+        measureHost,
+        pageFitLimit
+      );
 
       // ── Build the real page shells from the assignment ──
       const pages = chosenPlan.groups.map((groupInfo, pageIndex) => {

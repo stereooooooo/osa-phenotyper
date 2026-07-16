@@ -99,6 +99,36 @@ run_suite() {
   sed -E 's#<strong>([0-9]+) passed</strong>, <strong>0 failed</strong>#\1#' <<< "${summary}"
 }
 
+run_pdf_pagination_suite() {
+  local url="http://${HOST}:${PORT}/tests/patient-report-pdf-fixture.html?scenario=central-safety-pagination&render=1&summary=1"
+
+  if ! "${CHROME}" \
+    --headless \
+    --disable-gpu \
+    --no-sandbox \
+    --virtual-time-budget=20000 \
+    --dump-dom \
+    "${url}" > "${DOM_FILE}" 2>"${CHROME_LOG}"; then
+    echo "Chrome failed while running patient PDF pagination regression." >&2
+    cat "${CHROME_LOG}" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -q 'data-pdf-ready="true"' "${DOM_FILE}"; then
+    echo "Patient PDF pagination regression did not finish rendering." >&2
+    cat "${CHROME_LOG}" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -q 'data-pdf-pages="2"' "${DOM_FILE}"; then
+    echo "Central-safety patient PDF did not retain the expected balanced two-page layout." >&2
+    grep -Eo 'data-pdf-pages="[^"]*"' "${DOM_FILE}" >&2 || true
+    exit 1
+  fi
+
+  printf '1\n'
+}
+
 TOTAL_PASSED=0
 
 PARSER_PASSED="$(node "${REPO_ROOT}/tests/watchpat-parser-integration.cjs")"
@@ -112,5 +142,8 @@ TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
 
 MATRIX_PASSED="$(run_suite "tests/phenotype-matrix.html" "phenotype characterization matrix" 30000)"
 TOTAL_PASSED=$((TOTAL_PASSED + MATRIX_PASSED))
+
+PDF_PAGINATION_PASSED="$(run_pdf_pagination_suite)"
+TOTAL_PASSED=$((TOTAL_PASSED + PDF_PAGINATION_PASSED))
 
 echo "Headless suite passed: ${TOTAL_PASSED} assertions"

@@ -244,6 +244,34 @@
         ],
         milestones: ['Initial Eval', 'Study Reviewed'],
       }),
+      'central-safety-pagination': Object.assign({}, retryFixture, {
+        patientName: 'TESTPATIENT, CentralSafety',
+        reportDate: '2026-07-16',
+        primaryAHI: 26,
+        ahi: 26,
+        severity: 'moderate',
+        subtype: 'Minimally-symptomatic',
+        bmi: 29,
+        nadir: 82,
+        odi: 24,
+        t90: 8,
+        hasCOMISA: false,
+        cpapFailed: false,
+        cpapWillRetry: false,
+        cpapReasons: [],
+        prefAvoidCpap: false,
+        phen: ['High Loop Gain', 'High Hypoxic Burden'],
+        recTags: [
+          { tag: 'CPAP-FIXED', text: 'Use fixed PAP while central findings are clarified.' },
+          { tag: 'CPAP', text: 'Use PAP.' },
+          { tag: 'SURG', text: 'Consider airway surgery if PAP remains difficult.' },
+          { tag: 'ASV-CONTRA', text: 'Reduced heart function makes ASV unsafe right now.' },
+          { tag: 'CENTRAL-PSG-WORKUP', text: 'Confirm home-study central signals with PSG.' },
+          { tag: 'SURGERY-WORKUP', text: 'Complete procedure-specific airway planning.' },
+          { tag: 'ENDOTYPE-WORKUP', text: 'Review detailed event data.' },
+        ],
+        milestones: ['Initial Eval', 'Study Reviewed'],
+      }),
     };
     const fixture = fixtures[scenario] || fixtures.retry;
     document.getElementById('reportPreviewContent').innerHTML = PatientReport.generateReportHTML(fixture);
@@ -252,11 +280,13 @@
       window.addEventListener('load', () => {
         setTimeout(async () => {
           window.generatedPdf = await OSAPdfExport.exportPatientReportPDF({ download: false });
-          const pdfData = document.createElement('textarea');
-          pdfData.id = 'generatedPdfData';
-          pdfData.hidden = true;
-          pdfData.textContent = window.generatedPdf?.dataUri || '';
-          document.body.appendChild(pdfData);
+          if (params.get('summary') !== '1') {
+            const pdfData = document.createElement('textarea');
+            pdfData.id = 'generatedPdfData';
+            pdfData.hidden = true;
+            pdfData.textContent = window.generatedPdf?.dataUri || '';
+            document.body.appendChild(pdfData);
+          }
           document.documentElement.setAttribute('data-pdf-pages', String(window.generatedPdf?.pageCount || ''));
           document.documentElement.setAttribute('data-pdf-filename', window.generatedPdf?.filename || '');
           document.documentElement.setAttribute('data-pdf-ready', 'true');

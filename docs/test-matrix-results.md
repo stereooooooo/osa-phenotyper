@@ -1244,3 +1244,22 @@
 - updated `js/patientReport.js` to classify prerequisite tags into a dedicated `Complete Before Finalizing Other Options` group
 - executable regression now checks that `Start Now` appears before the new workup bucket and that therapies such as CPAP/CBT-I render before workup-only items
 **Finding:** fixed. Patient plans now lead with near-term treatment actions while still keeping prerequisite workup steps visible and understandable.
+
+### Test 139: Second five-scenario safety and PDF matrix
+**Status:** local executable engine, content, and visual PDF validation complete
+**Result:** passed after one global pagination fix ✅
+**Scenarios:**
+- adequately sampled REM-predominant mild OSA retained the REM phenotype and REM-specific treatment logic
+- WatchPAT central/periodic-breathing signals with LVEF 40% required in-lab confirmation, suppressed advanced ASV routing, and displayed the ASV contraindication
+- very severe OSA with marked hypoxic burden, BMI 44, prior PAP failure, and Inspire interest retained urgent weight/anatomy planning while withholding patient-facing nerve-stimulation candidacy
+- a current PAP user with substantial nasal obstruction continued PAP and received nasal optimization without retry/setup language
+- a pre-study patient with severe insomnia, snoring, and nasal obstruction received sleep-study, CBT-I, and nasal steps without an OSA diagnosis or OSA treatment recommendation
+**Verification:**
+- all five scenario audits passed expected-text, forbidden-text, phenotype/tag, clinician-safety, terminology-guide, Unicode-dash, and invalid-placeholder checks
+- all 13 initially generated pages were rendered and inspected; no clipping, overlap, missing text, or hierarchy failure was found
+- the central-safety report exposed a greedy-pagination edge case that created two underfilled continuation pages
+- `js/pdf-export.js` now re-measures adjacent semantic groups in an isolated page shell and merges them only when the exact rendered height fits
+- the corrected central-safety report is two balanced pages; the genuinely content-rich severe and current-PAP reports remain three pages
+- the permanent headless PDF regression asserts the central-safety fixture remains two pages
+- complete headless suite passed after the change
+**Finding:** fixed. Cross-scenario clinical behavior remained intact, and the pagination improvement applies globally rather than depending on a patient-specific exception.
