@@ -300,9 +300,19 @@ ensure_waf_operational_alerts() {
     {
       "Sid": "OwnerAccess",
       "Effect": "Allow",
-      "Principal": { "AWS": "arn:aws:iam::${account_id}:root" },
-      "Action": "SNS:*",
-      "Resource": "${topic_arn}"
+      "Principal": { "AWS": "*" },
+      "Action": [
+        "SNS:GetTopicAttributes",
+        "SNS:SetTopicAttributes",
+        "SNS:AddPermission",
+        "SNS:RemovePermission",
+        "SNS:DeleteTopic",
+        "SNS:Subscribe",
+        "SNS:ListSubscriptionsByTopic",
+        "SNS:Publish"
+      ],
+      "Resource": "${topic_arn}",
+      "Condition": { "StringEquals": { "AWS:SourceOwner": "${account_id}" } }
     },
     {
       "Sid": "AllowCloudWatchAlarmPublish",
