@@ -410,6 +410,12 @@ var PatientReport = (() => {
       hasPatientRecTag(data, 'SURG-PREF');
   }
 
+  function patientAlternativesLead(data) {
+    return Boolean(data.prefAvoidCpap) ||
+      (data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) ||
+      (data.cpapFailed && !data.cpapWillRetry);
+  }
+
   function anatomyContributorDescription(data) {
     const findings = [];
     const ftp = normalizeFtp(data.ftp);
@@ -479,9 +485,19 @@ var PatientReport = (() => {
       prefAvoidCpap: data.prefAvoidCpap,
       hasPapPlan,
     });
-    const preferredPath = isSurgeryConsultPriority(data)
-      ? 'surgical'
-      : ['starting', 'retrying', 'continuing'].includes(papState) ? 'cpap' : null;
+    let preferredPath = null;
+    if (isSurgeryConsultPriority(data)) {
+      preferredPath = 'surgical';
+    } else if (patientAlternativesLead(data)) {
+      const visibleTags = patientRecs
+        .filter(entry => patientFriendlyRec(entry.tag, entry.text || '', data) !== null)
+        .map(entry => entry.tag);
+      const leadAlternative = ['POS', 'MAD-FAVORABLE', 'MAD', 'MAD-POOR', 'SURG', 'SURGALT', 'NASAL-OPT', 'WEIGHT', 'MILD-LIFESTYLE', 'CBTI']
+        .find(tag => visibleTags.includes(tag));
+      preferredPath = ['MAD-FAVORABLE', 'MAD', 'MAD-POOR'].includes(leadAlternative) ? 'mad' : null;
+    } else if (['starting', 'retrying', 'continuing'].includes(papState)) {
+      preferredPath = 'cpap';
+    }
     return OSAReportShared.buildCarePathway({
       milestones: data.milestones,
       studyType: data.studyType,
@@ -547,7 +563,7 @@ var PatientReport = (() => {
     const stage     = getReportStage(data);
     const ctx       = getVisitContext(data);
     let title;
-    if (stage === 'pre-study') {
+    if (stage === 'pre-study' || (exists(data.primaryAHI) && data.primaryAHI < 5)) {
       title = 'Your Sleep Evaluation Summary';
     } else if (ctx.isFirstVisit) {
       title = 'Your Sleep Apnea Report';
@@ -643,8 +659,7 @@ var PatientReport = (() => {
     // Established CPAP user: the action is continuity, not a new fitting.
     if (data.cpapCurrent) return 'Keep using your CPAP, and bring any comfort issues to your next visit so we can fine-tune it.';
 
-    const alternativesLead = data.prefAvoidCpap || (data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) ||
-      (data.cpapFailed && !data.cpapWillRetry);
+    const alternativesLead = patientAlternativesLead(data);
     if (alternativesLead) {
       const alternative = firstActionFor([
         'POS', 'MAD-FAVORABLE', 'MAD', 'MAD-POOR', 'SURG', 'SURGALT',
@@ -1589,7 +1604,9 @@ ${items}`;
       add('Begin CBT-I with a trained therapist or validated digital program.', 0);
     }
 
-    if (hasPAP && !(data.hasCOMISA && tags.has('CBTI')) && !(data.cpapFailed && !data.cpapWillRetry) && !data.prefAvoidCpap && !surgeryConsultFirst) {
+    if (hasPAP && !(data.hasCOMISA && tags.has('CBTI')) &&
+        (data.cpapCurrent || (data.cpapFailed && data.cpapWillRetry) || !patientAlternativesLead(data)) &&
+        !surgeryConsultFirst) {
       if (data.cpapCurrent) {
         add('Use PAP whenever you sleep and ask your care team to address mask, pressure, dryness, or nasal comfort problems.', 0);
       } else if (data.cpapFailed && data.cpapWillRetry) {

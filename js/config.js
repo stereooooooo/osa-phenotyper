@@ -174,6 +174,7 @@ const OSA_CONFIG = {
     hstValidity: {
       tstDanger:        2,    // TST <2 hrs → danger (inadequate recording)
       tstWarning:       4,    // TST <4 hrs → warning (short recording)
+      remMinimumMinutes: 30,  // REM-specific phenotype comparisons require >=30 min REM when stage duration is known (Mokhlesi 2012; ERS review 2024)
       ahiRdiRatioLow:   0.5,  // pAHI/PAT-RDI <0.5 → AHI–RDI discrepancy warning
       tstRemCapture:    5,    // TST <5 hrs + REM AHI 0 → no-REM-captured warning
       ahiLowSymptom:    5,    // AHI <5 …
@@ -213,6 +214,7 @@ const OSA_CONFIG = {
       cai:        { min: 0,   max: 100 },
       arInd:      { min: 0,   max: 200,  warnMax: 100 },
       tst:        { min: 0,   max: 24,   warnMin: 2, warnMax: 14 },
+      remPercent: { min: 0,   max: 100 },
       snoreIdx:   { min: 0,   max: 500 },
       hbAreaPH:   { min: 0,   max: 200,  warnMax: 100 },
       hbUnder90PH:{ min: 0,   max: 100,  warnMax: 50  },

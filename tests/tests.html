@@ -19,6 +19,7 @@
 
 <!-- Load app modules (no DOM form needed for unit tests) -->
 <script src="../js/config.js"></script>
+<script src="../js/pdf-parser.js"></script>
 <script src="../js/phenotype-confidence.js"></script>
 <script src="../js/validate.js"></script>
 <script src="../js/report-shared.js"></script>
@@ -74,6 +75,9 @@ assert(T.deltaHeartRate.dhr === 10, 'delta HR threshold is 10');
 assert(T.severity.mild === 5, 'mild AHI cutoff is 5');
 assert(T.severity.moderate === 15, 'moderate AHI cutoff is 15');
 assert(T.severity.severe === 30, 'severe AHI cutoff is 30');
+assert(T.hstValidity.remMinimumMinutes === 30, 'REM phenotype sampling threshold is 30 minutes');
+assertEqual(WatchPATParser.extractRemPercent('% REM of Sleep Time: 23.1'), '23.1', 'WatchPAT REM percentage is parsed from the labeled sleep-time field');
+assertEqual(WatchPATParser.extractRemPercent('Total Sleep Time 3 hrs, 0 min  % REM of Sleep Time 5.0'), '5.0', 'WatchPAT REM percentage parser handles the space-separated PDF text layout');
 
 // ── n() helper ────────────────────────────────────────────────
 group('n() Helper');
@@ -541,6 +545,28 @@ let reportHtml = PatientReport.generateReportHTML(buildReportData({
   insufficientDataDomains: [{ patient: 'Overnight oxygen measurements were incomplete, so the oxygen-risk part of the plan may change after more data is collected.' }],
 }));
 assert(!reportHtml.includes('What may still be refined'), 'Phase 3: data-limitations callout is suppressed from the patient view (clinician-only)');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
+  recTags: [],
+}));
+assert(reportHtml.includes('Your Sleep Evaluation Summary') && !reportHtml.includes('Your Sleep Apnea Report'), 'Normal-AHI report uses an evaluation title instead of labeling the patient with sleep apnea');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 8,
+  ahi: 8,
+  severity: 'mild',
+  lowHypoxicBurden: true,
+  recTags: [
+    { tag: 'CPAP', text: 'Use PAP.' },
+    { tag: 'POS', text: 'Use positional therapy.' },
+    { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
+  ],
+}));
+assert(reportHtml.includes('Try sleeping on your side') && !reportHtml.includes('Starting PAP'), 'Mild low-oxygen-burden pathway leads with the selected alternative instead of PAP');
+assert(!reportHtml.includes('Arrange your PAP setup and use it whenever you sleep'), 'Mild alternative-first checklist does not contradict the summary by requiring immediate PAP setup');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 3,

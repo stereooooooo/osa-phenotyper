@@ -180,7 +180,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  const hnsReferenced = ctx.prefInspire || ctx.prefSurgery || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
+  const hnsReferenced = ctx.prefInspire || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
   if (hnsReferenced && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
     const hnsMissing = [];
     if (!ctx.hasDISEData) hnsMissing.push('DISE');
@@ -954,6 +954,18 @@ function buildHstFlags(m, T){
     }
   }
 
+  // REM-specific comparisons are unstable when too little REM sleep was
+  // observed. Keep the raw stage indices visible to the clinician, but flag
+  // that REM phenotype and REM-specific treatment conclusions were suppressed.
+  if (exists(m.remMinutes) && m.remMinutes < HST.remMinimumMinutes) {
+    const percentText = exists(m.remPercent) ? `${m.remPercent}%` : 'a small percentage';
+    flags.push({
+      severity: 'warning',
+      flag: 'Limited REM sampling',
+      detail: `REM sleep was ${percentText} of total sleep (approximately ${Math.round(m.remMinutes)} minutes). This is below the 30 minutes commonly required for a confident REM-versus-NREM comparison. REM-specific phenotype and treatment conclusions were suppressed.`,
+    });
+  }
+
   // 2. AHI–RDI discrepancy (may indicate signal artifact or scoring issues)
   if (exists(m.ahi) && exists(m.patRdi) && m.patRdi > 0) {
     const ahiRdiRatio = m.ahi / m.patRdi;
@@ -1378,7 +1390,7 @@ function buildClinicianReport(f, m, T){
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
-    recTags, remAhi, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
+    recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
   } = m;
 
   /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
@@ -1417,7 +1429,7 @@ function buildClinicianReport(f, m, T){
   /* ─── HST Validity Assessment ────────────────────────────── */
   const hstFlags = buildHstFlags({
     tst: n(f.get('tst')), patRdi: n(f.get('patRdi')),
-    ahi, remAhi, nremAhi, ess, pahic3, csr, sup, nons
+    ahi, remAhi, nremAhi, remPercent, remMinutes, ess, pahic3, csr, sup, nons
   }, T);
 
   // Build HST validity HTML
@@ -1950,6 +1962,7 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ── Proceed with phenotyping ───────────────────────────────── */
   const f = new FormData(e.target);
+  const studyType = f.get('studyType') || null;
 
   const out = { phen:[], why:{}, recs:[] };  // phen/why populated by detectPhenotypes() below
 
@@ -1998,8 +2011,17 @@ document.getElementById('form').addEventListener('submit', e => {
   const cpapRefused   = cpapFailed && cpapRetry === 'No';
   const cpapWillRetry = cpapFailed && (cpapRetry === 'Yes' || cpapRetry === 'Maybe');
 
-  const remAhi  = n(f.get('ahiREM'))  ?? n(f.get('remPahi'));
+  const psgRemAhi = n(f.get('ahiREM'));
+  const hstRemAhi = n(f.get('remPahi'));
+  const remAhi  = psgRemAhi ?? hstRemAhi;
   const nremAhi = n(f.get('ahiNREM')) ?? n(f.get('nremPahi'));
+  const tst = n(f.get('tst'));
+  const remPercent = studyType === 'psg' ? null : n(f.get('remPercent'));
+  const usesHstStageEstimate = !exists(psgRemAhi) && exists(hstRemAhi) && ['watchpat', 'both'].includes(studyType);
+  const remMinutes = usesHstStageEstimate && exists(tst) && exists(remPercent) ? tst * 60 * remPercent / 100 : null;
+  const remStageAdequate = !exists(remMinutes) || remMinutes >= T.hstValidity.remMinimumMinutes;
+  const remAhiForPhenotyping = remStageAdequate ? remAhi : null;
+  const nremAhiForPhenotyping = remStageAdequate ? nremAhi : null;
 
   const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
   const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
@@ -2108,7 +2130,7 @@ document.getElementById('form').addEventListener('submit', e => {
       bmi, neck, neckThreshold, tons, mall, ahi,
       edwardsArTH,
       loopGainSupportCount, csr, pahic3, pahic4, cai, cvd,
-      remAhi, nremAhi, sup, nons,
+      remAhi: remAhiForPhenotyping, nremAhi: nremAhiForPhenotyping, sup, nons,
       hbPH, odi, nadir, t90, hb90PH,
       noseScore, nasalObs, ctSeptum, ctTurbs, dhr
     }, T);
@@ -2142,7 +2164,7 @@ document.getElementById('form').addEventListener('submit', e => {
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
-    recTags, remAhi, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
+    recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
   }, T);
 
   // ── Populate analysis data for patient report ──
@@ -2165,6 +2187,9 @@ document.getElementById('form').addEventListener('submit', e => {
     nonSupPahi: n(f.get('nonSupPahi')),
     remPahi: n(f.get('remPahi')),
     nremPahi: n(f.get('nremPahi')),
+    remPercent,
+    remMinutes,
+    remStageAdequate,
     ahiSup: n(f.get('ahiSup')),
     ahiNonSup: n(f.get('ahiNonSup')),
     ahiREM: n(f.get('ahiREM')),
@@ -2175,7 +2200,7 @@ document.getElementById('form').addEventListener('submit', e => {
     hbUnder90PH: hb90PH,
     t90,
     snoreIdx: n(f.get('snoreIdx')),
-    tst: n(f.get('tst')),
+    tst,
     arInd,
     cpapCurrent,
     cpapFailed,
@@ -2215,7 +2240,7 @@ document.getElementById('form').addEventListener('submit', e => {
     collapsibility,
     dhr,
     milestones: [...document.querySelectorAll('#patientMilestones input:checked')].map(cb => cb.value),
-    studyType: document.querySelector('input[name="studyType"]:checked')?.value || null,
+    studyType,
     cpapPressure: n(f.get('cpapPressure')),
     weightLossReadiness,
     age: n(f.get('age')),

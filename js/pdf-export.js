@@ -190,18 +190,18 @@ const OSAPdfExport = (() => {
     /* Applied only when the normal-density paginator would leave a sparse final
        page and a modest density change can remove that page. This is bounded,
        print-only compaction—not a fixed two-page rule. */
-    .patient-report.pdf-report-compact { font-size: 12.5px; line-height: 1.52; }
-    .patient-report.pdf-report-compact .report-header { margin-bottom: 14px; padding-bottom: 8px; }
+    .patient-report.pdf-report-compact { font-size: 12.25px; line-height: 1.5; }
+    .patient-report.pdf-report-compact .report-header { margin-bottom: 8px; padding-bottom: 8px; }
     .patient-report.pdf-report-compact .report-logo { height: 40px; }
-    .patient-report.pdf-report-compact h2 { margin-top: 20px; margin-bottom: 7px; }
-    .patient-report.pdf-report-compact .report-terms { margin-bottom: 15px; padding: 7px 0 9px; }
+    .patient-report.pdf-report-compact h2 { margin-top: 10px; margin-bottom: 7px; }
+    .patient-report.pdf-report-compact .report-terms { margin-bottom: 8px; padding: 6px 0 8px; }
     .patient-report.pdf-report-compact .report-terms h2 { margin-bottom: 7px; }
     .patient-report.pdf-report-compact .report-terms-list { gap: 6px 18px; }
     .patient-report.pdf-report-compact .report-term { gap: 1px; }
     .patient-report.pdf-report-compact .report-term dt { font-size: 10px; line-height: 1.3; }
     .patient-report.pdf-report-compact .report-term dd { font-size: 9.5px; line-height: 1.35; }
-    .patient-report.pdf-report-compact .report-summary-card { margin-bottom: 15px; padding: 10px 13px; }
-    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 15px; padding: 9px 14px; }
+    .patient-report.pdf-report-compact .report-summary-card { margin-bottom: 8px; padding: 10px 13px; }
+    .patient-report.pdf-report-compact .care-pathway { margin-bottom: 8px; padding: 9px 14px; }
     .patient-report.pdf-report-compact .care-summary-card { margin-bottom: 18px; padding: 10px 14px; }
     .patient-report.pdf-report-compact .ahi-scale { margin: 9px 0; }
     .patient-report.pdf-report-compact .phenotype-item { margin-bottom: 12px; }
@@ -366,13 +366,11 @@ const OSAPdfExport = (() => {
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('p')) {
             nodes.push(children[i + 1]);
             i++;
-            if (
-              children[i + 1] instanceof HTMLElement &&
-              children[i + 1].matches('.phenotype-item')
-            ) {
-              nodes.push(children[i + 1]);
-              i++;
-            }
+            /* Keep the section heading with its introductory paragraph, but
+               allow each contributor card to paginate independently. Bundling
+               the first full contributor card here can force a premature page
+               break and leave three half-empty pages even when the report fits
+               comfortably on two. */
             if (
               children[i + 1] instanceof HTMLElement &&
               children[i + 1].matches('.checklist-group')
@@ -546,7 +544,11 @@ const OSAPdfExport = (() => {
     const measureHost = document.createElement('div');
     measureHost.style.cssText = 'position:absolute; left:-9999px; top:0;';
     document.body.appendChild(measureHost);
-    const pageFitLimit = Math.max(1, pageCssHeight - 24);
+    /* pageCssHeight already excludes the PDF footer and margins. Keep only a
+       small rounding cushion here. The previous extra 24px reserve duplicated
+       that safety margin on every page and routinely turned a two-page report
+       into three half-empty pages. */
+    const pageFitLimit = Math.max(1, pageCssHeight - 4);
 
     try {
       const normalPlan = measurePatientPagination(reportRoot, units, measureHost, pageFitLimit);

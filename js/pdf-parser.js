@@ -36,6 +36,7 @@ const WatchPATParser = (() => {
 
     // Page 2 — Sleep Time
     { name: 'tst',        label: 'Total Sleep Time (hrs)', section: 'sleep' },
+    { name: 'remPercent', label: 'REM sleep (%)',          section: 'sleep' },
 
     // Page 4 — Body Position Statistics
     { name: 'supPahi',    label: 'Supine pAHI',      section: 'position' },
@@ -52,6 +53,11 @@ const WatchPATParser = (() => {
    *   fields: Array of {name, label, value, confidence}
    *   raw: full extracted text for debugging
    */
+  function extractRemPercent(text) {
+    const match = String(text || '').match(/%\s*REM\s+of\s+Sleep\s+Time:?\s*([\d.]+)/i);
+    return match ? match[1] : null;
+  }
+
   async function parse(file) {
     if (window.OSALibs && window.OSALibs.loadPdfParsing) {
       await window.OSALibs.loadPdfParsing();
@@ -220,6 +226,14 @@ const WatchPATParser = (() => {
       }
     }
 
+    // WatchPAT prints this directly in the Sleep Time section, for example:
+    // "% REM of Sleep Time: 23.1". Capture the reported value instead of
+    // estimating it from stage-specific event indices.
+    const remPercent = extractRemPercent(p2);
+    if (remPercent !== null) {
+      results.push({ name: 'remPercent', label: 'REM sleep (%)', value: remPercent, confidence: 'high' });
+    }
+
     // ── Page 4: Body Position Statistics ───────────────────────
     const p4 = pageTexts[3] || '';
 
@@ -242,7 +256,7 @@ const WatchPATParser = (() => {
     return { fields: results, notFound, raw: allText };
   }
 
-  return { parse, FIELDS };
+  return { parse, FIELDS, extractRemPercent };
 })();
 
 

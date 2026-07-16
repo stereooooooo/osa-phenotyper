@@ -135,6 +135,10 @@ const PROFILES = [
   { id:38, name:'CCC device-specific review',  f:{age:'52',sex:'M',bmi:'30',pahi:'28',ess:'14',isi:'5',tonsils:'2',ftp:'II',neck:'15.5',vDeg:'2',vPat:'Concentric',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','prefInspire'] },
   // #39: BMI > 40 with full workup and interest — above the current Capital ENT referral guardrail, so no patient-facing candidacy recommendation is emitted.
   { id:39, name:'Nerve-stim excluded (BMI>40)',  f:{age:'52',sex:'M',bmi:'42',pahi:'40',ess:'16',isi:'5',tonsils:'2',ftp:'II',neck:'17',vDeg:'1',vPat:'AP',cpapHelped:'No',cpapRetry:'No'}, c:['priorCpap','prefInspire'] },
+  // Group 10: quality and pathway guardrails added after cross-scenario report auditing.
+  { id:40, name:'Limited REM sample', f:{age:'46',sex:'F',bmi:'27',pahi:'7',ess:'16',isi:'8',tst:'3',remPercent:'5',remPahi:'24',nremPahi:'6',supPahi:'12',nonSupPahi:'4',odi:'6',nadir:'88',t90:'1',tonsils:'1',ftp:'II',noseScore:'8'}, c:[] },
+  { id:41, name:'Surgery preference without HNS interest', f:{age:'40',sex:'M',bmi:'24',pahi:'18',ess:'10',isi:'5',tonsils:'4',ftp:'I'}, c:['prefSurgery'] },
+  { id:42, name:'PSG REM data ignores stale HST duration', studyType:'psg', f:{age:'40',sex:'F',bmi:'25',ahi:'12',ahiREM:'28',ahiNREM:'8',tst:'3',remPercent:'5',remPahi:'24',nremPahi:'6',ess:'10',isi:'5'}, c:[] },
 ];
 
 /* ── Golden baseline ───────────────────────────────────────────────────────
@@ -185,11 +189,14 @@ const PHENOTYPE_BASELINE = {
   // CCC to Genio; #39 stays above the app's referral guardrail.
   38: { phen: [], tags: ["CPAP", "WEIGHT", "SURG", "INSPIRE-EVAL", "MAD", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
   39: { phen: ["High Anatomical Contribution"], tags: ["CPAP", "WEIGHT", "SURG", "CPAP-ALT", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
+  40: { phen: ["Low Arousal Threshold", "Positional OSA"], tags: ["CPAP", "CPAP-OPT", "POS", "MAD-FAVORABLE", "MAD-WORKUP"] },
+  41: { phen: [], tags: ["CPAP", "SOFT-TISSUE-STRONG", "SURG", "SURG-PREF", "MAD-FAVORABLE", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
+  42: { phen: ["REM-Predominant OSA"], tags: ["CPAP", "MAD-FAVORABLE", "REM-CHECK", "REM-MAD", "MAD-WORKUP"] },
 };
 
 function applyProfile(win, doc, p) {
   doc.getElementById('form').reset();
-  chooseRadio(win, 'studyType', 'watchpat');
+  chooseRadio(win, 'studyType', p.studyType || 'watchpat');
   setId(win, 'patientName', 'Profile ' + p.id);
   setId(win, 'patientDob', '1980-01-01');
   for (const [k, v] of Object.entries(p.f)) setField(win, k, v);
@@ -231,6 +238,25 @@ async function runMatrix() {
       const recommendationText = (data.recTags || []).map(rec => rec.text || '').join(' ');
       assert(recommendationText.includes('Do not automatically route to Genio'), '#38 CCC: clinician recommendation requires device-specific review instead of auto-routing to Genio');
       assert(!recommendationText.includes('indicated for CCC'), '#38 CCC: recommendation does not claim Genio is indicated for complete concentric collapse');
+    }
+
+    if (p.id === 40 && fresh) {
+      const tags = (data.recTags || []).map(rec => rec.tag);
+      const patientHtml = win.PatientReport.generateReportHTML(data);
+      assert(data.remPercent === 5 && Math.abs(data.remMinutes - 9) < 0.01, '#40 limited REM: percentage is stored and converted to REM minutes');
+      assert(data.remStageAdequate === false, '#40 limited REM: REM stage comparison is marked inadequate');
+      assert(!tags.includes('REM-CHECK') && !tags.includes('REM-MAD'), '#40 limited REM: REM-specific treatment tags are suppressed');
+      assert(!patientHtml.includes('Worse during dream (REM) sleep'), '#40 limited REM: patient report does not overstate a REM phenotype');
+      assert(((doc.getElementById('clinicianReport') || {}).innerHTML || '').includes('Limited REM sampling'), '#40 limited REM: clinician report shows the quality flag');
+    }
+
+    if (p.id === 41 && fresh) {
+      const tags = (data.recTags || []).map(rec => rec.tag);
+      assert(!tags.includes('HNS-WORKUP'), '#41 surgery preference: does not trigger an unrelated HNS workup');
+    }
+
+    if (p.id === 42 && fresh) {
+      assert(data.remMinutes === null && data.remStageAdequate === true, '#42 PSG REM: stale hidden HST duration does not suppress PSG stage data');
     }
 
     const phen = fresh ? (data.phen || []).slice() : ['<stale-or-validation-blocked>'];

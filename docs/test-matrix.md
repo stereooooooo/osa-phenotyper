@@ -265,3 +265,14 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 |---|------|-------------|
 | 130 | Moderate oxygen-language calibration | Moderate-range oxygen abnormalities on a real-looking post-study chart should use action-oriented but non-alarmist patient wording, especially for nadir and hypoxic-burden explanations |
 | 131 | Treatment-plan workup separation | When first-line therapies and prerequisite workup tags coexist, the patient plan should lead with actual therapies and move prerequisite workup items into a separate bucket instead of letting them dominate `Start Now` |
+
+### Group 32: Study-Quality And Cross-Scenario Report Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 132 | WatchPAT REM percentage import | The PDF parser should read the explicitly labeled `% REM of Sleep Time` value, map it to `remPercent`, persist it with the chart, and reproduce the known 23.1% value from the repository WatchPAT fixture |
+| 133 | Limited REM phenotype guardrail | When reported REM percentage and total sleep time yield less than 30 minutes of REM, the clinician report should flag limited REM sampling while REM-predominant phenotypes and REM-specific treatment tags stay suppressed |
+| 134 | Mild alternative-first consistency | For mild OSA with a lower-risk oxygen profile, the summary, care journey, treatment order, and first-30-day checklist should lead with the selected alternative instead of simultaneously requiring immediate PAP setup |
+| 135 | Normal-AHI report identity | A normal-AHI report should use `Your Sleep Evaluation Summary` rather than labeling the patient handout as a sleep apnea report |
+| 136 | Surgery preference without HNS routing | A general preference to discuss airway surgery should not create an HNS workup unless Inspire or another nerve-stimulation pathway is actually referenced |
+| 137 | Adaptive patient-PDF pagination | Semantic contributor units and bounded compact styling should remove sparse third pages when a report fits safely on two, while genuinely content-rich reports retain additional pages |
+| 138 | HST-to-PSG stage-data isolation | When a chart switches to PSG or combined testing, stale hidden HST REM percentage and duration values must not suppress valid PSG REM/NREM indices |

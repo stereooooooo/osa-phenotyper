@@ -85,6 +85,8 @@ async function run() {
   setValue(win, '[name="tonsils"]', '2');
   setValue(win, '[name="ftp"]', 'III');
   setValue(win, '[name="pahi"]', '28');
+  setValue(win, '[name="tst"]', '6');
+  setValue(win, '[name="remPercent"]', '23.1');
   setValue(win, '[name="supPahi"]', '42');
   setValue(win, '[name="nonSupPahi"]', '9');
 
@@ -147,6 +149,7 @@ async function run() {
   doc.querySelector('#patientListBody tr').click();
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'chart loaded');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Selected chart rehydrates identity fields');
+  assertEqual(doc.querySelector('[name="remPercent"]').value, '23.1', 'Imported REM percentage persists when the chart is reopened');
 
   click(win, '#btnPatientList');
   setValue(win, '#patientSearch', '1984-03-12');

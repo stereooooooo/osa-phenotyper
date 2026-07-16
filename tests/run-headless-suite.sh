@@ -101,6 +101,9 @@ run_suite() {
 
 TOTAL_PASSED=0
 
+PARSER_PASSED="$(node "${REPO_ROOT}/tests/watchpat-parser-integration.cjs")"
+TOTAL_PASSED=$((TOTAL_PASSED + PARSER_PASSED))
+
 CORE_PASSED="$(run_suite "tests/tests.html" "core regression suite" 5000)"
 TOTAL_PASSED=$((TOTAL_PASSED + CORE_PASSED))
 

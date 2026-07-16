@@ -4,6 +4,17 @@
 
 ---
 
+## July 16, 2026 REM Import, Quality Guardrail, And Global Report Audit
+
+- Headless regression suite: **407 assertions passed**, including a full-parser integration test against `WatchPATReport.pdf` and an HST-to-PSG stage-data isolation check.
+- Confirmed the parser imports `% REM of Sleep Time: 23.1` as a high-confidence `remPercent` field and that the value persists after chart reload.
+- Added a clinician-only limited-REM flag based on reported REM percentage and total sleep time. When REM duration is below 30 minutes, the raw REM AHI remains available to the clinician, but REM phenotyping and REM-specific treatment recommendations are suppressed.
+- Corrected cross-scenario report behavior: normal-AHI reports use an evaluation title, mild lower-oxygen-risk reports keep summary/pathway/checklist priorities aligned, and a general surgery preference no longer triggers an unrelated HNS workup.
+- Re-rendered five synthetic reports through the production jsPDF/html2canvas path. Limited HST, normal-AHI/UARS, anatomy-forward surgery, and oral-appliance-safety scenarios each rendered in **2 pages**; the content-rich COMISA/PAP-retry/nasal scenario appropriately remained **3 pages**.
+- Visually inspected all **11 PDF pages**. No clipping, overlapping content, missing terminology guide, invalid placeholders, prohibited Unicode dash characters, or scenario-specific content contradictions were found.
+
+---
+
 ## July 16, 2026 Five-Scenario Patient Report Audit
 
 - Headless regression suite: **371 assertions passed**.

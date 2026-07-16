@@ -508,6 +508,7 @@
         <!-- REM/NREM -->
         <div class="osa-field"><label class="form-label">pAHI REM</label><input type="number" step="0.1" name="remPahi" class="form-control" min="0" max="200"></div>
         <div class="osa-field"><label class="form-label">pAHI NREM</label><input type="number" step="0.1" name="nremPahi" class="form-control" min="0" max="200"></div>
+        <div class="osa-field"><label class="form-label">REM Sleep (%)</label><input type="number" step="0.1" name="remPercent" class="form-control" min="0" max="100"></div>
         <!-- Central / Loop Gain -->
         <div class="osa-field"><label class="form-label">% CSR</label><input type="number" step="0.1" name="csr" class="form-control" min="0" max="100"></div>
         <div class="osa-field"><label class="form-label">pAHIc 3%</label><input type="number" step="0.1" name="pahic" class="form-control" min="0" max="100"></div>
@@ -1051,7 +1052,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
-    'sleep-study': ['pahi','odi','nadir','supPahi','nonSupPahi','remPahi','nremPahi','csr','pahic','pahic4','hbAreaPH','hbUnder90PH','t90','patRdi','tst','snoreIdx','dhr','ahi','ahiSup','ahiNonSup','ahiREM','ahiNREM','cai','arInd','nadirPsg']
+    'sleep-study': ['pahi','odi','nadir','supPahi','nonSupPahi','remPahi','nremPahi','remPercent','csr','pahic','pahic4','hbAreaPH','hbUnder90PH','t90','patRdi','tst','snoreIdx','dhr','ahi','ahiSup','ahiNonSup','ahiREM','ahiNREM','cai','arInd','nadirPsg']
   };
   const steps = document.querySelectorAll('.osa-progress-step');
   const form = document.getElementById('form');
