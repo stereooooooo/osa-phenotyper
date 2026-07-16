@@ -1,6 +1,16 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** July 15, 2026
+**Latest smoke test:** July 16, 2026
 **Latest app version:** staging build `587589e` (`fix(report): improve pagination and terminology`)
+
+---
+
+## July 16, 2026 Patient Terminology Completion
+
+- Headless regression suite: **349 assertions passed**.
+- Corrected the PAP definition to describe the machine and mask accurately.
+- Added conditional definitions for `Oral appliance` and `Nerve stimulation`, selected only when those concepts appear in the patient report.
+- Re-rendered and visually inspected the real three-page jsPDF/html2canvas PAP-retry fixture. The expanded terminology guide remains readable, all continuation labels and content blocks are intact, and no content is clipped or crowded.
+- `pdfinfo` confirmed Letter-size output with no embedded JavaScript; searchable-text checks confirmed all three updated definitions and found no prohibited Unicode dash characters.
 
 ---
 

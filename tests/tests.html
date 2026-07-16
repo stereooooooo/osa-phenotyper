@@ -808,10 +808,11 @@ assert(!reportHtml.includes('apnea-versus-hypopnea breakdown needed to interpret
 const terminologyIndex = reportHtml.indexOf('Terms used in this report');
 const summaryIndex = reportHtml.indexOf('report-summary-card');
 assert(terminologyIndex >= 0 && terminologyIndex < summaryIndex, 'Conditional terminology guide appears before the clinical narrative');
-['AHI', 'PAP', 'CBT-I', 'COMISA', 'BMI', 'DISE'].forEach(term => {
+['AHI', 'PAP', 'CBT-I', 'COMISA', 'BMI', 'DISE', 'Oral appliance', 'Nerve stimulation'].forEach(term => {
   const terminologyHTML = reportHtml.slice(terminologyIndex, summaryIndex);
   assert(terminologyHTML.includes(`<dt>${term}</dt>`) || terminologyHTML.includes(`<dt>${term} `), `${term} is defined before its first clinical use`);
 });
+assert(reportHtml.includes('a treatment that uses a machine and mask to deliver gentle air pressure'), 'PAP terminology accurately describes both the machine and mask');
 assert(reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>Oxygen burden</dt>'), 'Oxygen burden is defined before its first clinical use');
 assert(!reportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
 assert(!/[\u2010-\u2015\u2212]/.test(reportHtml), 'Patient handout output contains no typographic dash characters');

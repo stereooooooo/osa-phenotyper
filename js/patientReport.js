@@ -85,7 +85,7 @@ var PatientReport = (() => {
     {
       label: 'PAP',
       patterns: [/\bPAP\b/],
-      definition: 'Positive airway pressure: a mask device that uses gentle air pressure to keep the airway open.',
+      definition: 'Positive airway pressure: a treatment that uses a machine and mask to deliver gentle air pressure and keep the airway open.',
     },
     {
       label: 'CPAP',
@@ -153,9 +153,9 @@ var PatientReport = (() => {
       definition: 'Polysomnography: a detailed sleep study performed in a sleep laboratory.',
     },
     {
-      label: 'HNS or HGNS',
-      patterns: [/\bHNS\b/, /\bHGNS\b/],
-      definition: 'Hypoglossal nerve stimulation: an implanted treatment that activates tongue muscles during sleep.',
+      label: 'Nerve stimulation',
+      patterns: [/\bHNS\b/, /\bHGNS\b/, /\b(?:hypoglossal )?nerve stimulation\b/i, /nerve-stimulation/i],
+      definition: 'Hypoglossal nerve stimulation (HNS or HGNS): an implanted treatment that activates tongue muscles during sleep to help keep the airway open.',
     },
     {
       label: 'TMJ',
@@ -193,9 +193,9 @@ var PatientReport = (() => {
       definition: 'Related to the heart and blood vessels.',
     },
     {
-      label: 'Mandibular advancement device',
-      patterns: [/mandibular advancement device/i],
-      definition: 'A custom oral appliance that moves the lower jaw forward during sleep to help keep the airway open.',
+      label: 'Oral appliance',
+      patterns: [/oral appliance/i, /mandibular advancement device/i],
+      definition: 'A custom dental device worn during sleep that holds the lower jaw forward to help keep the airway open.',
     },
     {
       label: 'UPPP',
