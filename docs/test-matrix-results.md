@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 16, 2026
-**Latest app version:** staging build `587589e` (`fix(report): improve pagination and terminology`)
+**Latest app version:** staging build `2846b36` (`fix(report): complete patient terminology definitions`)
 
 ---
 
@@ -11,6 +11,7 @@
 - Added conditional definitions for `Oral appliance` and `Nerve stimulation`, selected only when those concepts appear in the patient report.
 - Re-rendered and visually inspected the real three-page jsPDF/html2canvas PAP-retry fixture. The expanded terminology guide remains readable, all continuation labels and content blocks are intact, and no content is clipped or crowded.
 - `pdfinfo` confirmed Letter-size output with no embedded JavaScript; searchable-text checks confirmed all three updated definitions and found no prohibited Unicode dash characters.
+- Deployed to clinician-only staging and verified CloudFront serves build `2846b36`; the live patient-report asset checksum matches the tested local file.
 
 ---
 
