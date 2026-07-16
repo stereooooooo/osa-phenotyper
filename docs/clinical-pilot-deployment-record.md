@@ -53,25 +53,37 @@ This record documents technical verification. It is not a declaration of HIPAA c
 - [x] All alarms initially reported `OK`
 - [x] CloudTrail delivered encrypted audit files to the dedicated audit bucket
 - [x] A PHI-free API access-log event was retrieved and contained only request ID, source IP, time, route, status, response length, and integration status
-- [ ] Confirm the regional SNS email subscription
-- [ ] Confirm the CloudFront/WAF SNS email subscription
+- [x] Confirm the regional SNS email subscription (`raymondbrown@gmail.com`)
+- [x] Confirm the CloudFront/WAF SNS email subscription (`drbrown@capitalent.com`)
 - [ ] Send and receive one PHI-free regional test alarm
 - [ ] Send and receive one PHI-free WAF test alarm
 
+Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destination mailboxes still requires human confirmation.
+
 ## Required synthetic rehearsal
 
-- [ ] Complete the initial administrator password change and software-token MFA enrollment
+- [x] Complete the initial administrator password change and software-token MFA enrollment
 - [ ] Create an individual non-admin clinician account and verify MFA
-- [ ] Create one unmistakably synthetic patient chart
-- [ ] Save, search, reload, edit, and re-analyze the chart
-- [ ] Generate clinician and patient reports
-- [ ] Edit the patient report, save/reopen a snapshot, and download its PDF
-- [ ] Save and reopen a structured follow-up
+- [x] Create one unmistakably synthetic patient chart
+- [x] Save, search, reload, edit, and re-analyze the chart
+- [x] Generate clinician and patient reports
+- [x] Edit the patient report, save/reopen a snapshot, and download its PDF
+- [x] Save and reopen a structured follow-up
 - [ ] Archive and restore as an administrator
 - [ ] Verify a clinician cannot use administrator-only archive/restore actions
 - [ ] Retrieve the synthetic create/read/update/archive audit evidence
-- [ ] Restore the synthetic table to a temporary DynamoDB table using PITR, verify the item, and remove the temporary restore table
+- [x] Restore the synthetic table to a temporary DynamoDB table using PITR, verify the item, and remove the temporary restore table
 - [ ] Rehearse the approved EHR report-upload and downtime workflows
+
+### Synthetic rehearsal evidence, 2026-07-16
+
+- Synthetic chart: `SYNTHETIC PILOT, Avery`, MRN `SYN-PILOT-001`, patient ID `cdf0ca29-1216-4424-9a14-4e9aa5aa75a7`
+- Exact-MRN search and reload preserved the clinical form values.
+- Clinician and patient reports generated. The patient report was edited, saved as a snapshot, reopened, and exported as `Sleep_Report_SYNTHETIC_PILOT_Avery_2026-07-16.pdf`.
+- One structured PAP follow-up was saved and reopened with status, response, adherence, next action, weight, ESS, ISI, and repeat AHI intact.
+- The record's visit history attributed `Created`, `Data updated`, `Report snapshot saved`, and `Follow-up recorded` to `drbrown@capitalent.com`.
+- CloudWatch recorded PHI-free `patient_search` and `patient_record_viewed` events. CloudTrail recorded the corresponding DynamoDB `PutItem`, `GetItem`, and `UpdateItem` data events under the pilot Lambda role.
+- PITR restored the source table as temporary table `osa-patients-capital-ent-precision-sleep-pilot-restore-drill-20260716` at `2026-07-16T11:59:14.733-05:00`. The restored table was KMS encrypted and contained the expected synthetic chart and saved report snapshot. The follow-up was recorded after the selected restore time and was therefore correctly absent. The temporary table was deleted after verification.
 
 ## Required organizational approval
 
