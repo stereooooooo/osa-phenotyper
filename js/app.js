@@ -2251,11 +2251,78 @@ document.getElementById('form').addEventListener('submit', e => {
 const reportOverlay = document.getElementById('reportOverlay');
 const reportCloseButton = document.getElementById('btnCloseReport');
 const saveReportSnapshotButton = document.getElementById('btnSaveReportSnapshot');
+const reportEditButton = document.getElementById('btnEditReport');
+const reportResetButton = document.getElementById('btnResetReportEdits');
+const reportEditStatus = document.getElementById('reportEditStatus');
+const reportPreviewContent = document.getElementById('reportPreviewContent');
 let lastReportTrigger = null;
+let reportOriginalHtml = '';
+let reportHasEdits = false;
+let reportIsEditing = false;
+
+function setReportEditStatus(message) {
+  if (reportEditStatus) reportEditStatus.textContent = message;
+}
+
+function getEditableReportRoot() {
+  return reportPreviewContent?.querySelector('.patient-report') || null;
+}
+
+function getCleanReportPreviewHtml() {
+  if (!reportPreviewContent) return '';
+  const clone = reportPreviewContent.cloneNode(true);
+  clone.querySelectorAll('[contenteditable]').forEach(el => {
+    el.removeAttribute('contenteditable');
+    el.removeAttribute('role');
+    el.removeAttribute('aria-label');
+    el.removeAttribute('aria-multiline');
+    el.removeAttribute('spellcheck');
+  });
+  return clone.innerHTML;
+}
+
+function setReportEditing(enabled, options = {}) {
+  const root = getEditableReportRoot();
+  reportIsEditing = Boolean(enabled && root);
+  reportOverlay?.classList.toggle('report-editing', reportIsEditing);
+
+  if (root) {
+    if (reportIsEditing) {
+      root.setAttribute('contenteditable', 'true');
+      root.setAttribute('role', 'textbox');
+      root.setAttribute('aria-label', 'Editable patient report');
+      root.setAttribute('aria-multiline', 'true');
+      root.setAttribute('spellcheck', 'true');
+    } else {
+      root.removeAttribute('contenteditable');
+      root.removeAttribute('role');
+      root.removeAttribute('aria-label');
+      root.removeAttribute('aria-multiline');
+      root.removeAttribute('spellcheck');
+    }
+  }
+
+  if (reportEditButton) {
+    reportEditButton.setAttribute('aria-pressed', reportIsEditing ? 'true' : 'false');
+    reportEditButton.innerHTML = reportIsEditing
+      ? '<i class="bi bi-check-lg"></i> Done Editing'
+      : '<i class="bi bi-pencil"></i> Edit Report';
+  }
+  if (reportResetButton) reportResetButton.disabled = !reportHasEdits;
+
+  if (!options.keepStatus) {
+    setReportEditStatus(reportIsEditing
+      ? 'Editing is on. Changes will be used for the snapshot and PDF.'
+      : reportHasEdits
+        ? 'Edited preview. Save a snapshot to keep it in the chart.'
+        : 'Review before saving or downloading.');
+  }
+  if (reportIsEditing && options.focus !== false) window.setTimeout(() => root?.focus(), 0);
+}
 
 function getReportFocusableElements() {
   if (!reportOverlay) return [];
-  return [...reportOverlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+  return [...reportOverlay.querySelectorAll('button, [href], input, select, textarea, [contenteditable="true"], [tabindex]:not([tabindex="-1"])')]
     .filter(el => !el.disabled && el.offsetParent !== null);
 }
 
@@ -2269,15 +2336,19 @@ function openReportOverlay(triggerEl) {
 function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false) {
   if (!reportOverlay) return;
   lastReportTrigger = triggerEl || document.activeElement;
-  document.getElementById('reportPreviewContent').innerHTML = html;
+  reportOriginalHtml = html;
+  reportHasEdits = false;
+  if (reportPreviewContent) reportPreviewContent.innerHTML = html;
   reportOverlay.classList.add('active');
   document.body.classList.add('report-preview-open');
   if (saveReportSnapshotButton) saveReportSnapshotButton.disabled = !allowSnapshotSave;
+  setReportEditing(false, { focus: false });
   window.setTimeout(() => reportCloseButton?.focus(), 0);
 }
 
 function closeReportOverlay() {
   if (!reportOverlay) return;
+  setReportEditing(false, { focus: false, keepStatus: true });
   reportOverlay.classList.remove('active');
   document.body.classList.remove('report-preview-open');
   const returnFocusEl = lastReportTrigger instanceof HTMLElement ? lastReportTrigger : document.getElementById('btnGenerateReport');
@@ -2288,9 +2359,39 @@ document.getElementById('btnGenerateReport')?.addEventListener('click', (e) => {
   openReportOverlay(e.currentTarget);
 });
 
+reportEditButton?.addEventListener('click', () => {
+  setReportEditing(!reportIsEditing);
+});
+
+reportResetButton?.addEventListener('click', () => {
+  if (!reportHasEdits || !reportPreviewContent) return;
+  if (!window.confirm('Reset all clinician edits and restore the generated report?')) return;
+  reportPreviewContent.innerHTML = reportOriginalHtml;
+  reportHasEdits = false;
+  setReportEditing(false, { focus: false });
+  setReportEditStatus('Generated report restored.');
+});
+
+reportPreviewContent?.addEventListener('input', () => {
+  if (!reportIsEditing) return;
+  reportHasEdits = true;
+  if (reportResetButton) reportResetButton.disabled = false;
+  setReportEditStatus('Editing is on. Changes will be used for the snapshot and PDF.');
+});
+
+/* Prevent pasted web content from bringing foreign fonts, colors, or hidden
+   elements into a clinical handout. The clinician can still revise all text. */
+reportPreviewContent?.addEventListener('paste', (event) => {
+  if (!reportIsEditing) return;
+  event.preventDefault();
+  const plainText = event.clipboardData?.getData('text/plain') || '';
+  document.execCommand('insertText', false, plainText);
+});
+
 document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', async (e) => {
   if (!lastAnalysisData || !window.OSAChartActions?.saveReportSnapshot) return;
-  const currentHtml = document.getElementById('reportPreviewContent')?.innerHTML || '';
+  setReportEditing(false, { focus: false, keepStatus: true });
+  const currentHtml = getCleanReportPreviewHtml();
   await window.OSAChartActions.saveReportSnapshot({
     analysisData: lastAnalysisData,
     patientReportHtml: currentHtml,
@@ -2298,15 +2399,24 @@ document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', asyn
     patientName: lastAnalysisData.patientName,
     triggerEl: e.currentTarget,
   });
+  setReportEditStatus(reportHasEdits
+    ? 'Edited report snapshot saved to the chart.'
+    : 'Report snapshot saved to the chart.');
 });
 
 reportCloseButton?.addEventListener('click', () => {
   closeReportOverlay();
 });
 
-document.getElementById('btnDownloadReportPdf')?.addEventListener('click', () => {
+document.getElementById('btnDownloadReportPdf')?.addEventListener('click', async () => {
   if (typeof OSAPdfExport !== 'undefined' && OSAPdfExport.exportPatientReportPDF) {
-    OSAPdfExport.exportPatientReportPDF();
+    setReportEditing(false, { focus: false, keepStatus: true });
+    const result = await OSAPdfExport.exportPatientReportPDF();
+    if (result) {
+      setReportEditStatus(reportHasEdits
+        ? 'PDF downloaded with your edits. Save a snapshot to keep them in the chart.'
+        : 'PDF downloaded.');
+    }
   }
 });
 
@@ -2314,6 +2424,11 @@ document.addEventListener('keydown', (e) => {
   if (!reportOverlay?.classList.contains('active')) return;
 
   if (e.key === 'Escape') {
+    if (reportIsEditing) {
+      setReportEditing(false);
+      reportEditButton?.focus();
+      return;
+    }
     closeReportOverlay();
     return;
   }
@@ -2338,4 +2453,6 @@ window.OSAReportState = {
   getLastAnalysisData: () => lastAnalysisData,
   openHtmlSnapshot: (html, triggerEl) => openReportOverlayFromHtml(html, triggerEl, false),
   closePreview: () => closeReportOverlay(),
+  isEditingPreview: () => reportIsEditing,
+  getPreviewHtml: () => getCleanReportPreviewHtml(),
 };

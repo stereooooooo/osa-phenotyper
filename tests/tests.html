@@ -741,6 +741,39 @@ assert(reportHtml.includes('central-breathing signals from the home study') && r
 assert(reportHtml.indexOf('<dt>Central breathing events or periodic breathing</dt>') >= 0 && reportHtml.indexOf('<dt>Central breathing events or periodic breathing</dt>') < reportHtml.indexOf('report-summary-card'), 'Central breathing terminology is defined before its clinical use');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
+  studyType: 'watchpat',
+  recTags: [
+    { tag: 'CPAP', text: 'Start PAP.' },
+    { tag: 'ASV-SAFETY', text: 'Confirm heart-function safety before ASV.' },
+    { tag: 'MAD', text: 'Consider an oral appliance.' },
+    { tag: 'MAD-WORKUP', text: 'Confirm oral-appliance safety.' },
+    { tag: 'CENTRAL-PSG-WORKUP', text: 'Confirm home-study central signals in the sleep laboratory.' },
+    { tag: 'OXYGEN-WORKUP', text: 'Review oxygen metrics.' },
+  ],
+}));
+const centralPlanStart = reportHtml.indexOf('Your Treatment Plan');
+const centralChecklistStart = reportHtml.indexOf('Your First 30 Days');
+const centralPlanHtml = reportHtml.slice(centralPlanStart, centralChecklistStart);
+const centralChecklistHtml = reportHtml.slice(centralChecklistStart);
+assert(centralPlanHtml.includes('Confirm Central-Breathing Findings With a Lab Sleep Study'), 'Central confirmation survives the two-workup display limit when several prerequisites fire');
+assert(centralPlanHtml.indexOf('Confirm Central-Breathing Findings With a Lab Sleep Study') < centralPlanHtml.indexOf('Confirm Heart-Function Safety Before ASV'), 'Central confirmation is shown before ASV heart-safety review');
+assert(reportHtml.includes('Your most important next step:</strong> Ask whether the central-breathing signals'), 'Central confirmation becomes the report\'s most important next step');
+assert(centralChecklistHtml.includes('central-breathing signals from the home study') && centralChecklistHtml.includes('recent echocardiogram'), 'Central and ASV safety actions both remain in the 30-day checklist');
+assert(centralChecklistHtml.indexOf('central-breathing signals from the home study') < centralChecklistHtml.indexOf('recent echocardiogram'), 'Checklist sequences lab confirmation before ASV heart-safety review');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  priorMAD: true,
+  milestones: ['Initial Eval', 'Oral Appliance Trial'],
+  recTags: [
+    { tag: 'CPAP', text: 'Start PAP.' },
+    { tag: 'MAD', text: 'Repeat oral appliance treatment.' },
+    { tag: 'MAD-WORKUP', text: 'Confirm oral-appliance safety.' },
+  ],
+}));
+assert(reportHtml.includes('Where You Are') && reportHtml.includes('tried an oral appliance'), 'Returning-patient summary explains prior oral-appliance treatment');
+assert(!reportHtml.includes('Oral Appliance Therapy') && !reportHtml.includes('Confirm Oral Appliance Safety First'), 'Prior oral-appliance use suppresses stale repeat-treatment and workup cards');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' }],
 }));
 assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'Surgery workup tag renders a patient-friendly safety explanation');

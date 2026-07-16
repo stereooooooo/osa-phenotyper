@@ -640,9 +640,18 @@
 <!-- Patient Report Preview Overlay -->
 <div class="report-overlay" id="reportOverlay" role="dialog" aria-modal="true" aria-labelledby="reportPreviewTitle" tabindex="-1">
   <div class="report-toolbar">
-    <span class="visually-hidden" id="reportPreviewTitle">Patient report preview</span>
+    <div class="report-toolbar-status">
+      <span class="report-toolbar-title" id="reportPreviewTitle">Patient report preview</span>
+      <span class="report-edit-status" id="reportEditStatus" role="status">Review before saving or downloading.</span>
+    </div>
     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCloseReport">
       <i class="bi bi-x-lg"></i> Close Preview
+    </button>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="btnEditReport" aria-pressed="false">
+      <i class="bi bi-pencil"></i> Edit Report
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnResetReportEdits" disabled>
+      <i class="bi bi-arrow-counterclockwise"></i> Reset Changes
     </button>
     <button type="button" class="btn btn-outline-primary btn-sm" id="btnSaveReportSnapshot">
       <i class="bi bi-folder-check"></i> Save Snapshot

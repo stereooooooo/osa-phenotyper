@@ -154,8 +154,13 @@ var PatientReport = (() => {
     },
     {
       label: 'Nerve stimulation',
-      patterns: [/\bHNS\b/, /\bHGNS\b/, /\b(?:hypoglossal )?nerve stimulation\b/i, /nerve-stimulation/i],
+      patterns: [/\bHNS\b/, /\bHGNS\b/, /\bInspire\b/i, /\b(?:hypoglossal )?nerve stimulation\b/i, /nerve-stimulation/i],
       definition: 'Hypoglossal nerve stimulation (HNS or HGNS): an implanted treatment that activates tongue muscles during sleep to help keep the airway open.',
+    },
+    {
+      label: 'UPPP',
+      patterns: [/\bUPPP\b/],
+      definition: 'Uvulopalatopharyngoplasty: surgery that reshapes tissue in the palate and throat to create more airway space.',
     },
     {
       label: 'TMJ',
@@ -379,7 +384,15 @@ var PatientReport = (() => {
       }
     });
 
-    const canonical = selected.map(item => item.entry);
+    let canonical = selected.map(item => item.entry);
+    /* Older snapshots or manually assembled report data may still contain a
+       new-appliance workup beside documented prior oral-appliance use. Do not
+       present a fresh fitting or safety workup without a newly selected pathway. */
+    if (data && data.priorMAD) {
+      canonical = canonical.filter(entry => ![
+        'MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'MAD-WORKUP'
+      ].includes(entry.tag));
+    }
     if (canonical.some(entry => entry.tag === 'MAD-SAFETY-LIMIT')) {
       return canonical.filter(entry => !['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'MAD-WORKUP'].includes(entry.tag));
     }
@@ -582,6 +595,7 @@ var PatientReport = (() => {
     'MILD-LIFESTYLE': 'Start with the lifestyle changes in your plan; we will recheck in a few months.',
     'SLEEP-STUDY': 'Schedule the sleep study your care team recommended.',
     'UARS-EVAL': 'Talk with your doctor about whether more detailed sleep testing is needed.',
+    'CENTRAL-PSG-WORKUP': 'Ask whether the central-breathing signals from your home study should be confirmed with an in-lab sleep study before advanced treatment is chosen.',
   };
 
   function summaryNextStep(data) {
@@ -603,6 +617,12 @@ var PatientReport = (() => {
       }
       return '';
     };
+
+    /* Confirmation of a home-study central signal is a diagnostic prerequisite,
+       not a backup treatment detail. Lead with it before advanced treatment or
+       device-specific safety decisions are finalized. */
+    const centralConfirmation = firstActionFor(['CENTRAL-PSG-WORKUP']);
+    if (centralConfirmation) return centralConfirmation;
 
     if (isSurgeryConsultPriority(data)) {
       return 'Schedule an ENT visit to review tonsil and palate surgery, including expected benefit, risks, recovery, and whether more airway evaluation is needed.';
@@ -701,36 +721,20 @@ var PatientReport = (() => {
      CARE SUMMARY CARD — Compact "story so far" for returning patients
      ══════════════════════════════════════════════════════════════════════════ */
   function renderCareSummary(data) {
-    const ctx = getVisitContext(data);
-    if (ctx.isFirstVisit) return '';  // no summary for first visit
-
-    const parts = [];
-    // AHI baseline
-    if (data.primaryAHI !== null && data.primaryAHI !== undefined) {
-      if (+data.primaryAHI < 5) {
-        parts.push(`Your sleep study did <strong>not show evidence of obstructive sleep apnea</strong> (AHI ${Math.round(data.primaryAHI)})`);
-      } else {
-        const sev = ahiSeverityLabel(data.primaryAHI);
-        parts.push(`Your sleep study showed <strong>${sev} sleep apnea</strong> (AHI ${Math.round(data.primaryAHI)})`);
-      }
-    }
-
-    // Treatment history
+    /* Keep returning-patient context concise. The AHI result already appears
+       immediately above; this block explains why the current plan is different. */
     const txParts = [];
-    if (data.cpapCurrent) txParts.push('currently using CPAP');
-    else if (data.cpapFailed) txParts.push(data.cpapWillRetry ? 'tried CPAP (willing to retry)' : 'tried CPAP (discontinued)');
-    if (data.priorMAD) txParts.push('tried an oral appliance');
-    if (data.priorUPPP) txParts.push('had UPPP surgery');
-    if (data.priorInspire) txParts.push('has Inspire implant');
-    if (txParts.length) parts.push('You have ' + txParts.join(', '));
-
-    if (!parts.length) return '';
+    if (data.cpapCurrent) txParts.push('You are currently using CPAP');
+    else if (data.cpapFailed) txParts.push(data.cpapWillRetry ? 'You tried CPAP and are willing to retry it' : 'You tried CPAP and discontinued it');
+    if (data.priorMAD) txParts.push('You tried an oral appliance');
+    if (data.priorUPPP) txParts.push('You had UPPP surgery');
+    if (data.priorInspire) txParts.push('You have an Inspire implant');
+    if (!txParts.length) return '';
 
     return `
 <div class="care-summary-card">
   <div class="care-summary-title">Where You Are</div>
-  <p>${parts.join('. ')}.</p>
-  <p style="font-size:0.85rem;color:#6B7280;margin-bottom:0;">This report focuses on what's changed and what's next in your care plan.</p>
+  <p>${txParts.join('. ')}. This report focuses on what comes next in your care plan.</p>
 </div>`;
   }
 
@@ -1417,7 +1421,25 @@ ${items}`;
       ...deferred,
     ].slice(0, 3);
     const conditionalShown = conditional.slice(0, 2);
-    const workupsShown = workups.slice(0, 2);
+    /* Safety ordering is independent of the engine's tag-emission order. A
+       diagnostic confirmation must not be displaced by a candidacy check. */
+    const workupPriority = new Map([
+      ['CENTRAL-PSG-WORKUP', 0],
+      ['ASV-SAFETY', 1],
+      ['MAD-SAFETY-LIMIT', 2],
+      ['OXYGEN-WORKUP', 3],
+      ['SURGERY-WORKUP', 4],
+      ['AIRWAY-PROCEDURE-WORKUP', 4],
+      ['HNS-WORKUP', 4],
+      ['ANATOMY-WORKUP', 5],
+      ['MAD-WORKUP', 6],
+      ['POSITION-WORKUP', 7],
+      ['SLEEP-STAGE-WORKUP', 8],
+      ['NASAL-WORKUP', 9],
+    ]);
+    const workupsShown = [...workups]
+      .sort((a, b) => (workupPriority.get(a.tag) ?? 20) - (workupPriority.get(b.tag) ?? 20))
+      .slice(0, 2);
 
     const sectionTitle = (isPreStudy || isNormalStudy) ? 'Your Next Steps' : 'Your Treatment Plan';
     let output = `\n<h2>${sectionTitle}</h2>`;
@@ -1614,10 +1636,13 @@ ${items}`;
 
     if (tags.has('ASV-CONTRA')) {
       add('Ask your sleep and heart teams which non-ASV options are appropriate because reduced heart function can make ASV unsafe.', -1);
-    } else if (tags.has('ASV-SAFETY')) {
-      add('Before ASV is considered, confirm whether a recent echocardiogram or heart-function result is needed.', -1);
-    } else if (tags.has('CENTRAL-PSG-WORKUP')) {
-      add('Ask whether central-breathing signals from the home study should be confirmed with an in-lab study before advanced PAP is chosen.', -1);
+    } else {
+      if (tags.has('CENTRAL-PSG-WORKUP')) {
+        add('Ask whether central-breathing signals from the home study should be confirmed with an in-lab study before advanced PAP is chosen.', -2);
+      }
+      if (tags.has('ASV-SAFETY')) {
+        add('Before ASV is considered, confirm whether a recent echocardiogram or heart-function result is needed.', -1);
+      }
     }
 
     /* If the report contains only a prerequisite workup, give the patient one clear task.
@@ -1791,6 +1816,7 @@ ${items.join('')}`;
       renderCarePathway(data),
       renderSectionA(data),
       renderSectionB(data),
+      renderCareSummary(data),
       renderSectionB2(data),
       /* renderDataLimitations suppressed from the patient view (Phase 3) — these
          "what may still be refined" notes are clinician-oriented and actionless for

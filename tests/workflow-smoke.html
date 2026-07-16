@@ -101,9 +101,21 @@ async function run() {
   click(win, '#btnGenerateReport');
   await waitFor(() => doc.getElementById('reportOverlay').classList.contains('active'), 'report overlay');
   assert(doc.getElementById('reportPreviewContent').textContent.includes('Workflow QA Patient'), 'Patient report preview is generated for clinician distribution');
+  click(win, '#btnEditReport');
+  await waitFor(() => win.OSAReportState.isEditingPreview(), 'patient report edit mode');
+  const editableReport = doc.querySelector('#reportPreviewContent .patient-report');
+  assertEqual(editableReport.getAttribute('contenteditable'), 'true', 'Clinician can enable direct patient-report editing');
+  editableReport.querySelector('.report-title').textContent = 'Clinician Edited Sleep Report';
+  editableReport.dispatchEvent(new win.Event('input', { bubbles: true }));
+  assert(!doc.getElementById('btnResetReportEdits').disabled, 'Editing enables reset changes');
+  click(win, '#btnEditReport');
+  assert(!win.OSAReportState.isEditingPreview(), 'Done Editing returns the report to review mode');
   click(win, '#btnSaveReportSnapshot');
   await waitFor(() => win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshotCount === 1, 'snapshot saved');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshotCount, 1, 'Report snapshot stays in the chart');
+  const savedSnapshot = win.__OSA_WORKFLOW_TEST__.listPatients(false)[0].reportSnapshots[0];
+  assert(savedSnapshot.patientReportHtml.includes('Clinician Edited Sleep Report'), 'Saved snapshot preserves clinician report edits');
+  assert(!savedSnapshot.patientReportHtml.includes('contenteditable='), 'Saved snapshot strips edit-mode attributes');
   click(win, '#btnCloseReport');
 
   click(win, '#btnFollowups');

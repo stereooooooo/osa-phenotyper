@@ -348,7 +348,19 @@ const OSAPdfExport = (() => {
             i++;
           }
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.ahi-summary-block')) {
-            nodes.push(children[i + 1]);
+            const summaryBlock = children[i + 1];
+            const summaryChildren = [...summaryBlock.children].filter(node => node instanceof HTMLElement);
+            /* A new-results explanation may contain two narrative paragraphs
+               plus the severity scale. If that complete block does not fit at
+               the foot of page one, keep the heading with the first explanatory
+               paragraph and allow the severity paragraph plus scale to follow
+               as one semantic unit. Short returning-patient summaries stay whole. */
+            if (summaryChildren.length >= 3) {
+              nodes.push(summaryChildren[0]);
+              trailingUnits.push(makeUnit(summaryChildren.slice(1)));
+            } else {
+              nodes.push(summaryBlock);
+            }
             i++;
           }
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('p')) {
@@ -403,16 +415,15 @@ const OSAPdfExport = (() => {
 
         if (child.matches('.treatment-group-label') && children[i + 1] instanceof HTMLElement && children[i + 1].matches('.rec-item')) {
           const nodes = [child];
-          const keepWholeGroup = /If PAP Remains Difficult|Complete Before/i.test(child.textContent || '');
           i++;
           if (children[i] instanceof HTMLElement && children[i].matches('.rec-item')) {
             nodes.push(children[i]);
             i++;
           }
-          while (keepWholeGroup && children[i] instanceof HTMLElement && children[i].matches('.rec-item')) {
-            nodes.push(children[i]);
-            i++;
-          }
+          /* Keep the label with its first recommendation, then let subsequent
+             recommendations paginate as semantic units. Keeping an entire
+             conditional or prerequisite group together created half-empty
+             pages for otherwise ordinary multi-option reports. */
           units.push(makeUnit(nodes));
           continue;
         }
@@ -527,7 +538,7 @@ const OSAPdfExport = (() => {
 
   function patientSparsePageScore(plan) {
     if (!plan || !plan.fills.length) return 0;
-    return plan.fills.reduce((score, fill) => score + Math.max(0, 0.42 - fill), 0);
+    return plan.fills.reduce((score, fill) => score + Math.max(0, 0.5 - fill), 0);
   }
 
   function paginatePatientReport(reportRoot, pageCssHeight) {
@@ -897,6 +908,11 @@ const OSAPdfExport = (() => {
     const clone = reportEl.cloneNode(true);
     // Remove any no-print elements from clone
     clone.querySelectorAll('.no-print').forEach(n => n.remove());
+    clone.removeAttribute('contenteditable');
+    clone.removeAttribute('role');
+    clone.removeAttribute('aria-label');
+    clone.removeAttribute('aria-multiline');
+    clone.removeAttribute('spellcheck');
 
     const patientName = clone.getAttribute('data-patient-name') ||
       clone.querySelector('.report-patient-name')?.textContent ||
