@@ -87,8 +87,10 @@ DEPLOYMENT_ENVIRONMENT="${OSA_DEPLOYMENT_ENVIRONMENT:-$(infer_deployment_environ
 DEPLOYMENT_LABEL="${OSA_DEPLOYMENT_LABEL:-$(deployment_label_for "${DEPLOYMENT_ENVIRONMENT}")}"
 if [[ "${DEPLOYMENT_ENVIRONMENT}" == "pilot" || "${DEPLOYMENT_ENVIRONMENT}" == "production" ]]; then
   ENABLE_OPERATIONAL_ALERTS="true"
+  ENABLE_DELETION_PROTECTION="true"
 else
   ENABLE_OPERATIONAL_ALERTS="false"
+  ENABLE_DELETION_PROTECTION="false"
 fi
 BUILD_ID="${OSA_BUILD_ID:-$(git -C "${WEB_ROOT}" rev-parse --short HEAD 2>/dev/null || printf 'unknown')}"
 DEPLOYED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -158,7 +160,7 @@ write_cloudfront_waf_rules() {
       }
     },
     "VisibilityConfig": {
-      "SampledRequestsEnabled": true,
+      "SampledRequestsEnabled": false,
       "CloudWatchMetricsEnabled": true,
       "MetricName": "PatientApiRateLimit"
     }
@@ -186,7 +188,7 @@ write_cloudfront_waf_rules() {
       }
     },
     "VisibilityConfig": {
-      "SampledRequestsEnabled": true,
+      "SampledRequestsEnabled": false,
       "CloudWatchMetricsEnabled": true,
       "MetricName": "AWSCommonRulesPatientApi"
     }
@@ -210,7 +212,7 @@ write_cloudfront_waf_rules() {
       }
     },
     "VisibilityConfig": {
-      "SampledRequestsEnabled": true,
+      "SampledRequestsEnabled": false,
       "CloudWatchMetricsEnabled": true,
       "MetricName": "AWSSQLiRulesPatientApi"
     }
@@ -238,7 +240,7 @@ ensure_cloudfront_waf() {
       --name "${WAF_NAME}" \
       --description "OSA Phenotyper CloudFront edge WAF for ${CLINIC}" \
       --default-action '{"Allow":{}}' \
-      --visibility-config "SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
+      --visibility-config "SampledRequestsEnabled=false,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
       --rules "file://${WAF_RULES_FILE}" \
       >/dev/null
   else
@@ -260,7 +262,7 @@ ensure_cloudfront_waf() {
       --name "${WAF_NAME}" \
       --lock-token "${lock_token}" \
       --default-action '{"Allow":{}}' \
-      --visibility-config "SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
+      --visibility-config "SampledRequestsEnabled=false,CloudWatchMetricsEnabled=true,MetricName=${WAF_METRIC_PREFIX}" \
       --rules "file://${WAF_RULES_FILE}" \
       >/dev/null
   fi
@@ -435,9 +437,18 @@ aws cloudformation deploy \
     CloudFrontWebAclArn="${CLOUDFRONT_WAF_ARN}" \
     ApiOriginSecret="${API_ORIGIN_SECRET}" \
     EnableOperationalAlerts="${ENABLE_OPERATIONAL_ALERTS}" \
+    EnableDeletionProtection="${ENABLE_DELETION_PROTECTION}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "${REGION}" \
   --no-fail-on-empty-changeset
+
+if [[ "${ENABLE_DELETION_PROTECTION}" == "true" ]]; then
+  aws cloudformation update-termination-protection \
+    --enable-termination-protection \
+    --stack-name "${STACK_NAME}" \
+    --region "${REGION}" \
+    >/dev/null
+fi
 
 echo ""
 echo "[5/7] Retrieving configuration..."
@@ -547,6 +558,7 @@ echo "  Site bucket  : ${WEB_APP_BUCKET}"
 echo "  Distribution : ${WEB_APP_DISTRIBUTION_ID}"
 echo "  Patient table: ${PATIENT_TABLE}"
 echo "  Ops alerts   : ${ENABLE_OPERATIONAL_ALERTS}"
+echo "  Delete guard : ${ENABLE_DELETION_PROTECTION}"
 echo ""
 echo "  Config written to: js/aws-config.js"
 echo ""

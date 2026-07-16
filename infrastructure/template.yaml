@@ -37,10 +37,18 @@ Parameters:
       - 'true'
       - 'false'
     Description: Provision PHI-free operational alerting for pilot and production environments
+  EnableDeletionProtection:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Protect clinical data and clinician identities from accidental resource deletion
 
 Conditions:
   UseCloudFrontWebAcl: !Not [!Equals [!Ref CloudFrontWebAclArn, '']]
   OperationalAlertsEnabled: !Equals [!Ref EnableOperationalAlerts, 'true']
+  DeletionProtectionEnabled: !Equals [!Ref EnableDeletionProtection, 'true']
 
 Resources:
 
@@ -102,6 +110,7 @@ Resources:
     Properties:
       TableName: !Sub 'osa-patients-${ClinicName}'
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: !If [DeletionProtectionEnabled, true, false]
       SSESpecification:
         SSEEnabled: true
         SSEType: KMS
@@ -280,6 +289,7 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub 'osa-phenotyper-${ClinicName}'
+      DeletionProtection: !If [DeletionProtectionEnabled, ACTIVE, INACTIVE]
       AutoVerifiedAttributes:
         - email
       UsernameAttributes:
