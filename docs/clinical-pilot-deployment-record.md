@@ -69,9 +69,9 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 - [x] Generate clinician and patient reports
 - [x] Edit the patient report, save/reopen a snapshot, and download its PDF
 - [x] Save and reopen a structured follow-up
-- [ ] Archive and restore as an administrator
+- [x] Archive and restore as an administrator
 - [ ] Verify a clinician cannot use administrator-only archive/restore actions
-- [ ] Retrieve the synthetic create/read/update/archive audit evidence
+- [x] Retrieve the synthetic create/read/update/archive audit evidence
 - [x] Restore the synthetic table to a temporary DynamoDB table using PITR, verify the item, and remove the temporary restore table
 - [ ] Rehearse the approved EHR report-upload and downtime workflows
 
@@ -81,8 +81,9 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 - Exact-MRN search and reload preserved the clinical form values.
 - Clinician and patient reports generated. The patient report was edited, saved as a snapshot, reopened, and exported as `Sleep_Report_SYNTHETIC_PILOT_Avery_2026-07-16.pdf`.
 - One structured PAP follow-up was saved and reopened with status, response, adherence, next action, weight, ESS, ISI, and repeat AHI intact.
-- The record's visit history attributed `Created`, `Data updated`, `Report snapshot saved`, and `Follow-up recorded` to `drbrown@capitalent.com`.
-- CloudWatch recorded PHI-free `patient_search` and `patient_record_viewed` events. CloudTrail recorded the corresponding DynamoDB `PutItem`, `GetItem`, and `UpdateItem` data events under the pilot Lambda role.
+- Administrator archive removed the record from active search, `Show archived` displayed it with an `Archived` status, and administrator restore returned it to the active list with its original Treatment Plan status.
+- The restored record retained one report snapshot and one follow-up. Its visit history attributed `Created`, `Data updated`, `Report snapshot saved`, `Follow-up recorded`, `Archived`, and `Restored` to `drbrown@capitalent.com`.
+- CloudWatch recorded PHI-free `patient_search` and `patient_record_viewed` events. CloudTrail recorded the corresponding DynamoDB `PutItem`, `GetItem`, and `UpdateItem` data events under the pilot Lambda role, including the soft-archive update.
 - PITR restored the source table as temporary table `osa-patients-capital-ent-precision-sleep-pilot-restore-drill-20260716` at `2026-07-16T11:59:14.733-05:00`. The restored table was KMS encrypted and contained the expected synthetic chart and saved report snapshot. The follow-up was recorded after the selected restore time and was therefore correctly absent. The temporary table was deleted after verification.
 
 ## Required organizational approval
