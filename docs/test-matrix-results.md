@@ -1,6 +1,16 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 18, 2026
-**Latest app version:** clinical-pilot build `caa47b5` (`fix: preserve search during index backfill`)
+**Latest app version:** clinical-pilot build `15c3f28` (`feat: guide clinician encounter plans`)
+
+---
+
+## July 18, 2026 Chart-Aware Encounter Plan Drafts
+
+- Headless regression suite: **429 assertions passed**. End-to-end coverage confirms suggestions remain unselected until staff applies them, non-suggested pathways remain available, and applying a draft requires clinician confirmation again.
+- Added transparent plan suggestions derived from the reason for visit, current or prior PAP use, PAP comfort barriers, NOSE score, ISI, positional study data, BMI, and documented weight-management readiness.
+- Added a one-click action that selects the suggested pathways and drafts an editable next-step summary. It adds to the plan without removing clinician-selected options and never confirms the plan automatically.
+- Verified the representative current-APAP scenario suggests PAP management, nasal treatment, positional therapy, and weight management, with nasal treatment prioritized in the summary when dry mouth and meaningful obstruction are documented.
+- Deployed clinical-pilot release `15c3f28`. CloudFront serves the versioned plan-suggestion asset, and its SHA-256 checksum matches the tested local file.
 
 ---
 
