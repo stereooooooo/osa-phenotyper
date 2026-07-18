@@ -126,6 +126,10 @@ Resources:
           AttributeType: S
         - AttributeName: nameSearchBucket
           AttributeType: S
+        - AttributeName: givenNameLower
+          AttributeType: S
+        - AttributeName: givenNameSearchBucket
+          AttributeType: S
         - AttributeName: dob
           AttributeType: S
       KeySchema:
@@ -149,6 +153,14 @@ Resources:
             - AttributeName: nameSearchBucket
               KeyType: HASH
             - AttributeName: nameLower
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: given-name-prefix-index
+          KeySchema:
+            - AttributeName: givenNameSearchBucket
+              KeyType: HASH
+            - AttributeName: givenNameLower
               KeyType: RANGE
           Projection:
             ProjectionType: ALL

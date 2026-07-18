@@ -121,7 +121,7 @@ const OSADatabase = (function () {
     // Explicitly capture unchecked checkboxes as false
     formEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
       if (!cb.name) return;
-      if (data[cb.name] === undefined) data[cb.name] = false;
+      if (data[cb.name] === undefined) data[cb.name] = cb.checked;
       else if (data[cb.name] === 'on') data[cb.name] = true;
     });
     return data;
@@ -151,6 +151,18 @@ const OSADatabase = (function () {
         }
       });
     });
+
+    // Backward compatibility for charts saved before PAP mode-specific fields.
+    // A legacy fixed pressure maps to CPAP. APAP ranges and BiPAP IPAP/EPAP are
+    // never inferred from that single value.
+    if (!data.papMode && data.cpapPressure !== undefined && data.cpapPressure !== '') {
+      const papMode = formEl.querySelector('[name="papMode"]');
+      const fixedPressure = formEl.querySelector('[name="papCpapPressure"]');
+      if (papMode) papMode.value = 'CPAP';
+      if (fixedPressure) fixedPressure.value = data.cpapPressure;
+      papMode?.dispatchEvent(new Event('change', { bubbles: true }));
+      fixedPressure?.dispatchEvent(new Event('input', { bubbles: true }));
+    }
 
     // Trigger CPAP details visibility
     const cpapCb = formEl.querySelector('[name="priorCpap"]');

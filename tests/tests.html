@@ -466,9 +466,9 @@ assert(nasalTrigger, 'Sample: triggers Nasal-Resistance (NOSE 40 + CT septum)');
 
 // ── NOSE Score Config ────────────────────────────────────────────
 group('NOSE Score Thresholds');
-assertEqual(T.nasal.noseBorderline, 15, 'NOSE borderline threshold is 15');
-assertEqual(T.nasal.noseMild, 25, 'NOSE mild threshold is 25');
-assertEqual(T.nasal.noseSevere, 50, 'NOSE severe threshold is 50');
+assertEqual(T.nasal.noseBorderline, 25, 'NOSE mild-symptom boundary is 25');
+assertEqual(T.nasal.noseMild, 30, 'NOSE clinically meaningful obstruction threshold is 30');
+assertEqual(T.nasal.noseSevere, 55, 'NOSE severe threshold is 55');
 
 // ── Questionnaire Score Computation ──────────────────────────────
 group('Questionnaire Score Computation');
@@ -589,7 +589,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes("Why We're Recommending a Sleep Study"), 'Pre-study report explains the study decision in its dedicated evaluation section');
 assert(!reportHtml.includes('<strong>Sleep Study</strong>'), 'Pre-study report does not repeat the sleep-study concept as a treatment card');
-assert(reportHtml.includes('<strong>Nasal Treatment</strong>'), 'Pre-study report retains distinct safe interim support actions');
+assert(reportHtml.includes('<strong>Prioritize Nasal Treatment</strong>'), 'Pre-study report retains distinct safe interim support actions');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 3,

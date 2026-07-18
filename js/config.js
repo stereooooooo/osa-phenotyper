@@ -117,9 +117,9 @@ const OSA_CONFIG = {
     },
 
     nasal: {
-      noseMild:       25,       // NOSE score ≥25 triggers phenotype (Stewart 2004)
-      noseSevere:     50,       // high confidence threshold
-      noseBorderline: 15        // low confidence
+      noseMild:       30,       // clinically meaningful obstruction threshold (Lipan & Most 2013)
+      noseSevere:     55,       // severe range: 55-75 (Lipan & Most 2013)
+      noseBorderline: 25        // mild symptom range: 5-25
     },
 
     // HGNS (hypoglossal nerve stimulation) app-level referral thresholds.
@@ -220,6 +220,11 @@ const OSA_CONFIG = {
       hbUnder90PH:{ min: 0,   max: 100,  warnMax: 50  },
       t90:        { min: 0,   max: 100,  warnMax: 50  },
       cpapPressure:{ min: 4,   max: 25,   warnMax: 20  },
+      papMinPressure:{ min: 4, max: 25,   warnMax: 20  },
+      papMaxPressure:{ min: 4, max: 25,   warnMax: 20  },
+      papCpapPressure:{ min: 4, max: 25,  warnMax: 20  },
+      papEpapPressure:{ min: 4, max: 25,  warnMax: 20  },
+      papIpapPressure:{ min: 4, max: 30,  warnMax: 25  },
       dhr:        { min: 0,   max: 60,   warnMax: 40  },
       dhrPsg:     { min: 0,   max: 60,   warnMax: 40  },
       noseScore:  { min: 0,   max: 100 },
@@ -271,6 +276,18 @@ const OSA_CONFIG = {
           return (vals.ahiREM && vals.ahiNREM && vals.ahiREM < vals.ahi * 0.3 && vals.ahiNREM < vals.ahi * 0.3);
         },
         message: 'Both REM and NREM AHI are well below overall AHI (Lab PSG) — please verify.'
+      },
+      {
+        id: 'apap_min_max',
+        fields: ['papMinPressure', 'papMaxPressure'],
+        check: (vals) => vals.papMinPressure >= vals.papMaxPressure,
+        message: 'APAP minimum pressure must be lower than the maximum pressure.'
+      },
+      {
+        id: 'bipap_epap_ipap',
+        fields: ['papEpapPressure', 'papIpapPressure'],
+        check: (vals) => vals.papEpapPressure >= vals.papIpapPressure,
+        message: 'BiPAP EPAP must be lower than IPAP.'
       }
     ]
   }

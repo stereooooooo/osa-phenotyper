@@ -77,8 +77,9 @@ async function run() {
   click(win, '#homeOpenChart');
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'home-created chart opens');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Home-created chart opens with its identity data');
+  assertEqual(doc.querySelector('[name="age"]').value, '42', 'Age is calculated automatically from date of birth');
   setValue(win, '#patientMrn', 'WF-001');
-  setValue(win, '[name="age"]', '42');
+  setValue(win, '[name="visitReason"]', 'new-diagnosis');
   setValue(win, '[name="sex"]', 'M');
   setValue(win, '[name="bmi"]', '32');
   setValue(win, '[name="neck"]', '17');
@@ -89,6 +90,15 @@ async function run() {
   setValue(win, '[name="remPercent"]', '23.1');
   setValue(win, '[name="supPahi"]', '42');
   setValue(win, '[name="nonSupPahi"]', '9');
+  click(win, '#priorCpap');
+  click(win, '#cpapCurrent');
+  setValue(win, '#papMode', 'APAP');
+  setValue(win, '[name="papMinPressure"]', '7');
+  setValue(win, '[name="papMaxPressure"]', '15');
+  doc.getElementById('planPap').checked = true;
+  doc.getElementById('planPositional').checked = true;
+  setValue(win, '#planSummary', 'Continue APAP and use positional therapy.');
+  doc.getElementById('planConfirmed').checked = true;
 
   click(win, '#btnSavePatient');
   await waitFor(() => doc.getElementById('patientNameDisplay').textContent.trim() === 'Workflow QA Patient', 'chart saved');
@@ -103,6 +113,10 @@ async function run() {
   click(win, '#btnGenerateReport');
   await waitFor(() => doc.getElementById('reportOverlay').classList.contains('active'), 'report overlay');
   assert(doc.getElementById('reportPreviewContent').textContent.includes('Workflow QA Patient'), 'Patient report preview is generated for clinician distribution');
+  assert(doc.getElementById('reportPreviewContent').textContent.includes('Continue APAP'), 'Current APAP use is presented as continuation, not a new start');
+  assert(doc.getElementById('reportPreviewContent').textContent.includes('7-15 cm H2O'), 'Patient report preserves the APAP pressure range');
+  assert(!doc.getElementById('reportPreviewContent').textContent.includes('Confirm Oral Appliance Safety First'), 'Unselected oral-appliance prerequisites stay out of the patient report');
+  assert(!doc.getElementById('reportPreviewContent').textContent.includes('DISE-Guided'), 'Unselected surgical prerequisites stay out of the patient report');
   click(win, '#btnEditReport');
   await waitFor(() => win.OSAReportState.isEditingPreview(), 'patient report edit mode');
   const editableReport = doc.querySelector('#reportPreviewContent .patient-report');

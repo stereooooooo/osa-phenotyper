@@ -346,6 +346,17 @@ function buildNameSearchBucket(name) {
   return firstSearchChar || '#';
 }
 
+function extractGivenNameForSearch(name) {
+  const normalized = normalizeNameForSearch(name);
+  if (!normalized) return '';
+  if (normalized.includes(',')) return normalized.split(',').slice(1).join(' ').trim() || normalized;
+  return normalized.split(/\s+/)[0] || '';
+}
+
+function buildGivenNameSearchBucket(name) {
+  return buildNameSearchBucket(extractGivenNameForSearch(name));
+}
+
 const WORKFLOW_MILESTONES = [
   'Initial Eval',
   'Study Ordered',
@@ -526,6 +537,8 @@ async function createPatient(event, body, user) {
     name: initialIdentityValues.name,
     nameLower: normalizeNameForSearch(name),
     nameSearchBucket: buildNameSearchBucket(name),
+    givenNameLower: extractGivenNameForSearch(name),
+    givenNameSearchBucket: buildGivenNameSearchBucket(name),
     dob,
     // Omit mrn entirely when blank — `mrn` is the mrn-index GSI partition key, and
     // DynamoDB rejects empty-string key attributes. Leaving it out keeps the index sparse.
@@ -871,13 +884,17 @@ async function updatePatient(event, id, body, user, userGroups) {
   const removeExpr = [];
 
   if (name !== undefined) {
-    expr += ', #n = :name, #nl = :nameLower, #nsb = :nameSearchBucket';
+    expr += ', #n = :name, #nl = :nameLower, #nsb = :nameSearchBucket, #gnl = :givenNameLower, #gnsb = :givenNameSearchBucket';
     updates[':name'] = name.trim();
     updates[':nameLower'] = normalizeNameForSearch(name);
     updates[':nameSearchBucket'] = buildNameSearchBucket(name);
+    updates[':givenNameLower'] = extractGivenNameForSearch(name);
+    updates[':givenNameSearchBucket'] = buildGivenNameSearchBucket(name);
     names['#n'] = 'name';
     names['#nl'] = 'nameLower';
     names['#nsb'] = 'nameSearchBucket';
+    names['#gnl'] = 'givenNameLower';
+    names['#gnsb'] = 'givenNameSearchBucket';
   }
   if (dob !== undefined) {
     expr += ', dob = :dob';
@@ -1128,9 +1145,32 @@ async function searchPatients(event, params, userGroups, user) {
     prefixQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
     prefixQuery.ExpressionAttributeValues[':isDeletedFalse'] = false;
   }
-  const { Items: prefixItems } = await ddb.send(new QueryCommand(prefixQuery));
-  if (prefixItems?.length) {
-    return finishSearch(prefixItems.sort((a, b) => (a.name || '').localeCompare(b.name || '')), 'name_prefix');
+  // Names are stored in chart style (Last, First). Query a second sparse GSI so
+  // staff can begin typing the given name without scanning the patient table.
+  const givenNamePrefixQuery = {
+    TableName: TABLE,
+    IndexName: 'given-name-prefix-index',
+    ProjectionExpression: projection,
+    KeyConditionExpression: 'givenNameSearchBucket = :bucket AND begins_with(givenNameLower, :prefix)',
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: {
+      ':bucket': buildNameSearchBucket(q),
+      ':prefix': q,
+    },
+    Limit: 10,
+  };
+  if (!showArchived) {
+    givenNamePrefixQuery.FilterExpression = 'attribute_not_exists(isDeleted) OR isDeleted = :isDeletedFalse';
+    givenNamePrefixQuery.ExpressionAttributeValues[':isDeletedFalse'] = false;
+  }
+  const [{ Items: prefixItems }, { Items: givenNameItems }] = await Promise.all([
+    ddb.send(new QueryCommand(prefixQuery)),
+    ddb.send(new QueryCommand(givenNamePrefixQuery)),
+  ]);
+  const combined = [...(prefixItems || []), ...(givenNameItems || [])];
+  if (combined.length) {
+    const deduped = [...new Map(combined.map(item => [item.patientId, item])).values()];
+    return finishSearch(deduped.sort((a, b) => (a.name || '').localeCompare(b.name || '')), 'name_prefix_combined');
   }
   return finishSearch([], 'none');
 }

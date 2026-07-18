@@ -207,6 +207,38 @@ const QuestionnaireParser = (() => {
     return results;
   }
 
+  /* ── Parse the visit goal selected by the patient ──────────── */
+  function findVisitReason(items) {
+    const header = items.find(it => /reason for (?:your )?visit|what brings you|main sleep concern/i.test(it.str));
+    if (!header) return null;
+    const candidates = items.filter(it =>
+      it.page === header.page &&
+      it.y <= header.y &&
+      it.y >= header.y - 320 &&
+      isBoldFont(it.font)
+    );
+    const patterns = [
+      ['transfer-pap', /transfer|establish.*pap|cpap management|manage my (?:cpap|pap)/i],
+      ['restart-pap', /restart|used (?:cpap|pap).*(?:years|ago)|resume (?:cpap|pap)/i],
+      ['pap-troubleshoot', /trouble.*(?:cpap|pap)|(?:cpap|pap).*(?:comfort|problem|not working)/i],
+      ['inspire', /inspire|nerve stimulation/i],
+      ['oral-appliance', /oral appliance|mouth guard|dental device/i],
+      ['surgery', /surg(?:ery|ical)/i],
+      ['non-pap', /non[- ]?pap|avoid (?:cpap|pap)|alternative.*(?:cpap|pap)/i],
+      ['precision-onboarding', /precision sleep|new.*system|established patient/i],
+      ['follow-up', /follow[- ]?up|ongoing care/i],
+      ['new-diagnosis', /new diagnosis|review.*sleep study|recent.*sleep study/i],
+      ['symptoms', /tired|fatigue|sleepy|poor sleep|insomnia/i],
+      ['snoring', /snor/i],
+    ];
+    for (const [value, regex] of patterns) {
+      if (candidates.some(item => regex.test(item.str))) {
+        return { name: 'visitReason', label: 'Reason for visit', value, confidence: 'high', type: 'select' };
+      }
+    }
+    return null;
+  }
+
   /* ── Parse Section 8: Prior Treatment for Sleep-Disordered Breathing */
   function findTreatmentHistory(items) {
     const results = { fields: [], notFound: [] };
@@ -262,6 +294,25 @@ const QuestionnaireParser = (() => {
       const current = findBoldChoice(items, /currently using cpap/i, ['Yes','No']);
       if (current) {
         results.fields.push({ name: 'cpapCurrent', label: 'Currently using CPAP', value: current === 'Yes', confidence: 'high', type: 'checkbox' });
+      }
+
+      if (current === 'Yes') {
+        const modeHeader = items.find(it =>
+          it.page === pg && /which (?:pap )?device|what (?:pap )?type|current (?:pap )?(?:mode|device)/i.test(it.str)
+        );
+        const modeItem = modeHeader && items.find(it =>
+          it.page === modeHeader.page && it.y <= modeHeader.y && it.y >= modeHeader.y - 80 && isBoldFont(it.font) &&
+          /\b(apap|auto(?:matic)? pap|cpap|bipap|bi[- ]?level)\b/i.test(it.str)
+        );
+        if (modeItem) {
+          const rawMode = modeItem.str.toLowerCase();
+          const papMode = /apap|auto(?:matic)? pap/.test(rawMode)
+            ? 'APAP'
+            : /bipap|bi[- ]?level/.test(rawMode)
+              ? 'BiPAP'
+              : 'CPAP';
+          results.fields.push({ name: 'papMode', label: 'Current PAP mode', value: papMode, confidence: 'high', type: 'select' });
+        }
       }
 
       // D. Noticed improvement?
@@ -399,6 +450,10 @@ const QuestionnaireParser = (() => {
     const txHistory = findTreatmentHistory(items);
     fields.push(...txHistory.fields);
     notFound.push(...txHistory.notFound);
+
+    const visitReason = findVisitReason(items);
+    if (visitReason) fields.push(visitReason);
+    else notFound.push('Reason for visit was not found in this questionnaire format');
 
     // Treatment Preferences (Section 5)
     const txPrefs = findTreatmentPreferences(items);

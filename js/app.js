@@ -26,6 +26,14 @@ function formatRatio(val, digits=1){
 }
 function yes(f,key){ return f.get(key)==='on' || f.get(key)==='Yes' || (f.getAll(key)||[]).includes('on') || (f.getAll(key)||[]).includes('Yes'); }
 function exists(v){ return v!==null && v!==undefined && v!==''; }
+function escapeHtml(value){
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
 /* ── Shorthand for threshold access ───────────────────────────── */
 const T = OSA_CONFIG.thresholds;
@@ -59,13 +67,13 @@ const REC_PRIORITY = {
   'CBTI': 5, 'COMISA-PAP': 6, 'COMISA-SRT-CAUTION': 7,
   'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11,
   'TONSIL': 15, 'SOFT-TISSUE-STRONG': 16, 'FRIEDMAN-III-ALT': 17,
+  'NASAL-OPT': 12,
   'POS': 20,
   'WEIGHT': 25,
   'SURG': 30, 'SURGALT': 31, 'SURG-PREF': 32, 'SOFT-TISSUE-CONSIDER': 33, 'SOFT-TISSUE-GENERAL': 34, 'SOFT-TISSUE-REVISION': 35,
   'HNS': 40, 'INSPIRE-EVAL': 41, 'INSPIRE-OPT': 42,
   'ASV-SAFETY': 45,
   'MAD-FAVORABLE': 50, 'MAD': 51, 'MAD-POOR': 52,
-  'NASAL-OPT': 55,
   'MILD-LIFESTYLE': 60,
   'DHR-TX': 62, 'DHR-CARDS': 63
 };
@@ -73,6 +81,93 @@ function recPriority(tag) {
   if (!tag) return 70;
   if (/-WORKUP$/.test(tag)) return 90;            // prerequisite caveats sort last
   return REC_PRIORITY[tag] != null ? REC_PRIORITY[tag] : 70;
+}
+
+const VISIT_REASON_LABELS = {
+  'snoring': 'Snoring concern',
+  'symptoms': 'Symptoms and possible sleep apnea',
+  'new-diagnosis': 'Review new diagnosis or sleep study',
+  'transfer-pap': 'Transfer or establish PAP care',
+  'pap-troubleshoot': 'Improve PAP comfort or results',
+  'restart-pap': 'Restart PAP',
+  'oral-appliance': 'Discuss an oral appliance',
+  'inspire': 'Discuss nerve stimulation',
+  'surgery': 'Discuss airway surgery',
+  'non-pap': 'Discuss non-PAP options',
+  'precision-onboarding': 'Established patient joining Precision Sleep',
+  'follow-up': 'Sleep apnea follow-up or other goal',
+};
+
+const PLAN_FIELD_TO_TAGS = {
+  planPap: ['CPAP', 'CPAP-ALT', 'CPAP-PREF', 'CPAP-OPT', 'CPAP-DESENTIZE', 'CPAP-HUMID', 'CPAP-RETITRATE', 'CPAP-FIXED', 'COMISA-PAP', 'COMISA-SRT-CAUTION', 'HLG-ADV', 'ASV-CONTRA'],
+  planNasal: ['NASAL-OPT', 'NASAL-SURG', 'NASAL-PRIOR', 'NASAL-SINUS-PRIOR'],
+  planPositional: ['POS', 'POS-GUARD'],
+  planWeight: ['WEIGHT'],
+  planMad: ['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'REM-MAD'],
+  planInspire: ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'],
+  planSurgery: ['SURG', 'SURGALT', 'SURG-PREF', 'TONSIL', 'SOFT-TISSUE-REVISION', 'SOFT-TISSUE-STRONG', 'SOFT-TISSUE-CONSIDER', 'SOFT-TISSUE-GENERAL', 'FRIEDMAN-III-ALT', 'COMBI-PRIOR'],
+  planCbti: ['CBTI'],
+  planStudy: ['SLEEP-STUDY', 'UARS-EVAL'],
+};
+
+const PLAN_FIELD_LABELS = {
+  planPap: 'PAP management',
+  planNasal: 'nasal treatment',
+  planPositional: 'positional therapy',
+  planWeight: 'weight management',
+  planMad: 'oral appliance',
+  planInspire: 'nerve stimulation',
+  planSurgery: 'airway surgery',
+  planCbti: 'CBT-I',
+  planStudy: 'diagnostic testing',
+};
+
+function buildEncounterContext(f, patientState = {}) {
+  const visitReason = f.get('visitReason') || '';
+  const selectedPlanFields = Object.keys(PLAN_FIELD_TO_TAGS).filter(field => yes(f, field));
+  return {
+    visitReason,
+    visitReasonLabel: VISIT_REASON_LABELS[visitReason] || 'Not documented',
+    visitReasonNote: String(f.get('visitReasonNote') || '').trim(),
+    planConfirmed: yes(f, 'planConfirmed'),
+    planObserve: yes(f, 'planObserve'),
+    planSummary: String(f.get('planSummary') || '').trim(),
+    selectedPlanFields,
+    cpapCurrent: Boolean(patientState.cpapCurrent),
+    prefAvoidCpap: Boolean(patientState.prefAvoidCpap),
+    prefSurgery: Boolean(patientState.prefSurgery),
+    prefInspire: Boolean(patientState.prefInspire),
+  };
+}
+
+function filterRecommendationsForEncounter(entries, encounter) {
+  const source = Array.isArray(entries) ? entries : [];
+  // Preserve legacy snapshots and the existing synthetic matrix. The live form
+  // requires a visit reason, so real encounters always use the intent-aware path.
+  if (!encounter.visitReason && !encounter.planConfirmed) return source;
+  const alwaysKeep = new Set(['HB-URG', 'DHR-TX', 'DHR-CARDS', 'MILD-LIFESTYLE', 'SNORE-ALCOHOL']);
+  const allowed = new Set(alwaysKeep);
+
+  const addPlan = field => (PLAN_FIELD_TO_TAGS[field] || []).forEach(tag => allowed.add(tag));
+
+  if (encounter.planConfirmed) {
+    encounter.selectedPlanFields.forEach(addPlan);
+  } else {
+    // Before the clinician finalizes today's plan, show only first-line and low-risk
+    // supporting pathways. Do not turn technical candidacy into an active MAD,
+    // surgery, or nerve-stimulation plan without an explicit visit goal.
+    ['planNasal', 'planPositional', 'planWeight', 'planCbti', 'planStudy'].forEach(addPlan);
+    if (encounter.cpapCurrent || ['new-diagnosis', 'transfer-pap', 'pap-troubleshoot', 'restart-pap', 'precision-onboarding'].includes(encounter.visitReason)) addPlan('planPap');
+    if (encounter.visitReason === 'oral-appliance') addPlan('planMad');
+    if (encounter.visitReason === 'inspire' || encounter.prefInspire) addPlan('planInspire');
+    if (encounter.visitReason === 'surgery' || encounter.prefSurgery) addPlan('planSurgery');
+    if (encounter.visitReason === 'non-pap' || encounter.prefAvoidCpap) {
+      addPlan('planMad');
+      addPlan('planSurgery');
+    }
+  }
+
+  return source.filter(entry => allowed.has(entry.tag));
 }
 
 /* ── AHI severity label helper ────────────────────────────────── */
@@ -94,7 +189,7 @@ function buildInsufficientDataAssessment(ctx) {
   const moderateSevere = exists(ctx.ahi) && ctx.ahi >= T.severity.moderate;
   /* Anatomy workup is relevant when surgery/HNS is actually on the table — a
      surgical rec was generated OR the patient is pursuing surgery/Inspire. */
-  const surgRecommended = ctx.prefSurgery || ctx.prefInspire || (Array.isArray(ctx.recTags) && ctx.recTags.some(r =>
+  const surgRecommended = (!ctx.planConfirmed && (ctx.prefSurgery || ctx.prefInspire)) || (Array.isArray(ctx.recTags) && ctx.recTags.some(r =>
     ['SURG','SURGALT','SURG-PREF','TONSIL','FRIEDMAN-III-ALT','SOFT-TISSUE-REVISION','SOFT-TISSUE-STRONG','SOFT-TISSUE-CONSIDER','SOFT-TISSUE-GENERAL','HNS','INSPIRE-EVAL'].includes(r.tag)));
 
   if (!ctx.oxygenCompositeSufficient && moderateSevere) {
@@ -133,7 +228,8 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  if (!exists(ctx.fHypopneas) && moderateSevere) {
+  const detailedEventBreakdownExpected = ctx.studyType === 'psg' || ctx.studyType === 'both';
+  if (!exists(ctx.fHypopneas) && moderateSevere && detailedEventBreakdownExpected) {
     domains.push({
       key: 'endotyping',
       clinician: 'Apnea/hypopnea breakdown is unavailable. Collapsibility estimate, full Edwards arousal-threshold scoring, and point-of-care loop-gain estimation are incomplete; do not treat the absence of those endotypes as exclusion.',
@@ -180,7 +276,7 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  const hnsReferenced = ctx.prefInspire || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
+  const hnsReferenced = (!ctx.planConfirmed && ctx.prefInspire) || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
   if (hnsReferenced && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
     const hnsMissing = [];
     if (!ctx.hasDISEData) hnsMissing.push('DISE');
@@ -270,7 +366,7 @@ function buildTreatmentSafetyAssessment(ctx) {
   // EXCEPT a clear tonsillar case (Friedman Stage I, 3-4+ tonsils, non-obese): the obstruction site
   // is obvious, so tonsillectomy +/- expansion pharyngoplasty proceeds without DISE. Obesity keeps
   // the DISE prerequisite (higher multilevel-collapse risk). (Clinical review 2026-06.)
-  const surgeryReferenced = ctx.prefSurgery || [
+  const surgeryReferenced = (!ctx.planConfirmed && ctx.prefSurgery) || [
     'SURG',
     'SURGALT',
     'SURG-PREF',
@@ -1024,7 +1120,7 @@ function mapTreatments(f, m, T){
   const {
     phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
-    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, papMode,
     prefAvoidCpap, prefSurgery, prefInspire,
     priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
   } = m;
@@ -1043,7 +1139,8 @@ function mapTreatments(f, m, T){
   // Helper: build a CPAP-aware recommendation for anatomical contribution
   function cpapRec() {
     if (cpapCurrent) {
-      pushRec(recs,'Continue current CPAP/APAP therapy; optimize settings based on phenotype findings.','CPAP');
+      const device = papMode === 'BiPAP' ? 'BiPAP' : papMode === 'APAP' ? 'APAP' : papMode === 'CPAP' ? 'CPAP' : 'PAP';
+      pushRec(recs,`Continue current ${device} therapy; optimize settings and comfort based on the active care plan.`,'CPAP');
     } else if (cpapFailed && cpapRefused) {
       pushRec(recs,'Prior CPAP trial unsuccessful — prioritize appropriate alternatives such as a mandibular-advancement device, site-directed surgery, or a device-specific nerve-stimulation evaluation when criteria are met.','CPAP-ALT');
     } else if (cpapWillRetry) {
@@ -1391,7 +1488,9 @@ function buildClinicianReport(f, m, T){
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
+    encounter,
   } = m;
+  const studyType = f.get('studyType') || null;
 
   /* ─── SYMPTOM SUBTYPE ────────────────────────────────────── */
   let subtype = 'Minimally-symptomatic';
@@ -1405,11 +1504,11 @@ function buildClinicianReport(f, m, T){
 
   // Phenotype icons (Bootstrap Icons) — used by clinician confTable
   const phenIcons = {
-    'High Anatomical Contribution': 'bi-body-text',
+    'High Anatomical Contribution': 'bi-lungs',
     'Low Arousal Threshold':        'bi-alarm',
     'High Loop Gain':               'bi-arrow-repeat',
     'Poor Muscle Responsiveness':   'bi-lightning',
-    'Positional OSA':               'bi-arrow-left-right',
+    'Positional OSA':               'bi-person-standing',
     'REM-Predominant OSA':          'bi-moon-stars',
     'High Hypoxic Burden':          'bi-heart-pulse',
     'Nasal-Resistance Contributor': 'bi-wind',
@@ -1422,9 +1521,6 @@ function buildClinicianReport(f, m, T){
     if (conf === 'Moderate') return '<span class="badge bg-warning text-dark">Moderate signal</span>';
     return '<span class="badge bg-secondary">Limited signal</span>';
   };
-
-  const hasLowAr = out.phen.includes('Low Arousal Threshold');
-
 
   /* ─── HST Validity Assessment ────────────────────────────── */
   const hstFlags = buildHstFlags({
@@ -1447,7 +1543,8 @@ function buildClinicianReport(f, m, T){
   const confTable = out.phen.map(tag => {
     const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
     const icon = phenIcons[tag] || 'bi-circle';
-    return `<tr><td><i class="bi ${icon} me-1"></i>${tag}</td><td>${confBadge(conf)}</td><td><small>${out.why[tag].filter(Boolean).join(', ')||'\u2014'}</small></td></tr>`;
+    const displayTag = tag === 'High Hypoxic Burden' && !hbHighTier ? 'Elevated Hypoxic Burden' : tag;
+    return `<tr><td><i class="bi ${icon} me-1"></i>${displayTag}</td><td>${confBadge(conf)}</td><td><small>${out.why[tag].filter(Boolean).join(', ')||'\u2014'}</small></td></tr>`;
   }).join('');
 
   const guardrails = [];
@@ -1516,7 +1613,6 @@ function buildClinicianReport(f, m, T){
 
   const followUps = [];
   if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI 4–6 weeks after CBT-I begins</li><li>Start or continue PAP on the individualized concurrent/sequential plan</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor PAP adherence at 1, 4, and 12 weeks</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
-  if(hasLowAr && !hasCOMISA) followUps.push('CPAP comfort review in 2\u20134 weeks; CBT-I progress.');
   if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');
@@ -1532,7 +1628,8 @@ function buildClinicianReport(f, m, T){
   followUps.push('Therapy effectiveness check (adherence, residual AHI/ODI, symptoms) at 4\u20138 weeks.');
 
   /* ─── HGNS (Inspire / Genio) Candidacy Assessment ───────────── */
-  const cpapPressure = n(f.get('cpapPressure'));
+  const papMode = f.get('papMode') || '';
+  const cpapPressure = papMode === 'CPAP' ? n(f.get('papCpapPressure')) : n(f.get('cpapPressure'));
   const hgnsCtx = {
     ahi, bmi, sex, sup, nons,
     cpapFailed, prefAvoidCpap, priorInspire,
@@ -1569,9 +1666,11 @@ function buildClinicianReport(f, m, T){
     cvd,
     prefInspire,
     prefSurgery,
+    planConfirmed: encounter.planConfirmed,
     recTags,
     hasDISEData,
     hnsStage,
+    studyType,
   });
   const insufficientDataHTML = insufficientDataDomains.length ? `
     <div class="alert alert-warning mt-2 mb-3">
@@ -1587,6 +1686,7 @@ function buildClinicianReport(f, m, T){
     priorMAD,
     priorJaw,
     prefSurgery,
+    planConfirmed: encounter.planConfirmed,
     hasDISEData,
     studyType: f.get('studyType') || null,
     csr,
@@ -1644,7 +1744,11 @@ function buildClinicianReport(f, m, T){
     keyNumItems.push(`<div class="osa-clin-metric"><span class="osa-clin-metric-val" style="color:${remColor}">${remAhi}</span><span class="osa-clin-metric-lbl">REM AHI</span></div>`);
   }
   if (exists(hbPH)) {
-    const hbColor = hbPH >= 10 ? '#dc3545' : hbPH >= 5 ? '#fd7e14' : '#6c757d';
+    const hbColor = hbPH >= T.hypoxicBurden.hbPerHourHigh
+      ? '#dc3545'
+      : hbPH >= T.hypoxicBurden.hbPerHour
+        ? '#fd7e14'
+        : '#6c757d';
     keyNumItems.push(`<div class="osa-clin-metric"><span class="osa-clin-metric-val" style="color:${hbColor}">${hbPH}</span><span class="osa-clin-metric-lbl">HB / hr</span></div>`);
   }
   if (exists(hb90PH)) {
@@ -1695,18 +1799,18 @@ function buildClinicianReport(f, m, T){
     return '';
   })();
 
-  /* ── Low HB — Alternatives Equally Effective / CPAP Caution (Pinilla 2023) ── */
+  /* ── Lower HB context. HB is not a stand-alone treatment allocator. ── */
   const mildLowHbNote = (() => {
     const lowHB = oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden');
     if (!lowHB || !exists(ahi) || ahi < 5) return '';
 
     const isMild = ahi < 15;
     if (isMild) {
-      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>CPAP and non-CPAP treatments (MAD, positional, weight loss) show comparable outcomes <small class="text-muted">(Pinilla 2023)</small></li><li>Patient preference should guide selection — alternatives are reasonable first-line</li><li><small class="text-muted">Note: this reflects comparable efficacy in low-HB mild OSA; it does not indicate CPAP is harmful, and CPAP remains appropriate if preferred or otherwise indicated.</small></li></ul></div>`;
+      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Lower Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>The available oxygen metrics do not place this patient in the app's elevated hypoxic-burden tier.</li><li>Choose treatment using symptoms, comorbidities, anatomy, preferences, and expected adherence. Do not use low HB alone to claim equivalent outcomes or to move PAP off the table.</li></ul></div>`;
     }
     // Moderate OSA + low HB: still worth noting
     if (ahi < 30) {
-      return `<div class="alert alert-info mt-2 py-2 px-3"><strong>Moderate OSA + Low Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>HB below CV-risk threshold <small class="text-muted">(Pinilla 2023, Peker 2025)</small></li><li>High AHI with low HB is not associated with MACCEs — only high HB predicts CV events <small class="text-muted">(RICCADSA)</small></li><li>Non-CPAP alternatives reasonable; shared decision-making appropriate</li></ul></div>`;
+      return `<div class="alert alert-info mt-2 py-2 px-3"><strong>Moderate OSA + Lower Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>The available oxygen metrics do not place this patient in the app's elevated hypoxic-burden tier.</li><li>This does not remove standard treatment indications. Integrate symptoms, comorbidities, anatomy, preferences, and likely adherence.</li></ul></div>`;
     }
     return '';
   })();
@@ -1805,12 +1909,20 @@ function buildClinicianReport(f, m, T){
   if (milestones.length) careSummaryParts.push(`Stage: ${milestones[milestones.length - 1]}`);
 
   const careSummaryHTML = careSummaryParts.length ? `<div class="osa-care-summary mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>${careSummaryParts.join(' · ')}</div>` : '';
+  const selectedPlanLabels = encounter.selectedPlanFields.map(field => PLAN_FIELD_LABELS[field]).filter(Boolean);
+  if (encounter.planObserve) selectedPlanLabels.push('observe / follow up');
+  const encounterPlanHTML = `
+    <div class="alert ${encounter.planConfirmed ? 'alert-success' : 'alert-info'} py-2 px-3 mb-3">
+      <div><strong>Visit goal:</strong> ${escapeHtml(encounter.visitReasonLabel)}${encounter.visitReasonNote ? `, ${escapeHtml(encounter.visitReasonNote)}` : ''}</div>
+      <div><strong>${encounter.planConfirmed ? 'Confirmed plan' : 'Planning status'}:</strong> ${encounter.planConfirmed ? escapeHtml(selectedPlanLabels.join(', ') || 'No active treatment selected') : 'Pre-visit decision support. Confirm today\'s plan before generating the patient handout.'}</div>
+      ${encounter.planSummary ? `<div><strong>Most important next step:</strong> ${escapeHtml(encounter.planSummary)}</div>` : ''}
+    </div>`;
 
   /* ── Build collapsible clinical analysis content ──────── */
   const clinAnalysisParts = [];
-  if (edwardsArTH && out.phen.includes('Low Arousal Threshold'))
+  if (edwardsArTH && !edwardsArTH.partial && out.phen.includes('Low Arousal Threshold'))
     clinAnalysisParts.push(`<div class="alert alert-info py-2 px-3 mb-2"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables. Enter Apnea Index + Hypopnea Index in Lab PSG section for full score.]</small>' : ''}</div>`);
-  if (!exists(fHypopneas)) {
+  if (!exists(fHypopneas) && (studyType === 'psg' || studyType === 'both')) {
     clinAnalysisParts.push('<div class="alert alert-secondary py-2 px-3 mb-2"><strong>Detailed Endotyping Incomplete</strong> <small class="text-muted">(Vena 2022; Edwards 2014; Schmickl 2022)</small><ul class="mb-0 mt-1"><li>Apnea/hypopnea breakdown not entered</li><li>Collapsibility estimate and point-of-care loop gain estimate remain incomplete</li><li>Low-arousal-threshold scoring may be partial rather than fully scored</li></ul></div>');
   }
   if (exists(fHypopneas)) {
@@ -1871,6 +1983,7 @@ function buildClinicianReport(f, m, T){
     </div>
     ${pathwayHTML}
     ${careSummaryHTML}
+    ${encounterPlanHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
     ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
     ${keyNumsGrid}
@@ -2010,6 +2123,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const cpapFailed    = priorCpap && !cpapCurrent;
   const cpapRefused   = cpapFailed && cpapRetry === 'No';
   const cpapWillRetry = cpapFailed && (cpapRetry === 'Yes' || cpapRetry === 'Maybe');
+  const encounter = buildEncounterContext(f, { cpapCurrent, prefAvoidCpap, prefSurgery, prefInspire });
 
   const psgRemAhi = n(f.get('ahiREM'));
   const hstRemAhi = n(f.get('remPahi'));
@@ -2140,16 +2254,19 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ─── TREATMENT MAPPING (delegated to mapTreatments — pure fn) ─── */
   const {
-    recs: recTexts, recTags, friedmanStage, hnsStage, madScore,
+    recTags: generatedRecTags, friedmanStage, hnsStage, madScore,
     hasConcentricCollapse, hasCOMISA, sleepyCOMISA,
   } = mapTreatments(f, {
     phen: out.phen,
     sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    papMode: f.get('papMode') || '',
     prefAvoidCpap, prefSurgery, prefInspire,
     priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
   }, T);
+  const recTags = filterRecommendationsForEncounter(generatedRecTags, encounter);
+  const recTexts = recTags.map(entry => entry.text);
   out.recs = recTexts;
 
   /* ─── CLINICIAN REPORT (delegated to buildClinicianReport — renderer) ─── */
@@ -2165,6 +2282,7 @@ document.getElementById('form').addEventListener('submit', e => {
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
+    encounter,
   }, T);
 
   // ── Populate analysis data for patient report ──
@@ -2244,6 +2362,19 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapPressure: n(f.get('cpapPressure')),
     weightLossReadiness,
     age: n(f.get('age')),
+    visitReason: encounter.visitReason,
+    visitReasonLabel: encounter.visitReasonLabel,
+    visitReasonNote: encounter.visitReasonNote,
+    planConfirmed: encounter.planConfirmed,
+    planObserve: encounter.planObserve,
+    planSummary: encounter.planSummary,
+    selectedPlanFields: encounter.selectedPlanFields,
+    papMode: f.get('papMode') || '',
+    papMinPressure: n(f.get('papMinPressure')),
+    papMaxPressure: n(f.get('papMaxPressure')),
+    papCpapPressure: n(f.get('papCpapPressure')),
+    papEpapPressure: n(f.get('papEpapPressure')),
+    papIpapPressure: n(f.get('papIpapPressure')),
   };
 
   // Show the Generate Patient Report button
@@ -2353,6 +2484,35 @@ function getReportFocusableElements() {
 
 function openReportOverlay(triggerEl) {
   if (!lastAnalysisData || !reportOverlay) return;
+  const confirmation = document.getElementById('planConfirmed');
+  const message = document.getElementById('planConfirmationMessage');
+  const currentSelections = Object.keys(PLAN_FIELD_TO_TAGS).filter(field => document.querySelector(`[name="${field}"]`)?.checked);
+  if (document.getElementById('planObserve')?.checked) currentSelections.push('planObserve');
+
+  const showPlanMessage = text => {
+    if (message) {
+      message.textContent = text;
+      message.classList.remove('d-none');
+    }
+    document.getElementById('cardVisitPlan')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  if (!confirmation?.checked) {
+    showPlanMessage('Confirm the plan reviewed with the patient before generating the patient report.');
+    return;
+  }
+  if (!currentSelections.length) {
+    showPlanMessage('Select at least one active pathway, or select Observe / follow up.');
+    return;
+  }
+
+  const analyzedSelections = [...(lastAnalysisData.selectedPlanFields || [])];
+  if (lastAnalysisData.planObserve) analyzedSelections.push('planObserve');
+  if (!lastAnalysisData.planConfirmed || currentSelections.sort().join('|') !== analyzedSelections.sort().join('|')) {
+    showPlanMessage('The plan changed after the last analysis. Click Generate Reports again, then open the patient report.');
+    return;
+  }
+  message?.classList.add('d-none');
   lastReportTrigger = triggerEl || document.activeElement;
   const html = PatientReport.generateReportHTML(lastAnalysisData);
   openReportOverlayFromHtml(html, triggerEl, true);

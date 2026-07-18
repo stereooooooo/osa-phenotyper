@@ -264,12 +264,44 @@
   </div>
 </div>
 
+<!-- ===== Encounter Context ===== -->
+<div class="card mb-3" id="cardVisitContext">
+  <div class="card-header"><i class="bi bi-signpost-split"></i> Reason for This Visit</div>
+  <div class="card-body row g-2 align-items-end">
+    <div class="col-md-7">
+      <label class="form-label required mb-1" for="visitReason">Primary reason</label>
+      <select class="form-select form-select-sm" name="visitReason" id="visitReason" required data-label="Reason for visit">
+        <option value="">Select the patient's main goal...</option>
+        <option value="snoring">Snoring concern</option>
+        <option value="symptoms">Tired, unrefreshed, or snoring; evaluate for sleep apnea</option>
+        <option value="new-diagnosis">Review a new sleep apnea diagnosis or sleep study</option>
+        <option value="transfer-pap">Transfer or establish PAP care here</option>
+        <option value="pap-troubleshoot">Improve PAP comfort, dryness, mask fit, or results</option>
+        <option value="restart-pap">Restart PAP after prior use</option>
+        <option value="oral-appliance">Discuss an oral appliance</option>
+        <option value="inspire">Discuss Inspire or another nerve-stimulation option</option>
+        <option value="surgery">Discuss airway surgery</option>
+        <option value="non-pap">Discuss non-PAP treatment options</option>
+        <option value="precision-onboarding">Established patient joining Precision Sleep</option>
+        <option value="follow-up">Sleep apnea follow-up or other goal</option>
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label mb-1" for="visitReasonNote">Optional detail</label>
+      <input type="text" class="form-control form-control-sm" name="visitReasonNote" id="visitReasonNote" maxlength="180" placeholder="Patient's own words or referral question">
+    </div>
+    <div class="col-12">
+      <p class="small text-muted mb-0">This controls report emphasis. Eligibility for a treatment does not place it in the active plan unless it matches the visit goal or the clinician selects it below.</p>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Demographics & History ===== -->
-<p class="text-muted small mb-2 no-print"><i class="bi bi-info-circle"></i> <strong>Minimum for a result:</strong> Age, Sex, BMI, and one sleep-study metric (AHI or pAHI). Every other field refines the analysis.</p>
+<p class="text-muted small mb-2 no-print"><i class="bi bi-info-circle"></i> <strong>Minimum for a result:</strong> Date of birth, Sex, BMI, and one sleep-study metric (AHI or pAHI). Every other field refines the analysis.</p>
 <div class="card" id="cardDemographics">
   <div class="card-header"><i class="bi bi-person-badge"></i> Demographics &amp; History</div>
   <div class="card-body row g-2 align-items-center">
-    <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">Age</label><input type="number" name="age" class="form-control form-control-sm" min="1" max="120" required data-label="Age"></div>
+    <div class="col-auto" style="width:110px;"><label class="form-label required mb-1">Age</label><input type="number" name="age" class="form-control form-control-sm bg-light" min="1" max="120" required readonly aria-describedby="ageHelp" data-label="Age"><div class="form-text" id="ageHelp">From DOB</div></div>
     <div class="col-auto" style="width:110px;"><label class="form-label required mb-1">Sex</label><select name="sex" class="form-select form-select-sm" required data-label="Sex"><option value="">Select…</option><option value="M">Male</option><option value="F">Female</option></select></div>
     <div class="col-auto" style="width:100px;"><label class="form-label required mb-1">BMI</label><input type="number" step="0.1" name="bmi" class="form-control form-control-sm" min="10" max="80" required data-label="BMI"></div>
     <div class="col-auto" style="width:110px;"><label class="form-label mb-1">Neck (in)</label><input type="number" step="0.1" name="neck" class="form-control form-control-sm" min="8" max="30"></div>
@@ -310,9 +342,35 @@
                 <select name="cpapRetry" class="form-select form-select-sm" style="width:auto;"><option value="">—</option><option>Yes</option><option>No</option><option>Maybe</option></select>
               </div>
               <div class="col-auto">
-                <label class="form-label mb-0">Rx Pressure <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Therapeutic CPAP/APAP pressure in cmH₂O. Used for HGNS candidacy assessment. Lower pressures (<8) predict better Inspire outcomes."></i></label>
-                <input type="number" step="0.5" name="cpapPressure" class="form-control form-control-sm" style="width:110px;" min="4" max="25" placeholder="cmH₂O">
+                <label class="form-label mb-0" for="papMode">Device mode</label>
+                <select name="papMode" id="papMode" class="form-select form-select-sm" style="width:105px;">
+                  <option value="">Unknown</option>
+                  <option value="APAP">APAP</option>
+                  <option value="CPAP">CPAP</option>
+                  <option value="BiPAP">BiPAP</option>
+                </select>
               </div>
+              <div class="col-auto pap-settings pap-settings-apap" hidden>
+                <label class="form-label mb-0">APAP range</label>
+                <div class="input-group input-group-sm" style="width:185px;">
+                  <input type="number" step="0.5" name="papMinPressure" class="form-control" min="4" max="25" aria-label="Minimum APAP pressure" placeholder="Min">
+                  <span class="input-group-text">to</span>
+                  <input type="number" step="0.5" name="papMaxPressure" class="form-control" min="4" max="25" aria-label="Maximum APAP pressure" placeholder="Max">
+                </div>
+              </div>
+              <div class="col-auto pap-settings pap-settings-cpap" hidden>
+                <label class="form-label mb-0">CPAP pressure</label>
+                <input type="number" step="0.5" name="papCpapPressure" class="form-control form-control-sm" style="width:110px;" min="4" max="25" placeholder="cmH2O">
+              </div>
+              <div class="col-auto pap-settings pap-settings-bipap" hidden>
+                <label class="form-label mb-0">BiPAP pressures</label>
+                <div class="input-group input-group-sm" style="width:205px;">
+                  <input type="number" step="0.5" name="papEpapPressure" class="form-control" min="4" max="25" aria-label="BiPAP EPAP pressure" placeholder="EPAP">
+                  <span class="input-group-text">/</span>
+                  <input type="number" step="0.5" name="papIpapPressure" class="form-control" min="4" max="30" aria-label="BiPAP IPAP pressure" placeholder="IPAP">
+                </div>
+              </div>
+              <input type="hidden" name="cpapPressure" value="">
             </div>
             <div class="mb-1"><span class="form-label">Reasons stopped</span></div>
             <div class="d-flex flex-wrap gap-1 mb-1">
@@ -449,9 +507,9 @@
     <div class="row g-3">
       <div class="col-6 col-md-3"><label class="form-label">ESS <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Epworth Sleepiness Scale (0–24). Normal &le;10; 11–14 mild sleepiness; 15–17 moderate; &ge;18 severe."></i></label><input type="number" name="ess" class="form-control" min="0" max="24"></div>
       <div class="col-6 col-md-3"><label class="form-label">ISI <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Insomnia Severity Index (0–28). 0–7 no insomnia; 8–14 subthreshold; 15–21 moderate; 22–28 severe."></i></label><input type="number" name="isi" class="form-control" min="0" max="28"></div>
-      <div class="col-6 col-md-3"><label class="form-label">NOSE Score <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Nasal Obstruction Symptom Evaluation (0–100). 5–25 mild; 30–50 moderate; 55–75 severe; 80–100 extreme. &ge;30 generally considered clinically significant."></i></label><input type="number" name="noseScore" class="form-control" min="0" max="100"></div>
+      <div class="col-6 col-md-3"><label class="form-label">NOSE Score <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Nasal Obstruction Symptom Evaluation (0-100). 5-25 mild; 30-50 moderate; 55-75 severe; 80-100 extreme. A completed score of 30 or more automatically counts as clinically meaningful nasal obstruction."></i></label><input type="number" name="noseScore" class="form-control" min="0" max="100"><div class="form-text" id="noseScoreHelp">Primary symptom measure when available</div></div>
       <div class="col-6 col-md-3 d-flex align-items-end">
-        <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="nasalObs" id="nasalObs"><label class="form-check-label" for="nasalObs">Nasal Obstruction</label></div>
+        <div class="mb-1"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="nasalObs" id="nasalObs"><label class="form-check-label" for="nasalObs">Nasal obstruction reported</label></div><div class="form-text">Fallback if NOSE is unavailable; auto-set at NOSE 30+</div></div>
       </div>
     </div>
     <div class="row g-3 mt-1">
@@ -557,6 +615,31 @@
 
 <!-- ===== Validation Alerts & Submit ===== -->
 <div id="validationAlerts" class="mt-3"></div>
+
+<!-- ===== Clinician-confirmed plan ===== -->
+<div class="card mt-3" id="cardVisitPlan">
+  <div class="card-header"><i class="bi bi-clipboard2-check"></i> Finalize Today's Plan</div>
+  <div class="card-body">
+    <p class="small text-muted mb-2">Complete this after the visit. Only selected pathways appear as active treatments in the patient report. Technical candidacy details remain available in the clinician view.</p>
+    <div class="row g-2">
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planPap" id="planPap"><label class="form-check-label" for="planPap">PAP management</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planNasal" id="planNasal"><label class="form-check-label" for="planNasal">Nasal treatment</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planPositional" id="planPositional"><label class="form-check-label" for="planPositional">Positional therapy</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planWeight" id="planWeight"><label class="form-check-label" for="planWeight">Weight management</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planMad" id="planMad"><label class="form-check-label" for="planMad">Oral appliance</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planInspire" id="planInspire"><label class="form-check-label" for="planInspire">Nerve stimulation</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planSurgery" id="planSurgery"><label class="form-check-label" for="planSurgery">Airway surgery</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planCbti" id="planCbti"><label class="form-check-label" for="planCbti">CBT-I</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planStudy" id="planStudy"><label class="form-check-label" for="planStudy">Diagnostic testing</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planObserve" id="planObserve"><label class="form-check-label" for="planObserve">Observe / follow up</label></div></div>
+    </div>
+    <div class="row g-2 align-items-end mt-2">
+      <div class="col-md-8"><label class="form-label mb-1" for="planSummary">Most important next step for this patient</label><input type="text" class="form-control form-control-sm" name="planSummary" id="planSummary" maxlength="240" placeholder="Example: Continue APAP and begin nasal treatment before changing pressure settings."></div>
+      <div class="col-md-4"><div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" name="planConfirmed" id="planConfirmed"><label class="form-check-label fw-semibold" for="planConfirmed">Plan reviewed and confirmed</label></div></div>
+    </div>
+    <div class="alert alert-info py-2 px-3 mt-3 mb-0 d-none" id="planConfirmationMessage" role="status"></div>
+  </div>
+</div>
 
 <div class="text-center mt-4 d-flex justify-content-center gap-3 flex-wrap" id="analysisActions">
   <button type="button" class="btn btn-success btn-lg px-4" id="btnSavePatient"><i class="bi bi-cloud-upload"></i> Save Patient</button>
@@ -891,6 +974,69 @@ document.getElementById('priorCpap').addEventListener('change', function() {
   }
 });
 
+/* ── Derived age, PAP settings, and NOSE fallback ───────────── */
+function calculateAgeFromDob(dobValue, referenceDate = new Date()) {
+  const match = String(dobValue || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const birthYear = Number(match[1]);
+  const birthMonth = Number(match[2]);
+  const birthDay = Number(match[3]);
+  let age = referenceDate.getFullYear() - birthYear;
+  const beforeBirthday = (referenceDate.getMonth() + 1 < birthMonth) ||
+    (referenceDate.getMonth() + 1 === birthMonth && referenceDate.getDate() < birthDay);
+  if (beforeBirthday) age -= 1;
+  return age >= 0 && age <= 120 ? String(age) : '';
+}
+
+function syncAgeFromDob() {
+  const dob = document.getElementById('patientDob');
+  const age = document.querySelector('[name="age"]');
+  if (dob && age) age.value = calculateAgeFromDob(dob.value);
+}
+
+function syncPapSettings() {
+  const mode = document.getElementById('papMode')?.value || '';
+  document.querySelectorAll('.pap-settings').forEach(group => { group.hidden = true; });
+  if (mode) document.querySelector(`.pap-settings-${mode.toLowerCase()}`)?.removeAttribute('hidden');
+
+  // Preserve the legacy fixed-pressure field for the existing HGNS model. An APAP
+  // range is a prescription range, not a measured therapeutic pressure, so its
+  // maximum must not be substituted into that model.
+  const legacy = document.querySelector('[name="cpapPressure"]');
+  const fixed = document.querySelector('[name="papCpapPressure"]');
+  if (legacy) legacy.value = mode === 'CPAP' ? (fixed?.value || '') : '';
+}
+
+function syncNasalObstructionFallback() {
+  const scoreInput = document.querySelector('[name="noseScore"]');
+  const obstructionInput = document.getElementById('nasalObs');
+  if (!scoreInput || !obstructionInput) return;
+  const score = scoreInput.value === '' ? null : Number(scoreInput.value);
+  if (score !== null && Number.isFinite(score)) {
+    obstructionInput.checked = score >= 30;
+    obstructionInput.disabled = true;
+    obstructionInput.dataset.inferredFromNose = 'true';
+  } else {
+    obstructionInput.disabled = false;
+    delete obstructionInput.dataset.inferredFromNose;
+  }
+}
+
+document.getElementById('patientDob')?.addEventListener('input', syncAgeFromDob);
+document.getElementById('papMode')?.addEventListener('change', syncPapSettings);
+document.querySelectorAll('[name="papCpapPressure"], [name="papMinPressure"], [name="papMaxPressure"], [name="papEpapPressure"], [name="papIpapPressure"]').forEach(input => {
+  input.addEventListener('input', syncPapSettings);
+});
+document.querySelector('[name="noseScore"]')?.addEventListener('input', syncNasalObstructionFallback);
+document.addEventListener('osa:patient-updated', () => {
+  syncAgeFromDob();
+  syncPapSettings();
+  syncNasalObstructionFallback();
+});
+syncAgeFromDob();
+syncPapSettings();
+syncNasalObstructionFallback();
+
 /* ── New Patient / Clear Form ─────────────────────────────────── */
 function resetWorkspaceUiState() {
   document.getElementById('form').reset();
@@ -1040,7 +1186,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','cpapPressure','lvef','madDentition','madProtrusion','madTmj'],
+    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','lvef','madDentition','madProtrusion','madTmj'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -1717,6 +1863,12 @@ function applyRuntimeMeta(meta) {
     cpapCurrent: 'Currently using CPAP',
     cpapHelped: 'CPAP improvement',
     cpapRetry: 'Open to retrying CPAP',
+    papMode: 'PAP device mode',
+    papMinPressure: 'APAP minimum pressure',
+    papMaxPressure: 'APAP maximum pressure',
+    papCpapPressure: 'CPAP pressure',
+    papEpapPressure: 'BiPAP EPAP pressure',
+    papIpapPressure: 'BiPAP IPAP pressure',
     cpapPressure: 'CPAP pressure',
     cpapMask: 'CPAP mask discomfort',
     cpapClaustro: 'CPAP claustrophobia',
@@ -1727,6 +1879,20 @@ function applyRuntimeMeta(meta) {
     cpapNoImprove: 'CPAP no improvement',
     cpapTravel: 'CPAP travel difficulty',
     weightLossReadiness: 'Weight-management interest',
+    visitReason: 'Reason for visit',
+    visitReasonNote: 'Reason for visit detail',
+    planPap: 'PAP selected today',
+    planNasal: 'Nasal treatment selected today',
+    planPositional: 'Positional therapy selected today',
+    planWeight: 'Weight management selected today',
+    planMad: 'Oral appliance selected today',
+    planInspire: 'Nerve stimulation selected today',
+    planSurgery: 'Airway surgery selected today',
+    planCbti: 'CBT-I selected today',
+    planStudy: 'Diagnostic testing selected today',
+    planObserve: 'Observation selected today',
+    planSummary: 'Most important next step',
+    planConfirmed: 'Plan reviewed and confirmed',
     lvef: 'LVEF',
     madDentition: 'MAD tooth support',
     madProtrusion: 'MAD protrusion',

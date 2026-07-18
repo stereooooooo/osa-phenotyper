@@ -2,7 +2,7 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-07-15
+**Last updated:** 2026-07-18
 
 ---
 
@@ -39,7 +39,7 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| HB area/hr thresholds (30/60 %min/hr) | Azarbarzin A, et al. "The Hypoxic Burden of Sleep Apnoea Is a Strong Determinant of Cardiovascular Risk." *Eur Heart J.* 2019;40(14):1055-1063. | HB tier cutoffs: <30 low, 30-60 moderate, >60 severe; low-HB framing is withheld when only a thin oxygen dataset is available |
+| HB area/hr research thresholds | Azarbarzin A, et al. "The Hypoxic Burden of Sleep Apnoea Is a Strong Determinant of Cardiovascular Risk." *Eur Heart J.* 2019;40(14):1055-1063; Pinilla L, et al. *Eur Respir J.* 2023 (ISAACC post hoc analysis); Peker Y, et al. *Chest.* 2025 (RICCADSA). | HB ≥30 is an exploratory elevated-signal boundary. Values below 73 are not labeled "high" in the clinician view. The 73.1 ISAACC threshold and 60.7 RICCADSA median are cohort-derived, not validated universal clinical categories. HB supports risk context and does not independently select treatment. |
 | ODI as strongest HB correlator (r=0.73) | Same Azarbarzin 2019 + Zinchuk AV, et al. "Polysomnographic Phenotypes and Their Cardiovascular Implications." *Am J Respir Crit Care Med.* 2020;202(12):1701-1712. | ODI tier: <20 low, 20-50 moderate, >50 severe |
 | T90 and cardiovascular risk (OR 2.70 mortality) | Oldenburg O, et al. "Sleep-Disordered Breathing in Heart Failure." *Eur J Heart Fail.* 2016;18(11):1265-1277. | T90 tier: <5% low, 5-20% moderate, >20% severe |
 | Nadir SpO₂ (r=-0.70 with HB) | Azarbarzin 2019 | Nadir <75% = severe tier trigger |
@@ -121,6 +121,7 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 |---------|----------|----------|
 | Tirzepatide (Zepbound) for moderate-severe OSA in adults with obesity | Malhotra A, et al. "Tirzepatide for the Treatment of Obstructive Sleep Apnea and Obesity." *N Engl J Med.* 2024;391:1193-1205 (SURMOUNT-OSA); U.S. FDA. "FDA Approves First Medication for Obstructive Sleep Apnea." Dec 20, 2024. | Clinician recommendation explicitly names a GLP-1/tirzepatide (Zepbound) evaluation for obesity (BMI ≥30) **with moderate-to-severe OSA (AHI ≥15)** — matching the FDA OSA indication. Patient-facing GLP-1/Zepbound mention gated to BMI ≥30. Mild obese OSA gets generic weight counseling. |
 | 10% weight loss was associated with an estimated 26% reduction in AHI at the cohort level | Peppard PE, et al. "Longitudinal Study of Moderate Weight Change and SDB." *JAMA.* 2000;284(23):3015-21. PMID 11122588. | Patient report states that weight loss can reduce severity while emphasizing that individual response varies; it does not promise a fixed reduction |
+| Tongue fat is greater in obesity-associated OSA and reduction in tongue fat mediates part of the AHI improvement with weight loss | Kim AM, et al. *Sleep.* 2014;37(10):1639-1648. PMID 25197815; Wang SH, et al. *Am J Respir Crit Care Med.* 2020;201(6):718-727. PMID 31918559. | Patient report explains that tissue in the tongue and around the throat can crowd the airway. It also explains that central weight can lower lung volume and reduce stabilizing traction on the upper airway. Language remains non-stigmatizing and does not imply weight is the only cause. |
 
 ## Patient-Report Counseling & Safety Guardrails
 
@@ -128,6 +129,8 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 |---------|----------|----------|
 | PAP cardiovascular outcome evidence is adherence-sensitive and not a categorical four-hour guarantee | McEvoy RD, et al. "CPAP for Prevention of Cardiovascular Events in Obstructive Sleep Apnea." *N Engl J Med.* 2016;375:919-931 (SAVE); Sánchez-de-la-Torre M, et al. "Adherence to CPAP Treatment and the Risk of Recurrent Cardiovascular Events: A Meta-Analysis." *JAMA.* 2023;330(13):1255-1265. PMID 37787793. | Replaces “4+ hours provides significant health protection” with “use PAP whenever you sleep; benefits generally increase with nightly duration” |
 | Isolated nasal surgery improves symptoms, nasal resistance, and PAP use more consistently than it changes AHI | Correa EJ, et al. "Role of Nasal Surgery in Adult Obstructive Sleep Apnea: A Systematic Review." *Int Arch Otorhinolaryngol.* 2024;28(3):e310-e321. PMID 39268344. | Nasal treatment is described as an adjunct that improves airflow and treatment tolerance, not as a stand-alone OSA cure |
+| NOSE symptom severity bands and clinically meaningful obstruction threshold | Lipan MJ, Most SP. "Development of a Severity Classification System for Subjective Nasal Obstruction." *JAMA Facial Plast Surg.* 2013;15(5):358-361. PMID 23846399. | NOSE is the primary symptom signal when completed: 5-25 mild, 30-50 moderate, 55-75 severe, 80-100 extreme. The yes/no nasal-obstruction item is a fallback only when NOSE is unavailable. |
+| Nasal surgery can improve PAP use and may reduce required pressure in selected patients with obstruction | Poirier J, et al. *Laryngoscope.* 2014;124(1):317-319. PMID 23575772; Kim SD, et al. *Sci Rep.* 2023. PMID 36928588. | For a current PAP user with meaningful nasal obstruction, nasal treatment is prioritized for comfort and adherence. The report says pressure may decrease in selected patients, not that it will decrease for every patient. |
 | Safe nasal irrigation requires distilled, sterile, or previously boiled and cooled water | U.S. Food and Drug Administration. "Is Rinsing Your Sinuses With Neti Pots Safe?" Content current Apr 28, 2025. | Adds a safe-water instruction wherever the patient checklist recommends saline irrigation |
 
 ## UARS (Upper Airway Resistance Syndrome)

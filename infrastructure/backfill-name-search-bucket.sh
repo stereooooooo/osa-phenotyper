@@ -5,7 +5,7 @@ if [[ $# -lt 1 || $# -gt 2 ]]; then
   echo "Usage: $0 <table-name> [region]"
   echo
   echo "Backfills the patient-table name search metadata used by the DynamoDB"
-  echo "name-prefix-index by normalizing nameLower and setting nameSearchBucket."
+  echo "last-name and given-name prefix indexes by normalizing both search forms."
   exit 1
 fi
 
@@ -29,7 +29,7 @@ aws dynamodb scan \
 updated=0
 skipped=0
 
-while IFS=$'\t' read -r patient_id bucket normalized_name; do
+while IFS=$'\t' read -r patient_id bucket normalized_name given_bucket given_name; do
   if [[ -z "$patient_id" ]]; then
     ((skipped+=1))
     continue
@@ -39,8 +39,8 @@ while IFS=$'\t' read -r patient_id bucket normalized_name; do
     --region "$REGION" \
     --table-name "$TABLE_NAME" \
     --key "{\"patientId\":{\"S\":\"$patient_id\"}}" \
-    --update-expression "SET nameSearchBucket = :bucket, nameLower = :nameLower" \
-    --expression-attribute-values "{\":bucket\":{\"S\":\"$bucket\"},\":nameLower\":{\"S\":\"$normalized_name\"}}" \
+    --update-expression "SET nameSearchBucket = :bucket, nameLower = :nameLower, givenNameSearchBucket = :givenBucket, givenNameLower = :givenName" \
+    --expression-attribute-values "{\":bucket\":{\"S\":\"$bucket\"},\":nameLower\":{\"S\":\"$normalized_name\"},\":givenBucket\":{\"S\":\"$given_bucket\"},\":givenName\":{\"S\":\"$given_name\"}}" \
     >/dev/null
 
   ((updated+=1))
@@ -54,7 +54,12 @@ done < <(
       const normalized = rawName.trim().toLowerCase();
       const match = normalized.match(/[a-z0-9]/);
       const bucket = match ? match[0] : "#";
-      process.stdout.write(`${patientId}\t${bucket}\t${normalized}\n`);
+      const givenName = normalized.includes(",")
+        ? normalized.split(",").slice(1).join(" ").trim()
+        : (normalized.split(/\s+/)[0] || "");
+      const givenMatch = givenName.match(/[a-z0-9]/);
+      const givenBucket = givenMatch ? givenMatch[0] : "#";
+      process.stdout.write(`${patientId}\t${bucket}\t${normalized}\t${givenBucket}\t${givenName || normalized}\n`);
     }
   ' "$tmp_scan"
 )

@@ -416,6 +416,48 @@ var PatientReport = (() => {
       (data.cpapFailed && !data.cpapWillRetry);
   }
 
+  function papDeviceLabel(data) {
+    const mode = String(data?.papMode || '').toUpperCase();
+    if (mode === 'APAP') return 'APAP';
+    if (mode === 'BIPAP') return 'BiPAP';
+    return 'CPAP';
+  }
+
+  function papSettingsText(data) {
+    const mode = String(data?.papMode || '').toUpperCase();
+    if (mode === 'APAP' && exists(data.papMinPressure) && exists(data.papMaxPressure)) {
+      return ` at ${data.papMinPressure}-${data.papMaxPressure} cm H2O`;
+    }
+    if (mode === 'CPAP' && exists(data.papCpapPressure)) {
+      return ` at ${data.papCpapPressure} cm H2O`;
+    }
+    if (mode === 'BIPAP' && exists(data.papIpapPressure) && exists(data.papEpapPressure)) {
+      return ` with IPAP ${data.papIpapPressure} and EPAP ${data.papEpapPressure} cm H2O`;
+    }
+    return '';
+  }
+
+  function nasalContributorDescription(data) {
+    const score = exists(data?.noseScore) ? Number(data.noseScore) : null;
+    const severity = Number.isFinite(score) && score >= 80
+      ? 'extreme'
+      : Number.isFinite(score) && score >= 55
+        ? 'severe'
+        : Number.isFinite(score) && score >= 30
+          ? 'clinically meaningful'
+          : '';
+    const scoreText = severity
+      ? `Your NOSE symptom score is ${score}/100, which is in the ${severity} range. `
+      : '';
+    const dryMouthText = Array.isArray(data?.cpapReasons) && data.cpapReasons.includes('cpapDry')
+      ? 'Nasal blockage may promote mouth breathing and contribute to the dry mouth you reported. '
+      : '';
+    const papText = data?.cpapCurrent
+      ? 'Treating it may improve PAP comfort and, in selected patients, allow a lower needed pressure. '
+      : 'Treating it may improve airflow and make PAP or an oral appliance easier to tolerate. ';
+    return `${scoreText}${dryMouthText}${papText}Nasal care usually supports, rather than replaces, treatment for sleep apnea itself.`;
+  }
+
   function anatomyContributorDescription(data) {
     const findings = [];
     const ftp = normalizeFtp(data.ftp);
@@ -429,14 +471,23 @@ var PatientReport = (() => {
       findings.push(`a ${degree}set-back lower jaw`);
     }
 
+    const proceduralPlan = Array.isArray(data?.selectedPlanFields) && data.selectedPlanFields.some(field =>
+      ['planMad', 'planInspire', 'planSurgery'].includes(field)
+    );
+
     if (!findings.length) {
-      return 'Your airway exam suggests that anatomy contributes to narrowing during sleep. The exact treatment fit depends on the complete exam, prior treatment, and—when indicated for the procedure being considered—the collapse pattern seen during sleep endoscopy.';
+      return proceduralPlan
+        ? 'Your airway exam suggests that anatomy contributes to narrowing during sleep. The exact treatment fit depends on the complete exam, prior treatment, and any evaluation required for the option you selected.'
+        : 'Your airway exam suggests that anatomy contributes to narrowing during sleep. This helps explain your sleep apnea, but it does not mean that you need a procedure.';
     }
 
     const findingText = findings.length === 1
       ? findings[0]
       : `${findings.slice(0, -1).join(', ')} and ${findings[findings.length - 1]}`;
-    return `Your exam shows ${findingText}. These findings can reduce airway space during sleep. A full candidacy review is still needed before choosing an anatomy-based procedure.`;
+    const closing = proceduralPlan
+      ? 'A full candidacy review is still needed before choosing an anatomy-based treatment.'
+      : 'This helps explain your sleep apnea, but it does not mean that you need a procedure.';
+    return `Your exam shows ${findingText}. These findings can reduce airway space during sleep. ${closing}`;
   }
 
   function patientCpapBarrierText(data) {
@@ -615,6 +666,7 @@ var PatientReport = (() => {
   };
 
   function summaryNextStep(data) {
+    if (String(data.planSummary || '').trim()) return esc(String(data.planSummary).trim());
     const stage = getReportStage(data);
     if (stage === 'pre-study') return 'Schedule the sleep study your care team recommended.';
     const ahi = data.primaryAHI;
@@ -657,7 +709,10 @@ var PatientReport = (() => {
       return 'Begin CBT-I and review the non-PAP breathing treatments in your plan with your doctor.';
     }
     // Established CPAP user: the action is continuity, not a new fitting.
-    if (data.cpapCurrent) return 'Keep using your CPAP, and bring any comfort issues to your next visit so we can fine-tune it.';
+    if (data.cpapCurrent) {
+      const device = papDeviceLabel(data);
+      return `Keep using your ${device}, and bring any comfort issues to your next visit so we can fine-tune it.`;
+    }
 
     const alternativesLead = patientAlternativesLead(data);
     if (alternativesLead) {
@@ -739,7 +794,7 @@ var PatientReport = (() => {
     /* Keep returning-patient context concise. The AHI result already appears
        immediately above; this block explains why the current plan is different. */
     const txParts = [];
-    if (data.cpapCurrent) txParts.push('You are currently using CPAP');
+    if (data.cpapCurrent) txParts.push(`You are currently using ${papDeviceLabel(data)}`);
     else if (data.cpapFailed) txParts.push(data.cpapWillRetry ? 'You tried CPAP and are willing to retry it' : 'You tried CPAP and discontinued it');
     if (data.priorMAD) txParts.push('You tried an oral appliance');
     if (data.priorUPPP) txParts.push('You had UPPP surgery');
@@ -1100,7 +1155,10 @@ ${renderSectionG(data)}`;
      SECTION C — What's Contributing to Your Sleep Apnea
      ══════════════════════════════════════════════════════════════════════════ */
   function renderSectionC(data) {
-    const riskOnlyPhenotypes = new Set(['High Hypoxic Burden', 'Elevated Delta Heart Rate']);
+    /* Low-arousal-threshold screening is an indirect clinician signal, not a
+       patient-actionable diagnosis. Keep it out of the handout so a partial
+       Edwards score cannot imply a treatment that the visit did not select. */
+    const riskOnlyPhenotypes = new Set(['High Hypoxic Burden', 'Elevated Delta Heart Rate', 'Low Arousal Threshold']);
     const phen = (data.phen || []).filter(name => !riskOnlyPhenotypes.has(name));
     if (hasPatientRecTag(data, 'SOFT-TISSUE-STRONG') && !phen.includes('High Anatomical Contribution')) {
       phen.unshift('High Anatomical Contribution');
@@ -1120,19 +1178,16 @@ ${renderSectionG(data)}`;
     }
 
     const iconMap = {
-      'High Anatomical Contribution':  'bi-body-text',
-      'Low Arousal Threshold':         'bi-alarm',
+      'High Anatomical Contribution':  'bi-lungs',
       'High Loop Gain':                'bi-arrow-repeat',
       'Poor Muscle Responsiveness':    'bi-lightning',
-      'Positional OSA':                'bi-arrow-left-right',
+      'Positional OSA':                'bi-person-standing',
       'REM-Predominant OSA':           'bi-moon-stars',
       'Nasal-Resistance Contributor':  'bi-wind',
     };
 
     const descMap = {
       'High Anatomical Contribution': anatomyContributorDescription(data),
-
-      'Low Arousal Threshold': `Your brain wakes up easily when breathing gets hard. That sounds helpful, but it cuts short your airway muscles' chance to reopen on their own, leaving many brief, fragmented wake-ups. Treatments that steady your breathing — so the brain doesn't have to step in so often — tend to help.`,
 
       'High Loop Gain': `Your breathing control reacts to small changes like an over-sensitive thermostat — speeding up, then slowing too much, in an unstable cycle. Steadying that rhythm (with certain CPAP settings, positional therapy, or in some cases medication) can help smooth it out.`,
 
@@ -1142,14 +1197,13 @@ ${renderSectionG(data)}`;
 
       'REM-Predominant OSA': `Your breathing problems cluster in REM (dream) sleep, when your brain relaxes the muscles that hold the airway open. Because REM is key for memory and mood, disruptions there affect how you feel. CPAP is particularly good at protecting REM sleep.`,
 
-      'Nasal-Resistance Contributor': `Narrowing or blockage in your nose can make PAP or an oral appliance harder to tolerate. Nasal treatment can improve comfort and airflow, but it usually supports — rather than replaces — treatment for sleep apnea itself.`,
+      'Nasal-Resistance Contributor': nasalContributorDescription(data),
     };
 
     /* Plain-language headings shown to the patient (the clinical phenotype name stays
        in the clinician view only). Keeps the medical term out of the patient's eyeline. */
     const patientLabelMap = {
       'High Anatomical Contribution': 'The shape of your airway',
-      'Low Arousal Threshold': 'You wake easily when breathing gets hard',
       'High Loop Gain': 'Your breathing control runs on a hair-trigger',
       'Poor Muscle Responsiveness': 'Your airway muscles relax too much in sleep',
       'Positional OSA': 'Worse when you sleep on your back',
@@ -1167,12 +1221,19 @@ ${renderSectionG(data)}`;
       const bmiText = Number(data.bmi).toFixed(1);
       const weightItem = {
         key: 'Weight & metabolic health',
-        icon: 'bi-activity',
+        icon: 'bi-person',
         label: 'Weight is one modifiable contributor',
-        desc: `At a BMI of ${bmiText}, weight likely adds to airway narrowing and sleep apnea severity. It is not the only cause. Supported weight management can reduce severity and may help other treatments work better, although the amount of improvement varies.`,
+        desc: `At a BMI of ${bmiText}, weight is likely one contributor, but it is not the only cause. Extra tissue in the tongue and around the throat can crowd the airway. Weight carried around the abdomen can also reduce lung volume, which makes the throat easier to collapse during sleep. Supported weight management can reduce severity and may help other treatments work better, although the amount of improvement varies.`,
       };
       const anatomyIndex = factorItems.findIndex(item => item.key === 'High Anatomical Contribution');
       factorItems.splice(anatomyIndex >= 0 ? anatomyIndex + 1 : 0, 0, weightItem);
+    }
+
+    /* For a current PAP user with clinically meaningful nasal symptoms, nasal
+       treatment is immediately actionable and belongs before secondary factors. */
+    if (data.cpapCurrent && exists(data.noseScore) && Number(data.noseScore) >= 30) {
+      const nasalIndex = factorItems.findIndex(item => item.key === 'Nasal-Resistance Contributor');
+      if (nasalIndex > 0) factorItems.unshift(factorItems.splice(nasalIndex, 1)[0]);
     }
 
     const items = factorItems.map(item => `
@@ -1294,6 +1355,13 @@ ${items}`;
        option and let the clinician handle device-specific labeling/payer nuance. */
     if ((tag === 'HNS' || tag === 'INSPIRE-EVAL' || tag === 'HNS-WORKUP') && data && data.bmi > 40) {
       return null;
+    }
+    if (tag === 'CPAP' && data && data.cpapCurrent) {
+      const device = papDeviceLabel(data);
+      return `<strong>Continue ${device}</strong>: Keep using your current ${device}${papSettingsText(data)} whenever you sleep. Your follow-up can focus on comfort, dryness, mask fit, and whether the settings or equipment need adjustment.`;
+    }
+    if (tag === 'NASAL-OPT' && data) {
+      return `<strong>Prioritize Nasal Treatment</strong>: ${nasalContributorDescription(data)}`;
     }
     if (tag === 'WEIGHT' && data) {
       const lead = weightReadinessLead(data);
@@ -1487,9 +1555,10 @@ ${items}`;
   <strong>We understand your preference.</strong> Your plan leads with reasonable non-PAP options while keeping PAP available if you need it.
 </div>`;
     } else if (data.cpapCurrent) {
+      const device = papDeviceLabel(data);
       output += `
 <div class="cpap-context-box">
-  <strong>Building on your current PAP therapy.</strong> These recommendations support comfort and results; your follow-up will determine whether settings or equipment need adjustment.
+  <strong>Building on your current ${device} therapy.</strong> You are not being asked to start over. These recommendations support comfort and results; your follow-up will determine whether settings or equipment need adjustment.
 </div>`;
     }
 
@@ -1511,6 +1580,8 @@ ${items}`;
       output += `\n<p>Before we choose a sleep apnea treatment, the next step is confirming what is happening during sleep and starting any safe support measures that can help in the meantime.</p>`;
     } else if (isNormalStudy) {
       output += `\n<p>Based on your symptoms and the patterns seen on your sleep study, these are the most helpful next steps to discuss or begin now.</p>`;
+    } else if (data.planConfirmed) {
+      output += `\n<p>This plan reflects the treatment priorities you and your clinician selected today.</p>`;
     } else {
       output += `\n<p>Start with these priorities; backup options remain conditional on your response and complete evaluation.</p>`;
     }
@@ -1533,7 +1604,7 @@ ${items}`;
     }
 
     if (startNow.length > 0) {
-      output += `\n<div class="treatment-group-label">Start Now</div>`;
+      output += `\n<div class="treatment-group-label">${data.cpapCurrent ? 'Continue and Improve' : 'Start Now'}</div>`;
       startNow.forEach(rec => {
         output += `\n<div class="rec-item">${rec.html}</div>`;
       });
@@ -1608,7 +1679,8 @@ ${items}`;
         (data.cpapCurrent || (data.cpapFailed && data.cpapWillRetry) || !patientAlternativesLead(data)) &&
         !surgeryConsultFirst) {
       if (data.cpapCurrent) {
-        add('Use PAP whenever you sleep and ask your care team to address mask, pressure, dryness, or nasal comfort problems.', 0);
+        const device = papDeviceLabel(data);
+        add(`Continue ${device}${papSettingsText(data)} whenever you sleep and ask your care team to address mask, pressure, dryness, or nasal comfort problems.`, 0);
       } else if (data.cpapFailed && data.cpapWillRetry) {
         add('Arrange a PAP re-fitting focused on the exact barrier from your first attempt, such as mask fit, pressure, dryness, or nasal blockage.', 0);
       } else {
@@ -1618,7 +1690,10 @@ ${items}`;
 
     if (hasNasal) {
       // FDA nasal-irrigation safety guidance: distilled, sterile, or boiled/cooled water.
-      add('Start the nasal plan recommended by your clinician. For saline rinses, use only distilled, sterile, or previously boiled and cooled water.', 1);
+      const dryMouthNote = Array.isArray(data.cpapReasons) && data.cpapReasons.includes('cpapDry')
+        ? ' Track whether nasal breathing and dry mouth improve.'
+        : '';
+      add(`Start the nasal plan recommended by your clinician.${dryMouthNote} For saline rinses, use only distilled, sterile, or previously boiled and cooled water.`, data.cpapCurrent ? 0.5 : 1);
     }
 
     if (tags.has('WEIGHT')) {
