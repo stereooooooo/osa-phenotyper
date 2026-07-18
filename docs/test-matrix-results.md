@@ -1,6 +1,17 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** July 16, 2026
-**Latest app version:** staging build `81a2f9c` (`fix: rebalance conditional report pagination`)
+**Latest smoke test:** July 18, 2026
+**Latest app version:** clinical-pilot build `caa47b5` (`fix: preserve search during index backfill`)
+
+---
+
+## July 18, 2026 Intent-Aware Precision Sleep Workflow
+
+- Headless regression suite: **416 assertions passed**. New end-to-end coverage confirms age is calculated from DOB, current APAP is presented as continuation rather than initiation, the APAP pressure range persists into the patient report, and unselected oral-appliance and DISE prerequisites remain absent.
+- Added a required visit-reason field and a clinician-confirmed end-of-visit plan. Technical candidacy remains visible to clinicians, while the patient report is generated only from pathways actually selected during the visit.
+- Added APAP, CPAP, and BiPAP mode-specific settings; made the completed NOSE score the primary nasal symptom signal; prioritized nasal treatment for current PAP users with meaningful obstruction; and suppressed routine WatchPAT apnea-versus-hypopnea completeness warnings.
+- Recalibrated hypoxic-burden wording so HB 30 to less than 73 is shown as an elevated research signal rather than high hypoxic burden. Removed unsupported lower-HB claims that non-PAP treatments have equivalent outcomes.
+- Added first-name prefix search with an encrypted DynamoDB GSI and a rollout fallback that preserves MRN, DOB, and last-name search while the optional index is unavailable. Backfilled both existing synthetic charts and verified a count-only `jamie` query returns one match.
+- CloudFormation validation passed. Deployed clinician-only clinical-pilot release `caa47b5` and verified CloudFront serves the matching versioned assets.
 
 ---
 
