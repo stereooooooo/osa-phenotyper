@@ -941,6 +941,65 @@ fieldset legend {
 }
 .osa-care-summary i { color: var(--osa-crimson); font-size: 1rem; }
 
+/* ── Finalize Today's Plan suggestions ───────────────────────── */
+.osa-plan-suggestions {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #f4f7fa;
+}
+.osa-plan-suggestions-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+  color: var(--osa-navy);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.osa-plan-suggestions-title i { color: var(--osa-crimson); }
+.osa-plan-suggestion-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.45rem;
+}
+.osa-plan-suggestion {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #dfe5ec;
+  border-radius: 6px;
+  background: var(--osa-white);
+}
+.osa-plan-suggestion-name {
+  color: var(--osa-navy);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.osa-plan-suggestion-reason {
+  margin-top: 0.1rem;
+  color: #526174;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.osa-plan-suggestions-note {
+  color: #617083;
+  font-size: 0.72rem;
+}
+.osa-plan-option {
+  padding: 0.4rem 0.5rem 0.4rem 2rem;
+  border-radius: 6px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.osa-plan-option.is-suggested {
+  background: rgba(31, 58, 92, 0.07);
+}
+.osa-plan-option.is-suggested .form-check-label {
+  color: var(--osa-navy);
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .osa-plan-option { transition: none; }
+}
+
 /* ── Collapsible Clinician Sections ─────────────────────────── */
 .osa-clin-section {
   border: 1px solid var(--osa-gray-border);

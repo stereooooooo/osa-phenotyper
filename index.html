@@ -621,17 +621,30 @@
   <div class="card-header"><i class="bi bi-clipboard2-check"></i> Finalize Today's Plan</div>
   <div class="card-body">
     <p class="small text-muted mb-2">Complete this after the visit. Only selected pathways appear as active treatments in the patient report. Technical candidacy details remain available in the clinician view.</p>
+    <div class="osa-plan-suggestions mb-3" id="planSuggestionPanel" aria-live="polite">
+      <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-2">
+        <div>
+          <div class="osa-plan-suggestions-title"><i class="bi bi-lightbulb"></i> Suggested from the current chart</div>
+          <div class="small text-muted" id="planSuggestionStatus">Enter the visit goal, treatment history, questionnaires, and study data to build suggestions.</div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm flex-shrink-0" id="btnApplyPlanSuggestions" disabled>
+          <i class="bi bi-check2-square"></i> Apply suggestions
+        </button>
+      </div>
+      <div class="osa-plan-suggestion-list mt-2 d-none" id="planSuggestionList"></div>
+      <div class="osa-plan-suggestions-note mt-2"><i class="bi bi-shield-check"></i> Suggestions are a draft. Review, change, and confirm the plan after the visit.</div>
+    </div>
     <div class="row g-2">
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planPap" id="planPap"><label class="form-check-label" for="planPap">PAP management</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planNasal" id="planNasal"><label class="form-check-label" for="planNasal">Nasal treatment</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planPositional" id="planPositional"><label class="form-check-label" for="planPositional">Positional therapy</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planWeight" id="planWeight"><label class="form-check-label" for="planWeight">Weight management</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planMad" id="planMad"><label class="form-check-label" for="planMad">Oral appliance</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planInspire" id="planInspire"><label class="form-check-label" for="planInspire">Nerve stimulation</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planSurgery" id="planSurgery"><label class="form-check-label" for="planSurgery">Airway surgery</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planCbti" id="planCbti"><label class="form-check-label" for="planCbti">CBT-I</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planStudy" id="planStudy"><label class="form-check-label" for="planStudy">Diagnostic testing</label></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="planObserve" id="planObserve"><label class="form-check-label" for="planObserve">Observe / follow up</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planPap"><input class="form-check-input" type="checkbox" name="planPap" id="planPap"><label class="form-check-label" for="planPap">PAP management</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planNasal"><input class="form-check-input" type="checkbox" name="planNasal" id="planNasal"><label class="form-check-label" for="planNasal">Nasal treatment</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planPositional"><input class="form-check-input" type="checkbox" name="planPositional" id="planPositional"><label class="form-check-label" for="planPositional">Positional therapy</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planWeight"><input class="form-check-input" type="checkbox" name="planWeight" id="planWeight"><label class="form-check-label" for="planWeight">Weight management</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planMad"><input class="form-check-input" type="checkbox" name="planMad" id="planMad"><label class="form-check-label" for="planMad">Oral appliance</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planInspire"><input class="form-check-input" type="checkbox" name="planInspire" id="planInspire"><label class="form-check-label" for="planInspire">Nerve stimulation</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planSurgery"><input class="form-check-input" type="checkbox" name="planSurgery" id="planSurgery"><label class="form-check-label" for="planSurgery">Airway surgery</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planCbti"><input class="form-check-input" type="checkbox" name="planCbti" id="planCbti"><label class="form-check-label" for="planCbti">CBT-I</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planStudy"><input class="form-check-input" type="checkbox" name="planStudy" id="planStudy"><label class="form-check-label" for="planStudy">Diagnostic testing</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planObserve"><input class="form-check-input" type="checkbox" name="planObserve" id="planObserve"><label class="form-check-label" for="planObserve">Observe / follow up</label></div></div>
     </div>
     <div class="row g-2 align-items-end mt-2">
       <div class="col-md-8"><label class="form-label mb-1" for="planSummary">Most important next step for this patient</label><input type="text" class="form-control form-control-sm" name="planSummary" id="planSummary" maxlength="240" placeholder="Example: Continue APAP and begin nasal treatment before changing pressure settings."></div>
@@ -942,6 +955,7 @@ window.OSALibs = (function () {
 <script src="js/questionnaire-parser.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/pdf-export.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/patientReport.js?v=__OSA_BUILD_ID__"></script>
+<script src="js/plan-suggestions.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/app.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/home.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/precision-sleep.js?v=__OSA_BUILD_ID__"></script>
