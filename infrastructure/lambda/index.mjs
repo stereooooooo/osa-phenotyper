@@ -1165,7 +1165,14 @@ async function searchPatients(event, params, userGroups, user) {
   }
   const [{ Items: prefixItems }, { Items: givenNameItems }] = await Promise.all([
     ddb.send(new QueryCommand(prefixQuery)),
-    ddb.send(new QueryCommand(givenNamePrefixQuery)),
+    ddb.send(new QueryCommand(givenNamePrefixQuery)).catch((err) => {
+      // Keep existing search paths available while a newly added GSI is still
+      // backfilling, or if that optional index is temporarily unavailable.
+      if (err?.name === 'ResourceNotFoundException' || err?.name === 'ValidationException') {
+        return { Items: [] };
+      }
+      throw err;
+    }),
   ]);
   const combined = [...(prefixItems || []), ...(givenNameItems || [])];
   if (combined.length) {
