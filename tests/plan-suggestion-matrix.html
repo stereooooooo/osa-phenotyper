@@ -325,11 +325,11 @@ const SCENARIOS = [
     checks: [],
     expectedSuggestions: ['Diagnostic testing'],
     expectedTags: [],
-    clinicianIncludes: ['Short recording time', 'Limited REM sampling'],
+    clinicianIncludes: ['Short recording time', 'Limited REM sampling', 'WatchPAT severity-category uncertainty'],
     clinicianTooltipIncludes: ['Quality flags identify limitations'],
     clinicianExcludes: [],
     patientIncludes: ['sleep apnea'],
-    patientExcludes: ['Short recording time', 'Limited REM sampling', 'bad sleep study', 'Worse during dream (REM) sleep'],
+    patientExcludes: ['Short recording time', 'Limited REM sampling', 'WatchPAT severity-category uncertainty', 'bad sleep study', 'Worse during dream (REM) sleep'],
     expectedAnalysisFlags: { limitedStudyStillSuggestsDefinitiveTreatment: false }
   },
   {
@@ -350,6 +350,25 @@ const SCENARIOS = [
     patientIncludes: ['central-breathing', 'ASV', 'unsafe'],
     patientExcludes: ['Begin PAP therapy now'],
     expectedAnalysisFlags: { centralWorkupMissingFromPlanSuggestions: false }
+  },
+  {
+    id: 'watchpat-heart-failure-psg-preferred',
+    name: 'Positive WatchPAT used for new diagnosis with documented heart failure',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '32', neck: '17', tonsils: '2', ftp: 'III', ess: '11', isi: '7', noseScore: '15',
+      pahi: '18', tst: '6.4', remPercent: '20', supPahi: '23', nonSupPahi: '14', remPahi: '22',
+      nremPahi: '17', odi: '17', nadir: '85', hbAreaPH: '28', t90: '2'
+    },
+    checks: ['cvd', 'cvdHeartFailure'],
+    expectedSuggestions: ['Diagnostic testing', 'PAP management'],
+    expectedTags: [],
+    clinicianIncludes: ['PSG preferred for diagnostic testing', 'heart failure', 'WatchPAT severity-category uncertainty'],
+    clinicianTooltipIncludes: ['AASM', 'significant cardiorespiratory disease'],
+    clinicianExcludes: [],
+    patientIncludes: ['sleep apnea'],
+    patientExcludes: ['PSG preferred for diagnostic testing', 'WatchPAT severity-category uncertainty'],
+    todayPlanIncludes: ['Complete the recommended sleep testing']
   },
   {
     id: 'current-cpap-no-difficulty-glp-cost',

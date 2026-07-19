@@ -77,13 +77,23 @@
       }
       case 'Positional OSA': {
         const pr = ratio(m.sup, m.nons) ?? 0;
-        if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return 'High';
+        // WatchPAT supplies useful position-specific estimates, but the app does
+        // not capture time spent in each position and device-specific positional
+        // phenotype agreement has not been established against PSG. Cap the
+        // signal at Moderate when it is derived from the home-study fields.
+        const hstCap = m.usesHstPositionEstimate === true;
+        if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return hstCap ? 'Moderate' : 'High';
         if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
         return 'Low';
       }
       case 'REM-Predominant OSA': {
         const rr = ratio(m.remAhi, m.nremAhi) ?? 0;
-        if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return 'High';
+        // A single-night PAT REM phenotype had 0.68 sensitivity and 0.97
+        // specificity versus PSG even with >=30 minutes of REM (Massie 2022).
+        // Adequate REM sampling remains required, and home-derived signals are
+        // capped at Moderate rather than presented as strong confirmation.
+        const hstCap = m.usesHstStageEstimate === true;
+        if(rr >= T.remPredominant.remNremRatioHigh && (m.nremAhi||0) < T.remPredominant.nremMaxHigh) return hstCap ? 'Moderate' : 'High';
         if(rr >= T.remPredominant.remNremRatio && (m.nremAhi||0) < T.remPredominant.nremMax) return 'Moderate';
         return 'Low';
       }

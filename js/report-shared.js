@@ -52,6 +52,8 @@ var OSAReportShared = (() => {
     t90,
     nadir,
     visitReason,
+    heartFailure = false,
+    strokeHistory = false,
   } = {}, thresholds = {}) {
     const numberOrNull = value => (value !== '' && value !== null && value !== undefined && Number.isFinite(+value)) ? +value : null;
     const ahiVal = numberOrNull(ahi);
@@ -86,6 +88,15 @@ var OSAReportShared = (() => {
     const hasPsgCentralConfirmation = studyType === 'psg' || (studyType === 'both' && caiVal !== null);
     const uars = detectUARS({ ahi: ahiVal, rdi, arInd, ess, isi });
     const normalHomeStudy = isHomeStudyOnly && ahiVal !== null && ahiVal < 5;
+    // Simultaneous WatchPAT/PSG comparisons show the weakest severity-category
+    // agreement in the mild and moderate ranges. This is an interpretation
+    // boundary, not a declaration that a technically adequate study is invalid
+    // (Iftikhar et al., 2022; Ioachimescu et al., 2020).
+    const watchpatSeverityUncertain = isHomeStudyOnly && ahiVal !== null && ahiVal >= 5 && ahiVal < 30;
+    // AASM recommends PSG rather than HSAT for initial diagnosis when defined
+    // complicating conditions are present. Only conditions captured explicitly
+    // by the current app are evaluated here; do not infer the others.
+    const psgPreferredComorbidity = isHomeStudyOnly && (heartFailure || strokeHistory);
     // Fatigue is not interchangeable with sleep propensity, so the clinician's
     // symptom-focused visit selection also counts as persistent concern even
     // when the Epworth score is below 10. Isolated snoring does not.
@@ -106,6 +117,8 @@ var OSAReportShared = (() => {
       uars,
       isHomeStudy,
       normalHomeStudy,
+      watchpatSeverityUncertain,
+      psgPreferredComorbidity,
       persistentClinicalConcern,
       remMinutes,
       shortRecording,

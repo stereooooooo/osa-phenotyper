@@ -291,6 +291,10 @@ assertEqual(
   confidenceFor('Positional OSA', { metrics: { sup: 20, nons: 18 } }),
   'Low', 'nonsup 18 (>15) → Low'
 );
+assertEqual(
+  confidenceFor('Positional OSA', { metrics: { sup: 45, nons: 8, usesHstPositionEstimate: true } }),
+  'Moderate', 'WatchPAT-derived positional signal is capped at Moderate'
+);
 
 // ── REM-Predominant Confidence ────────────────────────────────
 group('REM-Predominant OSA Confidence');
@@ -306,6 +310,22 @@ assertEqual(
   confidenceFor('REM-Predominant OSA', { metrics: { remAhi: 25, nremAhi: 12 } }),
   'Moderate', 'Ratio 2.1, NREM 12 (<15) → Moderate'
 );
+assertEqual(
+  confidenceFor('REM-Predominant OSA', { metrics: { remAhi: 35, nremAhi: 8, usesHstStageEstimate: true } }),
+  'Moderate', 'WatchPAT-derived REM signal is capped at Moderate'
+);
+
+group('WatchPAT Interpretation Boundaries');
+const mildWatchpatSignals = OSAReportShared.assessEncounterSignals({ studyType: 'watchpat', ahi: 8 }, T);
+assert(mildWatchpatSignals.watchpatSeverityUncertain, 'WatchPAT mild result receives a severity-category uncertainty signal');
+const moderateWatchpatSignals = OSAReportShared.assessEncounterSignals({ studyType: 'watchpat', ahi: 22 }, T);
+assert(moderateWatchpatSignals.watchpatSeverityUncertain, 'WatchPAT moderate result receives a severity-category uncertainty signal');
+const severeWatchpatSignals = OSAReportShared.assessEncounterSignals({ studyType: 'watchpat', ahi: 35 }, T);
+assert(!severeWatchpatSignals.watchpatSeverityUncertain, 'WatchPAT severe result does not receive the mild/moderate category flag');
+const psgSignals = OSAReportShared.assessEncounterSignals({ studyType: 'psg', ahi: 8 }, T);
+assert(!psgSignals.watchpatSeverityUncertain, 'PSG result does not receive a WatchPAT uncertainty flag');
+const complicatedHstSignals = OSAReportShared.assessEncounterSignals({ studyType: 'watchpat', ahi: 18, heartFailure: true }, T);
+assert(complicatedHstSignals.psgPreferredComorbidity, 'Heart failure on a diagnostic WatchPAT raises the PSG-preferred signal');
 
 group('Oxygen Data Sufficiency Guardrails');
 assertEqual(

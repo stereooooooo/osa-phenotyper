@@ -1108,6 +1108,8 @@ function buildHstFlags(m, T){
     tst: m.tst, remPercent: m.remPercent, centralIndex: m.pahic3,
     csr: m.csr, hbPerHour: m.hbPH, hbAreaUnder90: m.hb90PH,
     odi: m.odi, t90: m.t90, nadir: m.nadir,
+    heartFailure: m.heartFailure,
+    strokeHistory: m.strokeHistory,
   }, T);
 
   // 1. Total sleep time assessment
@@ -1128,6 +1130,30 @@ function buildHstFlags(m, T){
       severity: 'warning',
       flag: 'Limited REM sampling',
       detail: `REM sleep was ${percentText} of total sleep (approximately ${Math.round(m.remMinutes)} minutes). This is below the 30 minutes commonly required for a confident REM-versus-NREM comparison. REM-specific phenotype and treatment conclusions were suppressed.`,
+    });
+  }
+
+  // WatchPAT is clinically useful, but simultaneous-comparison studies show
+  // poor agreement with PSG for mild and moderate severity categories. Keep
+  // this clinician-only so a technically adequate study is not described to
+  // the patient as "bad" or automatically routed to PSG.
+  if (signals.watchpatSeverityUncertain) {
+    const category = m.ahi < T.severity.moderate ? 'mild' : 'moderate';
+    flags.push({
+      severity: 'info',
+      flag: 'WatchPAT severity-category uncertainty',
+      detail: `pAHI ${m.ahi} is in the ${category} range. WatchPAT and in-lab PSG show poor agreement for mild and moderate severity categories. Interpret this as an estimated category alongside symptoms, oxygen data, anatomy, and treatment goals. Consider PSG when a different severity category would materially change diagnosis, treatment eligibility, or risk assessment.`,
+      tooltip: 'In a 17-study meta-analysis of 1,318 simultaneous recordings, severity agreement was weakest for mild and moderate OSA (Cohen kappa 0.29 and 0.25). At AHI 5, pooled sensitivity was high but specificity was only 43%. This supports contextual interpretation and selective confirmation, not automatic rejection of every WatchPAT result.',
+    });
+  }
+
+  if (signals.psgPreferredComorbidity) {
+    const conditions = [m.heartFailure ? 'heart failure' : '', m.strokeHistory ? 'history of stroke' : ''].filter(Boolean).join(' and ');
+    flags.push({
+      severity: 'warning',
+      flag: 'PSG preferred for diagnostic testing',
+      detail: `${conditions} ${m.heartFailure && m.strokeHistory ? 'are' : 'is'} documented. AASM guidance recommends in-lab PSG rather than HSAT for initial OSA diagnosis in this setting. Review whether this home result is sufficient for the current decision or needs laboratory confirmation.`,
+      tooltip: 'The AASM diagnostic-testing guideline recommends PSG rather than HSAT for significant cardiorespiratory disease and history of stroke. This flag does not automatically invalidate prior treatment response or require repeat testing when the current decision does not depend on diagnostic reclassification.',
     });
   }
 
@@ -1165,9 +1191,9 @@ function buildHstFlags(m, T){
   if (exists(m.pahic3) && exists(m.ahi) && m.ahi > 0) {
     const centralPct = (m.pahic3 / m.ahi) * 100;
     if (centralPct > HST.centralPctDanger) {
-      flags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central event scoring has limitations — <strong>recommend in-lab PSG with EEG</strong> to confirm central vs obstructive classification before treatment planning.` });
+      flags.push({ severity: 'danger', flag: 'Predominantly central apnea', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT central-event classification has limited validation. <strong>Obtain in-lab PSG with respiratory-effort and sleep-stage channels</strong> to characterize central versus obstructive events before central-apnea-directed treatment planning.` });
     } else if (centralPct > HST.centralPctWarning) {
-      flags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT uses PAT signal attenuation to differentiate central from obstructive events, which has lower specificity than EEG-based scoring. Consider in-lab PSG for confirmation if central-dominant phenotype affects treatment choice (e.g., ASV vs CPAP).` });
+      flags.push({ severity: 'warning', flag: 'Significant central apnea component', detail: `Central apnea index is ${centralPct.toFixed(0)}% of total AHI. WatchPAT estimates central events using peripheral arterial tone plus respiratory-movement signals when the chest sensor is available. In-lab PSG should confirm the pattern if it would change treatment, such as ASV versus CPAP.` });
     }
   }
 
@@ -1653,7 +1679,9 @@ function buildClinicianReport(f, m, T){
   // nasal obstruction is the dominant adherence barrier (Carrie 2023; Stapleton
   // 2014; Koutsourelakis 2008; Cha 2023; see docs/citations.md).
   const phenEvidenceTooltips = {
-    'Nasal-Resistance Contributor': 'Higher baseline NOSE severity predicts a larger average improvement in nasal symptoms after septoplasty, but it does not reliably predict AHI improvement. Nasal surgery is most likely to improve PAP use when nasal obstruction is the dominant barrier; evidence for this PAP predictor comes from small observational cohorts.'
+    'Nasal-Resistance Contributor': 'Higher baseline NOSE severity predicts a larger average improvement in nasal symptoms after septoplasty, but it does not reliably predict AHI improvement. Nasal surgery is most likely to improve PAP use when nasal obstruction is the dominant barrier; evidence for this PAP predictor comes from small observational cohorts.',
+    'Positional OSA': 'Position-specific WatchPAT values are useful directional signals, but the app does not capture minutes spent supine and non-supine, and WatchPAT positional phenotype agreement has not been specifically validated against PSG. Home-derived positional confidence is therefore capped at Moderate.',
+    'REM-Predominant OSA': 'With at least 30 minutes of REM, single-night PAT home testing showed high specificity (0.97) but limited sensitivity (0.68) for REM-predominant OSA versus PSG. The app suppresses the phenotype with limited REM sampling and caps a home-derived signal at Moderate.',
   };
 
   // Signal-strength badges — used by clinician phenotype table
@@ -1670,6 +1698,8 @@ function buildClinicianReport(f, m, T){
     ahi, remAhi, nremAhi, remPercent, remMinutes, ess, isi, pahic3, csr, sup, nons,
     visitReason: encounter.visitReason,
     snoringReported: yes(f, 'snoringReported'),
+    heartFailure: cvdConditions.includes('cvdHeartFailure'),
+    strokeHistory: cvdConditions.includes('cvdStroke'),
   }, T);
 
   // Build HST validity HTML
@@ -2436,6 +2466,8 @@ document.getElementById('form').addEventListener('submit', e => {
 
   const sup     = n(f.get('ahiSup'))   ?? n(f.get('supPahi'));
   const nons    = n(f.get('ahiNonSup'))?? n(f.get('nonSupPahi'));
+  const usesHstPositionEstimate = !exists(n(f.get('ahiSup'))) && !exists(n(f.get('ahiNonSup'))) &&
+    exists(n(f.get('supPahi'))) && exists(n(f.get('nonSupPahi'))) && ['watchpat', 'both'].includes(studyType);
   const nonSupProvided = exists(n(f.get('ahiNonSup'))) || exists(n(f.get('nonSupPahi')));
 
   const odi   = n(f.get('odi')) ?? n(f.get('odiPsg'));
@@ -2510,7 +2542,7 @@ document.getElementById('form').addEventListener('submit', e => {
     sex, bmi, neck, tons, mall, ahi, arInd, isi, ess, csr, cvd,
     remAhi, nremAhi, sup, nons, odi, nadir,
     hbPH, hb90PH, t90, noseScore, nasalObs, ctSeptum, ctTurbs, pahic3, pahic4, cai, dhr,
-    fHypopneas,
+    fHypopneas, studyType, usesHstStageEstimate, usesHstPositionEstimate,
     edwardsArTHScore: edwardsArTH?.score ?? 0,
     edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
   };

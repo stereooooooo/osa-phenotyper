@@ -94,6 +94,8 @@
       t90: numberValue('t90'),
       nadir: numberValue('nadir'),
       visitReason: fieldValue('visitReason'),
+      heartFailure: checked('cvdHeartFailure'),
+      strokeHistory: checked('cvdStroke'),
     }, thresholds);
   }
 
@@ -169,6 +171,15 @@
         `The home study recorded ${numberValue('tst')} hours, so it is not sufficiently reliable for final diagnostic or treatment decisions.`,
         'arrange an in-lab sleep study before finalizing the diagnosis or treatment plan',
         5
+      );
+    } else if (signals.psgPreferredComorbidity && ['new-diagnosis', 'symptoms'].includes(visitReason)) {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        'A guideline-defined complicating condition is documented, so a home study may not be sufficient for the current diagnostic decision.',
+        'review the home result and arrange in-lab polysomnography if diagnostic confirmation is still needed',
+        5,
+        'AASM recommends in-lab polysomnography rather than home sleep apnea testing for initial OSA diagnosis in patients with significant cardiorespiratory disease or a history of stroke. This remains a draft until the clinician confirms that the current decision requires diagnostic reclassification.'
       );
     } else if (signals.negativeHstNeedsPsg) {
       addSuggestion(

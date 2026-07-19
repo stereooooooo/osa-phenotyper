@@ -118,6 +118,16 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 | 58 | No silent clinical defaults | Fresh form load should leave sex, tonsils, and FTP blank until the clinician explicitly selects values |
 | 59 | Required-field submit gate | Attempting to analyze with missing patient name, DOB, age, sex, or BMI should block submission, highlight fields inline, and focus the first invalid control |
 | 60 | Progress-track completion semantics | Progress steps should mark complete only when the section has real entered values, not placeholder/default artifacts |
+
+### Group 13: WatchPAT Interpretation Boundaries
+| # | Name | Key Features |
+|---|------|-------------|
+| 61 | Mild WatchPAT category | pAHI 5-14.9 should produce clinician-only category uncertainty without invalidating the study or automatically ordering PSG |
+| 62 | Moderate WatchPAT category | pAHI 15-29.9 should produce clinician-only category uncertainty; confirmation remains conditional on whether reclassification changes care |
+| 63 | Severe WatchPAT counterexample | pAHI 30 or higher should not receive the mild/moderate category flag |
+| 64 | PSG counterexample | Mild or moderate PSG AHI should not receive a WatchPAT-specific uncertainty flag |
+| 65 | Complicated diagnostic HST | WatchPAT plus documented heart failure or stroke should show that PSG is guideline-preferred for initial diagnosis without leaking a study-quality warning into the patient handout |
+| 66 | WatchPAT-derived REM and position | Strong numerical REM or positional patterns derived only from WatchPAT should be capped at Moderate signal; PSG-derived patterns may retain High signal |
 | 61 | Mobile action stack | On mobile width, `Analyze / Generate Report / Save` actions should stack cleanly without clipped or side-scrolling buttons |
 | 62 | Report preview dialog focus | Opening the patient report preview should move focus into the dialog, trap tab navigation within it, and return focus to the trigger on close |
 | 63 | Heuristic signal wording | Clinician phenotype table should display `Signal Strength` with `Strong / Moderate / Limited signal`, plus the heuristic note, instead of validated-sounding `Confidence` labels |
