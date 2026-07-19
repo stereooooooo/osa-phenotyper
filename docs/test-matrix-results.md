@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 19, 2026
-**Latest app version:** WatchPAT calibration deployment pending
+**Latest app version:** clinical-pilot build `d4fdd89` (`fix: calibrate WatchPAT interpretation`)
 
 ---
 
@@ -12,6 +12,7 @@
 - Verified documented heart failure raises the guideline-preferred PSG interpretation signal.
 - Verified the limited-quality WatchPAT patient handout does not expose technical quality or severity-category warnings.
 - Routine multi-night testing and automatic PSG for every positive or negative WatchPAT were intentionally not added. The draft PSG pathway remains driven by negative or inadequate HSAT plus persistent concern, central signals, captured guideline-defined complicating conditions, or a decision that depends materially on severity reclassification.
+- Deployed clinical-pilot release `d4fdd89`.
 
 ---
 
