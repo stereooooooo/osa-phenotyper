@@ -25,6 +25,7 @@ PACKAGED_TEMPLATE="/tmp/osa-phenotyper-${CLINIC}-packaged.yaml"
 WAF_RULES_FILE="/tmp/osa-phenotyper-${CLINIC}-cloudfront-waf-rules.json"
 WAF_ALERT_POLICY_FILE="/tmp/osa-phenotyper-${CLINIC}-waf-alert-topic-policy.json"
 VERSIONED_INDEX="/tmp/osa-phenotyper-${CLINIC}-index.html"
+VERSIONED_INTAKE="/tmp/osa-phenotyper-${CLINIC}-intake.html"
 WEB_ROOT="${SCRIPT_DIR}/.."
 WAF_REGION="us-east-1"
 WAF_NAME="osa-edge-waf-${CLINIC}"
@@ -150,12 +151,10 @@ write_cloudfront_waf_rules() {
         "Limit": 100,
         "AggregateKeyType": "IP",
         "ScopeDownStatement": {
-          "ByteMatchStatement": {
-            "SearchString": "/patients",
-            "FieldToMatch": { "UriPath": {} },
-            "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-            "PositionalConstraint": "STARTS_WITH"
-          }
+          "OrStatement": { "Statements": [
+            { "ByteMatchStatement": { "SearchString": "/patients", "FieldToMatch": { "UriPath": {} }, "TextTransformations": [{ "Priority": 0, "Type": "NONE" }], "PositionalConstraint": "STARTS_WITH" } },
+            { "ByteMatchStatement": { "SearchString": "/intake", "FieldToMatch": { "UriPath": {} }, "TextTransformations": [{ "Priority": 0, "Type": "NONE" }], "PositionalConstraint": "STARTS_WITH" } }
+          ] }
         }
       }
     },
@@ -178,12 +177,10 @@ write_cloudfront_waf_rules() {
           { "Name": "CrossSiteScripting_BODY", "ActionToUse": { "Count": {} } }
         ],
         "ScopeDownStatement": {
-          "ByteMatchStatement": {
-            "SearchString": "/patients",
-            "FieldToMatch": { "UriPath": {} },
-            "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-            "PositionalConstraint": "STARTS_WITH"
-          }
+          "OrStatement": { "Statements": [
+            { "ByteMatchStatement": { "SearchString": "/patients", "FieldToMatch": { "UriPath": {} }, "TextTransformations": [{ "Priority": 0, "Type": "NONE" }], "PositionalConstraint": "STARTS_WITH" } },
+            { "ByteMatchStatement": { "SearchString": "/intake", "FieldToMatch": { "UriPath": {} }, "TextTransformations": [{ "Priority": 0, "Type": "NONE" }], "PositionalConstraint": "STARTS_WITH" } }
+          ] }
         }
       }
     },
@@ -202,12 +199,10 @@ write_cloudfront_waf_rules() {
         "VendorName": "AWS",
         "Name": "AWSManagedRulesSQLiRuleSet",
         "ScopeDownStatement": {
-          "ByteMatchStatement": {
-            "SearchString": "/patients",
-            "FieldToMatch": { "UriPath": {} },
-            "TextTransformations": [{ "Priority": 0, "Type": "NONE" }],
-            "PositionalConstraint": "STARTS_WITH"
-          }
+          "OrStatement": { "Statements": [
+            { "ByteMatchStatement": { "SearchString": "/patients", "FieldToMatch": { "UriPath": {} }, "TextTransformations": [{ "Priority": 0, "Type": "NONE" }], "PositionalConstraint": "STARTS_WITH" } },
+            { "ByteMatchStatement": { "SearchString": "/intake", "FieldToMatch": { "UriPath": {} }, "TextTransformations": [{ "Priority": 0, "Type": "NONE" }], "PositionalConstraint": "STARTS_WITH" } }
+          ] }
         }
       }
     },
@@ -376,6 +371,7 @@ sync_static_site() {
     --delete \
     --exclude "*" \
     --include "index.html" \
+    --include "intake.html" \
     --include "css/*" \
     --include "js/*" \
     --include "img/*" \
@@ -388,6 +384,18 @@ sync_static_site() {
   # HTML shell with stale JavaScript, CSS, or runtime configuration.
   sed "s/__OSA_BUILD_ID__/${BUILD_ID}/g" "${WEB_ROOT}/index.html" > "${VERSIONED_INDEX}"
   aws s3 cp "${VERSIONED_INDEX}" "s3://${WEB_APP_BUCKET}/index.html" \
+    --content-type "text/html; charset=utf-8" \
+    --cache-control "no-cache, no-store, must-revalidate" \
+    >/dev/null
+
+  sed \
+    -e "s/__OSA_BUILD_ID__/${BUILD_ID}/g" \
+    -e "s|data-api-url=\"\"|data-api-url=\"${APP_URL}\"|" \
+    -e "s|data-app-env=\"local\"|data-app-env=\"${DEPLOYMENT_ENVIRONMENT}\"|" \
+    -e "s|data-app-env-label=\"LOCAL\"|data-app-env-label=\"${DEPLOYMENT_LABEL}\"|" \
+    -e "s|data-deployed-at=\"\"|data-deployed-at=\"${DEPLOYED_AT}\"|" \
+    "${WEB_ROOT}/intake.html" > "${VERSIONED_INTAKE}"
+  aws s3 cp "${VERSIONED_INTAKE}" "s3://${WEB_APP_BUCKET}/intake.html" \
     --content-type "text/html; charset=utf-8" \
     --cache-control "no-cache, no-store, must-revalidate" \
     >/dev/null
@@ -579,3 +587,5 @@ echo ""
 rm -f "${PACKAGED_TEMPLATE}"
 rm -f "${WAF_RULES_FILE}"
 rm -f "${WAF_ALERT_POLICY_FILE}"
+rm -f "${VERSIONED_INDEX}"
+rm -f "${VERSIONED_INTAKE}"

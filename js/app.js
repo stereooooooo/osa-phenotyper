@@ -1047,12 +1047,18 @@ function detectPhenotypes(m, T){
 function buildHstFlags(m, T){
   const HST = T.hstValidity;
   const flags = [];
+  const signals = OSAReportShared.assessEncounterSignals({
+    studyType: 'watchpat', ahi: m.ahi, rdi: m.patRdi, ess: m.ess,
+    tst: m.tst, remPercent: m.remPercent, centralIndex: m.pahic3,
+    csr: m.csr, hbPerHour: m.hbPH, hbAreaUnder90: m.hb90PH,
+    odi: m.odi, t90: m.t90, nadir: m.nadir,
+  }, T);
 
   // 1. Total sleep time assessment
   if (exists(m.tst)) {
-    if (m.tst < HST.tstDanger) {
+    if (signals.inadequateRecording) {
       flags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${m.tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
-    } else if (m.tst < HST.tstWarning) {
+    } else if (signals.shortRecording) {
       flags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${m.tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
     }
   }
@@ -1060,7 +1066,7 @@ function buildHstFlags(m, T){
   // REM-specific comparisons are unstable when too little REM sleep was
   // observed. Keep the raw stage indices visible to the clinician, but flag
   // that REM phenotype and REM-specific treatment conclusions were suppressed.
-  if (exists(m.remMinutes) && m.remMinutes < HST.remMinimumMinutes) {
+  if (signals.limitedRemSampling) {
     const percentText = exists(m.remPercent) ? `${m.remPercent}%` : 'a small percentage';
     flags.push({
       severity: 'warning',
@@ -2264,12 +2270,9 @@ document.getElementById('form').addEventListener('submit', e => {
   /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
      framing are reserved for this tier; a single MODERATE metric flags the phenotype as
      supportive context only. Thresholds are population-derived (see config.js). */
-  const hbHighTier =
-    (exists(hbPH)   && hbPH   >= T.hypoxicBurden.hbPerHourHigh) ||
-    (exists(odi)    && odi    >  T.hypoxicBurden.odiSevere) ||
-    (exists(nadir)  && nadir  <  T.hypoxicBurden.nadirSevere) ||
-    (exists(t90)    && t90    >  T.hypoxicBurden.t90Severe) ||
-    (exists(hb90PH) && hb90PH >  T.hypoxicBurden.areaUnder90Severe);
+  const hbHighTier = OSAReportShared.assessEncounterSignals({
+    studyType, ahi, hbPerHour: hbPH, hbAreaUnder90: hb90PH, odi, t90, nadir,
+  }, T).highHypoxicBurden;
 
   /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
   const loopGainSupportCount =

@@ -251,7 +251,8 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 | 123 | Clinician runtime labeling | The main app should visibly label the current environment and build metadata, and show a non-production banner in workflow-test / local / staging / pilot modes so staging cannot be mistaken for production during clinical validation |
 | 124 | Intake runtime labeling | The patient intake surface should show matching runtime metadata and a non-production banner outside production so pilot/staging intake links are visibly distinguishable from the production patient-facing flow |
 
-### Group 30: Patient Portal MVP
+### Group 30: Patient Portal MVP (historical, removed from current v1)
+These scenarios describe the earlier comprehensive platform and are intentionally not active in the clinician-controlled v1.
 | # | Name | Key Features |
 |---|------|-------------|
 | 125 | Clinician patient-page publication | From the report overlay, clinicians should be able to publish the reviewed patient report into a patient-facing portal record without exposing the live chart or requiring a separate manual artifact upload |
@@ -286,3 +287,12 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 | 142 | Probable UARS plan suggestion | Normal pAHI with marked symptoms and PAT RDI elevation should surface diagnostic testing in the MA suggestion layer, not only after the clinician manually selects a plan and runs the analysis |
 | 143 | Limited WatchPAT plan restraint | A three-hour study with very little REM should keep quality flags clinician-facing, suppress REM phenotyping, and make the chart-aware plan draft reflect the need for caution before presenting treatment pathways as definitive |
 | 144 | BiPAP central-safety plan integration | Current BiPAP use with substantial WatchPAT central signals and LVEF at or below 45% should add PSG confirmation to the MA draft, retain BiPAP wording, and suppress unsafe ASV routing |
+
+### Group 34: Scoped iPad Intake and Cardiac Record Follow-up
+| # | Name | Key Features |
+|---|------|-------------|
+| 145 | Clinic iPad intake boundary | Staff can generate a 72-hour, single-use patient questionnaire link without signing the clinician workspace into the handed device; no portal or patient roster route is exposed |
+| 146 | Cardiovascular questionnaire cascade | A cardiovascular-history answer reveals the echocardiogram question; a prior echo reveals result knowledge; exact LVEF is requested only when the patient knows it |
+| 147 | Unknown LVEF accepted safely | A patient can report that the echo result is unknown without guessing a number; the backend derives and persists an Echo/LVEF Needed flag |
+| 148 | LVEF follow-up resolution | The chart and bounded search display the flag until a valid numeric LVEF is saved, then clear it automatically |
+| 149 | Handed-device cleanup | After successful submission, the token is consumed, removed from the address bar, and questionnaire values are cleared from the browser DOM |

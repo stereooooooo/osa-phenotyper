@@ -14,7 +14,8 @@ Use this checklist for a limited 20–30 patient pilot. The current clinician-on
 - [ ] Confirm both regional and CloudFront/WAF SNS email subscriptions; receive one PHI-free test alert.
 - [ ] Test one DynamoDB recovery and one audit-log retrieval.
 - [ ] Confirm all browser libraries, fonts, and PDF workers load from the private app origin; no public CDN is allowed by CSP.
-- [ ] Confirm no public intake, patient portal, bearer-link, or anonymous patient API is deployed.
+- [ ] Confirm the only anonymous patient route is the scoped intake endpoint; verify 72-hour expiry, one-time use, revocation, rate limiting, origin-secret enforcement, and no patient portal/report route.
+- [ ] Configure clinic iPads as managed devices and train staff never to sign the clinician workspace into a handed device.
 - [ ] Confirm the footer reads `CLINICAL PILOT` and shows the expected build.
 - [ ] Obtain clinical, privacy/security, and operational approval to begin the limited cohort.
 

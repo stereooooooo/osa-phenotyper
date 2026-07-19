@@ -78,6 +78,14 @@
   let patientSeq = 1;
   let snapshotSeq = 1;
   let followupSeq = 1;
+  let intakeTokenSeq = 1;
+  const intakeTokens = new Map();
+
+  function needsLvefFollowup(formData) {
+    const hasCvd = formData?.cvd === true || formData?.cvd === 'on' || formData?.cvd === 'true';
+    const lvef = Number(formData?.lvef);
+    return hasCvd && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
+  }
 
   function patientClone(patient) {
     return clone(patient);
@@ -176,6 +184,7 @@
 
     applyChartChanges(patient, { name: patient.name, dob: patient.dob, mrn: patient.mrn }, 'clinician', 'created', updatedAt, actor());
     applyChartChanges(patient, data.formData || {}, 'clinician', 'created', updatedAt, actor());
+    patient.lvefFollowupNeeded = needsLvefFollowup(patient.formData);
     return patient;
   }
 
@@ -248,6 +257,7 @@
 
       applyChartChanges(patient, { name: patient.name, dob: patient.dob, mrn: patient.mrn }, 'clinician', 'chart-save', updatedAt, actor());
       applyChartChanges(patient, (data && data.formData) || {}, 'clinician', 'chart-save', updatedAt, actor());
+      patient.lvefFollowupNeeded = needsLvefFollowup(patient.formData);
 
       patient.updatedAt = updatedAt;
       patient.version += 1;
@@ -297,6 +307,7 @@
         note: (review && review.note) || '',
         resolutions: clone(resolutions),
       });
+      patient.lvefFollowupNeeded = needsLvefFollowup(patient.formData);
       persistTestState();
       return patientClone(patient);
     },
@@ -321,6 +332,24 @@
       });
       const exactNameMatches = patients.filter((patient) => String(patient.name || '').trim().toLowerCase() === needle);
       return (exactNameMatches.length ? exactNameMatches : patients).slice(0, 10);
+    },
+    async createIntakeToken(patientId) {
+      getPatientOrThrow(patientId);
+      const rawToken = `workflow-intake-${intakeTokenSeq++}`;
+      const tokenHash = `workflow-hash-${rawToken}`;
+      const createdAt = nowIso();
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+      intakeTokens.set(tokenHash, { tokenHash, patientId, status: 'active', createdAt, createdBy: actor(), expiresAt });
+      return { token: rawToken, expiresAt };
+    },
+    async listIntakeTokens(patientId) {
+      return [...intakeTokens.values()].filter(token => token.patientId === patientId).map(clone);
+    },
+    async revokeIntakeToken(tokenHash) {
+      const token = intakeTokens.get(tokenHash);
+      if (!token || token.status !== 'active') throw new Error('Token is not active or does not exist');
+      token.status = 'revoked';
+      return { revoked: true };
     },
   };
 

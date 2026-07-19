@@ -3,7 +3,7 @@
 **Status:** Technical draft for clinical, privacy/security, and operational review  
 **System:** Clinician-only Precision Sleep Hub  
 **Intended use:** Limited, physician-supervised pilot with current Capital ENT sleep patients  
-**Not included:** Patient login, public intake, patient portal, email delivery, billing, prescribing, scheduling, or the official encounter note
+**Not included:** Patient login/account, patient portal, hosted patient report, email delivery, billing, prescribing, scheduling, or the official encounter note. A patient-specific, single-use intake questionnaire is included.
 
 This document supports, but does not replace, Capital ENT's organization-wide HIPAA security risk analysis. HHS requires the analysis to cover all electronic PHI the organization creates, receives, maintains, or transmits, including workforce devices and downstream EHR/report-delivery workflows.
 
@@ -59,6 +59,8 @@ Likelihood and impact are qualitative pilot estimates and must be reviewed by Ca
 | Direct API or edge bypass | Medium / High | CloudFront-injected origin secret, JWT authorizer, Lambda origin verification, group authorization, CORS restriction, WAF, API throttling | Low. Verify direct API hostname returns 403 and unauthenticated CloudFront API calls return 401/403 after each deployment. |
 | Third-party browser code compromise | Low-Medium / High | Fixed dependencies are self-hosted from the private app origin; CSP disallows public script/style/font CDNs | Low. Treat dependency updates as controlled releases and review upstream security notices. |
 | Large-scale patient enumeration/exfiltration | Medium / High | No bulk endpoint, exact/prefix bounded search only, maximum 10 results, no Scan IAM permission, WAF and volume alarms | Low-Medium. Confirm search constraints and alarms during acceptance testing. |
+| Stolen or reused patient intake link | Medium / Medium | 256-bit random token, SHA-256 hash at rest, 72-hour expiry, five-attempt lockout, single-use transactional consumption, no chart/list route, CloudFront origin verification, WAF rate limit | Low-Medium. Train staff to generate links only for the correct open chart and revoke unused links. |
+| Residual questionnaire data on a handed clinic iPad | Medium / Medium | Token removed from URL and form controls cleared immediately after successful submission; used token cannot reopen intake | Low. Use managed iPads with screen lock and a staff hand-back/reset procedure. |
 | Wrong-patient selection or data entry | Medium / High | Exact MRN/DOB/name search, identity fields visible, optimistic concurrency, provenance, immutable report snapshots | Medium. Workflow requires two identifiers before editing or exporting; stop pilot on any wrong-chart event. |
 | Lost, stolen, or unmanaged endpoint | Medium / High | Application MFA and no local app database | Medium-High until Capital ENT attests managed-device encryption, screen lock, patching, endpoint protection, remote wipe, and approved remote access. |
 | PHI exposed through logs or alerts | Low-Medium / High | API logs exclude bodies and authorization headers; search audit excludes search text; SNS alarms contain only aggregate operational metadata | Low. Verify sample logs before first PHI and after material code changes. |
@@ -85,7 +87,8 @@ The following cannot be completed by application code and remain go-live blocker
 
 - Separate pilot stack, Cognito pool, DynamoDB table, KMS key, logs, WAF, and CloudFront distribution.
 - Runtime label is `CLINICAL PILOT` and build matches the approved commit.
-- Only intended same-origin static assets are published; no public intake or portal page/API exists.
+- Only intended same-origin static assets are published. The standalone intake page and `/intake/{token}` route are present; no patient portal or hosted-report route exists.
+- Intake tokens are single-use, expire as configured, can be revoked, and cannot retrieve a patient roster or report.
 - MFA verified for every account; group membership and admin scope reviewed.
 - Direct API bypass, unauthenticated access, CORS, search-bound, and role restrictions tested.
 - Operational email subscriptions confirmed and a PHI-free test alarm received.

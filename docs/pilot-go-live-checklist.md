@@ -42,7 +42,8 @@ Any unchecked mandatory gate means **NO GO for real PHI**.
 - [ ] CloudTrail is logging management plus DynamoDB data events with log validation.
 - [ ] Lambda and API logs use the configured retention and KMS encryption.
 - [ ] No patient content or search value appears in sample logs or alert messages.
-- [ ] No public intake, patient portal, magic link, or anonymous API route is deployed.
+- [ ] No patient portal or hosted-report route is deployed. The sole anonymous route is the reviewed, single-use intake workflow.
+- [ ] On a managed clinic iPad, verify that successful intake consumes the token, removes it from the URL, clears form values, and returns the device to a non-PHI state.
 - [ ] Production HTML and CSP contain no public JavaScript, CSS, font, or PDF-worker CDN.
 
 ## Synthetic clinician workflow rehearsal

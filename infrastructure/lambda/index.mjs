@@ -11,9 +11,10 @@ import {
   DynamoDBDocumentClient, GetCommand, PutCommand,
   UpdateCommand, QueryCommand
 } from '@aws-sdk/lib-dynamodb';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID, randomBytes, createHash } from 'node:crypto';
 
 const TABLE = process.env.TABLE_NAME;
+const TOKEN_TABLE = process.env.TOKEN_TABLE;
 const ORIGIN_VERIFY_SECRET = process.env.ORIGIN_VERIFY_SECRET || '';
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
@@ -34,6 +35,8 @@ const FOLLOWUP_STATUSES = new Set(['Planned', 'Started', 'Active', 'Paused', 'Co
 const FOLLOWUP_RESPONSES = new Set(['Better', 'No meaningful change', 'Worse', 'Not assessed']);
 const FOLLOWUP_ADHERENCE = new Set(['Using as planned', 'Partial use', 'Not using', 'Not applicable']);
 const FOLLOWUP_NEXT_ACTIONS = new Set(['Continue current plan', 'Optimize current treatment', 'Reassess barriers', 'Repeat sleep study', 'Change treatment pathway', 'Schedule procedure', 'Refer / coordinate care', 'No action documented']);
+const INTAKE_TOKEN_LIFETIME_SECONDS = 72 * 60 * 60;
+const TOKEN_TTL_GRACE_SECONDS = 30 * 24 * 60 * 60;
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
 
@@ -83,6 +86,12 @@ function canonicalFormValue(val) {
 
 function formValuesEqual(a, b) {
   return canonicalFormValue(a) === canonicalFormValue(b);
+}
+
+function needsLvefFollowup(formData) {
+  const cvd = formData?.cvd === true || formData?.cvd === 'on' || formData?.cvd === 'true';
+  const lvef = Number(formData?.lvef);
+  return cvd && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
 }
 
 function cloneJson(value) {
@@ -468,6 +477,19 @@ export async function handler(event) {
       return ok(event, {});
     }
 
+    if (method === 'POST' && path === '/intake-tokens') {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      return await createIntakeToken(event, JSON.parse(event.body || '{}'), user);
+    }
+    if (method === 'GET' && path.match(/^\/intake-tokens\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      return await listIntakeTokens(event, path.split('/').pop());
+    }
+    if (method === 'DELETE' && path.match(/^\/intake-tokens\/[^/]+$/)) {
+      if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
+      return await revokeIntakeToken(event, path.split('/').pop(), user);
+    }
+
     // GET /patients/search?q=...
     if (method === 'GET' && path === '/patients/search') {
       if (!hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME, CLINICIAN_GROUP_NAME])) return fail(event, 'Forbidden', 403);
@@ -511,6 +533,97 @@ export async function handler(event) {
   }
 }
 
+/* ── Patient intake token management ──────────────────────── */
+
+function extractPatientFirstName(fullName) {
+  const trimmed = String(fullName || '').trim();
+  if (!trimmed) return 'Patient';
+  if (trimmed.includes(',')) return trimmed.split(',').pop().trim().split(/\s+/)[0] || 'Patient';
+  return trimmed.split(/\s+/)[0] || 'Patient';
+}
+
+async function createIntakeToken(event, body, user) {
+  const patientId = body?.patientId;
+  if (!patientId) return fail(event, 'patientId is required');
+
+  const { Item: patient } = await ddb.send(new GetCommand({
+    TableName: TABLE,
+    Key: { patientId },
+    ProjectionExpression: '#n, isDeleted',
+    ExpressionAttributeNames: { '#n': 'name' },
+  }));
+  if (!patient || patient.isDeleted) return fail(event, 'Patient not found', 404);
+
+  const rawToken = randomBytes(32).toString('base64url');
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const now = new Date();
+  const expiresAt = Math.floor(now.getTime() / 1000) + INTAKE_TOKEN_LIFETIME_SECONDS;
+
+  await ddb.send(new PutCommand({
+    TableName: TOKEN_TABLE,
+    Item: {
+      tokenHash,
+      patientId,
+      tokenType: 'intake',
+      expiresAt,
+      ttl: expiresAt + TOKEN_TTL_GRACE_SECONDS,
+      status: 'active',
+      createdAt: now.toISOString(),
+      createdBy: user,
+      attempts: 0,
+      patientFirstName: extractPatientFirstName(patient.name),
+    },
+  }));
+
+  console.log(JSON.stringify({ action: 'intake_token_created', patientId, createdBy: user, timestamp: now.toISOString() }));
+  return ok(event, { token: rawToken, expiresAt: new Date(expiresAt * 1000).toISOString() }, 201);
+}
+
+async function listIntakeTokens(event, patientId) {
+  const { Items } = await ddb.send(new QueryCommand({
+    TableName: TOKEN_TABLE,
+    IndexName: 'patient-index',
+    KeyConditionExpression: 'patientId = :patientId',
+    ExpressionAttributeValues: { ':patientId': patientId },
+    ProjectionExpression: 'tokenHash, #s, expiresAt, createdAt, createdBy, usedAt, tokenType',
+    ExpressionAttributeNames: { '#s': 'status' },
+  }));
+  const now = Math.floor(Date.now() / 1000);
+  const tokens = (Items || [])
+    .filter(item => !item.tokenType || item.tokenType === 'intake')
+    .map(item => ({
+      tokenHash: item.tokenHash,
+      status: item.status === 'active' && item.expiresAt <= now ? 'expired' : item.status,
+      expiresAt: new Date(item.expiresAt * 1000).toISOString(),
+      createdAt: item.createdAt,
+      createdBy: item.createdBy,
+      usedAt: item.usedAt || null,
+    }))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return ok(event, tokens);
+}
+
+async function revokeIntakeToken(event, tokenHash, user) {
+  try {
+    await ddb.send(new UpdateCommand({
+      TableName: TOKEN_TABLE,
+      Key: { tokenHash },
+      UpdateExpression: 'SET #s = :revoked, revokedAt = :now, revokedBy = :user',
+      ConditionExpression: '#s = :active AND (attribute_not_exists(tokenType) OR tokenType = :intake)',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':revoked': 'revoked', ':active': 'active', ':intake': 'intake',
+        ':now': new Date().toISOString(), ':user': user,
+      },
+    }));
+    console.log(JSON.stringify({ action: 'intake_token_revoked', revokedBy: user, timestamp: new Date().toISOString() }));
+    return ok(event, { revoked: true });
+  } catch (err) {
+    if (err.name === 'ConditionalCheckFailedException') return fail(event, 'Token is not active or does not exist', 404);
+    throw err;
+  }
+}
+
 /* ── CRUD operations ──────────────────────────────────────── */
 
 async function createPatient(event, body, user) {
@@ -546,6 +659,7 @@ async function createPatient(event, body, user) {
     status: derivePatientStatus(normalizedMilestones, status || 'Initial Eval'),
     milestones: normalizedMilestones,
     formData: normalizedFormData,
+    lvefFollowupNeeded: needsLvefFollowup(normalizedFormData),
     fieldProvenance: updateFieldProvenance({}, initialProvenanceFields, 'clinician', user, now),
     fieldProvenanceHistory: appendFieldProvenanceHistory({}, initialProvenanceFields, 'clinician', user, now, {
       ...normalizedFormData,
@@ -776,6 +890,7 @@ async function updatePatient(event, id, body, user, userGroups) {
       '#ipo': 'intakePendingOverrides',
       '#is': 'intakeStatus',
       '#irby': 'intakeLastReviewedBy',
+      '#lvefFollowupNeeded': 'lvefFollowupNeeded',
     };
     const reviewUpdates = {
       ':now': now,
@@ -792,10 +907,11 @@ async function updatePatient(event, id, body, user, userGroups) {
       ':pendingCount': remainingPendingKeys.length,
       ':reviewedBy': user,
       ':reviewed': 'reviewed',
+      ':lvefFollowupNeeded': needsLvefFollowup(nextFormData),
     };
     let reviewExpr =
       'SET #u = :now, #ub = :user, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), #ver = :nextVersion, ' +
-      '#fd = :fd, #fp = :fp, #fph = :fph, #irh = :irh, #ipfc = :pendingCount, intakeReviewedAt = :now, #irby = :reviewedBy';
+      '#fd = :fd, #fp = :fp, #fph = :fph, #irh = :irh, #ipfc = :pendingCount, intakeReviewedAt = :now, #irby = :reviewedBy, #lvefFollowupNeeded = :lvefFollowupNeeded';
     const reviewRemove = [];
 
     if (remainingPendingKeys.length) {
@@ -912,8 +1028,10 @@ async function updatePatient(event, id, body, user, userGroups) {
     }
   }
   if (formData !== undefined) {
-    expr += ', formData = :fd';
+    expr += ', formData = :fd, #lvefFollowupNeeded = :lvefFollowupNeeded';
     updates[':fd'] = formData;
+    updates[':lvefFollowupNeeded'] = needsLvefFollowup(formData);
+    names['#lvefFollowupNeeded'] = 'lvefFollowupNeeded';
     if (Object.keys(currentPendingOverrides).length) {
       remainingPendingOverrides = {};
       for (const [key, pendingValue] of Object.entries(currentPendingOverrides)) {
@@ -1060,7 +1178,7 @@ async function searchPatients(event, params, userGroups, user) {
   if (!q) return ok(event, []);
   const includeArchived = String(params?.includeArchived || '').toLowerCase();
   const showArchived = ['1', 'true', 'yes'].includes(includeArchived) && hasRequiredGroup(userGroups, [ADMIN_GROUP_NAME]);
-  const projection = 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, isDeleted, deletedAt, #v, reportSnapshotCount';
+  const projection = 'patientId, #n, dob, mrn, #s, milestones, updatedAt, intakeStatus, intakeReceivedAt, intakePendingFieldCount, lvefFollowupNeeded, isDeleted, deletedAt, #v, reportSnapshotCount';
   const names = { '#n': 'name', '#s': 'status', '#v': 'version' };
 
   const finishSearch = (items, searchType) => {

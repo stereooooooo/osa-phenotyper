@@ -72,6 +72,29 @@
     };
   }
 
+  function encounterSignals(study) {
+    const studyType = form.querySelector('input[name="studyType"]:checked')?.value || 'watchpat';
+    const thresholds = typeof OSA_CONFIG !== 'undefined' ? (OSA_CONFIG.thresholds || {}) : {};
+    return OSAReportShared.assessEncounterSignals({
+      studyType,
+      ahi: study.ahi,
+      rdi: studyType === 'psg' ? numberValue('rdi') : numberValue('patRdi'),
+      arInd: numberValue('arInd'),
+      ess: numberValue('ess'),
+      isi: numberValue('isi'),
+      tst: numberValue('tst'),
+      remPercent: numberValue('remPercent'),
+      centralIndex: numberValue('pahic'),
+      csr: numberValue('csr'),
+      cai: numberValue('cai'),
+      hbPerHour: numberValue('hbAreaPH'),
+      hbAreaUnder90: numberValue('hb90PH'),
+      odi: numberValue('odi'),
+      t90: numberValue('t90'),
+      nadir: numberValue('nadir'),
+    }, thresholds);
+  }
+
   function addSuggestion(suggestions, field, reason, action, priority) {
     if (suggestions.some(item => item.field === field)) return;
     suggestions.push({ field, label: PLAN_LABELS[field], reason, action, priority });
@@ -88,6 +111,7 @@
     const suggestions = [];
     const visitReason = fieldValue('visitReason');
     const study = primaryStudyValues();
+    const signals = encounterSignals(study);
     const osaPresent = study.ahi !== null && study.ahi >= 5;
     const papMode = fieldValue('papMode') || 'PAP';
     const currentPap = checked('cpapCurrent');
@@ -110,21 +134,52 @@
       );
     }
 
+    if (signals.uars.isUARS) {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        `AHI ${study.ahi} is below the OSA range, but symptoms and RDI/arousal data suggest possible upper airway resistance syndrome.`,
+        'arrange an in-lab sleep study to evaluate possible upper airway resistance syndrome',
+        5
+      );
+    } else if (signals.centralConfirmationNeeded) {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        'Home-study central or periodic-breathing signals require laboratory confirmation before central-directed treatment is finalized.',
+        'confirm the central-breathing findings with an in-lab sleep study',
+        5
+      );
+    } else if (signals.shortRecording) {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        `The home study recorded ${numberValue('tst')} hours, so treatment should not be finalized without confirming study reliability.`,
+        'repeat or confirm the sleep study before finalizing treatment',
+        5
+      );
+    }
+
     const papGoal = ['transfer-pap', 'pap-troubleshoot', 'restart-pap', 'precision-onboarding'].includes(visitReason);
     const newOsaPlan = visitReason === 'new-diagnosis' && osaPresent && !avoidsPap;
     const willingToRetry = priorPap && ['Yes', 'Maybe'].includes(retryPap);
-    if (currentPap || papGoal || newOsaPlan || willingToRetry) {
+    const deferNewTreatmentForShortStudy = signals.shortRecording && !currentPap && !priorPap && (study.ahi === null || study.ahi < 15);
+    if (!deferNewTreatmentForShortStudy && (currentPap || papGoal || newOsaPlan || willingToRetry)) {
       let reason = currentPap ? `Currently using ${papMode}` :
         visitReason === 'restart-pap' ? 'Visit goal is to restart PAP' :
         willingToRetry ? 'Patient is willing to retry PAP' :
         papGoal ? 'PAP care is the primary visit goal' :
         `New OSA diagnosis, AHI ${study.ahi}`;
       if (comfortIssues.length) reason += `; reported ${comfortIssues.slice(0, 2).join(' and ')}`;
-      const action = currentPap
+      let action = currentPap
         ? `continue ${papMode}${comfortIssues.length ? ' and address comfort barriers' : ''}`
         : visitReason === 'restart-pap' || willingToRetry
           ? `restart ${papMode}`
           : `begin ${papMode} management`;
+      if (signals.highHypoxicBurden) {
+        action += '; arrange prompt follow-up testing to confirm breathing and oxygen control';
+        reason += '; severe oxygen-burden metrics increase treatment urgency';
+      }
       addSuggestion(suggestions, 'planPap', reason, action, 10);
     }
 
@@ -157,7 +212,7 @@
       : {};
     const minimumRatio = positionalThresholds.supNonSupRatio ?? 2;
     const maximumNonSupine = positionalThresholds.nonSupMax ?? 15;
-    if (study.supineAhi !== null && study.nonSupineAhi !== null && study.supineAhi > 0) {
+    if (!signals.shortRecording && study.supineAhi !== null && study.nonSupineAhi !== null && study.supineAhi > 0) {
       const positional = study.nonSupineAhi === 0 ||
         (study.supineAhi / study.nonSupineAhi > minimumRatio && study.nonSupineAhi < maximumNonSupine);
       if (positional) {

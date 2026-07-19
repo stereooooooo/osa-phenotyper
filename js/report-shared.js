@@ -1,7 +1,8 @@
 'use strict';
 /* ── Shared report / pathway helpers ──────────────────────────────────────
    Shared by js/patientReport.js and js/app.js to reduce rule drift.
-   Exposes: OSAReportShared.buildCarePathway(), OSAReportShared.detectUARS()
+   Exposes: OSAReportShared.buildCarePathway(), OSAReportShared.detectUARS(),
+   OSAReportShared.assessEncounterSignals()
    ─────────────────────────────────────────────────────────────────────── */
 
 var OSAReportShared = (() => {
@@ -27,6 +28,78 @@ var OSAReportShared = (() => {
       ahi: ahiVal,
       rdi: rdiVal,
       arInd: arIndVal,
+    };
+  }
+
+  /* Shared encounter signals used by the MA plan draft and the final clinical
+     analysis. This keeps diagnostic and safety escalation rules from appearing
+     only after the plan has already been drafted. */
+  function assessEncounterSignals({
+    studyType = 'watchpat',
+    ahi,
+    rdi,
+    arInd,
+    ess,
+    isi,
+    tst,
+    remPercent,
+    centralIndex,
+    csr,
+    cai,
+    hbPerHour,
+    hbAreaUnder90,
+    odi,
+    t90,
+    nadir,
+  } = {}, thresholds = {}) {
+    const numberOrNull = value => (value !== '' && value !== null && value !== undefined && Number.isFinite(+value)) ? +value : null;
+    const ahiVal = numberOrNull(ahi);
+    const tstVal = numberOrNull(tst);
+    const remPercentVal = numberOrNull(remPercent);
+    const centralIndexVal = numberOrNull(centralIndex);
+    const csrVal = numberOrNull(csr);
+    const caiVal = numberOrNull(cai);
+    const hbVal = numberOrNull(hbPerHour);
+    const hb90Val = numberOrNull(hbAreaUnder90);
+    const odiVal = numberOrNull(odi);
+    const t90Val = numberOrNull(t90);
+    const nadirVal = numberOrNull(nadir);
+    const hst = thresholds.hstValidity || {};
+    const hb = thresholds.hypoxicBurden || {};
+    const loopGain = thresholds.loopGain || {};
+    const isHomeStudy = studyType === 'watchpat' || studyType === 'both';
+    const remMinutes = tstVal !== null && remPercentVal !== null
+      ? tstVal * 60 * (remPercentVal / 100)
+      : null;
+    const shortRecording = isHomeStudy && tstVal !== null && tstVal < (hst.tstWarning ?? 4);
+    const inadequateRecording = isHomeStudy && tstVal !== null && tstVal < (hst.tstDanger ?? 2);
+    const limitedRemSampling = isHomeStudy && remMinutes !== null && remMinutes < (hst.remMinimumMinutes ?? 30);
+    const centralPercent = centralIndexVal !== null && ahiVal !== null && ahiVal > 0
+      ? (centralIndexVal / ahiVal) * 100
+      : null;
+    const centralSignal = isHomeStudy && (
+      (centralPercent !== null && centralPercent > (hst.centralPctWarning ?? 25)) ||
+      (csrVal !== null && csrVal >= (loopGain.csr ?? 15))
+    );
+    const hasPsgCentralConfirmation = studyType === 'psg' || (studyType === 'both' && caiVal !== null);
+    const highHypoxicBurden =
+      (hbVal !== null && hbVal >= (hb.hbPerHourHigh ?? 73)) ||
+      (odiVal !== null && odiVal > (hb.odiSevere ?? 50)) ||
+      (nadirVal !== null && nadirVal < (hb.nadirSevere ?? 75)) ||
+      (t90Val !== null && t90Val > (hb.t90Severe ?? 20)) ||
+      (hb90Val !== null && hb90Val > (hb.areaUnder90Severe ?? 10));
+
+    return {
+      uars: detectUARS({ ahi: ahiVal, rdi, arInd, ess, isi }),
+      isHomeStudy,
+      remMinutes,
+      shortRecording,
+      inadequateRecording,
+      limitedRemSampling,
+      centralPercent,
+      centralSignal,
+      centralConfirmationNeeded: centralSignal && !hasPsgCentralConfirmation,
+      highHypoxicBurden,
     };
   }
 
@@ -141,6 +214,7 @@ var OSAReportShared = (() => {
   return {
     buildCarePathway,
     detectUARS,
+    assessEncounterSignals,
     resolvePapState,
   };
 })();

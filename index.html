@@ -207,7 +207,11 @@
       <span class="text-muted small" id="patientDobDisplay"></span>
       <span class="text-muted small" id="patientMrnDisplay"></span>
       <span id="intakeStatusBadge" class="d-none"></span>
+      <span id="lvefNeededBadge" class="d-none"></span>
       <span class="ms-auto d-flex align-items-center gap-2 flex-wrap justify-content-end">
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnIntakeLink" title="Open a patient-specific questionnaire on the clinic iPad">
+          <i class="bi bi-tablet"></i> iPad Intake
+        </button>
         <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnReviewIntake" title="Review patient intake fields that conflict with the chart">
           <i class="bi bi-clipboard2-check"></i> Review Intake
         </button>
@@ -418,12 +422,28 @@
       <div class="col-12">
         <div class="border rounded p-2 mt-1">
           <div class="small fw-semibold text-muted text-uppercase mb-2">Treatment Safety Inputs</div>
+          <div class="alert alert-warning py-2 px-3 small d-none" id="lvefFollowupAlert" role="status">
+            <strong>Heart-function record needed.</strong> Ask the cardiologist for the most recent echocardiogram report and left ventricular ejection fraction (LVEF). Keep this flag open until a numeric LVEF is documented.
+          </div>
           <div class="row g-2 align-items-end">
-            <div class="col-md-3">
-              <label class="form-label small mb-1">LVEF % <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="If ASV is being considered, documented LVEF ≤45% makes ASV unsafe in systolic heart failure."></i></label>
-              <input type="number" step="1" name="lvef" class="form-control form-control-sm" min="5" max="90" placeholder="e.g. 55">
+            <input type="hidden" name="lvefFollowupNeeded" id="lvefFollowupNeeded" value="">
+            <div class="col-md-2">
+              <label class="form-label small mb-1" for="echoHistory">Prior echo?</label>
+              <select class="form-select form-select-sm" name="echoHistory" id="echoHistory">
+                <option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option>
+              </select>
             </div>
             <div class="col-md-3">
+              <label class="form-label small mb-1" for="echoResultKnowledge">Patient knows result</label>
+              <select class="form-select form-select-sm" name="echoResultKnowledge" id="echoResultKnowledge">
+                <option value="">—</option><option value="exact">Exact LVEF known</option><option value="normal">Told normal, percentage unknown</option><option value="reduced">Told reduced, percentage unknown</option><option value="unknown">Result unknown</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1" for="lvef">LVEF % <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="If ASV is being considered, documented LVEF ≤45% makes ASV unsafe in systolic heart failure."></i></label>
+              <input type="number" step="1" name="lvef" id="lvef" class="form-control form-control-sm" min="5" max="90" placeholder="e.g. 55">
+            </div>
+            <div class="col-md-2">
               <label class="form-label small mb-1" for="madDentition">MAD tooth support</label>
               <select class="form-select form-select-sm" name="madDentition" id="madDentition">
                 <option value="">—</option>
@@ -755,6 +775,39 @@
     </button>
   </div>
   <div id="reportPreviewContent"></div>
+</div>
+
+<!-- Patient Intake Link Modal -->
+<div class="modal fade" id="intakeLinkModal" tabindex="-1" aria-labelledby="intakeLinkLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="intakeLinkLabel"><i class="bi bi-tablet"></i> Clinic iPad Intake</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info small">
+          Generate this on a staff workstation, then open the link on the clinic iPad. Do not sign the clinician workspace into an iPad that will be handed to a patient. The link is patient-specific, single-use, and expires after 72 hours.
+        </div>
+        <button type="button" class="btn btn-primary" id="btnGenerateIntakeLink"><i class="bi bi-link-45deg"></i> Generate Intake Link</button>
+        <div id="intakeLinkResult" class="d-none mt-3">
+          <label class="form-label small fw-semibold" for="intakeLinkValue">Patient-specific link</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="intakeLinkValue" readonly>
+            <button type="button" class="btn btn-outline-primary" id="btnCopyIntakeLink"><i class="bi bi-clipboard"></i> Copy</button>
+          </div>
+          <div class="small text-muted mt-2" id="intakeLinkExpiry"></div>
+        </div>
+        <div class="mt-4">
+          <div class="small fw-semibold mb-2">Previously generated links</div>
+          <div id="intakeTokenList" class="small text-muted">No links loaded.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Field Provenance Modal -->
@@ -1200,7 +1253,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','lvef','madDentition','madProtrusion','madTmj'],
+    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -1673,6 +1726,9 @@ function applyRuntimeMeta(meta) {
             : p.intakeStatus === 'pending'
               ? '<div class="small mt-1"><span class="badge bg-warning-subtle text-warning">Intake Pending</span></div>'
               : '';
+        const lvefBadge = p.lvefFollowupNeeded
+          ? '<div class="small mt-1"><span class="badge bg-warning text-dark">Echo / LVEF Needed</span></div>'
+          : '';
         const reviewButton = !isArchived && p.intakeStatus === 'review-needed'
           ? `<button class="btn btn-sm btn-outline-warning btn-review-patient" data-id="${p.patientId}" title="Review intake conflicts">
               <i class="bi bi-clipboard2-check"></i>
@@ -1693,7 +1749,7 @@ function applyRuntimeMeta(meta) {
           <td><strong>${escHtml(p.name || '')}</strong></td>
           <td>${escHtml(p.dob || '')}</td>
           <td><code>${escHtml(p.mrn || '—')}</code></td>
-          <td><span class="badge bg-${color}">${escHtml(displayStatus)}</span>${reviewBadge}</td>
+          <td><span class="badge bg-${color}">${escHtml(displayStatus)}</span>${reviewBadge}${lvefBadge}</td>
           <td class="text-muted small">${updated}</td>
           <td class="text-end"><div class="d-inline-flex gap-1">${reviewButton}${restoreButton || archiveButton}</div></td>`;
 
@@ -1776,6 +1832,7 @@ function applyRuntimeMeta(meta) {
     if (patient.formData) {
       OSADatabase.populateForm(form, patient.formData);
     }
+    updateLvefFollowupState();
 
     document.getElementById('patientName').value = patient.name || '';
     document.getElementById('patientDob').value = patient.dob || '';
@@ -1828,10 +1885,18 @@ function applyRuntimeMeta(meta) {
     const provenanceButton = document.getElementById('btnFieldProvenance');
     const snapshotButton = document.getElementById('btnReportSnapshots');
     const followupButton = document.getElementById('btnFollowups');
+    const intakeLinkButton = document.getElementById('btnIntakeLink');
     reviewButton.classList.toggle('d-none', !hasPendingIntakeConflicts(patient));
     provenanceButton.classList.toggle('d-none', !patient.patientId);
     snapshotButton.classList.toggle('d-none', !patient.patientId);
     followupButton.classList.toggle('d-none', !patient.patientId);
+    intakeLinkButton.classList.toggle('d-none', !patient.patientId || patient.isDeleted);
+    const lvefNeededBadge = document.getElementById('lvefNeededBadge');
+    const lvefNeeded = patient.lvefFollowupNeeded === true
+      || patient.formData?.lvefFollowupNeeded === true
+      || patient.formData?.lvefFollowupNeeded === 'on';
+    lvefNeededBadge.className = lvefNeeded ? 'badge bg-warning text-dark' : 'd-none';
+    lvefNeededBadge.textContent = lvefNeeded ? 'Echo / LVEF Needed' : '';
     const snapshotCount = Number.isInteger(patient.reportSnapshotCount)
       ? patient.reportSnapshotCount
       : (Array.isArray(patient.reportSnapshots) ? patient.reportSnapshots.length : 0);
@@ -1841,6 +1906,23 @@ function applyRuntimeMeta(meta) {
       : (Array.isArray(patient.followups) ? patient.followups.length : 0);
     followupButton.innerHTML = `<i class="bi bi-arrow-repeat"></i> Follow-ups${followupCount ? ` (${followupCount})` : ''}`;
   }
+
+  function updateLvefFollowupState() {
+    const cvd = document.getElementById('cvd');
+    const lvef = document.getElementById('lvef');
+    const hidden = document.getElementById('lvefFollowupNeeded');
+    const alertBox = document.getElementById('lvefFollowupAlert');
+    if (!cvd || !lvef || !hidden || !alertBox) return;
+    const value = Number(lvef.value);
+    const documented = lvef.value !== '' && Number.isFinite(value) && value >= 5 && value <= 90;
+    const needed = cvd.checked && !documented;
+    hidden.value = needed ? 'on' : '';
+    alertBox.classList.toggle('d-none', !needed);
+  }
+
+  document.getElementById('cvd')?.addEventListener('change', updateLvefFollowupState);
+  document.getElementById('lvef')?.addEventListener('input', updateLvefFollowupState);
+  document.getElementById('lvef')?.addEventListener('change', updateLvefFollowupState);
 
   function formatPendingIntakeValue(value) {
     if (value === true || value === 'on' || value === 'true') return 'Yes';
@@ -1908,6 +1990,10 @@ function applyRuntimeMeta(meta) {
     planSummary: 'Most important next step',
     planConfirmed: 'Plan reviewed and confirmed',
     lvef: 'LVEF',
+    cvdHistoryAnswer: 'Cardiovascular history response',
+    echoHistory: 'Prior echocardiogram',
+    echoResultKnowledge: 'Echocardiogram result knowledge',
+    lvefFollowupNeeded: 'Echo / LVEF follow-up needed',
     madDentition: 'MAD tooth support',
     madProtrusion: 'MAD protrusion',
     madTmj: 'TMJ status',
@@ -2360,6 +2446,82 @@ function applyRuntimeMeta(meta) {
       }
     }
   };
+
+  // Patient-specific clinic iPad intake links
+  const intakeLinkModal = new bootstrap.Modal(document.getElementById('intakeLinkModal'));
+
+  function renderIntakeTokens(tokens) {
+    const container = document.getElementById('intakeTokenList');
+    if (!Array.isArray(tokens) || !tokens.length) {
+      container.innerHTML = '<span class="text-muted">No prior links.</span>';
+      return;
+    }
+    container.innerHTML = tokens.map(token => {
+      const statusClass = token.status === 'active' ? 'success' : token.status === 'used' ? 'secondary' : 'dark';
+      const revoke = token.status === 'active'
+        ? `<button type="button" class="btn btn-outline-danger btn-sm btn-revoke-intake" data-hash="${escHtml(token.tokenHash)}">Revoke</button>`
+        : '';
+      return `<div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2 gap-2">
+        <div><span class="badge bg-${statusClass}">${escHtml(token.status)}</span>
+        <span class="ms-2">Created ${escHtml(new Date(token.createdAt).toLocaleString())}</span></div>${revoke}</div>`;
+    }).join('');
+    container.querySelectorAll('.btn-revoke-intake').forEach(button => {
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          await OSADatabase.revokeIntakeToken(button.dataset.hash);
+          renderIntakeTokens(await OSADatabase.listIntakeTokens(currentPatientId));
+        } catch (err) {
+          alert('Could not revoke intake link: ' + err.message);
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
+  document.getElementById('btnIntakeLink').addEventListener('click', async () => {
+    if (!currentPatientId) return;
+    document.getElementById('intakeLinkResult').classList.add('d-none');
+    document.getElementById('intakeTokenList').textContent = 'Loading links...';
+    intakeLinkModal.show();
+    try {
+      renderIntakeTokens(await OSADatabase.listIntakeTokens(currentPatientId));
+    } catch (err) {
+      document.getElementById('intakeTokenList').textContent = 'Could not load prior links.';
+    }
+  });
+
+  document.getElementById('btnGenerateIntakeLink').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    if (!currentPatientId) return;
+    button.disabled = true;
+    try {
+      const result = await OSADatabase.createIntakeToken(currentPatientId);
+      const appBase = String(AWS_CONFIG.appUrl || window.location.origin).replace(/\/$/, '');
+      const link = `${appBase}/intake.html?t=${encodeURIComponent(result.token)}`;
+      document.getElementById('intakeLinkValue').value = link;
+      document.getElementById('intakeLinkExpiry').textContent = `Expires ${new Date(result.expiresAt).toLocaleString()}. It becomes unusable immediately after submission.`;
+      document.getElementById('intakeLinkResult').classList.remove('d-none');
+      renderIntakeTokens(await OSADatabase.listIntakeTokens(currentPatientId));
+    } catch (err) {
+      alert('Could not generate intake link: ' + err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById('btnCopyIntakeLink').addEventListener('click', async () => {
+    const value = document.getElementById('intakeLinkValue').value;
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (_) {
+      const input = document.getElementById('intakeLinkValue');
+      input.select();
+      document.execCommand('copy');
+    }
+    document.getElementById('btnCopyIntakeLink').innerHTML = '<i class="bi bi-check2"></i> Copied';
+  });
 
   // Show intake status badge when loading a patient
   const origUpdatePatientBar = updatePatientBar;

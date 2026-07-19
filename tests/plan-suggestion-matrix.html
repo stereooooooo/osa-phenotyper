@@ -170,7 +170,7 @@ const SCENARIOS = [
     clinicianExcludes: [],
     patientIncludes: ['Giving PAP another try', 'oxygen', 'nasal treatment', 'weight management'],
     patientExcludes: ['Complete DISE-Guided'],
-    expectedAnalysisFlags: { severeHypoxemiaMissingFromDraftSummary: true }
+    expectedAnalysisFlags: { severeHypoxemiaMissingFromDraftSummary: false }
   },
   {
     id: 'tonsillar-surgery',
@@ -199,15 +199,13 @@ const SCENARIOS = [
       remPahi: '4', nremPahi: '2.7', odi: '3', nadir: '91', hbAreaPH: '8', t90: '0'
     },
     checks: [],
-    expectedSuggestions: [],
-    manualPlanFields: ['planStudy'],
-    manualSummary: 'Arrange an in-lab sleep study to evaluate possible upper airway resistance syndrome.',
+    expectedSuggestions: ['Diagnostic testing'],
     expectedTags: ['UARS-EVAL'],
     clinicianIncludes: ['Low AHI with significant symptoms', 'UARS'],
     clinicianExcludes: [],
     patientIncludes: ['upper airway resistance syndrome', 'in-lab sleep study'],
     patientExcludes: ['Begin PAP therapy now'],
-    expectedAnalysisFlags: { missingUarsDiagnosticSuggestion: true }
+    expectedAnalysisFlags: { missingUarsDiagnosticSuggestion: false }
   },
   {
     id: 'limited-watchpat',
@@ -219,13 +217,13 @@ const SCENARIOS = [
       nremPahi: '6', odi: '6', nadir: '88', hbAreaPH: '16', t90: '1'
     },
     checks: [],
-    expectedSuggestions: ['PAP management', 'Positional therapy'],
-    expectedTags: ['CPAP', 'POS'],
+    expectedSuggestions: ['Diagnostic testing'],
+    expectedTags: [],
     clinicianIncludes: ['Short recording time', 'Limited REM sampling'],
     clinicianExcludes: [],
     patientIncludes: ['sleep apnea'],
     patientExcludes: ['Short recording time', 'Limited REM sampling', 'bad sleep study', 'Worse during dream (REM) sleep'],
-    expectedAnalysisFlags: { limitedStudyStillSuggestsDefinitiveTreatment: true }
+    expectedAnalysisFlags: { limitedStudyStillSuggestsDefinitiveTreatment: false }
   },
   {
     id: 'bipap-central-safety',
@@ -238,13 +236,13 @@ const SCENARIOS = [
       papMode: 'BiPAP', papEpapPressure: '8', papIpapPressure: '14'
     },
     checks: ['priorCpap', 'cpapCurrent', 'cvd'],
-    expectedSuggestions: ['PAP management'],
+    expectedSuggestions: ['Diagnostic testing', 'PAP management'],
     expectedTags: ['CENTRAL-PSG-WORKUP', 'ASV-CONTRA'],
     clinicianIncludes: ['Currently using BiPAP', 'LVEF'],
     clinicianExcludes: ['Currently using CPAP'],
     patientIncludes: ['central-breathing', 'ASV', 'unsafe'],
     patientExcludes: ['Begin PAP therapy now'],
-    expectedAnalysisFlags: { centralWorkupMissingFromPlanSuggestions: true }
+    expectedAnalysisFlags: { centralWorkupMissingFromPlanSuggestions: false }
   }
 ];
 

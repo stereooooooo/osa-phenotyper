@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Capital ENT physicians and authorized clinical staff use the authenticated application during sleep-apnea evaluation, treatment planning, and follow-up. Patients do not access the clinical workspace; they receive clinician-reviewed reports that explain their results and next steps in plain language.
+Capital ENT physicians and authorized clinical staff use the authenticated application during sleep-apnea evaluation, treatment planning, and follow-up. Patients do not access the clinical workspace. They may complete a patient-specific, single-use intake questionnaire on a clinic iPad or through an approved link, and they receive clinician-reviewed reports through the EHR or another approved delivery process.
 
 ## Product Purpose
 
-Capital ENT Precision Sleep is a clinician-only decision-support hub for understanding why a patient has obstructive sleep apnea, matching treatment to the patient's anatomy, physiology, preferences, and prior treatment experience, and tracking response over time. Success means clinicians can move from intake and sleep-study data to an evidence-based plan and a concise patient explanation without exposing a bulk patient roster or replacing professional judgment.
+Capital ENT Precision Sleep is a clinician-controlled decision-support hub for understanding why a patient has obstructive sleep apnea, matching treatment to the patient's anatomy, physiology, preferences, and prior treatment experience, and tracking response over time. Success means clinicians can move from securely collected intake and sleep-study data to an evidence-based plan and a concise patient explanation without exposing a bulk patient roster or replacing professional judgment.
 
 ## Brand Personality
 

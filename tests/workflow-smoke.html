@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>OSA Phenotyper – Clinician-Only Workflow Smoke Suite</title>
+<title>OSA Phenotyper – Clinician and Scoped Intake Workflow Smoke Suite</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
   .pass { color: #198754; } .fail { color: #dc3545; }
@@ -12,9 +12,10 @@
 </style>
 </head>
 <body>
-<h1>Clinician-Only Workflow Smoke Suite</h1>
+<h1>Clinician and Scoped Intake Workflow Smoke Suite</h1>
 <div id="results"></div>
 <iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
+<iframe id="intakeFrame" src="../intake.html?testMode=workflow&amp;t=workflow-token"></iframe>
 <script>
 let passed = 0;
 let failed = 0;
@@ -54,6 +55,10 @@ function click(win, selector) {
   el.click();
 }
 
+function chooseRadio(win, name, value) {
+  click(win, `input[name="${name}"][value="${value}"]`);
+}
+
 async function run() {
   const frame = document.getElementById('appFrame');
   await waitFor(() => frame.contentDocument && frame.contentDocument.getElementById('appContainer'), 'app frame');
@@ -66,7 +71,7 @@ async function run() {
   assertEqual(doc.getElementById('runtimeEnvBadge').textContent.trim(), 'WORKFLOW TEST', 'Workflow runtime is clearly labeled');
   const dbClientSource = await fetch('../js/db.js').then(response => response.text());
   assert(!dbClientSource.includes('listPatients'), 'Production database client exposes no bulk patient-list method');
-  assert(!doc.getElementById('btnIntakeLink'), 'Remote intake control is absent');
+  assert(!!doc.getElementById('btnIntakeLink'), 'Patient-specific intake control is available');
   assert(!doc.getElementById('btnPortalLink'), 'Patient portal control is absent');
   assert(!doc.getElementById('btnPublishPatientPortal'), 'Patient portal publishing is absent');
 
@@ -116,10 +121,23 @@ async function run() {
   assert(doc.getElementById('planSummary').value.includes('Continue APAP'), 'Applying suggestions drafts the next-step summary');
   assert(doc.getElementById('planSummary').value.includes('prioritize nasal treatment'), 'Draft summary prioritizes nasal treatment for PAP dryness');
   doc.getElementById('planConfirmed').checked = true;
+  click(win, '#cvd');
+  setValue(win, '#echoHistory', 'yes');
+  setValue(win, '#echoResultKnowledge', 'unknown');
+  assert(!doc.getElementById('lvefFollowupAlert').classList.contains('d-none'), 'Missing numeric LVEF produces an MA-facing record request');
 
   click(win, '#btnSavePatient');
   await waitFor(() => doc.getElementById('patientNameDisplay').textContent.trim() === 'Workflow QA Patient', 'chart saved');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false).length, 1, 'Chart saves through the clinician UI');
+  assert(doc.getElementById('lvefNeededBadge').textContent.includes('LVEF Needed'), 'LVEF follow-up flag persists on the saved chart');
+  click(win, '#btnIntakeLink');
+  await waitFor(() => doc.getElementById('intakeLinkModal').classList.contains('show'), 'intake link modal');
+  assert(doc.getElementById('intakeLinkModal').textContent.includes('Do not sign the clinician workspace'), 'iPad instructions preserve clinician and patient security boundaries');
+  click(win, '#btnGenerateIntakeLink');
+  await waitFor(() => doc.getElementById('intakeLinkValue').value.includes('/intake.html?t='), 'intake link generated');
+  assert(doc.getElementById('intakeLinkValue').value.includes('/intake.html?t='), 'Generated link opens the scoped questionnaire rather than the clinician workspace');
+  assert(!doc.getElementById('intakeLinkValue').value.includes('/patients'), 'Generated intake link contains no patient API or roster route');
+  win.bootstrap.Modal.getInstance(doc.getElementById('intakeLinkModal')).hide();
 
   click(win, '#form button[type="submit"]');
   await waitFor(() => win.OSAReportState && win.OSAReportState.getLastAnalysisData(), 'analysis');
@@ -177,10 +195,16 @@ async function run() {
   setValue(win, '#patientSearch', 'Workflow QA Patient');
   await waitFor(() => doc.querySelectorAll('#patientListBody tr').length === 1, 'name search');
   assert(doc.querySelector('#patientListBody tr').textContent.includes('Workflow QA Patient'), 'Exact-name search returns the matching chart');
+  assert(doc.querySelector('#patientListBody tr').textContent.includes('LVEF Needed'), 'Bounded search surfaces the unresolved echo/LVEF flag');
   doc.querySelector('#patientListBody tr').click();
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'chart loaded');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Selected chart rehydrates identity fields');
   assertEqual(doc.querySelector('[name="remPercent"]').value, '23.1', 'Imported REM percentage persists when the chart is reopened');
+  setValue(win, '#lvef', '55');
+  await waitFor(() => !doc.getElementById('btnSavePatient').disabled, 'save button ready for LVEF resolution');
+  click(win, '#btnSavePatient');
+  await waitFor(() => doc.getElementById('lvefNeededBadge').classList.contains('d-none'), 'LVEF follow-up resolved');
+  assert(doc.getElementById('lvefFollowupAlert').classList.contains('d-none'), 'Documenting numeric LVEF clears the MA record request');
 
   click(win, '#btnPatientList');
   setValue(win, '#patientSearch', '1984-03-12');
@@ -196,6 +220,34 @@ async function run() {
   click(win, '#patientListBody .btn-restore-patient');
   await waitFor(() => !win.__OSA_WORKFLOW_TEST__.getPatient(patientId).isDeleted, 'restore');
   assert(!win.__OSA_WORKFLOW_TEST__.getPatient(patientId).isDeleted, 'Admin can restore an archived chart');
+
+  const intakeFrame = document.getElementById('intakeFrame');
+  await waitFor(() => intakeFrame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'patient intake form');
+  const intakeWin = intakeFrame.contentWindow;
+  const intakeDoc = intakeFrame.contentDocument;
+  setValue(intakeWin, '#sex', 'F');
+  setValue(intakeWin, '#heightFeet', '5');
+  setValue(intakeWin, '#heightInches', '6');
+  setValue(intakeWin, '#weight', '186');
+  for (let i = 1; i <= 8; i++) chooseRadio(intakeWin, `ess${i}`, '1');
+  for (let i = 1; i <= 7; i++) chooseRadio(intakeWin, `isi${i}`, '1');
+  for (let i = 1; i <= 5; i++) chooseRadio(intakeWin, `nose${i}`, '1');
+  chooseRadio(intakeWin, 'nasalObs', 'yes');
+  chooseRadio(intakeWin, 'snoringReported', 'yes');
+  chooseRadio(intakeWin, 'cvdHistory', 'yes');
+  assert(intakeDoc.getElementById('echoHistoryDetails').classList.contains('intake-conditional--visible'), 'Cardiovascular history opens the echocardiogram question');
+  chooseRadio(intakeWin, 'echoHistory', 'yes');
+  chooseRadio(intakeWin, 'echoResultKnowledge', 'unknown');
+  chooseRadio(intakeWin, 'weightInterest', 'ready');
+  click(intakeWin, '#submitBtn');
+  await waitFor(() => intakeDoc.getElementById('stateThankYou').classList.contains('intake-state--active'), 'patient intake submitted');
+  const intakeSubmission = intakeWin.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();
+  assert(intakeSubmission.payload.cardiovascularHistory.hasCvd, 'Intake records cardiovascular disease history');
+  assertEqual(intakeSubmission.payload.cardiovascularHistory.echoHistory, 'yes', 'Intake records prior echocardiogram');
+  assertEqual(intakeSubmission.payload.cardiovascularHistory.resultKnowledge, 'unknown', 'Intake accepts an unknown echo result without asking the patient to guess LVEF');
+  assert(!Object.prototype.hasOwnProperty.call(intakeSubmission.payload, 'age'), 'Patient intake does not ask for age that is already derived from chart DOB');
+  assertEqual(intakeDoc.getElementById('weight').value, '', 'Submitted responses are cleared from the handed iPad');
+  assert(!intakeWin.location.search.includes('t='), 'Used intake token is removed from the iPad address bar');
 }
 
 function render() {

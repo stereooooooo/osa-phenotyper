@@ -4,6 +4,17 @@
 
 ---
 
+## July 18, 2026 Scoped iPad Intake and Guided-Plan Fixes
+
+- Restored only the patient intake surface, not the prior patient portal. Staff generate a patient-specific 72-hour, single-use link from an authenticated chart and open that link on the clinic iPad. The handed device never needs a clinician login.
+- Added a cardiovascular cascade that accepts uncertainty: cardiovascular history, prior echocardiogram, result knowledge, then numeric LVEF only when known.
+- A positive cardiovascular history without a valid numeric LVEF now creates a server-derived durable `Echo / LVEF Needed` flag in the chart header and bounded search results. Saving a valid LVEF clears it.
+- Intake responses are cleared from the browser and the token is removed from the address bar after successful submission.
+- Closed all four guided-plan gaps from the prior audit: probable UARS now suggests diagnostic testing, home-test central signals add PSG confirmation, short/limited-REM WatchPAT results draft diagnostic confirmation instead of definitive new treatment, and severe hypoxemia adds prompt oxygen-control follow-up to the MA summary.
+- Full headless regression suite: **593 assertions passed**, including the scoped-link workflow, cardiovascular cascade, unknown-result path, persistent chart/search flag, resolution after numeric LVEF documentation, and handed-device cleanup.
+
+---
+
 ## July 18, 2026 Second Five-Scenario Guided-Plan Audit
 
 - Added five full encounter simulations covering severe hypoxemic OSA with PAP retry, a favorable tonsillar surgical pattern, probable UARS despite normal pAHI, a short WatchPAT study with limited REM sampling, and a current BiPAP user with home-test central signals plus reduced LVEF.

@@ -101,6 +101,23 @@ const OSADatabase = (function () {
     return apiFetch(`/patients/search?q=${encodeURIComponent(query)}${archivedParam}`);
   }
 
+  async function createIntakeToken(patientId) {
+    return apiFetch('/intake-tokens', {
+      method: 'POST',
+      body: JSON.stringify({ patientId }),
+    });
+  }
+
+  async function listIntakeTokens(patientId) {
+    return apiFetch(`/intake-tokens/${encodeURIComponent(patientId)}`);
+  }
+
+  async function revokeIntakeToken(tokenHash) {
+    return apiFetch(`/intake-tokens/${encodeURIComponent(tokenHash)}`, {
+      method: 'DELETE',
+    });
+  }
+
   /* ── Form Data Helpers ───────────────────────────────────── */
 
   /**
@@ -183,6 +200,9 @@ const OSADatabase = (function () {
     restorePatient,
     deletePatient,
     searchPatients,
+    createIntakeToken,
+    listIntakeTokens,
+    revokeIntakeToken,
     serializeForm,
     populateForm,
   };
