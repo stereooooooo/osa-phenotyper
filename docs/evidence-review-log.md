@@ -240,7 +240,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   leak with misleading residual events, partial-night use, persistent symptoms despite a low device
   index, and a central-event signal with reduced or missing LVEF context.
 - **Clinician reviewer and decision:** Raymond Brown, MD, review pending
-- **Commit:** pending
+- **Commit:** `525c740`
 - **Deployed build:** not yet deployed
 - **Next review trigger or due date:** AASM or ATS update; validated manufacturer-specific report
   definitions; prospective PSG comparison; external validation of a PAP-download action algorithm;
