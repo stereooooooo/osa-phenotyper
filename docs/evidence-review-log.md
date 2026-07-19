@@ -66,8 +66,8 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Regression scenarios added or updated:** The current APAP plus severe nasal obstruction scenario
   now verifies the symptom-versus-AHI and dominant-PAP-barrier evidence boundary.
 - **Clinician reviewer and decision:** Raymond Brown, MD, review pending
-- **Commit:** Pending
-- **Deployed build:** Pending
+- **Commit:** `06c9c6d`
+- **Deployed build:** `06c9c6d`
 - **Next review trigger or due date:** External validation of a nasal-surgery response model; a new
   randomized trial reporting sleep-specific treatment-effect modifiers; or the next scheduled
   comprehensive evidence review
