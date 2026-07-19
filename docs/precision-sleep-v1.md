@@ -25,6 +25,39 @@ V1 is a clinician-controlled operating layer for an OSA-centered Precision Sleep
 5. Up to 20 retained follow-up entries per chart, with workforce identity and timestamps added by the server
 6. Existing immutable report snapshots and clinician-only bounded patient search
 
+## Near-term clinical product roadmap
+
+### 1. Visit-specific patient action plans
+
+Add a concise **Today's Sleep Plan** that can be printed or sent through an approved patient communication channel after each visit. It is separate from the more comprehensive Precision Sleep Profile and is assembled from clinician-confirmed pathways rather than every technically eligible treatment.
+
+The first release is limited to five reusable education modules:
+
+1. Pending sleep study and interim snoring measures
+2. PAP comfort and continued-use support
+3. Nasal care
+4. Weight, alcohol, and lifestyle measures
+5. Positional measures
+
+Only the one or two highest-priority modules are expanded. Other confirmed actions remain visible as a compact checklist. The clinician can edit the generated plan before saving or exporting it.
+
+### 2. PAP compliance report assistant
+
+Add a clinician-only workflow for uploading a PAP compliance PDF and receiving evidence-based, reviewable decision support. Begin with the single report format most commonly used by Capital ENT, then add vendors only after real deidentified examples demonstrate reliable extraction.
+
+The first release should:
+
+- Extract device, mode, pressure settings, usage, residual device-reported AHI, leak, pressure percentiles, and central-event or periodic-breathing fields when present.
+- Show every extracted value for staff verification before analysis or chart storage.
+- Combine verified device data with symptoms, treatment barriers, baseline study data, nasal findings, cardiovascular safety inputs, and the reason for the visit.
+- Classify the review as effective and tolerated, adherence barrier, leak or data-quality concern, possible residual obstruction, possible central-event concern, unexplained persistent symptoms, or need for formal titration/additional testing.
+- Produce clinician suggestions and patient education only after clinician confirmation.
+- Never change PAP settings automatically or treat manufacturer-reported residual AHI and leak values as interchangeable across vendors.
+
+For the initial low-cost architecture, the source PDF should be uploaded to encrypted, access-controlled AWS storage, parsed without PHI in logs, and automatically deleted after verification unless the clinician intentionally retains it. Structured verified values can then be stored with the chart and audit metadata.
+
+Later phases may add longitudinal comparisons, additional report formats, and vendor integrations. Direct device-cloud integrations are intentionally deferred because they add cost, security review, vendor contracts, and operational complexity.
+
 ## Explicitly excluded
 
 - Patient portal, patient login, public links, or in-app messaging

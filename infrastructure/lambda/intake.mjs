@@ -461,6 +461,16 @@ function validateIntakeData(body) {
   data.nasalObs = body.nasalObs === true;
   data.snoringReported = body.snoringReported === true;
 
+  const validAlcoholNearBed = new Set(['', 'never', '1-2', '3-4', '5-plus']);
+  const alcoholNearBed = body.alcoholNearBed === undefined || body.alcoholNearBed === null
+    ? ''
+    : stripHtml(String(body.alcoholNearBed));
+  if (!validAlcoholNearBed.has(alcoholNearBed)) {
+    errors.push('alcoholNearBed');
+  } else {
+    data.alcoholNearBed = alcoholNearBed;
+  }
+
   // ── Preferences (optional booleans) ──────────────────────
   if (body.preferences !== undefined) {
     if (typeof body.preferences !== 'object' || body.preferences === null) {
@@ -630,7 +640,7 @@ function validateIntakeData(body) {
   const allowedKeys = new Set([
     'sex', 'heightInches', 'weightLbs',
     'ess', 'isi', 'nose',
-    'nasalObs', 'snoringReported',
+    'nasalObs', 'snoringReported', 'alcoholNearBed',
     'preferences', 'priorTreatments', 'cpapHistory', 'cardiovascularHistory',
     'weightLossReadiness',
   ]);
@@ -685,6 +695,7 @@ function mapToFormData(data, scores) {
     noseScore:        scores.noseTotal,
     nasalObs:         data.nasalObs ? 'on' : '',
     snoringReported:  data.snoringReported ? 'on' : '',
+    alcoholNearBed:   data.alcoholNearBed || '',
     prefAvoidCpap:    data.preferences?.avoidCpap ? 'on' : '',
     prefSurgery:      data.preferences?.openToSurgery ? 'on' : '',
     prefInspire:      data.preferences?.interestedInInspire ? 'on' : '',

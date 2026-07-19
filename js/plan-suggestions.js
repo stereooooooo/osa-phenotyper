@@ -20,6 +20,7 @@
     planNasal: 'Nasal treatment',
     planPositional: 'Positional therapy',
     planWeight: 'Weight management',
+    planLifestyle: 'Lifestyle / snoring measures',
     planMad: 'Oral appliance',
     planInspire: 'Nerve stimulation',
     planSurgery: 'Airway surgery',
@@ -233,6 +234,19 @@
         `BMI ${bmi}; patient is ${readinessLabel}.`,
         weightReadiness === 'ready' ? 'begin supported weight management' : 'discuss supported weight-management options',
         40
+      );
+    }
+
+    const alcoholNearBed = fieldValue('alcoholNearBed');
+    if (['3-4', '5-plus'].includes(alcoholNearBed)) {
+      addSuggestion(
+        suggestions,
+        'planLifestyle',
+        alcoholNearBed === '5-plus'
+          ? 'Alcohol is used near bedtime on 5 or more nights per week.'
+          : 'Alcohol is used near bedtime on 3 to 4 nights per week.',
+        'reduce or avoid alcohol within 3 hours of bedtime',
+        35
       );
     }
 

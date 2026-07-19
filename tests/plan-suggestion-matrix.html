@@ -87,7 +87,9 @@ const SCENARIOS = [
     clinicianIncludes: ['Currently using APAP'],
     clinicianExcludes: ['Currently using CPAP'],
     patientIncludes: ['Building on your current APAP therapy', 'prioritize nasal treatment', 'supported weight management'],
-    patientExcludes: ['Begin PAP therapy now']
+    patientExcludes: ['Begin PAP therapy now'],
+    todayPlanIncludes: ["Today's Sleep Plan", 'Make APAP easier to use', 'Improve nasal airflow', 'Choose one sustainable weight or lifestyle step', 'Use a positional aid'],
+    todayPlanExcludes: ['Start CPAP', 'Increase your pressure']
   },
   {
     id: 'new-comisa',
@@ -142,16 +144,18 @@ const SCENARIOS = [
   },
   {
     id: 'pre-study',
-    name: 'Symptomatic patient without a completed sleep study',
-    visitReason: 'symptoms',
-    fields: { sex: 'M', bmi: '28', neck: '16', tonsils: '2', ftp: 'III', ess: '16', isi: '9', noseScore: '15' },
-    checks: [],
-    expectedSuggestions: ['Diagnostic testing'],
-    expectedTags: ['SLEEP-STUDY'],
+    name: 'Snoring patient with nasal obstruction, frequent alcohol use, and no completed study',
+    visitReason: 'snoring',
+    fields: { sex: 'M', bmi: '29', neck: '16', tonsils: '2', ftp: 'III', ess: '9', isi: '6', noseScore: '60', alcoholNearBed: '5-plus', weightLossReadiness: 'ready' },
+    checks: ['snoringReported', 'nasalObs'],
+    expectedSuggestions: ['Diagnostic testing', 'Nasal treatment', 'Lifestyle / snoring measures', 'Weight management'],
+    expectedTags: ['SLEEP-STUDY', 'NASAL-OPT'],
     clinicianIncludes: ['Diagnostic boundary', 'Plan Before Diagnosis'],
     clinicianExcludes: ['Treatment Candidacy'],
-    patientIncludes: ['recommend a sleep study', 'Complete diagnostic sleep testing'],
-    patientExcludes: ['Begin PAP therapy now', 'Inspire']
+    patientIncludes: ['recommend a sleep study', 'Complete diagnostic sleep testing', 'nasal'],
+    patientExcludes: ['Begin PAP therapy now', 'Inspire'],
+    todayPlanIncludes: ['While we complete your sleep evaluation', 'try sleeping on your side', 'Improve nasal airflow', 'Choose one sustainable weight step and reduce alcohol near bedtime'],
+    todayPlanExcludes: ['Your sleep study showed', 'Start PAP']
   },
   {
     id: 'severe-pap-retry',
@@ -295,12 +299,17 @@ async function runScenario(win, doc, scenario, index) {
 
   const patientHtml = win.PatientReport.generateReportHTML(data);
   const patientText = textOnly(patientHtml, win);
+  const todayPlanHtml = win.PatientReport.generateTodayPlanHTML(data);
+  const todayPlanText = textOnly(todayPlanHtml, win);
   const clinicianText = (doc.getElementById('clinicianReport')?.textContent || '').replace(/\s+/g, ' ').trim();
   assert(clinicianText.length > 100, `${scenario.name}: clinician report is populated`);
   (scenario.clinicianIncludes || []).forEach(phrase => assert(clinicianText.includes(phrase), `${scenario.name}: clinician report includes "${phrase}"`));
   (scenario.clinicianExcludes || []).forEach(phrase => assert(!clinicianText.includes(phrase), `${scenario.name}: clinician report excludes "${phrase}"`));
   scenario.patientIncludes.forEach(phrase => assert(patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report includes "${phrase}"`));
   scenario.patientExcludes.forEach(phrase => assert(!patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report excludes "${phrase}"`));
+  (scenario.todayPlanIncludes || []).forEach(phrase => assert(todayPlanText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: today's plan includes "${phrase}"`));
+  (scenario.todayPlanExcludes || []).forEach(phrase => assert(!todayPlanText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: today's plan excludes "${phrase}"`));
+  assert(!/[\u2010-\u2015\u2212]/.test(todayPlanHtml), `${scenario.name}: today's plan contains no typographic dash characters`);
 
   const analysisFlags = {
     selectedNerveStimulationWithoutRecommendation: data.selectedPlanFields.includes('planInspire') &&
@@ -326,7 +335,8 @@ async function runScenario(win, doc, scenario, index) {
     recommendationTags: recTags,
     analysisFlags,
     clinicianPlanExcerpt: clinicianText.slice(0, 1200),
-    patientReportExcerpt: patientText.slice(0, 1600)
+    patientReportExcerpt: patientText.slice(0, 1600),
+    todayPlanExcerpt: todayPlanText.slice(0, 1800)
   });
 }
 

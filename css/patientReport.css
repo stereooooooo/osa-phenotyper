@@ -426,6 +426,101 @@ body.report-preview-open {
   font-size: 0.9rem;
 }
 
+/* ── Today's Sleep Plan ── */
+.patient-report.today-plan-report {
+  max-width: 850px;
+}
+.patient-report .today-plan-subtitle {
+  margin-top: 0.2rem;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+.patient-report .today-plan-focus {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.2rem;
+  background: #eef3f8;
+  border-left: 4px solid #C8102E;
+  color: #1a2b42;
+}
+.patient-report .today-plan-focus p {
+  margin: 0;
+}
+.patient-report .today-plan-focus .today-plan-visit {
+  margin-bottom: 0.35rem;
+  color: #526173;
+  font-size: 0.84rem;
+}
+.patient-report .today-plan-module {
+  margin: 0 0 1.6rem;
+  padding: 0 0 1.4rem;
+  border-bottom: 1px solid #dbe3ec;
+}
+.patient-report .today-plan-module-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.55rem;
+}
+.patient-report .today-plan-module-heading > i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #eef3f8;
+  color: #1F3A5C;
+  font-size: 1rem;
+  flex: 0 0 auto;
+}
+.patient-report .today-plan-module-heading h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.patient-report .today-plan-why {
+  margin: 0 0 0.65rem 2.65rem;
+  color: #475569;
+}
+.patient-report .today-plan-actions {
+  margin: 0 0 0.65rem 2.65rem;
+  padding-left: 1.2rem;
+}
+.patient-report .today-plan-actions li {
+  display: list-item;
+  margin-bottom: 0.5rem;
+  padding-left: 0.2rem;
+  break-inside: avoid;
+}
+.patient-report .today-plan-note {
+  margin: 0 0 0 2.65rem;
+  padding: 0.6rem 0.75rem;
+  background: #f8fafc;
+  color: #526173;
+  font-size: 0.84rem;
+}
+.patient-report .today-plan-supporting,
+.patient-report .today-plan-follow-up {
+  margin-top: 1.5rem;
+}
+.patient-report .today-plan-supporting ul {
+  margin-bottom: 0;
+}
+.patient-report .today-plan-supporting li {
+  margin-bottom: 0.45rem;
+}
+.patient-report .today-plan-follow-up {
+  padding: 0.95rem 1.1rem;
+  background: #f8fafc;
+  border: 1px solid #dbe3ec;
+}
+.patient-report .today-plan-follow-up h2 {
+  margin-top: 0;
+}
+.patient-report .today-plan-follow-up p {
+  margin-bottom: 0;
+}
+
 /* ── Footer ── */
 .patient-report .report-footer {
   margin-top: 2.5rem;
@@ -447,5 +542,10 @@ body.report-preview-open {
   }
   .patient-report .report-terms-list {
     grid-template-columns: 1fr;
+  }
+  .patient-report .today-plan-why,
+  .patient-report .today-plan-actions,
+  .patient-report .today-plan-note {
+    margin-left: 0;
   }
 }

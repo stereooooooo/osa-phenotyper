@@ -1333,3 +1333,16 @@
 - the permanent headless PDF regression asserts the central-safety fixture remains two pages
 - complete headless suite passed after the change
 **Finding:** fixed. Cross-scenario clinical behavior remained intact, and the pagination improvement applies globally rather than depending on a patient-specific exception.
+
+### Tests 150-152: Visit-specific patient action plans
+**Status:** local executable content, workflow, and PDF regression complete
+**Result:** passed ✅
+**Verification:**
+- the current-APAP scenario expands the PAP comfort and nasal modules because those are the highest-priority documented barriers
+- weight and positional pathways remain visible as compact supporting actions rather than creating an overlong handout
+- the pre-study snoring scenario preserves diagnostic uncertainty, recommends completion of the sleep study, includes interim side-sleeping advice, and surfaces only clinician-confirmed nasal, alcohol, and weight actions
+- alcohol counseling appears only when the structured near-bedtime alcohol field and lifestyle pathway support it
+- all generated action plans are normalized to remove typographic dash characters
+- the content-rich action-plan PDF regression remains within the intended one-to-two-page boundary
+- full headless suite passed with 619 assertions
+**Finding:** none. The new output is a concise encounter plan and does not replace or lengthen the existing comprehensive Precision Sleep Profile.

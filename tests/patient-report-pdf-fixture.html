@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Patient Report PDF Fixture</title>
+  <link href="../vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../vendor/inter/inter.css" rel="stylesheet">
+  <link href="../css/patientReport.css" rel="stylesheet">
 </head>
 <body>
   <div id="reportPreviewContent"></div>
@@ -272,9 +275,36 @@
         ],
         milestones: ['Initial Eval', 'Study Reviewed'],
       }),
+      'today-plan-current-pap': Object.assign({}, retryFixture, {
+        patientName: 'TESTPATIENT, TodayPlan',
+        reportDate: '2026-07-18',
+        primaryAHI: 22,
+        ahi: 22,
+        severity: 'moderate',
+        bmi: 31.8,
+        noseScore: 60,
+        cpapCurrent: true,
+        cpapFailed: false,
+        cpapWillRetry: false,
+        cpapReasons: ['cpapDry', 'cpapMask', 'cpapLeaks'],
+        papMode: 'APAP',
+        papMinPressure: 7,
+        papMaxPressure: 15,
+        weightLossReadiness: 'considering',
+        alcoholNearBed: '3-4',
+        visitReasonLabel: 'Improve PAP comfort or results',
+        planSummary: 'Continue APAP and begin nasal treatment before changing pressure settings.',
+        planConfirmed: true,
+        selectedPlanFields: ['planPap', 'planNasal', 'planWeight', 'planLifestyle', 'planPositional'],
+        supPahi: 36,
+        nonSupPahi: 9.5,
+      }),
     };
     const fixture = fixtures[scenario] || fixtures.retry;
-    document.getElementById('reportPreviewContent').innerHTML = PatientReport.generateReportHTML(fixture);
+    const format = params.get('format') || 'profile';
+    document.getElementById('reportPreviewContent').innerHTML = format === 'today-plan'
+      ? PatientReport.generateTodayPlanHTML(fixture)
+      : PatientReport.generateReportHTML(fixture);
     window.fixtureReady = true;
     if (params.get('render') === '1') {
       window.addEventListener('load', () => {

@@ -1900,6 +1900,309 @@ ${items.join('')}`;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
+     TODAY'S SLEEP PLAN
+     A short, encounter-specific handout assembled only from pathways the
+     clinician confirmed. The comprehensive profile remains a separate output.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  function selectedPlanSet(data) {
+    return new Set(Array.isArray(data?.selectedPlanFields) ? data.selectedPlanFields : []);
+  }
+
+  function renderTodayPlanHeader(data) {
+    const logoImg = logoDataURI
+      ? `<img src="${logoDataURI}" alt="Capital ENT" class="report-logo">`
+      : '<span style="font-weight:700;color:#1F3A5C;font-size:1.1rem;">Capital ENT</span>';
+    const dateStr = formatDate(data.reportDate);
+    const patName = esc(data.patientName || '');
+    return `
+<div class="report-header today-plan-header">
+  <div>
+    ${logoImg}
+    <div class="report-title" style="margin-top:0.5rem;">Today's Sleep Plan</div>
+    <div class="today-plan-subtitle">What to focus on after today's visit</div>
+  </div>
+  <div class="report-meta">
+    ${patName ? `<div class="report-patient-name">${patName}</div>` : ''}
+    ${dateStr ? `<div>${dateStr}</div>` : ''}
+  </div>
+</div>`;
+  }
+
+  function alcoholNearBedLabel(value) {
+    const labels = {
+      '1-2': '1 to 2 nights per week',
+      '3-4': '3 to 4 nights per week',
+      '5-plus': '5 or more nights per week',
+    };
+    return labels[value] || '';
+  }
+
+  function papComfortActions(data) {
+    const issueSet = new Set(Array.isArray(data.cpapReasons) ? data.cpapReasons : []);
+    const actions = [];
+    const add = text => {
+      if (text && !actions.includes(text)) actions.push(text);
+    };
+
+    if (issueSet.has('cpapMask')) {
+      add('Ask for a mask refit. The cushion should seal without painful tightening, and a different mask style may fit your face or sleeping position better.');
+    }
+    if (issueSet.has('cpapLeaks')) {
+      add('Check the cushion seal, tubing connections, and headgear. Persistent leak or noise should be reviewed before pressure is changed.');
+    }
+    if (issueSet.has('cpapDry')) {
+      add('Review heated humidification and possible mouth leak. Nasal blockage can promote mouth breathing, so follow the nasal plan below when one was selected.');
+    }
+    if (issueSet.has('cpapClaustro')) {
+      add('Practice while awake: wear the mask without pressure, then with the machine on, for short calm sessions before trying it in bed.');
+    }
+    if (issueSet.has('cpapSleep')) {
+      add('Ask whether ramp or exhalation-comfort settings should be adjusted. Practice with PAP before bedtime rather than waiting until you are frustrated or exhausted.');
+    }
+    if (issueSet.has('cpapSkin')) {
+      add('Do not keep tightening a painful mask. Review mask size, cushion material, cleaning, and protective options with the equipment team.');
+    }
+    if (issueSet.has('cpapNoImprove')) {
+      add('Bring or upload a compliance report so your clinician can review usage, leak, residual breathing events, and pressure behavior before changing treatment.');
+    }
+    if (issueSet.has('cpapTravel')) {
+      add('Ask about a travel setup, packing checklist, and how to use the device when electricity or distilled water is not readily available.');
+    }
+    if (!actions.length) {
+      add('Use PAP whenever you sleep, including naps, and contact the care team early if mask, pressure, dryness, or nasal problems begin to limit use.');
+    }
+    add('Do not change pressure settings on your own. Your clinician can review comfort and device data before making an adjustment.');
+    return actions;
+  }
+
+  function buildTodayPlanModules(data) {
+    const selected = selectedPlanSet(data);
+    const modules = [];
+    const stage = getReportStage(data);
+    const alcoholFrequency = alcoholNearBedLabel(data.alcoholNearBed);
+    const device = papDeviceLabel(data);
+    const nasalSelected = selected.has('planNasal');
+    const papSelected = selected.has('planPap');
+
+    if (selected.has('planStudy')) {
+      const preStudy = stage === 'pre-study';
+      const actions = [preStudy
+        ? 'Complete the sleep study, then schedule a follow-up visit so we can review the results and choose treatment together.'
+        : 'Complete the additional sleep testing recommended today, then return to review what it changes about your treatment plan.'];
+      if (preStudy && data.snoringReported) {
+        actions.push('While waiting, try sleeping on your side. A body pillow or positional aid can make back-sleeping less likely.');
+      }
+      if (preStudy && exists(data.ess) && Number(data.ess) > 10) {
+        actions.push('If you feel too sleepy to drive safely, do not drive. Contact the care team if sleepiness is worsening or affecting safety.');
+      }
+      modules.push({
+        id: 'study',
+        priority: preStudy ? 0 : 2,
+        icon: 'bi-moon-stars',
+        title: preStudy ? 'While we complete your sleep evaluation' : 'Complete the recommended sleep testing',
+        reason: preStudy
+          ? 'Snoring can occur with or without sleep apnea. The sleep study will show whether breathing interruptions are present and how important they are.'
+          : 'Additional testing can answer a question that the current information cannot settle safely.',
+        actions,
+        note: preStudy
+          ? 'These steps may reduce snoring, but they do not replace the sleep study or prove that sleep apnea is absent.'
+          : 'Keep using any current treatment unless your clinician told you to stop.',
+        shortAction: preStudy ? 'Complete the sleep study and schedule the results visit.' : 'Complete the recommended testing and return for review.',
+      });
+    }
+
+    if (papSelected) {
+      const barriers = patientCpapBarrierText(data);
+      const hasDocumentedBarriers = Array.isArray(data.cpapReasons) && data.cpapReasons.length > 0;
+      const currentOrRetry = data.cpapCurrent || data.cpapWillRetry;
+      modules.push({
+        id: 'pap',
+        priority: currentOrRetry && hasDocumentedBarriers ? 0.5 : 4,
+        icon: 'bi-lungs',
+        title: data.cpapCurrent ? `Make ${device} easier to use` : data.cpapWillRetry ? `Prepare for a better ${device} retry` : `Start ${device} with support`,
+        reason: hasDocumentedBarriers
+          ? `You reported ${barriers}. The goal is to fix the specific barriers rather than asking you to simply try harder.`
+          : `${device} works best when the setup is comfortable enough to use whenever you sleep.`,
+        actions: papComfortActions(data),
+        note: 'Machine-reported breathing events and leak values need clinical context. A compliance report can help your clinician decide whether comfort, leak, pressure, testing, or another treatment needs attention.',
+        shortAction: data.cpapCurrent ? `Continue ${device} and address the documented comfort barriers.` : `Complete the ${device} setup or re-fitting.`
+      });
+    }
+
+    if (nasalSelected) {
+      const score = exists(data.noseScore) ? Number(data.noseScore) : null;
+      const scoreReason = Number.isFinite(score) && score >= 55
+        ? `Your NOSE symptom score is ${score}/100, which indicates severe or extreme nasal obstruction.`
+        : Number.isFinite(score) && score >= 30
+          ? `Your NOSE symptom score is ${score}/100, which indicates meaningful nasal obstruction.`
+          : 'You reported difficulty breathing through your nose.';
+      const nasalActions = [
+        'Use the saline spray or rinse recommended by your clinician. For a rinse, use only distilled, sterile, or previously boiled and cooled water.',
+        'If your clinician recommended a steroid nasal spray, use it consistently. Aim slightly outward, away from the center wall of the nose, and breathe in gently rather than sharply.',
+        'Contact the care team for frequent nosebleeds, significant irritation, or symptoms that are not improving as expected.'
+      ];
+      if (data.cpapCurrent) {
+        nasalActions.push('Track whether nasal breathing, dry mouth, mask comfort, and PAP use improve. Pressure should be changed only after clinician review.');
+      }
+      modules.push({
+        id: 'nasal',
+        priority: data.cpapCurrent && (data.cpapReasons || []).includes('cpapDry') ? 1 : 5,
+        icon: 'bi-wind',
+        title: 'Improve nasal airflow',
+        reason: `${scoreReason} Nasal treatment may improve airflow and treatment comfort, but it usually supports rather than replaces sleep apnea treatment.`,
+        actions: nasalActions,
+        note: papSelected ? `This is part of making ${device} more comfortable.` : 'Follow the specific medication plan discussed with your clinician.',
+        shortAction: 'Begin the clinician-selected nasal plan and track the response.',
+      });
+    }
+
+    if (selected.has('planWeight') || selected.has('planLifestyle')) {
+      const actions = [];
+      const reasons = [];
+      if (selected.has('planWeight')) {
+        reasons.push(exists(data.bmi)
+          ? `At a BMI of ${data.bmi}, weight may be one modifiable contributor, but it is not necessarily the only cause of snoring or sleep apnea.`
+          : 'Weight may be one modifiable contributor, but it is not necessarily the only cause of snoring or sleep apnea.');
+        actions.push(data.weightLossReadiness === 'ready'
+          ? 'Choose one realistic nutrition or activity step to begin now, and discuss whether dietitian, structured-program, or medication support fits your goals.'
+          : data.weightLossReadiness === 'considering'
+            ? 'Discuss a realistic first step and the types of support available. A small, sustainable start is more useful than an extreme short-term plan.'
+            : 'Keep weight management available as an option without making it the only focus of your sleep plan.');
+      }
+      if (selected.has('planLifestyle')) {
+        if (alcoholFrequency) {
+          reasons.push(`You reported alcohol within 3 hours of bedtime on ${alcoholFrequency}. Alcohol can relax throat muscles and worsen snoring or airway collapse in susceptible people.`);
+          actions.push('Reduce or avoid alcohol within 3 hours of bedtime and notice whether snoring, awakenings, or morning symptoms improve.');
+        } else {
+          actions.push('If you drink alcohol, avoid it close to bedtime because it can relax throat muscles and worsen snoring or airway narrowing.');
+        }
+      }
+      modules.push({
+        id: 'lifestyle',
+        priority: 7,
+        icon: 'bi-activity',
+        title: selected.has('planWeight') && selected.has('planLifestyle') ? 'Work on modifiable contributors' : selected.has('planWeight') ? 'Build a sustainable weight plan' : 'Reduce nighttime snoring triggers',
+        reason: reasons.join(' '),
+        actions,
+        note: selected.has('planWeight')
+          ? 'Weight loss can reduce airway crowding in the tongue and throat and may help other treatments work better, but individual improvement varies.'
+          : '',
+        shortAction: selected.has('planWeight') && selected.has('planLifestyle')
+          ? 'Choose one sustainable weight step and reduce alcohol near bedtime.'
+          : selected.has('planWeight')
+            ? 'Choose one sustainable weight or lifestyle step.'
+            : 'Reduce alcohol near bedtime and track whether snoring improves.',
+      });
+    }
+
+    if (selected.has('planPositional')) {
+      const supine = data.supPahi ?? data.ahiSup ?? null;
+      const nonSupine = data.nonSupPahi ?? data.ahiNonSup ?? null;
+      const hasComparison = exists(supine) && exists(nonSupine);
+      modules.push({
+        id: 'positional',
+        priority: 8,
+        icon: 'bi-arrow-left-right',
+        title: 'Stay off your back during sleep',
+        reason: hasComparison
+          ? `Your study showed more breathing events on your back (${supine} per hour) than off your back (${nonSupine} per hour).`
+          : 'Your evaluation suggests that sleeping on your back may worsen airway narrowing.',
+        actions: [
+          'Use a body pillow, backpack-style aid, or positional device to make side-sleeping easier to maintain through the night.',
+          'Track whether you can stay off your back and whether snoring, awakenings, or morning symptoms improve.'
+        ],
+        note: papSelected ? `Continue ${device} unless your clinician specifically said positional therapy can replace it.` : 'Follow-up testing may be needed before positional therapy is used as the only sleep apnea treatment.',
+        shortAction: 'Use a positional aid and track whether side-sleeping is sustainable.',
+      });
+    }
+
+    return modules.sort((a, b) => a.priority - b.priority);
+  }
+
+  function renderTodayPlanModule(module) {
+    const actions = module.actions.filter(Boolean).map(action => `<li>${esc(action)}</li>`).join('');
+    return `
+<article class="today-plan-module today-plan-module-${esc(module.id)}">
+  <div class="today-plan-module-heading">
+    <i class="bi ${esc(module.icon)}" aria-hidden="true"></i>
+    <h2>${esc(module.title)}</h2>
+  </div>
+  ${module.reason ? `<p class="today-plan-why">${esc(module.reason)}</p>` : ''}
+  <ol class="today-plan-actions">${actions}</ol>
+  ${module.note ? `<p class="today-plan-note">${esc(module.note)}</p>` : ''}
+</article>`;
+  }
+
+  function supportingPlanActions(data, compactModules) {
+    const selected = selectedPlanSet(data);
+    const actions = compactModules.map(module => module.shortAction).filter(Boolean);
+    const add = text => {
+      if (text && !actions.includes(text)) actions.push(text);
+    };
+    if (selected.has('planCbti')) add('Begin cognitive behavioral therapy for insomnia using the referral or validated program discussed today.');
+    if (selected.has('planMad')) add('Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
+    if (selected.has('planInspire')) add('Continue the device-specific nerve-stimulation evaluation discussed with your ENT.');
+    if (selected.has('planSurgery')) add('Continue the airway-surgery evaluation discussed today; the procedure should match your anatomy and goals.');
+    if (data.planObserve) add('Continue observation and return at the interval chosen with your clinician, or sooner if symptoms worsen.');
+    return actions;
+  }
+
+  function renderTodayPlanSummary(data) {
+    const nextStep = summaryNextStep(data);
+    const visitLabel = data.visitReasonLabel && data.visitReasonLabel !== 'Not documented'
+      ? `<p class="today-plan-visit"><strong>Today's visit:</strong> ${esc(data.visitReasonLabel)}</p>`
+      : '';
+    return `
+<div class="today-plan-focus">
+  ${visitLabel}
+  <p><strong>Most important next step:</strong> ${nextStep}</p>
+</div>`;
+  }
+
+  function renderTodayPlanFollowUp(data) {
+    const preStudy = getReportStage(data) === 'pre-study';
+    const papSelected = selectedPlanSet(data).has('planPap');
+    const followUp = preStudy
+      ? 'Schedule your follow-up after the sleep study so the results can be reviewed with you.'
+      : papSelected
+        ? 'Bring or upload your PAP compliance report at follow-up, along with any mask, dryness, pressure, or nasal concerns.'
+        : 'Return at the interval discussed today so your response and next treatment decision can be reviewed.';
+    return `
+<div class="today-plan-follow-up">
+  <h2>What happens next</h2>
+  <p>${esc(followUp)}</p>
+</div>`;
+  }
+
+  function generateTodayPlanHTML(data) {
+    const modules = buildTodayPlanModules(data);
+    const expandedModules = modules.slice(0, 2);
+    const compactModules = modules.slice(2);
+    const supportingActions = supportingPlanActions(data, compactModules);
+    const moduleHtml = expandedModules.map(renderTodayPlanModule).join('');
+    const supportingHtml = supportingActions.length
+      ? `<div class="today-plan-supporting"><h2>Also in your plan</h2><ul>${supportingActions.map(action => `<li>${esc(action)}</li>`).join('')}</ul></div>`
+      : '';
+    const bodySections = [
+      renderTodayPlanSummary(data),
+      moduleHtml || '<p>Review the confirmed plan with your care team before making changes.</p>',
+      supportingHtml,
+      renderTodayPlanFollowUp(data),
+      renderFooter(data),
+    ].filter(Boolean);
+    const sections = [
+      renderTodayPlanHeader(data),
+      renderTerminologyGuide(bodySections.join('')),
+      ...bodySections,
+    ].filter(Boolean).map((sectionHtml, index) =>
+      `<section class="report-section report-section-${index + 1}">${sectionHtml}</section>`
+    );
+    const reportHTML = '<div class="patient-report today-plan-report" data-report-type="today-plan" data-patient-name="' + esc(data.patientName || '') + '" data-report-date="' + esc(data.reportDate || '') + '">' + sections.join('') + '</div>';
+    return normalizePatientHandoutPunctuation(reportHTML);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
      MAIN ENTRY POINT
      ══════════════════════════════════════════════════════════════════════════ */
   function generateReportHTML(data) {
@@ -1929,6 +2232,6 @@ ${items.join('')}`;
     return normalizePatientHandoutPunctuation(reportHTML);
   }
 
-  return { generateReportHTML, getReportStage };
+  return { generateReportHTML, generateTodayPlanHTML, getReportStage };
 
 })();

@@ -296,3 +296,10 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 147 | Unknown LVEF accepted safely | A patient can report that the echo result is unknown without guessing a number; the backend derives and persists an Echo/LVEF Needed flag |
 | 148 | LVEF follow-up resolution | The chart and bounded search display the flag until a valid numeric LVEF is saved, then clear it automatically |
 | 149 | Handed-device cleanup | After successful submission, the token is consumed, removed from the address bar, and questionnaire values are cleared from the browser DOM |
+
+### Group 35: Visit-Specific Patient Action Plans
+| # | Name | Key Features |
+|---|------|-------------|
+| 150 | Current APAP comfort plan | A current APAP user with mask, leak, dryness, nasal, weight, and positional pathways should receive expanded PAP and nasal modules, with weight and positional actions kept compact and no new-start or autonomous pressure-change language |
+| 151 | Pre-study snoring plan | A patient awaiting a sleep study with snoring, severe nasal symptoms, BMI 29, weight readiness, and frequent alcohol near bedtime should receive a diagnostic-boundary explanation, interim side-sleeping advice, expanded nasal instructions, and compact confirmed weight/alcohol actions without an OSA diagnosis |
+| 152 | Bounded action-plan PDF | The most content-rich first-release action plan should remain within one or two PDF pages while preserving readable spacing, terminology definitions, and the no-typographic-dash rule |

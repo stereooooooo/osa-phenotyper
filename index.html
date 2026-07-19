@@ -417,6 +417,16 @@
               <option value="not-ready">Not right now</option>
             </select>
           </div>
+          <div class="mt-2">
+            <label class="form-label small mb-1" for="alcoholNearBed">Alcohol within 3 hours of bedtime</label>
+            <select class="form-select form-select-sm" name="alcoholNearBed" id="alcoholNearBed">
+              <option value="">Not documented</option>
+              <option value="never">Never</option>
+              <option value="1-2">1 to 2 nights per week</option>
+              <option value="3-4">3 to 4 nights per week</option>
+              <option value="5-plus">5 or more nights per week</option>
+            </select>
+          </div>
         </fieldset>
       </div>
       <div class="col-12">
@@ -659,6 +669,7 @@
       <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planNasal"><input class="form-check-input" type="checkbox" name="planNasal" id="planNasal"><label class="form-check-label" for="planNasal">Nasal treatment</label></div></div>
       <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planPositional"><input class="form-check-input" type="checkbox" name="planPositional" id="planPositional"><label class="form-check-label" for="planPositional">Positional therapy</label></div></div>
       <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planWeight"><input class="form-check-input" type="checkbox" name="planWeight" id="planWeight"><label class="form-check-label" for="planWeight">Weight management</label></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planLifestyle"><input class="form-check-input" type="checkbox" name="planLifestyle" id="planLifestyle"><label class="form-check-label" for="planLifestyle">Lifestyle / snoring</label></div></div>
       <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planMad"><input class="form-check-input" type="checkbox" name="planMad" id="planMad"><label class="form-check-label" for="planMad">Oral appliance</label></div></div>
       <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planInspire"><input class="form-check-input" type="checkbox" name="planInspire" id="planInspire"><label class="form-check-label" for="planInspire">Nerve stimulation</label></div></div>
       <div class="col-sm-6 col-lg-3"><div class="form-check osa-plan-option" data-plan-option="planSurgery"><input class="form-check-input" type="checkbox" name="planSurgery" id="planSurgery"><label class="form-check-label" for="planSurgery">Airway surgery</label></div></div>
@@ -685,8 +696,11 @@
 <div id="patientSummary"></div>
 <div id="precisionSleepProfile" class="mt-4" aria-live="polite"></div>
 <div id="patientReportTrigger" class="text-center my-3" style="display:none;">
-  <button type="button" class="btn btn-outline-primary btn-lg" id="btnGenerateReport">
-    <i class="bi bi-file-earmark-text"></i> Generate Patient Report
+  <button type="button" class="btn btn-primary btn-lg" id="btnGenerateTodayPlan">
+    <i class="bi bi-clipboard2-check"></i> Today's Sleep Plan
+  </button>
+  <button type="button" class="btn btn-outline-primary btn-lg ms-2" id="btnGenerateReport">
+    <i class="bi bi-file-earmark-medical"></i> Full Sleep Profile
   </button>
 </div>
 <div id="clinicianReport" class="mt-4"></div>
@@ -1253,7 +1267,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
+    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -1975,12 +1989,14 @@ function applyRuntimeMeta(meta) {
     cpapNoImprove: 'CPAP no improvement',
     cpapTravel: 'CPAP travel difficulty',
     weightLossReadiness: 'Weight-management interest',
+    alcoholNearBed: 'Alcohol near bedtime',
     visitReason: 'Reason for visit',
     visitReasonNote: 'Reason for visit detail',
     planPap: 'PAP selected today',
     planNasal: 'Nasal treatment selected today',
     planPositional: 'Positional therapy selected today',
     planWeight: 'Weight management selected today',
+    planLifestyle: 'Lifestyle / snoring measures selected today',
     planMad: 'Oral appliance selected today',
     planInspire: 'Nerve stimulation selected today',
     planSurgery: 'Airway surgery selected today',

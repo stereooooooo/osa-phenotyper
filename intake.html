@@ -243,6 +243,18 @@
             </div>
             <div class="intake-error" id="snoringError">Please answer this question.</div>
           </div>
+          <div class="intake-question" style="border-bottom:none;padding-bottom:0;">
+            <label class="intake-question__text" for="alcoholNearBed">
+              How often do you drink alcohol within 3 hours of bedtime?
+            </label>
+            <select id="alcoholNearBed" name="alcoholNearBed" class="intake-select" style="max-width:320px;">
+              <option value="">Prefer not to answer</option>
+              <option value="never">Never</option>
+              <option value="1-2">1 to 2 nights per week</option>
+              <option value="3-4">3 to 4 nights per week</option>
+              <option value="5-plus">5 or more nights per week</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -1371,6 +1383,7 @@
       nose: nose,
       nasalObs: radioVal('nasalObs') === 'yes',
       snoringReported: radioVal('snoringReported') === 'yes',
+      alcoholNearBed: document.getElementById('alcoholNearBed').value,
       preferences: {
         avoidCpap: !!document.querySelector('input[name="prefAvoidCPAP"]:checked'),
         openToSurgery: !!document.querySelector('input[name="prefOpenSurgery"]:checked'),

@@ -163,6 +163,25 @@ const OSAPdfExport = (() => {
     .risk-summary { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 14px; margin: 13px 0 17px; color: #334155; }
     .report-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #6B7280; text-align: center; }
 
+    /* Today's Sleep Plan */
+    .today-plan-subtitle { margin-top: 2px; color: #64748b; font-size: 11px; }
+    .today-plan-focus { margin: 0 0 16px; padding: 11px 14px; background: #eef3f8; border-left: 4px solid #C8102E; color: #1a2b42; }
+    .today-plan-focus p { margin: 0; }
+    .today-plan-focus .today-plan-visit { margin-bottom: 4px; color: #526173; font-size: 11px; }
+    .today-plan-module { margin: 0 0 17px; padding: 0 0 15px; border-bottom: 1px solid #dbe3ec; }
+    .today-plan-module-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .today-plan-module-heading > i { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; border-radius: 50%; background: #eef3f8; color: #1F3A5C; font-size: 12px; flex: 0 0 auto; }
+    .today-plan-module-heading h2 { margin: 0; padding: 0; border: 0; }
+    .today-plan-why { margin: 0 0 7px 33px; color: #475569; }
+    .today-plan-actions { margin: 0 0 7px 33px; padding-left: 17px; }
+    .today-plan-actions li { display: list-item; margin-bottom: 5px; padding-left: 2px; break-inside: avoid; }
+    .today-plan-note { margin: 0 0 0 33px; padding: 7px 9px; background: #f8fafc; color: #526173; font-size: 11px; }
+    .today-plan-supporting, .today-plan-follow-up { margin-top: 17px; }
+    .today-plan-supporting ul { margin-bottom: 0; }
+    .today-plan-follow-up { padding: 10px 13px; background: #f8fafc; border: 1px solid #dbe3ec; }
+    .today-plan-follow-up h2 { margin-top: 0; }
+    .today-plan-follow-up p { margin-bottom: 0; }
+
     /* Care pathway bar */
     .care-pathway { margin: 0 0 22px; padding: 12px 16px; background: #f8fafc; border: 1px solid #E5E7EB; border-radius: 8px; }
     .pathway-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-bottom: 8px; }
@@ -227,7 +246,7 @@ const OSAPdfExport = (() => {
   function findBreakPoints(container, canvasScale) {
     const structuredBlocks = container.querySelectorAll(
       '.report-header, .report-section, .report-terms, .report-term, .report-summary-card, .care-pathway, .care-summary-card, .ahi-scale, ' +
-      '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .report-footer'
+      '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-footer'
     );
     const flowBlocks = container.querySelectorAll(
       'h2, h3, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, p, ul, ol'
@@ -721,7 +740,7 @@ const OSAPdfExport = (() => {
     const report = shell.querySelector('.patient-report');
     if (!report) return;
     const chunks = [];
-    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .report-disclaimer, .pdf-section-continuation';
+    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-disclaimer, .pdf-section-continuation';
     const walk = node => {
       if (node.nodeType === Node.TEXT_NODE) {
         chunks.push(node.nodeValue || '');

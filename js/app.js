@@ -103,6 +103,7 @@ const PLAN_FIELD_TO_TAGS = {
   planNasal: ['NASAL-OPT', 'NASAL-SURG', 'NASAL-PRIOR', 'NASAL-SINUS-PRIOR'],
   planPositional: ['POS', 'POS-GUARD'],
   planWeight: ['WEIGHT'],
+  planLifestyle: ['SNORE-ALCOHOL', 'SNORE-LIFESTYLE', 'MILD-LIFESTYLE'],
   planMad: ['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'REM-MAD'],
   planInspire: ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'],
   planSurgery: ['SURG', 'SURGALT', 'SURG-PREF', 'TONSIL', 'SOFT-TISSUE-REVISION', 'SOFT-TISSUE-STRONG', 'SOFT-TISSUE-CONSIDER', 'SOFT-TISSUE-GENERAL', 'FRIEDMAN-III-ALT', 'COMBI-PRIOR'],
@@ -115,6 +116,7 @@ const PLAN_FIELD_LABELS = {
   planNasal: 'nasal treatment',
   planPositional: 'positional therapy',
   planWeight: 'weight management',
+  planLifestyle: 'lifestyle / snoring measures',
   planMad: 'oral appliance',
   planInspire: 'nerve stimulation',
   planSurgery: 'airway surgery',
@@ -156,7 +158,7 @@ function filterRecommendationsForEncounter(entries, encounter) {
     // Before the clinician finalizes today's plan, show only first-line and low-risk
     // supporting pathways. Do not turn technical candidacy into an active MAD,
     // surgery, or nerve-stimulation plan without an explicit visit goal.
-    ['planNasal', 'planPositional', 'planWeight', 'planCbti', 'planStudy'].forEach(addPlan);
+    ['planNasal', 'planPositional', 'planWeight', 'planLifestyle', 'planCbti', 'planStudy'].forEach(addPlan);
     if (encounter.cpapCurrent || ['new-diagnosis', 'transfer-pap', 'pap-troubleshoot', 'restart-pap', 'precision-onboarding'].includes(encounter.visitReason)) addPlan('planPap');
     if (encounter.visitReason === 'oral-appliance') addPlan('planMad');
     if (encounter.visitReason === 'inspire' || encounter.prefInspire) addPlan('planInspire');
@@ -2407,6 +2409,7 @@ document.getElementById('form').addEventListener('submit', e => {
     studyType,
     cpapPressure: n(f.get('cpapPressure')),
     weightLossReadiness,
+    alcoholNearBed: f.get('alcoholNearBed') || '',
     age: n(f.get('age')),
     visitReason: encounter.visitReason,
     visitReasonLabel: encounter.visitReasonLabel,
@@ -2451,6 +2454,7 @@ const reportEditButton = document.getElementById('btnEditReport');
 const reportResetButton = document.getElementById('btnResetReportEdits');
 const reportEditStatus = document.getElementById('reportEditStatus');
 const reportPreviewContent = document.getElementById('reportPreviewContent');
+const reportPreviewTitle = document.getElementById('reportPreviewTitle');
 let lastReportTrigger = null;
 let reportOriginalHtml = '';
 let reportHasEdits = false;
@@ -2522,7 +2526,7 @@ function getReportFocusableElements() {
     .filter(el => !el.disabled && el.offsetParent !== null);
 }
 
-function openReportOverlay(triggerEl) {
+function openReportOverlay(triggerEl, reportKind = 'profile') {
   if (!lastAnalysisData || !reportOverlay) return;
   const confirmation = document.getElementById('planConfirmed');
   const message = document.getElementById('planConfirmationMessage');
@@ -2554,16 +2558,26 @@ function openReportOverlay(triggerEl) {
   }
   message?.classList.add('d-none');
   lastReportTrigger = triggerEl || document.activeElement;
-  const html = PatientReport.generateReportHTML(lastAnalysisData);
-  openReportOverlayFromHtml(html, triggerEl, true);
+  const isTodayPlan = reportKind === 'today-plan';
+  const html = isTodayPlan
+    ? PatientReport.generateTodayPlanHTML(lastAnalysisData)
+    : PatientReport.generateReportHTML(lastAnalysisData);
+  openReportOverlayFromHtml(html, triggerEl, true, reportKind);
 }
 
-function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false) {
+function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false, reportKind = 'saved') {
   if (!reportOverlay) return;
   lastReportTrigger = triggerEl || document.activeElement;
   reportOriginalHtml = html;
   reportHasEdits = false;
   if (reportPreviewContent) reportPreviewContent.innerHTML = html;
+  if (reportPreviewTitle) {
+    reportPreviewTitle.textContent = reportKind === 'today-plan'
+      ? "Today's Sleep Plan preview"
+      : reportKind === 'profile'
+        ? 'Full Sleep Profile preview'
+        : 'Saved patient report preview';
+  }
   reportOverlay.classList.add('active');
   document.body.classList.add('report-preview-open');
   if (saveReportSnapshotButton) saveReportSnapshotButton.disabled = !allowSnapshotSave;
@@ -2576,12 +2590,16 @@ function closeReportOverlay() {
   setReportEditing(false, { focus: false, keepStatus: true });
   reportOverlay.classList.remove('active');
   document.body.classList.remove('report-preview-open');
-  const returnFocusEl = lastReportTrigger instanceof HTMLElement ? lastReportTrigger : document.getElementById('btnGenerateReport');
+  const returnFocusEl = lastReportTrigger instanceof HTMLElement ? lastReportTrigger : document.getElementById('btnGenerateTodayPlan');
   returnFocusEl?.focus();
 }
 
 document.getElementById('btnGenerateReport')?.addEventListener('click', (e) => {
-  openReportOverlay(e.currentTarget);
+  openReportOverlay(e.currentTarget, 'profile');
+});
+
+document.getElementById('btnGenerateTodayPlan')?.addEventListener('click', (e) => {
+  openReportOverlay(e.currentTarget, 'today-plan');
 });
 
 reportEditButton?.addEventListener('click', () => {

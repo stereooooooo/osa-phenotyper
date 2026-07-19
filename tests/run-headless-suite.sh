@@ -129,6 +129,36 @@ run_pdf_pagination_suite() {
   printf '1\n'
 }
 
+run_today_plan_pdf_suite() {
+  local url="http://${HOST}:${PORT}/tests/patient-report-pdf-fixture.html?scenario=today-plan-current-pap&format=today-plan&render=1&summary=1"
+
+  if ! "${CHROME}" \
+    --headless \
+    --disable-gpu \
+    --no-sandbox \
+    --virtual-time-budget=20000 \
+    --dump-dom \
+    "${url}" > "${DOM_FILE}" 2>"${CHROME_LOG}"; then
+    echo "Chrome failed while running Today's Sleep Plan PDF regression." >&2
+    cat "${CHROME_LOG}" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -q 'data-pdf-ready="true"' "${DOM_FILE}"; then
+    echo "Today's Sleep Plan PDF regression did not finish rendering." >&2
+    cat "${CHROME_LOG}" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -Eq 'data-pdf-pages="(1|2)"' "${DOM_FILE}"; then
+    echo "Today's Sleep Plan exceeded the intended two-page limit." >&2
+    grep -Eo 'data-pdf-pages="[^"]*"' "${DOM_FILE}" >&2 || true
+    exit 1
+  fi
+
+  printf '1\n'
+}
+
 TOTAL_PASSED=0
 
 PARSER_PASSED="$(node "${REPO_ROOT}/tests/watchpat-parser-integration.cjs")"
@@ -148,5 +178,8 @@ TOTAL_PASSED=$((TOTAL_PASSED + PLAN_SUGGESTION_PASSED))
 
 PDF_PAGINATION_PASSED="$(run_pdf_pagination_suite)"
 TOTAL_PASSED=$((TOTAL_PASSED + PDF_PAGINATION_PASSED))
+
+TODAY_PLAN_PDF_PASSED="$(run_today_plan_pdf_suite)"
+TOTAL_PASSED=$((TOTAL_PASSED + TODAY_PLAN_PDF_PASSED))
 
 echo "Headless suite passed: ${TOTAL_PASSED} assertions"
