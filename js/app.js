@@ -286,10 +286,11 @@ function buildInsufficientDataAssessment(ctx) {
   }
 
   const hnsReferenced = (!ctx.planConfirmed && ctx.prefInspire) || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
+  const hnsOutsideReferralGuardrail = exists(ctx.bmi) && ctx.bmi > T.hgns.bmiMax;
   // An already implanted patient needs device optimization and objective
   // on-therapy assessment, not a new-implant candidacy workup. DISE is only
   // reintroduced if the clinician later pursues revision or a different device.
-  if (hnsReferenced && !ctx.priorInspire && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
+  if (hnsReferenced && !ctx.priorInspire && !hnsOutsideReferralGuardrail && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
     const hnsMissing = [];
     if (!ctx.hasDISEData) hnsMissing.push('DISE');
     if (ctx.hnsStage?.insufficient) hnsMissing.push(...(ctx.hnsStage.missing || []));
@@ -2107,6 +2108,15 @@ function buildClinicianReport(f, m, T){
       <div><strong>${encounter.planConfirmed ? 'Confirmed plan' : 'Planning status'}:</strong> ${encounter.planConfirmed ? escapeHtml(selectedPlanLabels.join(', ') || 'No active treatment selected') : 'Pre-visit decision support. Confirm today\'s plan before generating the patient handout.'}</div>
       ${encounter.planSummary ? `<div><strong>Most important next step:</strong> ${escapeHtml(encounter.planSummary)}</div>` : ''}
     </div>`;
+  const normalStudyContextHTML = exists(ahi) && ahi < T.severity.mild ? `
+    <div class="alert alert-success py-2 px-3 mb-3">
+      <strong>Normal study by AHI:</strong> The AHI of ${ahi} is below the diagnostic threshold for obstructive sleep apnea.
+      ${encounter.visitReason === 'snoring' || yes(f, 'snoringReported') ? '<div><strong>Snoring pathway:</strong> Address nasal airflow, sleep position, alcohol near bedtime, weight when relevant, and other symptom drivers without activating an OSA treatment pathway.</div>' : ''}
+    </div>` : '';
+  const lvefFollowupHTML = lvefFollowupNeeded ? `
+    <div class="alert alert-warning py-2 px-3 mb-3">
+      <strong>Echo/LVEF Needed:</strong> Heart failure/cardiomyopathy or a prior echocardiogram was reported without a documented left ventricular ejection fraction. Request the latest echocardiogram before advanced PAP or cardiopulmonary treatment decisions that depend on systolic function.
+    </div>` : '';
 
   /* ── Build collapsible clinical analysis content ──────── */
   const clinAnalysisParts = [];
@@ -2185,6 +2195,8 @@ function buildClinicianReport(f, m, T){
     ${pathwayHTML}
     ${careSummaryHTML}
     ${encounterPlanHTML}
+    ${normalStudyContextHTML}
+    ${lvefFollowupHTML}
     ${historyContextHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
     ${cpapFailed ? `<p class="mb-2"><strong>PAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? `<p class="mb-2"><strong>PAP History:</strong> Currently using ${papMode || 'PAP'}</p>` : ''}

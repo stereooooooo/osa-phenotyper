@@ -1409,3 +1409,17 @@
 - all five cases preserved the no-typographic-dash patient-handout rule
 - full headless suite passed with 1,017 assertions
 **Finding:** fixed. The mixed cases are becoming more stable: the remaining defects were missing personalization and visibility, not contradictory phenotype calculations or unsafe treatment selection. No unresolved issue remained after the final rerun.
+
+### Tests 179-183: Treatment-safety and diagnostic-boundary stress tests
+**Status:** local executable plan-suggestion, clinical-routing, clinician-report, patient-report, action-plan, syntax, and full regression testing complete
+**Result:** passed after three global safety and communication fixes ✅
+**Scenarios and findings:**
+- an oral-appliance request with severe TMJ disease, limited dentition, and limited mandibular protrusion correctly suppressed favorable, standard, poor, and incomplete-workup MAD pathways; the action plan now asks whether an appliance is a poor or potentially unsafe fit and prohibits finalization without a sleep-dentist safety determination
+- PAP intolerance with Inspire interest and BMI 42 exposed an MA-layer defect that still auto-selected nerve stimulation above the Capital ENT BMI 40 referral guardrail; new-device suggestions and HNS workup are now gated above that guardrail while existing implanted devices remain eligible for management and optimization
+- hypoxic burden 63 remained elevated context but correctly stayed below the evidence-linked high tier of 73, so it did not receive the `HB-URG` cardiovascular-benefit tag
+- normal AHI with bothersome snoring, severe nasal obstruction, frequent near-bedtime alcohol, and weight readiness stayed outside the OSA pathway; the clinician view now explicitly labels `Normal study by AHI` and `Snoring pathway` while the patient plan contains only relevant symptom-directed actions
+- severe insomnia with moderate OSA in a stable current APAP user added CBT-I and objective PAP efficacy review without re-fitting, retry, or new-start language
+- current BiPAP with WatchPAT central signals, heart failure, and unknown LVEF retained BiPAP review, required in-lab confirmation, and withheld a definitive ASV contraindication; the missing echocardiogram is now visible in both the clinician report and the patient action plan
+- every patient-facing output retained the no-typographic-dash rule
+- full headless suite passed with 1,148 assertions
+**Finding:** fixed. The new defects were cross-layer safety gaps: treatment eligibility was correct in the analysis engine but not consistently reflected in MA suggestions and encounter handouts. Those layers now share the same guardrails, and no unresolved issue remained after the final rerun.

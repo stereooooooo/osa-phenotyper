@@ -2263,7 +2263,10 @@ ${items.join('')}`;
         madProblemDiscomfort: 'discomfort or poor fit'
       };
       const madBarriers = (data.madProblems || []).map(problem => madProblemLabels[problem] || problem);
-      add(data.priorMAD && data.madTolerated === 'no'
+      const madSafetyLimited = (data.recTags || []).some(entry => entry?.tag === 'MAD-SAFETY-LIMIT');
+      add(madSafetyLimited
+        ? 'Ask whether the current tooth support, jaw movement, or TMJ findings make an oral appliance a poor or potentially unsafe fit. Do not finalize the appliance unless a sleep dentist determines that these concerns can be addressed safely.'
+        : data.priorMAD && data.madTolerated === 'no'
         ? `Before trying another oral appliance, ask the sleep dentist to address the prior ${madBarriers.length ? madBarriers.join(', ') : 'tolerance problem'} and decide whether a safer redesign or another treatment makes more sense.`
         : data.priorMAD && data.madHelped === 'yes' && data.madTolerated === 'yes'
           ? 'Because the prior oral appliance helped and was tolerable, review its fit and adjustment, continue or retitrate it as appropriate, and arrange an on-treatment sleep study to confirm control.'
@@ -2293,6 +2296,9 @@ ${items.join('')}`;
         : 'Continue the airway-surgery evaluation discussed today; the procedure should match your anatomy and goals.');
     }
     if (selected.has('planWeight')) add(glpHistorySupport(data));
+    if (data.lvefFollowupNeeded) {
+      add('Ask the care team to request the latest echocardiogram report before any advanced PAP or heart-function-dependent treatment decision is finalized.');
+    }
     if (data.planObserve) add('Continue observation and return at the interval chosen with your clinician, or sooner if symptoms worsen.');
     return actions;
   }

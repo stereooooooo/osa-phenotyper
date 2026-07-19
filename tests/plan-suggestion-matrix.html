@@ -548,6 +548,112 @@ const SCENARIOS = [
     patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
     todayPlanIncludes: ['Complete the recommended sleep testing', 'Complete the additional sleep testing recommended today', 'You reported no current difficulty with BiPAP', 'Bring or upload the compliance report'],
     todayPlanExcludes: ['request the latest echo']
+  },
+  {
+    id: 'mad-severe-tmj-limited-dentition',
+    name: 'Oral appliance request with severe TMJ disease and limited dentition',
+    visitReason: 'oral-appliance',
+    fields: {
+      sex: 'F', bmi: '24', neck: '13', tonsils: '1', ftp: 'II', ess: '9', isi: '6', noseScore: '5',
+      pahi: '12', tst: '6.8', remPercent: '22', supPahi: '15', nonSupPahi: '9', remPahi: '14',
+      nremPahi: '11', odi: '10', nadir: '89', hbAreaPH: '18', t90: '0.5', madDentition: 'limited',
+      madProtrusion: 'limited', madTmj: 'severe'
+    },
+    checks: ['prefAvoidCpap'],
+    expectedSuggestions: ['Oral appliance'],
+    expectedTags: ['MAD-SAFETY-LIMIT'],
+    excludedTags: ['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'MAD-WORKUP'],
+    clinicianIncludes: ['limited tooth support / dentition', 'limited mandibular protrusion', 'active or severe TMJ dysfunction', 'potentially unsafe fit'],
+    clinicianExcludes: ['Oral appliance therapy (MAD)'],
+    patientIncludes: ['Oral Appliance May Not Be a Safe Fit Right Now', 'limited tooth support', 'significant TMJ disease'],
+    patientExcludes: ['favorable candidate', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['current tooth support, jaw movement, or TMJ findings make an oral appliance a poor or potentially unsafe fit'],
+    todayPlanExcludes: ['Complete the sleep-dentist evaluation for a custom oral appliance']
+  },
+  {
+    id: 'inspire-interest-bmi-42',
+    name: 'Inspire interest with BMI 42 after PAP intolerance',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '42', neck: '19', tonsils: '1', ftp: 'IV', ess: '15', isi: '7', noseScore: '10',
+      pahi: '38', tst: '6.2', remPercent: '19', supPahi: '42', nonSupPahi: '34', remPahi: '44',
+      nremPahi: '36', odi: '35', nadir: '79', hbAreaPH: '63', t90: '10', cpapHelped: 'No', cpapRetry: 'No',
+      weightLossReadiness: 'ready'
+    },
+    checks: ['priorCpap', 'prefInspire'],
+    expectedSuggestions: ['Weight management'],
+    expectedTags: ['WEIGHT'],
+    excludedTags: ['HNS', 'INSPIRE-EVAL', 'HNS-WORKUP', 'HB-URG'],
+    clinicianIncludes: ["BMI 42 exceeds Capital ENT's current HGNS referral guardrail of 40", 'Not a candidate'],
+    clinicianExcludes: ['Complete a device-specific candidacy evaluation'],
+    patientIncludes: ['weight management', 'oxygen'],
+    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'Complete the Nerve-Stimulation Evaluation First'],
+    todayPlanIncludes: ['Choose one realistic nutrition or activity step'],
+    todayPlanExcludes: ['continue nerve-stimulation evaluation', 'Continue the device-specific nerve-stimulation evaluation']
+  },
+  {
+    id: 'normal-ahi-snoring-nasal-alcohol',
+    name: 'Normal AHI with bothersome snoring, severe nasal obstruction, frequent alcohol, and weight readiness',
+    visitReason: 'snoring',
+    fields: {
+      sex: 'M', bmi: '29', neck: '16', tonsils: '2', ftp: 'III', ess: '8', isi: '5', noseScore: '60',
+      pahi: '3', tst: '6.7', remPercent: '21', supPahi: '4', nonSupPahi: '2', remPahi: '4',
+      nremPahi: '2.7', odi: '3', nadir: '91', hbAreaPH: '7', t90: '0', alcoholNearBed: '5-plus',
+      weightLossReadiness: 'ready'
+    },
+    checks: ['snoringReported', 'nasalObs'],
+    expectedSuggestions: ['Nasal treatment', 'Lifestyle / snoring measures', 'Weight management'],
+    expectedTags: ['NASAL-OPT', 'SNORE-ALCOHOL', 'WEIGHT'],
+    excludedTags: ['CPAP', 'HNS', 'INSPIRE-EVAL', 'SURG'],
+    clinicianIncludes: ['Normal study', 'Snoring pathway'],
+    clinicianExcludes: ['Start CPAP/APAP'],
+    patientIncludes: ['did not find obstructive sleep apnea', 'nasal', 'alcohol', 'weight'],
+    patientExcludes: ['Begin PAP therapy now', 'Your Sleep Apnea Summary'],
+    todayPlanIncludes: ['Improve nasal airflow', 'Reduce or avoid alcohol within 3 hours of bedtime', 'Choose one realistic nutrition or activity step'],
+    todayPlanExcludes: ['Start PAP', 'complete the sleep study']
+  },
+  {
+    id: 'comisa-stable-current-apap',
+    name: 'Severe insomnia with moderate OSA in a stable current APAP user',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'F', bmi: '28', neck: '14', tonsils: '1', ftp: 'II', ess: '13', isi: '22', noseScore: '10',
+      pahi: '19', tst: '6.5', remPercent: '20', supPahi: '22', nonSupPahi: '16', remPahi: '23',
+      nremPahi: '18', odi: '17', nadir: '86', hbAreaPH: '30', t90: '2', papMode: 'APAP',
+      papMinPressure: '6', papMaxPressure: '13', cpapDifficulty: 'no'
+    },
+    checks: ['priorCpap', 'cpapCurrent'],
+    expectedSuggestions: ['CBT-I', 'PAP management'],
+    expectedTags: ['CBTI', 'CPAP'],
+    clinicianIncludes: ['COMISA', 'Currently using APAP', 'no current difficulty reported'],
+    clinicianExcludes: ['PAP re-fitting'],
+    patientIncludes: ['Begin CBT-I while continuing PAP', 'Building on your current APAP therapy'],
+    patientExcludes: ['Giving PAP another try', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Begin cognitive behavioral therapy for insomnia', 'Continue APAP', 'Bring or upload the compliance report'],
+    todayPlanExcludes: ['Complete the APAP setup or re-fitting']
+  },
+  {
+    id: 'central-hst-heart-failure-unknown-lvef',
+    name: 'Current BiPAP with central home-study signals, heart failure, and unknown LVEF',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'M', bmi: '32', neck: '17', tonsils: '1', ftp: 'III', ess: '14', isi: '7', noseScore: '10',
+      pahi: '31', pahic: '13', csr: '18', tst: '6', remPercent: '18', supPahi: '34', nonSupPahi: '28',
+      remPahi: '36', nremPahi: '30', odi: '27', nadir: '80', hbAreaPH: '52', t90: '7', papMode: 'BiPAP',
+      papEpapPressure: '8', papIpapPressure: '15', cpapDifficulty: 'unsure', echoHistory: 'yes',
+      echoResultKnowledge: 'unknown'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cvd', 'cvdHeartFailure'],
+    expectedSuggestions: ['Diagnostic testing', 'PAP management'],
+    expectedTags: ['CENTRAL-PSG-WORKUP', 'ASV-SAFETY', 'CPAP'],
+    excludedTags: ['ASV-CONTRA', 'HLG-ADV'],
+    expectedInputState: { lvefFollowupNeeded: true },
+    clinicianIncludes: ['Echo/LVEF Needed', 'If ASV is being considered, document LVEF >45% first', 'WatchPAT-derived central or periodic-breathing signals should be confirmed'],
+    clinicianExcludes: ['Documented reduced ejection fraction makes ASV unsafe'],
+    patientIncludes: ['heart function', 'in-lab sleep study', 'Building on your current BiPAP therapy'],
+    patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Complete the recommended sleep testing', 'request the latest echocardiogram', 'Continue BiPAP'],
+    todayPlanExcludes: ['ASV is unsafe']
   }
 ];
 

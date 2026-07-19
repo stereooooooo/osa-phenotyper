@@ -345,3 +345,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 176 | Existing HGNS with severe residual hypoxic OSA | An existing nerve stimulator without benefit plus severe residual breathing and oxygen abnormalities should trigger prompt programming, use review, and objective on-therapy testing while preserving weight-management support and excluding new-device candidacy workup |
 | 177 | Current APAP plus GLP-1 adverse effects | PAP mask and leak problems and a current effective GLP-1 medication with digestive side effects should remain separate, specific management pathways without inventing nasal obstruction or recommending autonomous pressure changes |
 | 178 | Heart failure with documented preserved LVEF and central HST signals | A current BiPAP user with LVEF 55% and central home-study signals should receive in-lab confirmation and continued BiPAP review without an unresolved-LVEF flag, ASV contraindication, or premature central-directed treatment |
+
+### Group 40: Treatment-Safety And Diagnostic-Boundary Stress Tests
+| # | Name | Key Features |
+|---|------|-------------|
+| 179 | Oral appliance request with severe TMJ and limited dentition | Severe jaw-joint disease, limited tooth support, and limited protrusion should suppress positive MAD candidacy language and require a safety determination before any appliance is finalized |
+| 180 | Inspire interest above the clinic BMI guardrail | A PAP-intolerant patient with BMI 42 should not receive an automatically selected nerve-stimulation pathway or HNS workup; weight management remains available and elevated-but-not-high-tier hypoxic burden should not receive an urgent evidence-linked tag |
+| 181 | Normal AHI with snoring, nasal obstruction, alcohol, and weight readiness | AHI below 5 should remain outside the OSA treatment pathway while producing a clearly labeled snoring pathway with nasal, alcohol, and supported-weight actions |
+| 182 | COMISA in a stable current APAP user | Severe insomnia plus moderate OSA should add CBT-I while continuing APAP and requesting objective compliance data, without new-PAP or re-fitting language |
+| 183 | Central home-study signals with heart failure and unknown LVEF | Current BiPAP should continue while central findings receive in-lab confirmation; the clinician report and patient action plan should surface the missing echocardiogram without declaring ASV contraindicated before LVEF is known |

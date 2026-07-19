@@ -267,19 +267,28 @@
     if (visitReason === 'inspire') {
       const priorHgns = checked('priorInspire');
       const hgnsHelped = fieldValue('hgnsHelped');
-      addSuggestion(
-        suggestions,
-        'planInspire',
-        priorHgns
-          ? `An existing nerve stimulator is in place; patient-reported benefit is ${hgnsHelped || 'uncertain'}.`
-          : 'Nerve stimulation is the primary visit goal.',
-        priorHgns
-          ? hgnsHelped === 'no'
-            ? 'interrogate and optimize the existing device and arrange objective on-therapy testing'
-            : 'review use, programming, and objective efficacy of the existing device'
-          : 'continue nerve-stimulation evaluation',
-        25
-      );
+      const hgnsBmiMax = typeof OSA_CONFIG !== 'undefined'
+        ? (OSA_CONFIG.thresholds?.hgns?.bmiMax ?? 40)
+        : 40;
+      // Existing devices still need management at any BMI. For a new implant,
+      // do not auto-select an active nerve-stimulation pathway when the patient
+      // is already above the clinic's referral guardrail. The option remains
+      // available for clinician review, and weight management can be suggested.
+      if (priorHgns || bmi === null || bmi <= hgnsBmiMax) {
+        addSuggestion(
+          suggestions,
+          'planInspire',
+          priorHgns
+            ? `An existing nerve stimulator is in place; patient-reported benefit is ${hgnsHelped || 'uncertain'}.`
+            : 'Nerve stimulation is the primary visit goal.',
+          priorHgns
+            ? hgnsHelped === 'no'
+              ? 'interrogate and optimize the existing device and arrange objective on-therapy testing'
+              : 'review use, programming, and objective efficacy of the existing device'
+            : 'continue nerve-stimulation evaluation',
+          25
+        );
+      }
     }
     if (visitReason === 'surgery') {
       addSuggestion(suggestions, 'planSurgery', 'Airway surgery is the primary visit goal.', 'continue airway-surgery evaluation', 25);
