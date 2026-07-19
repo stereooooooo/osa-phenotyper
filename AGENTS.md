@@ -102,7 +102,18 @@ The evidence system has three linked documents:
 - `docs/citations.md`: detailed primary-source library and exact "How Used" descriptions
 - `docs/evidence-review-log.md`: reproducible literature-review and decision history
 
-When adding or changing clinical logic:
+### Required clinical-change gate
+
+Maintenance of all three evidence documents is a release requirement, not optional follow-up.
+A clinical change is incomplete and must not be deployed until its evidence documentation and
+regression coverage are updated in the same commit or pull-request series.
+
+This gate applies to any change that can affect phenotype detection, signal strength, a threshold,
+treatment ranking, candidacy, safety behavior, diagnostic routing, clinician guidance, patient
+education, or an input used by those decisions. It also applies when new evidence changes the level
+of certainty but does not change the visible recommendation.
+
+For every clinical change:
 1. Identify or create the Logic ID in `docs/evidence-basis.md`.
 2. Verify the primary publication, guideline, or regulatory source; an AI summary is not evidence.
 3. Add or update `docs/citations.md`, including exact use and limitations.
@@ -111,6 +122,11 @@ When adding or changing clinical logic:
 6. Add a regression scenario and a plausible counterexample.
 7. Record the review and conclusion, including no-change reviews, in `docs/evidence-review-log.md`.
 8. Require clinician review before deploying any change that can alter diagnosis, treatment ranking, safety messaging, or patient instructions.
+9. Update the evidence-register review date and reviewed build after verification.
+
+If a code refactor is asserted to have no clinical effect, evidence documents do not need new
+clinical claims, but regression testing must demonstrate output parity. Literature surveillance
+that produces no logic change must still be recorded in `docs/evidence-review-log.md`.
 
 ## Git
 - Remote: `https://github.com/stereooooooo/osa-phenotyper.git`

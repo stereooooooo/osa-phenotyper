@@ -41,6 +41,9 @@ for (const [name, contents] of [['AGENTS.md', agents], ['CLAUDE.md', claude]]) {
     check(contents.includes(requiredPath), `${name} must require maintenance of ${requiredPath}.`);
   }
   check(contents.includes('an AI summary is not evidence'), `${name} must require primary-source verification.`);
+  check(contents.includes('Maintenance of all three evidence documents is a release requirement'), `${name} must make evidence maintenance a release gate.`);
+  check(contents.includes('must not be deployed'), `${name} must block deployment of undocumented clinical changes.`);
+  check(contents.includes('Literature surveillance'), `${name} must require logging no-change evidence reviews.`);
 }
 
 for (const relativePath of ['README.md', 'docs/evidence-basis.md', 'docs/evidence-review-log.md', 'docs/citations.md']) {
