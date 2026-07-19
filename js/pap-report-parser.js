@@ -14,11 +14,14 @@
     { name: 'papNightsUsed', label: 'Nights used', type: 'number' },
     { name: 'papNightsFourHours', label: 'Nights at least 4 hours', type: 'number' },
     { name: 'papAverageUseHours', label: 'Average use, hours', type: 'number' },
+    { name: 'papMinPressure', label: 'Configured minimum pressure', type: 'number' },
+    { name: 'papMaxPressure', label: 'Configured maximum pressure', type: 'number' },
     { name: 'papDeviceAhi', label: 'Device-reported event index', type: 'number' },
     { name: 'papDeviceCai', label: 'Device-reported central index', type: 'number' },
     { name: 'papDeviceOai', label: 'Device-reported obstructive index', type: 'number' },
     { name: 'papPressure95', label: '95th percentile pressure', type: 'number' },
     { name: 'papLeakValue', label: '95th percentile leak', type: 'number' },
+    { name: 'papLeakThreshold', label: 'Report leak threshold', type: 'number' },
     { name: 'papLeakMetric', label: 'Leak metric', type: 'select' },
     { name: 'papPeriodicBreathingPct', label: 'Periodic breathing / CSR', type: 'number' },
   ];
@@ -89,6 +92,11 @@
       text.match(/Average\s+(?:daily\s+)?usage\s*[:]?\s*(\d+)\s*(?:h|hours?)\s*(\d+)?\s*(?:m|minutes?)?/i);
     if (averageUse) add(results, 'papAverageUseHours', decimalHours(averageUse[1], averageUse[2]));
 
+    const minPressure = text.match(/(?:Set\s+)?Min(?:imum)?\s+Pressure\s*[:]?\s*([\d.]+)/i);
+    const maxPressure = text.match(/(?:Set\s+)?Max(?:imum)?\s+Pressure\s*[:]?\s*([\d.]+)/i);
+    if (minPressure) add(results, 'papMinPressure', minPressure[1]);
+    if (maxPressure) add(results, 'papMaxPressure', maxPressure[1]);
+
     const eventSection = section(text, /Events?\s+per\s+hour|Therapy\s+efficacy|AHI/i, /Leaks?|Pressure|Usage/);
     const ahiMatch = eventSection.match(/\bAHI\s*[:]?\s*([\d.]+)/i) || text.match(/\bAHI\s*[:]?\s*([\d.]+)/i);
     if (ahiMatch) add(results, 'papDeviceAhi', ahiMatch[1]);
@@ -103,6 +111,8 @@
       add(results, 'papLeakValue', leak95[1]);
       add(results, 'papLeakMetric', 'p95');
     }
+    const leakThreshold = text.match(/Set\s+threshold\s*[:]?\s*([\d.]+)\s*L\/min/i);
+    if (leakThreshold) add(results, 'papLeakThreshold', leakThreshold[1]);
 
     const pressureSection = section(text, /Pressure\s*(?:-|:)?\s*(?:cmH2O|cmH₂O)?/i, /Leaks?|Events?\s+per\s+hour|Usage/);
     const pressure95 = pressureSection.match(/95th\s+percentile\s*[:]?\s*([\d.]+)/i);

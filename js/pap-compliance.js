@@ -20,8 +20,9 @@
   const SOURCE_FIELDS = [
     'papManufacturer', 'papReportModel', 'papReportEndDate', 'papReportDays',
     'papNightsUsed', 'papNightsFourHours', 'papAverageUseHours', 'papUsualSleepHours',
+    'papMinPressure', 'papMaxPressure',
     'papDeviceAhi', 'papDeviceCai', 'papDeviceOai', 'papPressure95', 'papLeakValue',
-    'papLeakMetric', 'papMaskType', 'papLargeLeakFlag', 'papPeriodicBreathingPct',
+    'papLeakThreshold', 'papLeakMetric', 'papMaskType', 'papLargeLeakFlag', 'papPeriodicBreathingPct',
     'papTherapyStartDate', 'papPersistentSymptoms', 'papNewCvdEvent',
   ];
 
@@ -48,6 +49,7 @@
 
   function leakAssessment(data, thresholds) {
     const value = numberOrNull(data.papLeakValue);
+    const reportThreshold = numberOrNull(data.papLeakThreshold);
     const manufacturer = data.papManufacturer || '';
     const metric = data.papLeakMetric || '';
     const mask = data.papMaskType || '';
@@ -56,6 +58,11 @@
     }
     if (value === null) {
       return { state: 'unknown', label: 'Leak not characterized', detail: 'Enter the report leak metric or document the report large-leak flag.' };
+    }
+    if (reportThreshold !== null && metric === 'p95') {
+      return value > reportThreshold
+        ? { state: 'concern', label: 'Leak concern', detail: `The 95th percentile leak is ${value} L/min, above the source report threshold of ${reportThreshold} L/min.` }
+        : { state: 'acceptable', label: 'Leak below report threshold', detail: `The 95th percentile leak is ${value} L/min, below the source report threshold of ${reportThreshold} L/min.` };
     }
     if (manufacturer !== 'resmed' || metric !== 'p95') {
       return {
@@ -96,6 +103,9 @@
     const deviceCai = numberOrNull(input.papDeviceCai);
     const deviceOai = numberOrNull(input.papDeviceOai);
     const periodicBreathing = numberOrNull(input.papPeriodicBreathingPct);
+    const setMinPressure = numberOrNull(input.papMinPressure);
+    const setMaxPressure = numberOrNull(input.papMaxPressure);
+    const pressure95 = numberOrNull(input.papPressure95);
     const usedPct = roundPercent(nightsUsed, reportDays);
     const fourHourPct = roundPercent(nightsFourHours, reportDays);
     const partialNight = averageUse !== null && usualSleep !== null && usualSleep - averageUse >= thresholds.partialNightGapHours;
@@ -141,6 +151,24 @@
       recommendations.push('Confirm whether the patient uses a nasal or full-face interface before classifying the ResMed leak value.');
     } else if (leak.state === 'unknown') {
       recommendations.push('Confirm the manufacturer-specific leak definition or the report large-leak flag before using the numeric leak value for decisions.');
+    }
+
+    if (setMinPressure !== null || setMaxPressure !== null || pressure95 !== null) {
+      const pressureDetails = [];
+      if (setMinPressure !== null && setMaxPressure !== null) pressureDetails.push(`configured range ${setMinPressure}-${setMaxPressure} cm H2O`);
+      else if (setMinPressure !== null) pressureDetails.push(`configured minimum ${setMinPressure} cm H2O`);
+      else if (setMaxPressure !== null) pressureDetails.push(`configured maximum ${setMaxPressure} cm H2O`);
+      if (pressure95 !== null) pressureDetails.push(`95th percentile ${pressure95} cm H2O`);
+      const nearUpperLimit = setMaxPressure !== null && pressure95 !== null && pressure95 >= setMaxPressure - 0.5;
+      classifications.push({
+        key: 'pressure',
+        state: nearUpperLimit && deviceAhi !== null && deviceAhi >= thresholds.deviceAhiReview && !centralConcern ? 'attention' : 'context',
+        label: nearUpperLimit ? 'Pressure near configured upper limit' : 'Pressure context',
+        detail: pressureDetails.join('; '),
+      });
+      if (nearUpperLimit && deviceAhi !== null && deviceAhi >= thresholds.deviceAhiReview && !centralConcern && leak.state !== 'concern') {
+        recommendations.push('Residual obstructive events are elevated while the 95th percentile pressure is near the configured maximum. After confirming leak and nightly coverage, review whether the pressure range is constraining therapy or whether formal titration is preferable.');
+      }
     }
 
     if (deviceAhi === null) {
@@ -210,6 +238,8 @@
     const dropZone = document.getElementById('papReportDropZone');
     const status = document.getElementById('papReportStatus');
     const modeReview = document.getElementById('papReviewMode');
+    const minPressureReview = document.getElementById('papReviewMinPressure');
+    const maxPressureReview = document.getElementById('papReviewMaxPressure');
     if (!form || !panel || !verify || !analyzeButton || !fileInput || !dropZone) return;
 
     let parsedFields = [];
@@ -287,6 +317,8 @@
 
     function syncReviewMode() {
       if (modeReview) modeReview.value = form.elements.namedItem('papMode')?.value || '';
+      if (minPressureReview) minPressureReview.value = form.elements.namedItem('papMinPressure')?.value || '';
+      if (maxPressureReview) maxPressureReview.value = form.elements.namedItem('papMaxPressure')?.value || '';
     }
 
     function reviewRows(fields, notFound) {
@@ -326,8 +358,14 @@
 
     SOURCE_FIELDS.forEach(name => {
       const control = form.elements.namedItem(name);
-      control?.addEventListener('input', event => { if (event.isTrusted) clearVerification(); });
-      control?.addEventListener('change', event => { if (event.isTrusted) clearVerification(); });
+      control?.addEventListener('input', event => {
+        if (name === 'papMinPressure' || name === 'papMaxPressure') syncReviewMode();
+        if (event.isTrusted) clearVerification();
+      });
+      control?.addEventListener('change', event => {
+        if (name === 'papMinPressure' || name === 'papMaxPressure') syncReviewMode();
+        if (event.isTrusted) clearVerification();
+      });
     });
     form.elements.namedItem('papMode')?.addEventListener('change', event => {
       syncReviewMode();
@@ -340,6 +378,16 @@
         mode.dispatchEvent(new Event('change', { bubbles: true }));
       }
       clearVerification();
+    });
+    [[minPressureReview, 'papMinPressure'], [maxPressureReview, 'papMaxPressure']].forEach(([reviewControl, fieldName]) => {
+      reviewControl?.addEventListener('input', () => {
+        const sourceControl = form.elements.namedItem(fieldName);
+        if (sourceControl) {
+          sourceControl.value = reviewControl.value;
+          sourceControl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        clearVerification();
+      });
     });
     verify.addEventListener('change', render);
     analyzeButton.addEventListener('click', render);

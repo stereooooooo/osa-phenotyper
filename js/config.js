@@ -249,6 +249,7 @@ const OSA_CONFIG = {
       papDeviceCai:{ min: 0, max: 100, warnMax: 30 },
       papDeviceOai:{ min: 0, max: 100, warnMax: 50 },
       papLeakValue:{ min: 0, max: 250, warnMax: 150 },
+      papLeakThreshold:{ min: 0, max: 250, warnMax: 150 },
       papPressure95:{ min: 0, max: 30, warnMax: 25 },
       papPeriodicBreathingPct:{ min: 0, max: 100, warnMax: 30 },
       dhr:        { min: 0,   max: 60,   warnMax: 40  },

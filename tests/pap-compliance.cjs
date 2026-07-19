@@ -88,6 +88,20 @@ const otherVendor = assistant.analyze({
 }, {}, thresholds);
 assert(otherVendor.derived.leakState === 'unknown', 'Non-ResMed leak should remain vendor-specific without a report flag.');
 
+// Real-world AirView pattern: excellent use and low event index, but leak above the report threshold.
+const airViewExample = assistant.analyze({
+  papManufacturer: 'resmed', papReportDays: 30, papNightsUsed: 30,
+  papNightsFourHours: 30, papAverageUseHours: 7.8,
+  papMinPressure: 13, papMaxPressure: 17, papPressure95: 14.4,
+  papDeviceAhi: 1.2, papDeviceCai: 0.2, papDeviceOai: 0.3,
+  papLeakValue: 42, papLeakThreshold: 24, papLeakMetric: 'p95',
+  papPeriodicBreathingPct: 0,
+}, {}, thresholds);
+assert(airViewExample.status === 'review', 'Leak above the source threshold should require review despite low device AHI.');
+assert(airViewExample.derived.leakState === 'concern', 'The report-provided leak threshold should take priority over an inferred mask threshold.');
+assert(airViewExample.classifications.some(item => item.key === 'events' && item.state === 'reassuring'), 'Low device event index should remain visible as reassuring context.');
+assert(airViewExample.classifications.some(item => item.key === 'pressure' && item.detail.includes('13-17')), 'Configured APAP range should appear in pressure context.');
+
 // Initial ResMed AirView parser fixture.
 const parsed = parser.parseText(`
   ResMed AirView AirSense 11 AutoSet Serial number 12345
@@ -95,7 +109,11 @@ const parsed = parser.parseText(`
   Usage days 29/30 days (97%)
   >= 4 hours 28 days (93%)
   Average usage (days used) 6 hours 48 minutes
+  Mode AutoSet
+  Min Pressure 13 cmH2O
+  Max Pressure 17 cmH2O
   Pressure - cmH2O Median: 8.2 95th percentile: 10.8 Maximum: 11.8
+  Set threshold 24.0 L/min
   Leaks - L/min Median: 1.0 95th percentile: 8.4 Maximum: 14.0
   Events per hour AI: 1.6 HI: 0.4 AHI: 2.0
   Apnea Index Central: 0.3 Obstructive: 1.2 Unknown: 0.1
@@ -105,7 +123,9 @@ const values = Object.fromEntries(parsed.fields.map(field => [field.name, field.
 assert(values.papManufacturer === 'resmed', 'Parser should detect ResMed.');
 assert(values.papReportDays === '30' && values.papNightsUsed === '29', 'Parser should extract usage numerator and denominator.');
 assert(values.papAverageUseHours === '6.8', 'Parser should convert average use to decimal hours.');
+assert(values.papMinPressure === '13' && values.papMaxPressure === '17', 'Parser should extract configured APAP pressure range.');
 assert(values.papDeviceAhi === '2.0' && values.papDeviceCai === '0.3', 'Parser should extract event indices.');
 assert(values.papLeakValue === '8.4' && values.papPressure95 === '10.8', 'Parser should keep leak and pressure sections separate.');
+assert(values.papLeakThreshold === '24.0', 'Parser should extract the source report leak threshold.');
 
 process.stdout.write(String(passed));
