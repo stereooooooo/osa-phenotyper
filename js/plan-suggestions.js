@@ -177,7 +177,7 @@
         `The home study AHI is ${study.ahi}, but the patient's persistent symptoms keep clinical concern for sleep-disordered breathing high.`,
         'decide whether to obtain an in-lab sleep study now or reassess persistent symptoms after treating another plausible contributor',
         5,
-        'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected. The suggestion remains a draft: the clinician decides whether PSG is needed now or whether to reassess after treating another plausible contributor.'
+        'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected; simply repeating another home test is generally not recommended. The suggestion remains a draft: the clinician decides whether PSG is needed now or whether to reassess after treating another plausible contributor.'
       );
     }
 
