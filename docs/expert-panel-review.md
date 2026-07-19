@@ -4,6 +4,9 @@
 **App version:** Current working copy (uncommitted changes on main, post commit 8744ce1)
 **Methodology:** 31 test-matrix patients + 10 edge cases run programmatically; 4 patient reports inspected; all thresholds cross-referenced against `docs/citations.md`
 
+> Historical snapshot: HB tiering and low-HB treatment-allocation endorsements in this review were
+> superseded by `ER-2026-07-19-HB` after primary-source re-review. They are not current app logic.
+
 ---
 
 ## Panel Members

@@ -107,7 +107,7 @@ const PROFILES = [
   // Group 5: Phenotype Edge Cases
   { id:19, name:'REM-predominant mild',        f:{age:'40',sex:'F',bmi:'25',pahi:'12',ess:'10',isi:'5',remPahi:'28',nremPahi:'8'}, c:[] },
   { id:20, name:'High loop gain',              f:{age:'55',sex:'M',bmi:'29',pahi:'25',ess:'12',isi:'5',csr:'15',pahic:'12'}, c:[] },
-  { id:21, name:'High hypoxic burden only',    f:{age:'50',sex:'M',bmi:'30',pahi:'20',ess:'12',isi:'5',nadir:'72',hbAreaPH:'15',odi:'35'}, c:[] },
+  { id:21, name:'Severe nadir without HB signal', f:{age:'50',sex:'M',bmi:'30',pahi:'20',ess:'12',isi:'5',nadir:'72',hbAreaPH:'15',odi:'35'}, c:[] },
   { id:22, name:'Nasal + positional combo',    f:{age:'45',sex:'M',bmi:'28',pahi:'16',ess:'12',isi:'5',noseScore:'60',supPahi:'32',nonSupPahi:'6'}, c:['nasalObs'] },
   { id:23, name:'Delta HR elevated + CVD',     f:{age:'55',sex:'M',bmi:'30',pahi:'25',ess:'12',isi:'5',dhr:'14'}, c:['cvd'] },
   // Group 6: Inspire Candidacy
@@ -154,7 +154,7 @@ const PHENOTYPE_BASELINE = {
   4: { phen: ["Positional OSA"], tags: ["CPAP", "POS", "MAD-FAVORABLE", "MAD-WORKUP"] },
   5: { phen: [], tags: ["CPAP", "WEIGHT", "MAD", "MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP"] },
   6: { phen: ["High Anatomical Contribution", "High Hypoxic Burden"], tags: ["CPAP", "WEIGHT", "SURG", "SURGALT", "SURGERY-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP"] },
-  7: { phen: ["High Anatomical Contribution", "High Hypoxic Burden"], tags: ["CPAP", "WEIGHT", "SURG", "SURGALT", "HB-URG", "SURGERY-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP"] },
+  7: { phen: ["High Anatomical Contribution", "High Hypoxic Burden"], tags: ["OXYGEN-URG", "CPAP", "WEIGHT", "SURG", "SURGALT", "SURGERY-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP"] },
   8: { phen: [], tags: ["CPAP", "WEIGHT", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
   9: { phen: [], tags: ["CBTI", "COMISA-PAP", "COMISA-SRT-CAUTION", "CPAP", "WEIGHT", "MAD", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
   10: { phen: [], tags: ["CPAP", "WEIGHT", "MAD", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
@@ -168,7 +168,7 @@ const PHENOTYPE_BASELINE = {
   18: { phen: [], tags: ["CPAP", "SURG", "MAD", "SURGERY-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
   19: { phen: ["REM-Predominant OSA"], tags: ["CPAP", "MAD-FAVORABLE", "REM-CHECK", "REM-MAD", "MAD-WORKUP"] },
   20: { phen: ["High Loop Gain"], tags: ["CPAP-FIXED", "CPAP", "ASV-SAFETY", "MAD", "MAD-WORKUP", "CENTRAL-PSG-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
-  21: { phen: ["High Hypoxic Burden"], tags: ["CPAP", "WEIGHT", "MAD", "HB-URG", "MAD-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
+  21: { phen: [], tags: ["OXYGEN-URG", "CPAP", "WEIGHT", "MAD", "MAD-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
   22: { phen: ["Positional OSA", "Nasal-Resistance Contributor"], tags: ["CPAP", "NASAL-OPT", "POS", "MAD", "MAD-WORKUP", "SURGERY-WORKUP", "OXYGEN-WORKUP", "SLEEP-STAGE-WORKUP", "ANATOMY-WORKUP"] },
   23: { phen: [], tags: ["CPAP", "WEIGHT", "MAD", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "NASAL-WORKUP"] },
   24: { phen: [], tags: ["CPAP", "WEIGHT", "MAD", "MAD-WORKUP", "OXYGEN-WORKUP", "POSITION-WORKUP", "SLEEP-STAGE-WORKUP", "ENDOTYPE-WORKUP", "ANATOMY-WORKUP", "HNS-WORKUP", "NASAL-WORKUP"] },

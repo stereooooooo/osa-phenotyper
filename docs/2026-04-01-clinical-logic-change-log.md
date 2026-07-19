@@ -6,6 +6,10 @@
 
 This log tracks the April 1, 2026 clinical-logic remediation pass focused on phenotype detection, HGNS gating, low-hypoxic-burden handling, and weight-management messaging.
 
+> Superseded behavior: `ER-2026-07-19-HB` removed `lowHypoxicBurden` treatment behavior entirely and
+> separated true event-linked HB from ODI, T90, nadir, and area below 90%. The entry below is retained
+> only as historical change provenance.
+
 ## Changes Made
 
 ### `/Users/raymondbrown/Documents/Health & Medical/OSA & Sleep Research/OSA Phenotype App/js/config.js`

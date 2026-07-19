@@ -356,23 +356,23 @@ assertEqual(
   'Chronic opioid use produces PSG-recommended guidance'
 );
 
-group('Oxygen Data Sufficiency Guardrails');
+group('Oxygen Data Completeness Guardrails');
 assertEqual(
   [null, null, null, null, 86].filter(exists).length >= 2,
   false,
-  'A single oxygen metric does not qualify for low-hypoxic-burden framing'
+  'A single oxygen metric does not qualify as a complete oxygen profile'
 );
 assertEqual(
   [null, null, 14, null, 86].filter(exists).length >= 2,
   true,
-  'At least two oxygen metrics are required before low-hypoxic-burden framing is allowed'
+  'At least two oxygen metrics meet the current completeness guardrail'
 );
 
 // ── Hypoxic Burden Confidence ─────────────────────────────────
 group('Hypoxic Burden Confidence');
 assertEqual(
   confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 80, hb90PH: 0, odi: 0, nadir: 90, t90: 0 } }),
-  'High', 'HB/hr 80 ≥ 73 → High'
+  'Moderate', 'HB/hr 80 remains a Moderate research signal because categories are not clinically validated'
 );
 assertEqual(
   confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 35, hb90PH: 0, odi: 0, nadir: 90, t90: 0 } }),
@@ -384,12 +384,19 @@ assertEqual(
 );
 assertEqual(
   confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 0, hb90PH: 0, odi: 55, nadir: 90, t90: 0 } }),
-  'High', 'ODI 55 > 50 → High'
+  'Low', 'ODI cannot create the event-linked HB phenotype'
 );
 assertEqual(
   confidenceFor('High Hypoxic Burden', { metrics: { hbPH: 0, hb90PH: 0, odi: 0, nadir: 74, t90: 0 } }),
-  'High', 'Nadir 74 < 75 → High'
+  'Low', 'Oxygen nadir cannot create the event-linked HB phenotype'
 );
+const hbResearchSignals = OSAReportShared.assessEncounterSignals({ hbPerHour: 80, odi: 10, t90: 1, nadir: 90 }, T);
+assert(hbResearchSignals.hypoxicBurdenSignal, 'Actual HB 80 creates an event-linked HB research signal');
+assert(hbResearchSignals.hbIsaaccCohortContext, 'Actual HB 80 matches the ISAACC research-cohort context');
+assert(!hbResearchSignals.severeNocturnalHypoxemia, 'Actual HB alone does not create conventional nocturnal-hypoxemia urgency');
+const oxygenSafetySignals = OSAReportShared.assessEncounterSignals({ hbPerHour: 0, odi: 55, t90: 2, nadir: 90 }, T);
+assert(!oxygenSafetySignals.hypoxicBurdenSignal, 'Severe ODI does not create the event-linked HB signal');
+assert(oxygenSafetySignals.severeNocturnalHypoxemia, 'Severe ODI creates the separate nocturnal-hypoxemia safety signal');
 
 // ── Delta Heart Rate Confidence ───────────────────────────────
 group('Delta Heart Rate Confidence');
@@ -506,8 +513,8 @@ const posRatio = sampleMetrics.sup / sampleMetrics.nons;
 const posTrigger = posRatio > T.positional.supNonSupRatio && sampleMetrics.nons < T.positional.nonSupMax;
 assert(!posTrigger, 'Sample: Positional does NOT trigger (non-sup 22.1 > 15)');
 
-// Hypoxic Burden: HB/hr 37 ≥ 5 → triggers
-assert(sampleMetrics.hbPH >= T.hypoxicBurden.hbPerHour, 'Sample: triggers High Hypoxic Burden (HB/hr 37)');
+// Event-linked hypoxic burden: exploratory signal boundary only
+assert(sampleMetrics.hbPH >= T.hypoxicBurden.signalBoundary, 'Sample: triggers event-linked HB research signal (HB/hr 37)');
 
 // Nasal: NOSE 40 ≥ 25 + CT septum → triggers
 const nasalTrigger = (sampleMetrics.noseScore >= T.nasal.noseMild) || sampleMetrics.nasalObs || sampleMetrics.ctSeptum || sampleMetrics.ctTurbs;
@@ -579,7 +586,7 @@ function buildReportData(overrides = {}) {
     priorUPPP: false,
     priorInspire: false,
     hasCOMISA: false,
-    lowHypoxicBurden: false,
+    severeNocturnalHypoxemia: false,
     hasConcentricCollapse: false,
     friedmanStage: null,
     hnsStage: null,
@@ -607,15 +614,14 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 8,
   ahi: 8,
   severity: 'mild',
-  lowHypoxicBurden: true,
   recTags: [
     { tag: 'CPAP', text: 'Use PAP.' },
     { tag: 'POS', text: 'Use positional therapy.' },
     { tag: 'MAD-FAVORABLE', text: 'Consider an oral appliance.' },
   ],
 }));
-assert(reportHtml.includes('Try sleeping on your side') && !reportHtml.includes('Starting PAP'), 'Mild low-oxygen-burden pathway leads with the selected alternative instead of PAP');
-assert(!reportHtml.includes('Arrange your PAP setup and use it whenever you sleep'), 'Mild alternative-first checklist does not contradict the summary by requiring immediate PAP setup');
+assert(reportHtml.includes('Starting PAP'), 'Mild OSA does not move PAP down the plan solely because oxygen metrics are reassuring');
+assert(reportHtml.includes('Arrange your PAP setup and use it whenever you sleep'), 'Mild OSA checklist follows the selected PAP plan');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 3,
@@ -705,13 +711,21 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
 assert(!reportHtml.slice(reportHtml.indexOf("What's Contributing"), reportHtml.indexOf('Your Treatment Plan')).includes('oxygen burden'), 'Oxygen burden is not presented as a cause in the contributor section');
-assert(reportHtml.includes('That is a consequence of the breathing interruptions, not a cause of sleep apnea'), 'Oxygen burden is correctly framed as an outcome/risk marker');
-assert(reportHtml.indexOf('Why This Matters') < reportHtml.indexOf('elevated oxygen burden'), 'Oxygen-burden explanation appears in the risk section');
+assert(!reportHtml.includes('Why This Matters'), 'An HB research-cohort cut point alone does not create patient-facing urgency');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  odi: 55,
+  nadir: 72,
+  severeNocturnalHypoxemia: true,
+  milestones: ['Initial Eval', 'Study Reviewed'],
+}));
+assert(reportHtml.includes('substantial overnight oxygen drops or low-oxygen exposure'), 'Substantial conventional hypoxemia is explained in the patient risk section');
+assert(reportHtml.includes('sleep apnea may not be the only contributor'), 'Patient oxygen wording preserves non-OSA differential diagnosis');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'OXYGEN-WORKUP', text: 'Review full oxygen metrics before finalizing cardiovascular risk.' }],
 }));
-assert(reportHtml.includes('Complete Oxygen-Risk Review'), 'Oxygen workup tag renders a patient-friendly treatment explanation');
+assert(reportHtml.includes('Complete the Oxygen Review'), 'Oxygen workup tag renders a patient-friendly treatment explanation');
 assert(reportHtml.includes('review the full oxygen portion of the sleep study'), 'Oxygen workup tag adds a practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
@@ -920,7 +934,6 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 9,
   ahi: 9,
   severity: 'mild',
-  lowHypoxicBurden: true,
   prefAvoidCpap: true,
   subtype: 'Minimally Symptomatic',
   phen: ['Positional OSA'],
@@ -1015,7 +1028,7 @@ assert(terminologyIndex >= 0 && terminologyIndex < summaryIndex, 'Conditional te
   assert(terminologyHTML.includes(`<dt>${term}</dt>`) || terminologyHTML.includes(`<dt>${term} `), `${term} is defined before its first clinical use`);
 });
 assert(terminologyReportHtml.includes('a treatment that uses a machine and mask to deliver gentle air pressure'), 'PAP terminology accurately describes both the machine and mask');
-assert(terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>Oxygen burden</dt>'), 'Oxygen burden is defined before its first clinical use');
+assert(!terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>Event-linked hypoxic burden</dt>'), 'HB terminology is omitted when the patient narrative does not use the research metric');
 assert(!terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
 assert(!/[\u2010-\u2015\u2212]/.test(terminologyReportHtml), 'Patient handout output contains no typographic dash characters');
 

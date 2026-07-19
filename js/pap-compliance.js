@@ -274,7 +274,7 @@
       recommendations.push('Reassess PAP efficacy and consider follow-up PSG or HSAT after the new cardiovascular event. Prefer PSG when device data are unexplained or central events are suspected.');
     }
     if (highBaselineOxygenRisk && deviceAhi !== null && deviceAhi < thresholds.deviceAhiContext) {
-      recommendations.push('The baseline study showed important oxygen burden. A low device-reported event index does not confirm oxygen normalization; consider overnight oximetry or another on-therapy efficacy assessment when clinically appropriate.');
+      recommendations.push('The baseline study showed clinically important nocturnal hypoxemia. A low device-reported event index does not confirm oxygen normalization; consider overnight oximetry or another on-therapy efficacy assessment when clinically appropriate.');
     }
 
     const needsAction = classifications.some(item => ['attention', 'discordant', 'concern'].includes(item.state));

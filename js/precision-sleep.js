@@ -94,8 +94,10 @@
       items.push(profileItem('Treatment fit', 'Decision pending', 'Select treatment after reviewing severity, anatomy, preferences, and safety prerequisites.', 'pending'));
     }
 
-    if (hasPhenotype('High Hypoxic Burden')) {
-      items.push(profileItem('Risk & outcomes', 'Elevated oxygen burden', 'Oxygen-related findings increase the priority of effective treatment and reassessment.', 'strong'));
+    if (data.severeNocturnalHypoxemia) {
+      items.push(profileItem('Risk & outcomes', 'Substantial nocturnal hypoxemia', 'Review whether OSA fully explains the oxygen findings, treat confirmed OSA effectively, and objectively confirm oxygen control.', 'strong'));
+    } else if (hasPhenotype('High Hypoxic Burden')) {
+      items.push(profileItem('Risk & outcomes', 'HB research signal', 'Event-linked hypoxic burden adds research-based prognostic context but does not independently select or rank treatment.', 'relevant'));
     } else if (ahi == null) {
       items.push(profileItem('Risk & outcomes', 'Baseline incomplete', 'Complete diagnostic testing before establishing outcome targets.', 'pending'));
     } else if (ahi >= 30) {

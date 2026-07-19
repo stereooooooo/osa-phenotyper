@@ -191,9 +191,9 @@ var PatientReport = (() => {
       definition: 'An airway classification based on tongue position and, for the stage, tonsil size and body size. It helps guide treatment discussions.',
     },
     {
-      label: 'Oxygen burden',
-      patterns: [/oxygen burden/i, /hypoxic burden/i, /hypoxic-burden/i],
-      definition: 'A measure of the depth and duration of oxygen drops caused by breathing interruptions during sleep.',
+      label: 'Event-linked hypoxic burden',
+      patterns: [/hypoxic burden/i, /hypoxic-burden/i],
+      definition: 'The total area of oxygen drops linked to breathing interruptions, divided by sleep time. It is different from the number of drops, time below 90%, or the single lowest oxygen level.',
     },
     {
       label: 'Central breathing events or periodic breathing',
@@ -462,7 +462,6 @@ var PatientReport = (() => {
 
   function patientAlternativesLead(data) {
     return Boolean(data.prefAvoidCpap) ||
-      (data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) ||
       (data.cpapFailed && !data.cpapWillRetry);
   }
 
@@ -1112,12 +1111,9 @@ Many people with sleep apnea feel sleepy during the day, and your results sugges
 <p><strong>Your Sleep Apnea Pattern: COMISA (Insomnia + Sleep Apnea)</strong><br>
 You have both insomnia and breathing interruptions during sleep. Your plan addresses both conditions.</p>`;
     } else if (!isNormalStudy && subtype.includes('minimal')) {
-      const mildLowerOxygenRisk = severity === 'mild' && data.lowHypoxicBurden;
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: Minimally Symptomatic</strong><br>
-${mildLowerOxygenRisk
-  ? 'You do not report strong daytime symptoms. Mild sleep apnea can still affect sleep quality, but the importance and best treatment vary from person to person. Your plan uses your oxygen results, anatomy, preferences, and response to treatment rather than assuming one approach fits everyone.'
-  : 'You may not feel very sleepy, but the study still recorded repeated breathing interruptions. The importance of treatment depends on severity, oxygen changes, other health conditions, and your goals. Your plan is designed to reduce breathing events and confirm the response with follow-up.'}</p>`;
+You may not feel very sleepy, but the study still recorded repeated breathing interruptions. The importance of treatment depends on severity, symptoms, oxygen changes, other health conditions, anatomy, preferences, and your goals.</p>`;
     }
 
     const sectionTitle = isNormalStudy
@@ -1382,7 +1378,7 @@ ${items}`;
     'MAD-POOR': `<strong>Oral Appliance Therapy</strong> — A custom jaw-advancement device may help, but your profile suggests it may not control your sleep apnea well enough by itself. It can still be discussed as a backup or combination option if PAP is not tolerated.`,
     'POS': `<strong>Positional Therapy</strong> — Your breathing is worse on your back. A positional device or pillow can help you stay on your side and may be used alone or with another treatment, depending on the study results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
-    'OXYGEN-WORKUP': `<strong>Complete Oxygen-Risk Review</strong> — Part of your sleep-study oxygen data is still incomplete or has not yet been reviewed in full. Before we call your oxygen-related risk low or move CPAP lower on the list, your care team should confirm your oxygen desaturation index (ODI), time below 90%, lowest oxygen level, and any available hypoxic-burden metrics from the full report.`,
+    'OXYGEN-WORKUP': `<strong>Complete the Oxygen Review</strong> — Part of your overnight oxygen information is still incomplete or has not yet been reviewed in full. Your care team should review the complete study before describing how strongly breathing interruptions affected oxygen levels.`,
     'POSITION-WORKUP': `<strong>Review Positional Data Before Ruling Position In or Out</strong> — Your available sleep-study report does not clearly show how your breathing changed on your back compared with your side. Before we decide that positional therapy is irrelevant, your care team may need to review the full study or repeat testing with better positional tracking.`,
     'SLEEP-STAGE-WORKUP': `<strong>Review REM-Sleep Data Before Ruling Out REM Worsening</strong> — Some patients breathe much worse during REM (dream) sleep than during the rest of the night. Your available data do not clearly separate REM from non-REM breathing yet, so REM-specific treatment decisions should stay flexible until that part of the study is confirmed.`,
     'ENDOTYPE-WORKUP': `<strong>Complete the Detailed Event Breakdown Before Final Endotype Matching</strong> — Some of the more advanced breathing-pattern estimates in sleep apnea depend on knowing how many events were full apneas versus partial obstructions (hypopneas). That breakdown is not fully available yet, so some of the finer endotype-based treatment matching still needs the detailed scoring report before it should be treated as complete.`,
@@ -1407,7 +1403,7 @@ ${items}`;
     'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you, and if ASV is being considered they may need to confirm that your heart function is in a safe range first.`,
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
-    'HB-URG': null,  // Urgency note — woven into Why This Matters
+    'OXYGEN-URG': null,  // Urgency note woven into Why This Matters
     'DHR-TX': null,  // Clinical detail
     'SLEEP-STUDY': `<strong>Sleep Study</strong> — A sleep study measures your breathing, oxygen levels, heart rate, and sleep stages to get a full picture of what's happening while you sleep. Depending on your situation, this may be a home sleep test (a small device you wear overnight at home) or an in-lab study (which captures more detailed data in a monitored sleep center). The results will guide your treatment decisions.`,
     'UARS-EVAL': `<strong>Detailed Sleep Evaluation</strong> — Discuss an in-lab sleep study with your doctor. It can measure sleep disruption more directly and help determine whether partial airway narrowing is causing your symptoms.`,
@@ -1434,7 +1430,7 @@ ${items}`;
   /* Tags that are sub-items of CPAP — should not render as standalone recs */
   const cpapSubTags = new Set(['CPAP-ALT','CPAP-PREF','CPAP-OPT','CPAP-DESENTIZE','CPAP-HUMID','CPAP-RETITRATE','CPAP-FIXED']);
   const nasalSubTags = new Set(['NASAL-SURG','NASAL-PRIOR']);
-  const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','HB-URG','DHR-TX','ENDOTYPE-WORKUP']);
+  const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','OXYGEN-URG','DHR-TX','ENDOTYPE-WORKUP']);
   const workupTags = new Set([
     'OXYGEN-WORKUP',
     'POSITION-WORKUP',
@@ -1482,11 +1478,6 @@ ${items}`;
         ? 'Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).'
         : 'Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.');
       return `<strong>Weight Management</strong> — ${lead}Weight loss can reduce sleep apnea severity and improve how well other treatments work, but the amount of improvement varies from person to person. ${support}`;
-    }
-
-    /* Mild + Low HB: de-emphasized CPAP description with uncertainty-aware language */
-    if (tag === 'CPAP' && data && data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden) {
-      return `<strong>PAP Therapy</strong>: PAP is effective for preventing sleep apnea events at all severity levels. With mild sleep apnea and your oxygen profile, an oral appliance or positional therapy may also be a reasonable initial option when matched to your findings and preferences. PAP remains available if you prefer it or if another treatment does not provide enough control.`;
     }
 
     /* Enhanced CPAP description for severe patients with limited alternatives */
@@ -1574,7 +1565,6 @@ ${items}`;
 
     if (allRecs.length === 0) return '';
 
-    const isMildLowHB = data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden;
     const isCpapAvoidant = data.prefAvoidCpap && !data.cpapFailed;
     const surgeryConsultFirst = isSurgeryConsultPriority(data);
     if (surgeryConsultFirst && allRecs.some(rec => ['SURG', 'SURGALT'].includes(rec.tag))) {
@@ -1586,13 +1576,13 @@ ${items}`;
       ? new Map([['SURG', 0], ['SURGALT', 0], ['TONSIL', 0], ['CPAP', 10], ['MAD-FAVORABLE', 12], ['MAD', 13]])
       : data.hasCOMISA
         ? new Map([['CBTI', 0], ['CPAP', 1], ['MAD-FAVORABLE', 3], ['MAD', 4], ['SURG', 5], ['SURGALT', 5], ['NASAL-OPT', 7], ['WEIGHT', 8]])
-        : (isMildLowHB || isCpapAvoidant)
+        : isCpapAvoidant
           ? new Map([['POS', 0], ['MAD-FAVORABLE', 1], ['MAD', 2], ['MAD-POOR', 3], ['NASAL-OPT', 4], ['WEIGHT', 5], ['MILD-LIFESTYLE', 6], ['CPAP', 20]])
           : new Map();
     allRecs.sort((a, b) => (priority.get(a.tag) ?? 15) - (priority.get(b.tag) ?? 15));
 
     const hasPAPPlan = recTags.some(r => r.tag === 'CPAP' || r.tag.startsWith('CPAP-'));
-    const papFirst = hasPAPPlan && !data.cpapCurrent && !isMildLowHB && !isCpapAvoidant &&
+    const papFirst = hasPAPPlan && !data.cpapCurrent && !isCpapAvoidant &&
       !surgeryConsultFirst && !(data.cpapFailed && !data.cpapWillRetry);
     const backupTags = new Set(['MAD', 'MAD-FAVORABLE', 'MAD-POOR', 'HNS', 'INSPIRE-EVAL', 'SURG', 'SURGALT', 'TONSIL']);
 
@@ -1603,7 +1593,7 @@ ${items}`;
     let actions = allRecs.filter(rec => !workupTags.has(rec.tag) && !conditional.includes(rec));
     const deferred = [];
 
-    if (isMildLowHB || isCpapAvoidant || surgeryConsultFirst) {
+    if (isCpapAvoidant || surgeryConsultFirst) {
       const cpap = actions.find(rec => rec.tag === 'CPAP');
       actions = actions.filter(rec => rec.tag !== 'CPAP');
       if (cpap) deferred.push(cpap);
@@ -1672,20 +1662,6 @@ ${items}`;
       output += `
 <div class="cpap-context-box">
   <strong>Building on your current ${device} therapy.</strong> You are not being asked to start over. These recommendations support comfort and results; your follow-up will determine whether settings or equipment need adjustment.
-</div>`;
-    }
-
-    if (isMildLowHB) {
-      const optionLabels = [];
-      if (recTags.some(rec => ['MAD', 'MAD-FAVORABLE', 'MAD-POOR'].includes(rec.tag))) optionLabels.push('an oral appliance');
-      if (recTags.some(rec => rec.tag === 'POS')) optionLabels.push('positional therapy');
-      if (recTags.some(rec => rec.tag === 'WEIGHT')) optionLabels.push('supported weight management');
-      const optionText = optionLabels.length > 1
-        ? `${optionLabels.slice(0, -1).join(', ')} or ${optionLabels[optionLabels.length - 1]}`
-        : optionLabels[0] || 'a non-PAP treatment matched to your findings';
-      output += `
-<div class="cpap-context-box" style="border-color:#86b89a;background:#edf7f0;">
-  <strong>You have reasonable options beyond PAP.</strong> With mild sleep apnea and a lower-risk oxygen profile, ${optionText} may be an appropriate first step when paired with follow-up assessment.
 </div>`;
     }
 
@@ -1768,7 +1744,7 @@ ${items}`;
     const surgeryConsultFirst = isSurgeryConsultPriority(data);
     const papFirst = hasPAP && !data.cpapCurrent &&
       !(data.cpapFailed && !data.cpapWillRetry) && !data.prefAvoidCpap &&
-      !surgeryConsultFirst && !(data.severity?.toLowerCase() === 'mild' && data.lowHypoxicBurden);
+      !surgeryConsultFirst;
     const hasNasal = tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR');
 
     if (tags.has('SLEEP-STUDY')) {
@@ -1978,27 +1954,28 @@ ${items.join('')}`;
       data.nadir    !== null && data.nadir    !== undefined ? +data.nadir    : 99,
       data.nadirPsg !== null && data.nadirPsg !== undefined ? +data.nadirPsg : 99
     );
-    const hbArea    = (data.hbAreaPH !== null && data.hbAreaPH !== undefined) ? +data.hbAreaPH : null;
     const odiVal    = (data.odi !== null && data.odi !== undefined) ? +data.odi : null;
     const t90Val    = (data.t90 !== null && data.t90 !== undefined) ? +data.t90 : null;
 
-    /* Trigger on severe AHI OR any HB metric in CV-risk range (updated thresholds per ISAACC/Azarbarzin 2025) */
+    /* Patient-facing urgency is based on severe OSA or substantial conventional
+       nocturnal hypoxemia. Event-linked HB research cut points do not independently
+       trigger treatment claims or patient urgency. */
     const triggerSevereAHI = pAHI !== null && pAHI !== undefined && +pAHI >= 30;
-    const triggerHB        = hbArea !== null && hbArea >= 73;   // ISAACC: CPAP CV benefit threshold
     const triggerODI       = odiVal !== null && odiVal > 50;
     const triggerNadir     = nadirVal < 75;
     const triggerT90       = t90Val !== null && t90Val > 20;
+    const triggerHypoxemia = Boolean(data.severeNocturnalHypoxemia) || triggerODI || triggerNadir || triggerT90;
 
-    if (!triggerSevereAHI && !triggerHB && !triggerODI && !triggerNadir && !triggerT90) return '';
+    if (!triggerSevereAHI && !triggerHypoxemia) return '';
 
     /* Phase 3: lead with the takeaway, not a list of numbers. The specific metrics live in
        "Understanding Your Results" and the clinician report; here we give the why + the hope. */
-    const oxygenBurdenNote = Array.isArray(data.phen) && data.phen.includes('High Hypoxic Burden')
-      ? ' Your study also showed an elevated oxygen burden. That is a consequence of the breathing interruptions—not a cause of sleep apnea—and it increases the importance of timely, effective treatment and follow-up testing.'
+    const oxygenBurdenNote = triggerHypoxemia
+      ? ' Your study also showed substantial overnight oxygen drops or low-oxygen exposure. These findings require clinician review because sleep apnea may not be the only contributor.'
       : '';
     return `
 <div class="risk-summary" role="note">
-  <strong>Why This Matters:</strong> Sleep apnea at this level is associated with risks to heart health and daytime functioning.${oxygenBurdenNote} Follow-up testing will confirm whether treatment is controlling the breathing events and oxygen drops.
+  <strong>Why This Matters:</strong> Sleep apnea at this level is associated with risks to heart health and daytime functioning.${oxygenBurdenNote} Your clinician may use follow-up testing to confirm whether treatment controls breathing events and oxygen drops.
 </div>`;
   }
 
@@ -2334,7 +2311,7 @@ ${items.join('')}`;
     }
     if (selected.has('planInspire')) {
       if (data.priorInspire) {
-        const urgentOxygenFollowup = (data.recTags || []).some(entry => entry?.tag === 'HB-URG');
+        const urgentOxygenFollowup = (data.recTags || []).some(entry => entry?.tag === 'OXYGEN-URG');
         add(data.hgnsHelped === 'no'
           ? `Because the existing nerve stimulator has not clearly helped, confirm activation and use, review programming, and arrange ${urgentOxygenFollowup ? 'prompt ' : ''}objective on-therapy testing before changing treatment.${urgentOxygenFollowup ? ' The severe breathing and oxygen findings make timely confirmation of effective treatment important.' : ''}`
           : data.hgnsHelped === 'yes'

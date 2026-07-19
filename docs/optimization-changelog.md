@@ -6,6 +6,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Newest f
 See [`optimization-roadmap.md`](optimization-roadmap.md) for the forward-looking plan and the
 full findings inventory.
 
+> Historical note: the June HB tiering entry is superseded by `ER-2026-07-19-HB`. Current logic
+> separates event-linked HB from conventional nocturnal hypoxemia and does not use low HB or the
+> 73.1/87.1 research cut points to select, withhold, or rank treatment.
+
 ---
 
 ## [Post-audit feature: front-desk home screen + MRN fix] — 2026-06-12

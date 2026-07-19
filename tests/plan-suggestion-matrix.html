@@ -269,11 +269,11 @@ const SCENARIOS = [
     },
     checks: ['priorCpap', 'cpapMask', 'cpapDry'],
     expectedSuggestions: ['PAP management', 'Nasal treatment', 'Weight management'],
-    expectedTags: ['CPAP', 'NASAL-OPT', 'WEIGHT', 'HB-URG'],
-    clinicianIncludes: ['High Hypoxic Burden'],
+    expectedTags: ['OXYGEN-URG', 'CPAP', 'NASAL-OPT', 'WEIGHT'],
+    clinicianIncludes: ['Event-Linked Hypoxic Burden Signal', 'Substantial Nocturnal Hypoxemia', 'not a validated clinical category or stand-alone reason'],
     clinicianExcludes: [],
     patientIncludes: ['Giving PAP another try', 'oxygen', 'nasal treatment', 'weight management'],
-    patientExcludes: ['Complete DISE-Guided'],
+    patientExcludes: ['Complete DISE-Guided', 'cardiovascular benefit'],
     expectedAnalysisFlags: { severeHypoxemiaMissingFromDraftSummary: false }
   },
   {
@@ -520,12 +520,12 @@ const SCENARIOS = [
     },
     checks: ['priorInspire'],
     expectedSuggestions: ['Nerve stimulation', 'Weight management'],
-    expectedTags: ['INSPIRE-OPT', 'WEIGHT', 'HB-URG'],
+    expectedTags: ['OXYGEN-URG', 'INSPIRE-OPT', 'WEIGHT'],
     excludedTags: ['HNS-WORKUP'],
-    clinicianIncludes: ['reports no clear benefit', 'obtain on-therapy testing', 'High Hypoxic Burden'],
+    clinicianIncludes: ['reports no clear benefit', 'obtain on-therapy testing', 'Event-Linked Hypoxic Burden Signal', 'Substantial Nocturnal Hypoxemia', 'not a validated clinical category or stand-alone reason'],
     clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'HGNS response tier'],
     patientIncludes: ['hypoglossal nerve stimulator implanted around 2023 without clear improvement', 'oxygen', 'weight management'],
-    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE'],
+    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE', 'cardiovascular benefit'],
     todayPlanIncludes: ['existing nerve stimulator has not clearly helped', 'prompt objective on-therapy testing', 'severe breathing and oxygen findings', 'Choose one realistic nutrition or activity step'],
     todayPlanExcludes: ['complete the nerve-stimulation evaluation']
   },
@@ -653,7 +653,7 @@ const SCENARIOS = [
     checks: ['priorCpap', 'prefInspire'],
     expectedSuggestions: ['Weight management'],
     expectedTags: ['WEIGHT'],
-    excludedTags: ['HNS', 'INSPIRE-EVAL', 'HNS-WORKUP', 'HB-URG'],
+    excludedTags: ['HNS', 'INSPIRE-EVAL', 'HNS-WORKUP', 'OXYGEN-URG'],
     clinicianIncludes: ["BMI 42 exceeds Capital ENT's current HGNS referral guardrail of 40", 'Not a candidate'],
     clinicianExcludes: ['Complete a device-specific candidacy evaluation'],
     patientIncludes: ['weight management', 'oxygen'],
@@ -821,7 +821,7 @@ async function runScenario(win, doc, scenario, index) {
     selectedNerveStimulationWithoutRecommendation: data.selectedPlanFields.includes('planInspire') &&
       !recTags.some(tag => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT', 'HNS-WORKUP'].includes(tag)),
     missingUarsDiagnosticSuggestion: recTags.includes('UARS-EVAL') && suggestions.length === 0,
-    severeHypoxemiaMissingFromDraftSummary: recTags.includes('HB-URG') &&
+    severeHypoxemiaMissingFromDraftSummary: recTags.includes('OXYGEN-URG') &&
       !/(oxygen|hypox|urgent|prompt|recheck|follow-up)/i.test(draftSummary),
     limitedStudyStillSuggestsDefinitiveTreatment: scenario.id === 'limited-watchpat' &&
       suggestions.some(item => ['planPap', 'planPositional'].includes(item.field)),

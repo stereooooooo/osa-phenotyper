@@ -4,6 +4,10 @@ _Regenerated 2026-06-11 after the clinical-logic refinements (ranked plan, gated
 
 _Updated 2026-07-15 (v5): nerve-stimulation logic is device-specific. Complete concentric collapse (CCC) contraindicates unilateral Inspire; the app no longer routes CCC automatically to Genio because current US Genio labeling states that safety/effectiveness in CCC are not established. BMI >40 remains a Capital ENT referral guardrail rather than a universal device contraindication. Profiles **#38 (CCC device-specific review)** and **#39 (BMI >40 guardrail)** lock this behavior; see [docs/citations.md](citations.md) for evidence._
 
+_Superseded HB snapshot: `ER-2026-07-19-HB` replaced `HB-URG` with a separate conventional
+nocturnal-hypoxemia safety tag, removed low-HB treatment ordering, and limited the HB phenotype to
+entered event-linked HB. The profile tables below remain historical until the next full recapture._
+
 ---
 
 ### 1. Pre-study snorer

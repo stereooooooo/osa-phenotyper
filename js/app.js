@@ -84,6 +84,7 @@ const REC_PRIORITY = {
   'SLEEP-STUDY': 2,
   'NEG-HST-PSG': 3,
   'CBTI': 5, 'COMISA-PAP': 6, 'COMISA-SRT-CAUTION': 7,
+  'OXYGEN-URG': 8,
   'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11,
   'TONSIL': 15, 'SOFT-TISSUE-STRONG': 16, 'FRIEDMAN-III-ALT': 17,
   'NASAL-OPT': 12,
@@ -166,7 +167,7 @@ function filterRecommendationsForEncounter(entries, encounter) {
   // Preserve legacy snapshots and the existing synthetic matrix. The live form
   // requires a visit reason, so real encounters always use the intent-aware path.
   if (!encounter.visitReason && !encounter.planConfirmed) return source;
-  const alwaysKeep = new Set(['HB-URG', 'DHR-TX', 'DHR-CARDS', 'MILD-LIFESTYLE', 'SNORE-ALCOHOL']);
+  const alwaysKeep = new Set(['OXYGEN-URG', 'DHR-TX', 'DHR-CARDS', 'MILD-LIFESTYLE', 'SNORE-ALCOHOL']);
   const allowed = new Set(alwaysKeep);
 
   const addPlan = field => (PLAN_FIELD_TO_TAGS[field] || []).forEach(tag => allowed.add(tag));
@@ -226,11 +227,11 @@ function buildInsufficientDataAssessment(ctx) {
     domains.push({
       key: 'oxygen',
       clinician: hasPartialOxygenData
-        ? `Only ${metricCount} oxygen-burden metric${metricCount === 1 ? '' : 's'} entered (ODI, T90, nadir, or hypoxic burden area). Low-hypoxic-burden framing and cardiovascular-risk de-emphasis should stay unavailable until fuller oxygen data are reviewed.`
-        : 'No oxygen-burden metrics entered (ODI, T90, nadir, or hypoxic burden area). Cardiovascular risk stratification and low-hypoxic-burden treatment de-emphasis should be treated as unavailable.',
+        ? `Only ${metricCount} oxygen metric${metricCount === 1 ? '' : 's'} entered. Review available ODI, T90, nadir, area below 90%, and event-linked hypoxic burden as distinct measures before characterizing the oxygen profile.`
+        : 'No overnight oxygen metrics entered. Oxygen-related severity and possible non-OSA hypoxemia cannot be assessed from the current record.',
       patient: hasPartialOxygenData
-        ? 'Only part of your overnight oxygen data is available so far, so we should not yet assume the oxygen-related risk is low or move CPAP lower on the list based on incomplete oxygen information.'
-        : 'We still need fuller overnight oxygen information to judge how strongly your sleep apnea affected oxygen levels and long-term risk.',
+        ? 'Only part of your overnight oxygen information is available so far. Your care team should review the complete study before describing how strongly breathing interruptions affected oxygen levels.'
+        : 'We still need the overnight oxygen information from your sleep study to understand how breathing interruptions affected oxygen levels.',
     });
   }
 
@@ -463,7 +464,7 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
 
   if (domainKeys.has('oxygen')) {
     prependedEntries.push({
-      text: 'Review the full sleep-study oxygen metrics (ODI, T90, nadir, and hypoxic burden when available) before labeling cardiovascular risk as low or de-emphasizing CPAP.',
+      text: 'Review the full sleep-study oxygen profile. Keep ODI, T90, nadir, area below 90%, and event-linked hypoxic burden separate rather than combining them into one category.',
       tag: 'OXYGEN-WORKUP',
     });
   }
@@ -1056,21 +1057,14 @@ function detectPhenotypes(m, T){
     add('REM-Predominant OSA',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`]);
   }
 
-  /* Composite HB: trigger if ANY metric is in moderate+ range.
-     Nadir only triggers at severe level (<75%) — weaker standalone predictor than
-     duration/frequency metrics (Azarbarzin 2019, Zinchuk 2020). */
-  const hbTrigger = (exists(m.hbPH) && m.hbPH >= T.hypoxicBurden.hbPerHour) ||
-                    (exists(m.odi) && m.odi >= T.hypoxicBurden.odi) ||
-                    (exists(m.nadir) && m.nadir < T.hypoxicBurden.nadirSevere) ||
-                    (exists(m.t90) && m.t90 >= T.hypoxicBurden.t90) ||
-                    (exists(m.hb90PH) && m.hb90PH > T.hypoxicBurden.areaUnder90);
+  /* True event-linked HB only. ODI, T90, nadir SpO2, and area below 90%
+     remain separate conventional oxygen metrics and cannot create this
+     phenotype (Azarbarzin 2019; ATS workshop 2024). */
+  const hbTrigger = exists(m.hbPH) && m.hbPH >= T.hypoxicBurden.signalBoundary;
   if(hbTrigger){
     add('High Hypoxic Burden',[
       exists(m.hbPH)?`HB/hr ${m.hbPH}`:'',
-      exists(m.hb90PH)?`Area<90/hr ${m.hb90PH}`:'',
-      exists(m.t90)?`T90 ${m.t90}%`:'',
-      exists(m.odi)?`ODI ${m.odi}`:'',
-      exists(m.nadir)?`Nadir SpO₂ ${m.nadir}%`:''
+      'Research-context signal; no validated clinical category'
     ]);
   }
 
@@ -1226,7 +1220,7 @@ function buildHstFlags(m, T){
 function mapTreatments(f, m, T){
   const {
     phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
-    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, severeNocturnalHypoxemia,
     negativeHstNeedsPsg,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty, papMode,
     prefAvoidCpap, prefSurgery, prefInspire,
@@ -1330,11 +1324,8 @@ function mapTreatments(f, m, T){
         pushRec(recs,'Oral appliance therapy is a reasonable alternative/adjunct in REM-predominant OSA.','REM-MAD');
         break;
       case 'High Hypoxic Burden':
-        // Urgency / CV-risk rec only when HB is in the genuinely-high range (CPAP CV-benefit
-        // evidence). A single moderate metric leaves this as supportive context, no urgency.
-        if (hbHighTier) {
-          pushRec(recs,'Hypoxic burden is in the high range where CPAP has shown cardiovascular benefit in trial cohorts — prioritize timely initiation of effective therapy.','HB-URG');
-        }
+        // Event-linked HB is retained as research context. Post hoc treatment
+        // interactions do not justify automatic treatment allocation.
         break;
       case 'Nasal-Resistance Contributor':
         pushRec(recs,'Nasal optimization (saline rinse, intranasal steroid, ENT evaluation) can improve airflow and CPAP/MAD tolerance.','NASAL-OPT');
@@ -1366,6 +1357,10 @@ function mapTreatments(f, m, T){
         break;
     }
   }); /* end phenotype treatment forEach */
+
+  if (exists(ahi) && ahi >= 5 && severeNocturnalHypoxemia) {
+    pushRec(recs,'Substantial nocturnal hypoxemia warrants timely clinician review, effective treatment of confirmed OSA, evaluation for contributors not fully explained by OSA when appropriate, and objective confirmation of oxygen control.','OXYGEN-URG');
+  }
 
   /* ─── FRIEDMAN STAGE (auto-calculated) ────────────────────── */
   /* Friedman 2004: FTP + tonsils + BMI → surgical candidacy tier */
@@ -1472,8 +1467,7 @@ function mapTreatments(f, m, T){
     if (out.phen.includes('REM-Predominant OSA')) { score -= 1; factors.push('REM-predominant'); }
     /* High loop gain: lower collapsibility predicts better response */
     if (out.phen.includes('High Loop Gain')) { score -= 1; factors.push('high loop gain'); }
-    /* High HB: lower T90 predicts better response */
-    if (out.phen.includes('High Hypoxic Burden')) { score -= 1; factors.push('high hypoxic burden'); }
+    /* Event-linked HB is not used in this unvalidated response score. */
     /* Retrognathia: mandibular retrusion independently predicts better MAD response (Hamza 2026) */
     if (retrognathia) { score += 1; factors.push('retrognathia'); }
     /* Hypopnea-predominant: better MAD response than apnea-predominant (Camañes-Gonzalvo 2025) */
@@ -1619,7 +1613,7 @@ function mapTreatments(f, m, T){
     // Offer CBT-I early. Sweetman 2019 supports CBT-I before PAP; MATRICS (Ong
     // 2020) found no significant sequential-vs-concurrent difference. Do not
     // universally delay effective OSA therapy when clinical urgency is high.
-    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Sweetman 2019; Ong/MATRICS 2020).', 'CBTI');
+    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Sweetman 2019; Ong/MATRICS 2020).', 'CBTI');
     // APAP preferred over fixed CPAP for COMISA
     pushRec(recs, 'Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).', 'COMISA-PAP');
     // Sleep restriction safety caveat for sleepy COMISA
@@ -1642,7 +1636,7 @@ function buildClinicianReport(f, m, T){
   const {
     ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons, cpapDifficulty,
     cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
-    friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbHighTier, hbPH, hnsStage,
+    friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbPH, hnsStage,
     isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
@@ -1651,7 +1645,7 @@ function buildClinicianReport(f, m, T){
     hgnsHelped, hgnsImplantYear, priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType,
     cvdConditions, lvefFollowupNeeded, glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
-    encounter, nextTestGuidance, chronicOpioidUse, neuromuscularRespiratoryRisk,
+    encounter, nextTestGuidance, diagnosticSignals, chronicOpioidUse, neuromuscularRespiratoryRisk,
     hypoventilationRisk, severeInsomniaCompromisesHst,
   } = m;
   const studyType = f.get('studyType') || null;
@@ -1684,6 +1678,7 @@ function buildClinicianReport(f, m, T){
   // nasal obstruction is the dominant adherence barrier (Carrie 2023; Stapleton
   // 2014; Koutsourelakis 2008; Cha 2023; see docs/citations.md).
   const phenEvidenceTooltips = {
+    'High Hypoxic Burden': 'This signal uses event-linked hypoxic burden, the oxygen-desaturation area attributable to respiratory events divided by sleep time. It is not ODI, T90, or oxygen nadir. Higher values are associated with cardiovascular risk in observational cohorts, but no universal clinical categories or stand-alone treatment thresholds have been validated.',
     'Nasal-Resistance Contributor': 'Higher baseline NOSE severity predicts a larger average improvement in nasal symptoms after septoplasty, but it does not reliably predict AHI improvement. Nasal surgery is most likely to improve PAP use when nasal obstruction is the dominant barrier; evidence for this PAP predictor comes from small observational cohorts.',
     'Positional OSA': 'Position-specific WatchPAT values are useful directional signals, but the app does not capture minutes spent supine and non-supine, and WatchPAT positional phenotype agreement has not been specifically validated against PSG. Home-derived positional confidence is therefore capped at Moderate.',
     'REM-Predominant OSA': 'With at least 30 minutes of REM, single-night PAT home testing showed high specificity (0.97) but limited sensitivity (0.68) for REM-predominant OSA versus PSG. The app suppresses the phenotype with limited REM sampling and caps a home-derived signal at Moderate.',
@@ -1741,7 +1736,7 @@ function buildClinicianReport(f, m, T){
   const confTable = out.phen.map(tag => {
     const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
     const icon = phenIcons[tag] || 'bi-circle';
-    const displayTag = tag === 'High Hypoxic Burden' && !hbHighTier ? 'Elevated Hypoxic Burden' : tag;
+    const displayTag = tag === 'High Hypoxic Burden' ? 'Event-Linked Hypoxic Burden Signal' : tag;
     const evidenceTooltip = phenEvidenceTooltips[tag]
       ? clinicianEvidenceTooltip(phenEvidenceTooltips[tag], `Evidence context for ${displayTag}`)
       : '';
@@ -1752,8 +1747,11 @@ function buildClinicianReport(f, m, T){
   if(out.phen.includes('High Loop Gain')){
     guardrails.push('If considering ASV, confirm LVEF > 45% (contraindicated in HFrEF \u226445%).');
   }
-  if(out.phen.includes('High Hypoxic Burden') && hbHighTier){
-    guardrails.push('Hypoxic burden is in the high range associated with elevated CV risk in trial cohorts — prioritize timely initiation of effective therapy. (HB action thresholds are population-derived, not yet guideline-endorsed.)');
+  if(diagnosticSignals?.hbIsaaccCohortContext){
+    guardrails.push(`Event-linked HB ${hbPH} %min/h matches a cut point used in post hoc research cohorts. This is prognostic context, not a validated clinical category or stand-alone reason to select, withhold, or rank a treatment.`);
+  }
+  if(diagnosticSignals?.severeNocturnalHypoxemia){
+    guardrails.push('Substantial conventional nocturnal hypoxemia is present. Review whether OSA fully explains it, treat confirmed OSA effectively, and objectively confirm oxygen control; do not relabel ODI, T90, or nadir as hypoxic burden.');
   }
   if(out.phen.includes('Positional OSA') && ahi >= T.severity.severe){
     guardrails.push('Positional therapy alone may be insufficient at this AHI severity; consider as adjunct to PAP.');
@@ -1765,7 +1763,7 @@ function buildClinicianReport(f, m, T){
     const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
     let comisaBullets = `<strong>COMISA — ${comisaSeverity} (ISI ${isi}) + OSA</strong>
       <ul class="mb-1 mt-1">
-        <li>Start CBT-I promptly; begin PAP concurrently or sequentially based on OSA severity, oxygen burden, access, and patient preference <small class="text-muted">(Sweetman 2019; MATRICS 2020)</small></li>
+        <li>Start CBT-I promptly; begin PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, access, and patient preference <small class="text-muted">(Sweetman 2019; MATRICS 2020)</small></li>
         <li>Do not delay effective OSA treatment when severe disease, substantial hypoxemia, or safety-sensitive sleepiness creates urgency</li>
         <li>Use APAP over fixed CPAP; set EPR/flex to max, enable ramp (min 4–5, max 15–16)</li>
         <li>Avoid sedative-hypnotics as monotherapy (worsen OSA); if hypnotic bridge needed, ensure concurrent PAP</li>`;
@@ -1992,9 +1990,7 @@ function buildClinicianReport(f, m, T){
     keyNumItems.push(`<div class="osa-clin-metric"><span class="osa-clin-metric-val" style="color:${remColor}">${remAhi}</span><span class="osa-clin-metric-lbl">REM AHI</span></div>`);
   }
   if (exists(hbPH)) {
-    const hbColor = hbPH >= T.hypoxicBurden.hbPerHourHigh
-      ? '#dc3545'
-      : hbPH >= T.hypoxicBurden.hbPerHour
+    const hbColor = hbPH >= T.hypoxicBurden.signalBoundary
         ? '#fd7e14'
         : '#6c757d';
     keyNumItems.push(`<div class="osa-clin-metric"><span class="osa-clin-metric-val" style="color:${hbColor}">${hbPH}</span><span class="osa-clin-metric-lbl">HB / hr</span></div>`);
@@ -2012,55 +2008,27 @@ function buildClinicianReport(f, m, T){
     ? `<div class="osa-clin-metrics-row">${keyNumItems.join('')}</div>`
     : '';
 
-  /* ── HB Treatment Allocation (Pinilla 2023, Azarbarzin 2025, Peker 2025) ── */
+  /* ── Event-linked HB research context and conventional hypoxemia ── */
   const hbTreatmentNote = (() => {
-    // Three-tier HB CV risk using updated evidence:
-    // Very high (≥87 %min/h): pooled 2025 high-risk OSA — strongest CPAP indication
-    // High (≥73 %min/h): ISAACC — CPAP reduces CV events (HR 0.57)
-    // Moderate (30–73): phenotype detected but below CPAP CV benefit threshold
-    // Also check non-HB-area metrics that indicate severe hypoxemia
-    const veryHighHB = exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHourSevere;
-    const highHB = exists(hbPH) && hbPH >= T.hypoxicBurden.hbPerHourHigh;
-    const severeOther = (exists(odi) && odi > T.hypoxicBurden.odiSevere) || (exists(t90) && t90 > T.hypoxicBurden.t90Severe) || (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere);
-
-    // ΔHR + HB synergy (Azarbarzin 2021): high ΔHR + high HB = HR 3.50 for fatal CVD
-    const highDHR = exists(dhr) && dhr >= T.deltaHeartRate.dhr;
-    const synergy = (highHB || severeOther) && highDHR;
-
-    if (veryHighHB || (highHB && severeOther)) {
+    const notes = [];
+    if (exists(hbPH) && hbPH >= T.hypoxicBurden.signalBoundary) {
+      const cohortContext = diagnosticSignals?.hbPooledTrialContext
+        ? 'This value matches the 87.1 %min/h subgroup cut point used in a pooled post hoc trial analysis.'
+        : diagnosticSignals?.hbIsaaccCohortContext
+          ? 'This value matches the 73.1 %min/h subgroup cut point used in the post hoc ISAACC analysis.'
+          : 'This value exceeds the app\'s exploratory research-signal boundary of 30 %min/h.';
+      notes.push(`<div class="alert alert-info mt-2 py-2 px-3"><strong>Event-Linked Hypoxic Burden: Research Context</strong><ul class="mb-1 mt-1"><li>HB ${hbPH.toFixed(1)} %min/h</li><li>${cohortContext}</li><li>Higher HB is associated with cardiovascular risk in observational cohorts, but no universal clinical categories or stand-alone treatment thresholds are validated.</li><li>Do not use this value alone to select, withhold, or rank PAP or an alternative treatment.</li></ul></div>`);
+    }
+    if (diagnosticSignals?.severeNocturnalHypoxemia) {
       const triggers = [];
-      if (veryHighHB) triggers.push(`HB ${hbPH.toFixed(0)} %min/h (≥87 pooled threshold)`);
-      else if (highHB) triggers.push(`HB ${hbPH.toFixed(0)} %min/h (≥73 ISAACC threshold)`);
-      if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
-      if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
-      if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>Very High Hypoxic Burden — Strong CPAP Indication</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>High-risk OSA per pooled multi-trial analysis <small class="text-muted">(Azarbarzin 2025)</small></li><li>CPAP significantly reduces CV events in this group — strongly prioritize effective PAP</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD — highest-risk phenotype, urgent treatment <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}<li><small class="text-muted">HB action thresholds are population-derived (ISAACC median / pooled cohorts), not yet guideline-endorsed cutoffs — weigh alongside the overall clinical picture.</small></li></ul></div>`;
+      const oxygen = T.nocturnalHypoxemia;
+      if (exists(odi) && odi > oxygen.odiSevere) triggers.push(`ODI ${odi} (>50/h)`);
+      if (exists(t90) && t90 > oxygen.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
+      if (exists(nadir) && nadir < oxygen.nadirSevere) triggers.push(`nadir SpO2 ${nadir}% (<75%)`);
+      if (exists(hb90PH) && hb90PH > oxygen.areaUnder90Severe) triggers.push(`area below 90% ${hb90PH}/h (>2)`);
+      notes.push(`<div class="alert alert-danger mt-2 py-2 px-3"><strong>Substantial Nocturnal Hypoxemia</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>These conventional oxygen metrics are clinically important, but they are not event-linked hypoxic burden.</li><li>Treat confirmed OSA effectively, consider contributors not fully explained by OSA, and objectively confirm oxygen control.</li></ul></div>`);
     }
-    if (highHB || severeOther) {
-      const triggers = [];
-      if (highHB) triggers.push(`HB ${hbPH.toFixed(0)} %min/h (≥73 ISAACC threshold)`);
-      if (exists(odi) && odi > T.hypoxicBurden.odiSevere) triggers.push(`ODI ${odi} (>50)`);
-      if (exists(t90) && t90 > T.hypoxicBurden.t90Severe) triggers.push(`T90 ${t90}% (>20%)`);
-      if (exists(nadir) && nadir < T.hypoxicBurden.nadirSevere) triggers.push(`nadir ${nadir}% (<75%)`);
-      return `<div class="alert alert-danger mt-2 py-2 px-3"><strong>High Hypoxic Burden — CPAP CV Benefit</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>Above thresholds where CPAP reduces CV events (HR 0.57) <small class="text-muted">(Pinilla 2023)</small></li><li>HB (not AHI alone) predicts MACCEs (HR 1.87) <small class="text-muted">(RICCADSA / Peker 2025)</small></li><li>Prioritize effective PAP therapy for CV risk reduction</li>${synergy ? '<li class="text-danger"><strong>ΔHR + HB synergy:</strong> HR 3.50 for fatal CVD <small class="text-muted">(Azarbarzin 2021)</small></li>' : ''}<li><small class="text-muted">HB action thresholds are population-derived (ISAACC median / pooled cohorts), not yet guideline-endorsed cutoffs — weigh alongside the overall clinical picture.</small></li></ul></div>`;
-    }
-    return '';
-  })();
-
-  /* ── Lower HB context. HB is not a stand-alone treatment allocator. ── */
-  const mildLowHbNote = (() => {
-    const lowHB = oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden');
-    if (!lowHB || !exists(ahi) || ahi < 5) return '';
-
-    const isMild = ahi < 15;
-    if (isMild) {
-      return `<div class="alert alert-success mt-2 py-2 px-3"><strong>Mild OSA + Lower Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>The available oxygen metrics do not place this patient in the app's elevated hypoxic-burden tier.</li><li>Choose treatment using symptoms, comorbidities, anatomy, preferences, and expected adherence. Do not use low HB alone to claim equivalent outcomes or to move PAP off the table.</li></ul></div>`;
-    }
-    // Moderate OSA + low HB: still worth noting
-    if (ahi < 30) {
-      return `<div class="alert alert-info mt-2 py-2 px-3"><strong>Moderate OSA + Lower Hypoxic Burden</strong><ul class="mb-1 mt-1"><li>The available oxygen metrics do not place this patient in the app's elevated hypoxic-burden tier.</li><li>This does not remove standard treatment indications. Integrate symptoms, comorbidities, anatomy, preferences, and likely adherence.</li></ul></div>`;
-    }
-    return '';
+    return notes.join('');
   })();
 
   /* ── ATS 2025 Triage Note ──────────────────────────────── */
@@ -2257,7 +2225,6 @@ function buildClinicianReport(f, m, T){
   }
   if (hbTreatmentNote) clinAnalysisParts.push(hbTreatmentNote.replace(/mt-2/g, 'mb-2'));
   if (atsTriage) clinAnalysisParts.push(atsTriage.replace(/mt-2/g, 'mb-2'));
-  if (mildLowHbNote) clinAnalysisParts.push(mildLowHbNote.replace(/mt-2/g, 'mb-2'));
 
   /* ── Build collapsible treatment candidacy content ───── */
   const txCandidacyParts = [];
@@ -2292,7 +2259,7 @@ function buildClinicianReport(f, m, T){
     exists(fHypopneas) ? `Collapsibility: ${collapsibility}` : null,
     loopGainSupportCount >= 1 ? `Loop gain: ${loopGainSupportCount >= T.loopGain.supportMin ? 'suspected' : 'possible'}` : null,
     edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `Low Arousal Threshold (${edwardsArTH.score}/${edwardsArTH.maxScore} criteria)` : null,
-    hbTreatmentNote ? 'Hypoxic burden note' : null,
+    hbTreatmentNote ? 'Oxygen and HB context' : null,
   ].filter(Boolean);
 
   const candidacyBadges = [
@@ -2576,9 +2543,8 @@ document.getElementById('form').addEventListener('submit', e => {
     edwardsArTHMaxScore: edwardsArTH?.maxScore ?? 0
   };
 
-  /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
-     framing are reserved for this tier; a single MODERATE metric flags the phenotype as
-     supportive context only. Thresholds are population-derived (see config.js). */
+  /* Shared diagnostic and oxygen signals. Event-linked HB research context and
+     conventional nocturnal hypoxemia remain separate by design. */
   const diagnosticSignals = OSAReportShared.assessEncounterSignals({
     studyType, ahi, rdi: n(f.get('patRdi')), arInd, ess, isi,
     tst: n(f.get('tst')), remPercent, centralIndex: pahic3, csr, cai,
@@ -2597,7 +2563,7 @@ document.getElementById('form').addEventListener('submit', e => {
     studyType, ahi, signals: diagnosticSignals,
     severityPrecisionNeeded, nightVariabilityConcern, ahiRdiDiscordanceConcern,
   }, T);
-  const hbHighTier = diagnosticSignals.highHypoxicBurden;
+  const severeNocturnalHypoxemia = diagnosticSignals.severeNocturnalHypoxemia;
 
   /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
   const loopGainSupportCount =
@@ -2630,7 +2596,7 @@ document.getElementById('form').addEventListener('submit', e => {
   } = mapTreatments(f, {
     phen: out.phen,
     sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
-    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, severeNocturnalHypoxemia,
     negativeHstNeedsPsg: diagnosticSignals.negativeHstNeedsPsg,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty,
     papMode: f.get('papMode') || '',
@@ -2650,7 +2616,7 @@ document.getElementById('form').addEventListener('submit', e => {
   } = buildClinicianReport(f, {
     ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons,
     cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
-    friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbHighTier, hbPH, hnsStage,
+    friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbPH, hnsStage,
     isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
@@ -2660,7 +2626,7 @@ document.getElementById('form').addEventListener('submit', e => {
     priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType, cvdConditions, lvefFollowupNeeded,
     glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
-    encounter, nextTestGuidance,
+    encounter, nextTestGuidance, diagnosticSignals,
     chronicOpioidUse: chronicOpioidUse === 'yes',
     neuromuscularRespiratoryRisk: neuromuscularRespiratoryRisk === 'yes',
     hypoventilationRisk: hypoventilationRisk === 'yes',
@@ -2745,7 +2711,10 @@ document.getElementById('form').addEventListener('submit', e => {
     patientName: (document.getElementById('patientName')?.value || '').trim(),
     reportDate: localIsoDate(),
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
-    lowHypoxicBurden: oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden'),
+    hypoxicBurdenSignal: diagnosticSignals.hypoxicBurdenSignal,
+    hbIsaaccCohortContext: diagnosticSignals.hbIsaaccCohortContext,
+    hbPooledTrialContext: diagnosticSignals.hbPooledTrialContext,
+    severeNocturnalHypoxemia,
     oxygenMetricsAvailable,
     negativeHstNeedsPsg: diagnosticSignals.negativeHstNeedsPsg,
     nondiagnosticHstNeedsPsg: diagnosticSignals.nondiagnosticHstNeedsPsg,

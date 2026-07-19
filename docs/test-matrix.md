@@ -228,7 +228,7 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 | 110 | Partial positional dataset | If either supine AHI or non-supine AHI is missing, the app should treat positional status as unresolved and surface a positional-workup caveat rather than implying non-positional disease |
 | 111 | Partial REM/NREM dataset | If either REM AHI or NREM AHI is missing, the app should treat REM-specific worsening as unresolved and surface a sleep-stage workup caveat rather than implying it is absent |
 | 112 | Zero-value ratio handling | Legitimate `0` values in non-supine AHI or NREM AHI should still behave as real data rather than disappearing behind truthy checks |
-| 113 | Thin oxygen composite | Low-hypoxic-burden framing should require more than a single oxygen metric so one normal value does not read as low oxygen risk |
+| 113 | Thin oxygen profile | A single oxygen metric should not be treated as a complete overnight oxygen profile or used to characterize oxygen-related severity as low |
 
 ### Group 25: Identity Provenance Timeline
 | # | Name | Key Features |
@@ -292,7 +292,7 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 ### Group 33: Guided-Plan Edge-Case Audit
 | # | Name | Key Features |
 |---|------|-------------|
-| 140 | Severe hypoxemia with PAP retry | Severe OSA, major oxygen burden, PAP comfort barriers, nasal obstruction, and weight readiness should produce a focused PAP-retry plan while preserving the urgent oxygen-risk recommendation in both clinician and patient outputs |
+| 140 | Severe hypoxemia with PAP retry | Severe OSA, substantial nocturnal hypoxemia, PAP comfort barriers, nasal obstruction, and weight readiness should produce a focused PAP-retry plan while preserving the `OXYGEN-URG` safety recommendation in both clinician and patient outputs |
 | 141 | Favorable tonsillar surgery pathway | A non-obese, Friedman Stage I patient with 4+ tonsils and PAP intolerance who requests surgery should receive an airway-surgery draft and tonsil/palate counseling without an unrelated HNS or universal DISE prerequisite |
 | 142 | Probable UARS plan suggestion | Normal pAHI with marked symptoms and PAT RDI elevation should surface diagnostic testing in the MA suggestion layer, not only after the clinician manually selects a plan and runs the analysis |
 | 143 | Limited WatchPAT plan restraint | A three-hour study with very little REM should keep quality flags clinician-facing, suppress REM phenotyping, and make the chart-aware plan draft reflect the need for caution before presenting treatment pathways as definitive |
@@ -380,3 +380,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 188 | Explicit night-to-night variability concern without a PSG-preferred condition | The module should offer selective multi-night HST, approximately three valid nights with the same device, without presenting it as routine care |
 | 189 | Adequate uncomplicated positive WatchPAT | The module should state that no additional diagnostic test is indicated now |
 | 190 | WatchPAT with chronic opioid use, respiratory muscle weakness, hypoventilation concern, or clinician-designated severe insomnia | The module should identify the documented reason and recommend PSG; patient questionnaire answers remain subject to clinical verification |
+
+### Group 42: Event-Linked HB and Conventional Hypoxemia Separation
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 191 | Event-linked HB 80 %min/h with otherwise reassuring conventional oxygen metrics | Creates a Moderate HB research signal and ISAACC cohort-context note, but no conventional-hypoxemia urgency or automatic treatment allocation |
+| 192 | ODI 55/h or nadir SpO2 74% with HB below the research boundary | Creates the separate substantial-nocturnal-hypoxemia safety pathway but cannot create the event-linked HB phenotype |
+| 193 | HB at a 73.1 or 87.1 research-cohort cut point | Clinician wording identifies the post hoc cohort context and explicitly states that the value is not a validated clinical category, treatment guarantee, or stand-alone allocation rule |
+| 194 | Mild OSA with reassuring oxygen metrics and a selected PAP plan | Reassuring oxygen metrics do not automatically move PAP down the patient plan; treatment order follows the clinician-confirmed plan, symptoms, anatomy, preferences, and other clinical factors |

@@ -82,17 +82,21 @@ const OSA_CONFIG = {
     },
 
     hypoxicBurden: {
-      // Composite tiering: worst metric determines tier.
-      // IMPORTANT (Phase 2, 2026-06): these cutoffs are POPULATION-DERIVED, not
-      // guideline-endorsed action thresholds. 30 is an Azarbarzin 2019 tertile boundary;
-      // 73 is the ISAACC cohort median (post-hoc ACS subgroup). HB is a cardiovascular-risk
-      // MARKER. A single MODERATE metric flags the phenotype as supportive CONTEXT only —
-      // it no longer drives a treatment-urgency recommendation. Urgency / CV framing is
-      // reserved for the HIGH tier (hbPerHourHigh / severe-range metrics), where trial
-      // evidence for CPAP CV benefit exists. See app.js hbHighTier.
-      hbPerHour:          30,   // %min/hr — moderate (phenotype CONTEXT trigger; Azarbarzin tertile)
-      hbPerHourHigh:      73,   // %min/hr — high tier; ISAACC: CPAP reduces CV events above this (HR 0.57)
-      hbPerHourSevere:    87,   // %min/hr — pooled 2025: high-risk OSA definition (Azarbarzin 2025)
+      // Event-linked hypoxic burden (HB) is the desaturation area attributable to
+      // respiratory events divided by sleep time, in %min/h. It is not interchangeable
+      // with ODI, T90, nadir SpO2, or area below 90%. No universally validated clinical
+      // low/moderate/high categories exist. These values are retained only to describe
+      // research-cohort context, never as stand-alone treatment-allocation thresholds.
+      // See Azarbarzin 2019; Pinilla 2023; Esmaeili 2023; ATS workshop 2024; Parekh 2026.
+      signalBoundary:          30,    // exploratory app signal; cohort-derived, not a clinical category
+      isaaccCohortContext:     73.1,  // post hoc ISAACC subgroup cut point, descriptive only
+      pooledTrialContext:      87.1,  // pooled post hoc trial subgroup cut point, descriptive only
+    },
+
+    nocturnalHypoxemia: {
+      // Conventional oxygen metrics remain separate from event-linked HB. These
+      // review bands identify substantial nocturnal hypoxemia that warrants clinical
+      // attention; they do not create the HB phenotype and do not prove OSA causality.
       odi:                20,   // ODI — moderate threshold (strongest HB correlator, r=0.73)
       odiSevere:          50,   // ODI — severe threshold
       nadir:              75,   // SpO₂ % — only triggers at severe level (< 75%)

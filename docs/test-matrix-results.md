@@ -1,8 +1,26 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 19, 2026
-**Latest app version:** clinical-pilot build `7e1bb55` (`feat: add clinician next-test guidance`)
+**Latest app version:** working copy after `ER-2026-07-19-HB` (deployment pending)
 
 ---
+
+## July 19, 2026 Event-Linked HB and Nocturnal-Hypoxemia Separation
+
+- Removed the app-created worst-of composite that labeled HB, ODI, T90, nadir, or area below 90%
+  as the same phenotype. Only an entered event-linked HB value can now create the HB research signal.
+- Capped the HB signal at Moderate because no universal low/moderate/high categories are validated.
+  Values 73.1 and 87.1 appear only as post hoc research-cohort context and do not allocate treatment.
+- Added a separate `OXYGEN-URG` pathway for substantial conventional nocturnal hypoxemia. It asks
+  the clinician to review whether OSA fully explains the finding, treat confirmed OSA effectively,
+  and objectively confirm oxygen control.
+- Removed `lowHypoxicBurden`, low-HB PAP de-emphasis, HB-based alternatives-first ordering, and the
+  HB penalty from the exploratory MAD score.
+- Added counterexamples confirming that HB 80 with otherwise reassuring oxygen metrics does not
+  create conventional-hypoxemia urgency, while ODI 55 or nadir 74 cannot create the HB phenotype.
+- Full headless regression suite: **1,414 assertions passed**.
+
+> Earlier entries below preserve historical results. References to `HB-URG`, composite HB tiers,
+> or low-HB treatment ordering are superseded by this review and are not current behavior.
 
 ## July 19, 2026 Clinician Next-Test Guidance
 

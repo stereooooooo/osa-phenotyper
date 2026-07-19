@@ -26,6 +26,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 | ER-2026-07-19-WATCHPAT | 2026-07-19 | 2026-07-19 | WatchPAT diagnostic accuracy, severity classification, REM and positional phenotyping, central-event signals, negative HSAT workflow, and multi-night testing | AASM diagnostic guideline 2017; Iftikhar et al. 2022; Ioachimescu et al. 2020; Massie et al. 2022; Pillar et al. 2020; Punjabi et al. 2020; Roeder et al. 2020; Fricke et al. 2026 | WatchPAT remains appropriate for many uncomplicated patients, but mild/moderate severity needs clinician-visible uncertainty. Routine multi-night testing and automatic PSG for every negative study are not supported. PSG remains the standard after a negative/inadequate HSAT when OSA suspicion persists and is preferred for guideline-defined complicated patients. | DX-01, DX-02, DX-03, PH-05, PH-06, SAF-02 | Clinician-only flags, guided PSG draft for captured complicated diagnostic cases, and phenotype-confidence caps shipped in build `d4fdd89`; patient technical warnings remain suppressed |
 | ER-2026-07-19-NEXT-TEST | 2026-07-19 | 2026-07-19 | Operationalizing repeat HST versus in-lab PSG guidance | AASM diagnostic guideline 2017; Iftikhar et al. 2022; Ioachimescu et al. 2020; Punjabi et al. 2020; Roeder et al. 2020; Fricke et al. 2026 | Added the missing AASM complicating-condition inputs and a clinician-only four-state next-test hierarchy. Selective multi-night HST requires an explicit clinician variability concern and remains subordinate to PSG escalation rules. | DX-01, DX-02, DX-03, DX-04, SAF-02 | Draft guidance is visible to clinicians and MAs, remains editable, and reaches the patient only after Diagnostic Testing is selected and confirmed |
 | ER-2026-07-19-PAP | 2026-07-19 | 2026-07-19 | PAP compliance downloads, residual device-reported events, leak, adherence, central signals, and follow-up testing | ATS PAP tracking statement 2013; ResMed AirSense 11 user guide; AASM PAP guideline 2019; AASM longitudinal testing guidance 2021; Reiter et al. 2016; Midelet et al. 2021; May et al. 2023; Malhotra et al. 2026 accepted manuscript | Added a clinician-only, verification-gated PAP download assistant. Usage and leak are reviewed before efficacy; P95 leak alone remains contextual; device event indices remain manufacturer-specific estimates; explicitly confirmed current symptoms and central signals prevent false reassurance; no pressure is selected or changed automatically. | PAP-01, PAP-02, PAP-03, SAF-01 | New structured input, ResMed AirView-oriented parser, editable clinician guidance, and regression scenarios; no unconfirmed guidance is sent to patients |
+| ER-2026-07-19-HB | 2026-07-19 | 2026-07-19 | Event-linked hypoxic burden definition, prognostic evidence, cohort cut points, treatment interactions, and separation from conventional nocturnal hypoxemia | Azarbarzin et al. 2019; Labarca et al. 2023; Trzepizur et al. 2022; Pinilla et al. 2023; Parekh 2024; Esmaeili et al. 2023; Peker et al. 2025; Cohen et al. ATS workshop; Azarbarzin et al. 2026; Messineo et al. 2024; Bertram et al. 2026; Pengo et al. 2025 | Removed the app-created worst-metric HB composite and all low-HB treatment de-emphasis. True HB is a Moderate research signal only. ODI, T90, nadir, and area below 90% now feed a separate substantial-nocturnal-hypoxemia safety pathway. Cohort cut points are descriptive and cannot allocate treatment. | PH-07, SAF-03, TX-01, TX-02 | Clinical logic, clinician wording, patient ranking, safety tags, evidence register, and counterexample regressions updated; deployment pending clinician review |
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 
@@ -253,6 +254,56 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Next review trigger or due date:** AASM or ATS update; validated manufacturer-specific report
   definitions; prospective PSG comparison; external validation of a PAP-download action algorithm;
   or the next scheduled comprehensive review
+
+### ER-2026-07-19-HB: Event-linked hypoxic burden and conventional hypoxemia
+
+- **Reviewer:** Codex evidence review for Capital ENT clinician review
+- **Review date:** 2026-07-19
+- **Evidence cutoff date:** 2026-07-19
+- **Reason for review:** New Open Evidence synthesis supplied by the clinician and recognition that
+  the app conflated event-linked HB with ODI, T90, nadir SpO2, and area below 90%
+- **Affected Logic IDs:** PH-07, SAF-03, TX-01, and TX-02
+- **Databases and official sources searched:** Primary publications in European Heart Journal,
+  American Journal of Respiratory and Critical Care Medicine, Annals of the American Thoracic
+  Society, European Respiratory Journal, Chest, Hypertension, Journal of Clinical Hypertension,
+  and the ATS workshop report
+- **Search concepts or saved search strings:** `sleep apnea specific hypoxic burden definition`,
+  `hypoxic burden cardiovascular mortality`, `hypoxic burden treatment interaction CPAP ISAACC`,
+  `pooled trial hypoxic burden 87.1`, `HBOxi validation`, and `hypoxic burden blood pressure response`
+- **Inclusion criteria:** Adult OSA studies defining or validating event-linked HB; independent
+  cardiovascular cohorts; post hoc treatment-interaction analyses; method papers; professional
+  workshop guidance; and studies testing whether HB predicts blood-pressure response
+- **Key studies or documents added:** Azarbarzin et al. 2019; Trzepizur et al. 2022; Labarca et al.
+  2023; Pinilla et al. 2023; Esmaeili et al. 2023; Parekh 2024; Cohen et al. ATS workshop; Peker et
+  al. 2025; Messineo et al. 2024; Pengo et al. 2025; Azarbarzin et al. 2026; Bertram et al. 2026
+- **Key studies considered but not used, with reason:** Cohort medians and tertiles at 60.7, 73.1,
+  and 87.1 %min/h were not adopted as clinical categories because they were distribution-based and
+  population-specific. The nonsignificant low-HB harm trend in ISAACC was not used to move PAP down
+  the plan. Post hoc CPAP treatment interactions were not treated as individual guarantees. HBOxi
+  was not assumed interchangeable with scored-event HB or the WatchPAT-reported field without method
+  verification. Pediatric evidence was not used for adult thresholds.
+- **Risk of bias or applicability concerns:** Cardiovascular associations are observational. The
+  treatment-allocation findings are post hoc analyses of selected cardiovascular trial populations,
+  not prospective HB-stratified trials. HB methods and scoring windows vary. Blood-pressure response
+  evidence is mixed. No professional guideline endorses universal HB categories or action cutoffs.
+- **Conclusion:** Logic and safety change. Event-linked HB is kept as a distinct continuous research
+  metric with an exploratory 30 %min/h signal boundary and Moderate confidence cap. Values 73.1 and
+  87.1 are descriptive research context only. Conventional oxygen metrics cannot create the HB
+  phenotype. Substantial conventional nocturnal hypoxemia gets a separate safety pathway.
+- **Code and patient-report effect:** Removed automatic HB-based cardiovascular-benefit claims,
+  `HB-URG`, the worst-metric HB composite, low-HB clinician notes, low-HB PAP de-emphasis, and the HB
+  adjustment from the app-created MAD score. Added clinician tooltips, research-context language,
+  `OXYGEN-URG`, non-OSA differential wording, and conditional objective oxygen follow-up.
+- **Regression scenarios added or updated:** Actual HB 80 produces a Moderate HB research signal but
+  no conventional-hypoxemia urgency. ODI 55 or nadir 74 produces the separate oxygen safety signal but
+  cannot create the HB phenotype. HB cohort context alone does not trigger patient-facing urgency, and
+  reassuring oxygen metrics no longer move PAP down a mild-OSA plan.
+- **Clinician reviewer and decision:** Raymond Brown, MD, review pending
+- **Commit:** pending
+- **Deployed build:** pending
+- **Next review trigger or due date:** Prospective HB-stratified treatment trial; AASM, ATS, ERS, or
+  AHA guidance endorsing clinical categories; validated WatchPAT HB-method documentation; external
+  validation of HBOxi implementation; or the next scheduled comprehensive review
 
 ## Review template
 

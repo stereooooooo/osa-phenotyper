@@ -73,6 +73,7 @@ var OSAReportShared = (() => {
     const nadirVal = numberOrNull(nadir);
     const hst = thresholds.hstValidity || {};
     const hb = thresholds.hypoxicBurden || {};
+    const oxygen = thresholds.nocturnalHypoxemia || {};
     const loopGain = thresholds.loopGain || {};
     const isHomeStudy = studyType === 'watchpat' || studyType === 'both';
     const isHomeStudyOnly = studyType === 'watchpat';
@@ -118,12 +119,16 @@ var OSAReportShared = (() => {
     // than treating another home result as definitive (Kapur et al., 2017).
     const negativeHstNeedsPsg = normalHomeStudy && persistentClinicalConcern;
     const nondiagnosticHstNeedsPsg = isHomeStudyOnly && shortRecording;
-    const highHypoxicBurden =
-      (hbVal !== null && hbVal >= (hb.hbPerHourHigh ?? 73)) ||
-      (odiVal !== null && odiVal > (hb.odiSevere ?? 50)) ||
-      (nadirVal !== null && nadirVal < (hb.nadirSevere ?? 75)) ||
-      (t90Val !== null && t90Val > (hb.t90Severe ?? 20)) ||
-      (hb90Val !== null && hb90Val > (hb.areaUnder90Severe ?? 10));
+    // Keep event-linked HB separate from conventional oxygen metrics. HB cohort
+    // cut points are research context, not validated treatment thresholds.
+    const hypoxicBurdenSignal = hbVal !== null && hbVal >= (hb.signalBoundary ?? 30);
+    const hbIsaaccCohortContext = hbVal !== null && hbVal >= (hb.isaaccCohortContext ?? 73.1);
+    const hbPooledTrialContext = hbVal !== null && hbVal >= (hb.pooledTrialContext ?? 87.1);
+    const severeNocturnalHypoxemia =
+      (odiVal !== null && odiVal > (oxygen.odiSevere ?? 50)) ||
+      (nadirVal !== null && nadirVal < (oxygen.nadirSevere ?? 75)) ||
+      (t90Val !== null && t90Val > (oxygen.t90Severe ?? 20)) ||
+      (hb90Val !== null && hb90Val > (oxygen.areaUnder90Severe ?? 2));
 
     return {
       uars,
@@ -142,7 +147,10 @@ var OSAReportShared = (() => {
       centralPercent,
       centralSignal,
       centralConfirmationNeeded: centralSignal && !hasPsgCentralConfirmation,
-      highHypoxicBurden,
+      hypoxicBurdenSignal,
+      hbIsaaccCohortContext,
+      hbPooledTrialContext,
+      severeNocturnalHypoxemia,
     };
   }
 

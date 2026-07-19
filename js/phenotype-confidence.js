@@ -98,11 +98,11 @@
         return 'Low';
       }
       case 'High Hypoxic Burden': {
-        const hb = m.hbPH||0, hb90 = m.hb90PH||0, odi = m.odi||0, nad = m.nadir??100, tBelow90 = m.t90||0;
-        /* High confidence: HB area ≥73 (ISAACC CPAP benefit threshold) OR other metrics in severe range */
-        if(hb >= T.hypoxicBurden.hbPerHourHigh || odi > T.hypoxicBurden.odiSevere || nad < T.hypoxicBurden.nadirSevere || tBelow90 > T.hypoxicBurden.t90Severe || hb90 > T.hypoxicBurden.areaUnder90Severe) return 'High';
-        /* Moderate tier: any single metric in moderate range (nadir excluded — only triggers at severe) */
-        if(hb >= T.hypoxicBurden.hbPerHour || odi >= T.hypoxicBurden.odi || tBelow90 >= T.hypoxicBurden.t90 || hb90 > T.hypoxicBurden.areaUnder90) return 'Moderate';
+        const hb = m.hbPH||0;
+        /* Event-linked HB is promising but lacks validated clinical categories.
+           Even values matching research-cohort cut points remain a Moderate
+           research signal rather than a validated High-confidence phenotype. */
+        if(hb >= T.hypoxicBurden.signalBoundary) return 'Moderate';
         return 'Low';
       }
       case 'Nasal-Resistance Contributor': {

@@ -244,9 +244,9 @@
         : visitReason === 'restart-pap' || willingToRetry
           ? `restart ${papMode}`
           : `begin ${papMode} management`;
-      if (signals.highHypoxicBurden) {
+      if (signals.severeNocturnalHypoxemia) {
         action += '; arrange prompt follow-up testing to confirm breathing and oxygen control';
-        reason += '; severe oxygen-burden metrics increase treatment urgency';
+        reason += '; substantial nocturnal hypoxemia increases treatment urgency';
       }
       addSuggestion(suggestions, 'planPap', reason, action, 10);
     }

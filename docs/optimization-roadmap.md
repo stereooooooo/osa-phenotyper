@@ -6,6 +6,10 @@
 This is a living document. Work the phases **in order**; check items off and move them to the
 changelog as they ship. Every item carries its severity, location, and recommended fix.
 
+> Historical note: the June 2026 high-tier HB calibration described below was superseded by
+> `ER-2026-07-19-HB`. Current logic separates event-linked HB from ODI, T90, nadir, and area below
+> 90%; removes low-HB treatment de-emphasis; and treats 73.1/87.1 only as research-cohort context.
+
 ---
 
 ## Overall verdict
@@ -79,7 +83,8 @@ confidence right-sized. Physician chose the conservative option on each fork (de
 from the moderate tier; drop the loop-gain number for a qualitative flag; qualitative Ji tiers).
 See changelog and `docs/citations.md` "Phase 2 confidence-calibration changes" for detail.
 
-- [x] **Hypoxic burden urgency decoupled from the moderate tier** (high) — `js/app.js`, `js/config.js`.
+- [x] **Hypoxic burden urgency decoupled from the moderate tier** (high, superseded by the fuller
+  July 19 separation) — `js/app.js`, `js/config.js`.
   Single moderate metric → supportive context only; urgency/CV framing + patient heart-urgency line
   gated on new `hbHighTier` (≥73 / severe-range). Population-derived caveat added; low-HB harm
   implication removed.

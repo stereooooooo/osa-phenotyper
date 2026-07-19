@@ -40,13 +40,12 @@ Audit follow-up: the citations below are real and correctly attributed, but seve
 being used to drive *deterministic triggers* beyond what the evidence supports. The logic was
 re-calibrated to match the strength of evidence (features kept; confidence right-sized):
 
-- **Hypoxic burden** is now treated as a cardiovascular-risk **marker / supportive context**, not
-  a treatment trigger. A single *moderate*-range metric (HB ≥30, ODI ≥20, T90 ≥5%) no longer emits
-  a treatment-urgency recommendation or a patient "heart health" urgency line. Urgency / CV framing
-  is reserved for the **high tier** (HB ≥73 ISAACC / ≥87 pooled, or severe-range ODI/T90/nadir),
-  where CPAP CV-benefit trial evidence exists. The 30/73/87 cutoffs are population-derived (tertile
-  boundary / cohort medians), now labeled as such in the clinician alerts. The low-HB note no longer
-  implies CPAP *harm* from the non-significant ISAACC signal (HR 1.33, NS).
+- **Hypoxic burden (superseded by ER-2026-07-19-HB):** The June calibration removed urgency from
+  moderate values but still combined HB with ODI, T90, and nadir and retained high-tier treatment
+  behavior. The July review corrected that remaining problem. Only event-linked HB can create the HB
+  research signal; confidence is capped at Moderate; 73.1 and 87.1 are descriptive cohort context;
+  and conventional oxygen metrics use a separate substantial-nocturnal-hypoxemia safety pathway.
+  Low-HB treatment de-emphasis has been removed entirely.
 - **Loop gain** — the numeric point estimate (Schmickl 2022, row below) was **removed**. That model
   has no published intercept and only AUC 0.73, so a per-patient number over-implied precision. Loop
   gain is now a **qualitative** "possible ventilatory instability" flag driven only by the central /
@@ -63,15 +62,16 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 
 ---
 
-## Hypoxic Burden & Composite Tiering
+## Event-Linked Hypoxic Burden and Conventional Nocturnal Hypoxemia
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| HB area/hr research thresholds | Azarbarzin A, et al. "The Hypoxic Burden of Sleep Apnoea Is a Strong Determinant of Cardiovascular Risk." *Eur Heart J.* 2019;40(14):1055-1063; Pinilla L, et al. *Eur Respir J.* 2023 (ISAACC post hoc analysis); Peker Y, et al. *Chest.* 2025 (RICCADSA). | HB ≥30 is an exploratory elevated-signal boundary. Values below 73 are not labeled "high" in the clinician view. The 73.1 ISAACC threshold and 60.7 RICCADSA median are cohort-derived, not validated universal clinical categories. HB supports risk context and does not independently select treatment. |
-| ODI as strongest HB correlator (r=0.73) | Same Azarbarzin 2019 + Zinchuk AV, et al. "Polysomnographic Phenotypes and Their Cardiovascular Implications." *Am J Respir Crit Care Med.* 2020;202(12):1701-1712. | ODI tier: <20 low, 20-50 moderate, >50 severe |
-| T90 and cardiovascular risk (OR 2.70 mortality) | Oldenburg O, et al. "Sleep-Disordered Breathing in Heart Failure." *Eur J Heart Fail.* 2016;18(11):1265-1277. | T90 tier: <5% low, 5-20% moderate, >20% severe |
-| Nadir SpO₂ (r=-0.70 with HB) | Azarbarzin 2019 | Nadir <75% = severe tier trigger |
-| Ventilatory burden explains 78% of HB variation | Azarbarzin A, et al. "Relationship Between Arousal Intensity and Heart Rate Response to Arousal." *Sleep.* 2014;37(4):645-653. | Rationale for composite approach |
+| Definition of sleep-apnea-specific HB | Azarbarzin A, Sands SA, Stone KL, et al. "The Hypoxic Burden of Sleep Apnoea Predicts Cardiovascular Disease-Related Mortality." *Eur Heart J.* 2019;40(14):1149-1157. doi:10.1093/eurheartj/ehy624. | HB is respiratory-event-linked desaturation area divided by total sleep time, expressed in %min/h. The app displays it as a distinct research-context metric. |
+| HB must not be conflated with ODI, T90, mean/nadir SpO2, or time below 90% | Parekh A. "Hypoxic Burden: Definitions, Pathophysiological Concepts, Methods of Evaluation, and Clinical Relevance." *Curr Opin Pulm Med.* 2024;30(6):600-606. doi:10.1097/MCP.0000000000001122. | ODI, T90, nadir, and area below 90% cannot create the event-linked HB phenotype. They remain separate conventional oxygen metrics. |
+| HB and cardiovascular outcomes across cohorts | Azarbarzin 2019; Labarca G, Vena D, Hu WH, et al. "Sleep Apnea Physiological Burdens and Cardiovascular Morbidity and Mortality." *Am J Respir Crit Care Med.* 2023;208(7):802-813. doi:10.1164/rccm.202209-1808OC; Trzepizur W, Blanchard M, Ganem T, et al. *Am J Respir Crit Care Med.* 2022;205(1):108-117. doi:10.1164/rccm.202105-1274OC; Peker Y, et al. *Chest.* 2025. doi:10.1016/j.chest.2025.07.4081. | Supports prognostic context in the clinician view. Observational association does not establish an individual treatment rule. |
+| No universal clinical HB categories | Pinilla L, et al. *Eur Respir J.* 2023;62(6):2300828. doi:10.1183/13993003.00828-2023; Peker 2025; Azarbarzin A, et al. *Eur Heart J.* 2026;47(17):2077-2089. doi:10.1093/eurheartj/ehaf447; Cohen O, et al. ATS Workshop Report. doi:10.1513/AnnalsATS.202409-981ST. | The app retains 30 %min/h only as an exploratory signal boundary. Values 73.1 and 87.1 are labeled as research-cohort context, not low/moderate/high categories or stand-alone treatment thresholds. Signal confidence is capped at Moderate. |
+| Oximetry-derived HBOxi is a separate method | Esmaeili N, Labarca G, Hu WH, et al. "Hypoxic Burden Based on Automatically Identified Desaturations Is Associated With Adverse Health Outcomes." *Ann Am Thorac Soc.* 2023;20(11):1633-1641. doi:10.1513/AnnalsATS.202303-248OC. | HBOxi is documented as a related automated method (r=0.81 with scored-event HB), not assumed equivalent to the WatchPAT-reported metric without method verification. |
+| Conventional nocturnal hypoxemia review bands | Zinchuk AV, et al. *Am J Respir Crit Care Med.* 2020;202(12):1701-1712; Oldenburg O, et al. *Eur J Heart Fail.* 2016;18(11):1265-1277. | ODI >50/h, T90 >20%, nadir SpO2 <75%, or area below 90% >2/h triggers a separate substantial-nocturnal-hypoxemia review pathway. These are conservative app safety bands, not validated HB categories and not proof that OSA is the only cause. |
 
 ## COMISA (Co-Morbid Insomnia and Sleep Apnea)
 
@@ -241,18 +241,16 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Discriminating collapsibility severity (AUC 0.96 score) | Genta PR, et al. "Discriminating the Severity of Pharyngeal Collapsibility." *J Clin Sleep Med.* 2020;16(9):1531-1537. | Reference: waist circ + NREM OAI/AHI + apnea duration + REM AHI score |
 | PUP-estimated Vpassive (R=0.67 vs CPAP-derived Pcrit) | Sands SA, et al. "Phenotyping Pharyngeal Pathophysiology Using PSG." *Am J Respir Crit Care Med.* 2018;197(9):1187-1197. | Reference for PUP collapsibility estimation |
 
-## HB Treatment Allocation
+## HB Risk and Treatment-Interaction Evidence
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| HB ≥73.1 %min/h: CPAP reduces CV events (HR 0.57) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | Clinician report: "High HB — CPAP CV benefit" alert; HB area/hr high threshold (73) |
-| HB <73.1: CPAP trend toward harm (HR 1.33, NS) | Same Pinilla 2023 (ISAACC) | Low HB clinician caution note; mild OSA alternatives-first pathway only when oxygen metrics are actually available |
-| Low HB: comparable outcomes with CPAP vs alternatives | Same Pinilla 2023 | Patient report: alternatives before CPAP with probabilistic language ("reasonable first-line options"), not certainty/equivalence language |
-| HB ≥87.1 %min/h: high-risk OSA (pooled multi-trial) | Azarbarzin A, et al. "Cardiovascular Benefit of CPAP According to High-Risk OSA." *Eur Heart J.* 2025;:ehaf447. | HB area/hr very-high threshold (87); "Very High HB" clinician alert |
-| High AHI + low HB ≠ CV risk; only HB predicts MACCEs | Peker Y, et al. "Hypoxic Burden Is Associated With CV Events: RICCADSA Cohort." *Chest.* 2025;:S0012-3692(25)05023-8. | Moderate OSA + low HB clinician note; validates alternatives-first approach |
+| ISAACC post hoc treatment interaction at cohort median 73.1 %min/h | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation in Patients With OSA: A Study of the ISAACC Trial." *Eur Respir J.* 2023;62(6):2300828. doi:10.1183/13993003.00828-2023. | Clinician tooltip may state that a value matches the study's cohort cut point. It does not claim guaranteed cardiovascular benefit, infer harm below the cut point, or reorder treatment. |
+| Pooled post hoc treatment interaction using HB >87.1 %min/h or heart-rate response >9.4 bpm | Azarbarzin A, Vena D, Esmaeili N, et al. "Cardiovascular Benefit of Continuous Positive Airway Pressure According to High-Risk OSA: A Multi-Trial Analysis." *Eur Heart J.* 2026;47(17):2077-2089. doi:10.1093/eurheartj/ehaf447. | Research context only. The composite subgroup definition, post hoc design, selected trial populations, and lack of prospective allocation validation prevent automatic PAP selection or urgency from HB alone. |
+| RICCADSA HB association independent of AHI category | Peker Y, et al. "Hypoxic Burden Is Associated With Cardiovascular Events: A Risk Stratification Analysis of the RICCADSA Cohort." *Chest.* 2025. doi:10.1016/j.chest.2025.07.4081. | Supports prognostic context, not the categorical claim that an individual with high AHI and lower HB has no cardiovascular risk. |
 | ΔHR + HB synergy: HR 3.50 for fatal CVD | Azarbarzin A, et al. "Sleep Apnea-Specific Pulse-Rate Response Predicts CV Morbidity and Mortality." *Am J Respir Crit Care Med.* 2021;203(12):1546-1555. | Composite ΔHR + HB CV risk flag in clinician report |
 | ΔHRoxi derivable from pulse oximetry | Blanchard M, et al. "Heart Rate Response and CV Risk During OSA." *Eur Respir J.* 2025;65(5):2401883. | Future: automated ΔHR from oximetry (not yet implemented) |
-| HB predicts major adverse CV events (HR 1.21) | Trzepizur W, et al. "Sleep Apnea-Specific Hypoxic Burden and Risk of CV Events." *Am J Respir Crit Care Med.* 2022;205(1):108-117. | HB severity tiering rationale |
+| Mixed evidence for HB as a blood-pressure response predictor | Messineo L, et al. *Hypertension.* 2024;81(5):1106-1114. doi:10.1161/HYPERTENSIONAHA.123.22444; Bertram S, et al. *J Clin Hypertens.* 2026;28(5):e70262. doi:10.1111/jch.70262; Pengo MF, et al. *Eur Respir J.* 2025;65(1):2400837. doi:10.1183/13993003.00837-2024. | The app does not use HB to predict an individual blood-pressure response. |
 | ATS 2025: endotype triage framework | Tolbert TM, et al. "Translating Endophenotyping of Adult OSA to the Clinic." *Am J Respir Crit Care Med.* 2025;211(9):1562-1583. | ATS triage note; future: hierarchical endotype assessment |
 | Stepwise endotype-guided combination therapy (95% success) | Aishah A, et al. "Stepwise Targeted Combination Therapy for OSA." *Ann Am Thorac Soc.* 2023;20(9):1316-1325. | Reference only (proof-of-concept, not yet clinical standard) |
 
@@ -302,9 +300,9 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | TECSA review and classification | Zhang J, et al. "Treatment-Emergent Central Sleep Apnea: A Unique Sleep-Disordered Breathing." *Chin Med J.* 2020;133(22):2721-2730. | Reference: TECSA phenotyping |
 | AHA scientific statement: OSA and CV disease | Yeghiazarians Y, et al. "OSA and Cardiovascular Disease." *Circulation.* 2021;144(3):e56-e67. | CV risk framing; HB should be incorporated into trial designs |
 | ATS/AHA consensus: CPAP for CV risk benefit controversy | Cohen O, et al. "The Great Controversy of OSA Treatment for CV Risk Benefit." *Ann Am Thorac Soc.* 2024. | Context for nuanced CPAP recommendation; HB-guided treatment allocation |
-| RICCADSA: HB predicts CV events, AHI alone does not | Peker Y, et al. "Hypoxic Burden Is Associated With CV Events: RICCADSA Cohort." *Chest.* 2025. | High AHI + low HB ≠ CV risk; validates HB-guided approach |
-| Multi-trial pooled: CPAP CV benefit in high-risk OSA (HB≥87) | Azarbarzin A, et al. "CV Benefit of CPAP According to High-Risk OSA." *Eur Heart J.* 2025;:ehaf447. | HB ≥87 threshold for very high CV risk; strongest CPAP indication |
-| ISAACC: HB-guided CPAP allocation; low HB trend toward harm (HR 1.33) | Pinilla L, et al. "Hypoxic Burden to Guide CPAP Treatment Allocation." *Eur Respir J.* 2023;62(6):2300828. | HB ≥73 = CPAP benefit; HB <73 supports alternatives-first framing, but patient-facing copy should remain uncertainty-aware |
+| RICCADSA: HB adds risk information beyond AHI category | Peker Y, et al. "Hypoxic Burden Is Associated With Cardiovascular Events: RICCADSA Cohort." *Chest.* 2025. | Prognostic context only; the app does not equate lower HB with absence of cardiovascular risk. |
+| Multi-trial pooled high-risk OSA subgroup | Azarbarzin A, et al. *Eur Heart J.* 2026;47(17):2077-2089. | Post hoc research context only; HB 87.1 is not a clinical category or automatic treatment threshold. |
+| ISAACC HB treatment interaction | Pinilla L, et al. *Eur Respir J.* 2023;62(6):2300828. | Post hoc research context only; neither the high-HB benefit estimate nor the nonsignificant low-HB harm trend is used to select, withhold, or rank treatment. |
 
 ---
 
