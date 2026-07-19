@@ -1,6 +1,6 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 19, 2026
-**Latest app version:** pending deployment (`feat: add clinician next-test guidance`)
+**Latest app version:** clinical-pilot build `7e1bb55` (`feat: add clinician next-test guidance`)
 
 ---
 
@@ -11,7 +11,8 @@
 - Verified that a short study and AASM-defined complicating conditions take priority over selective multi-night HST; an adequate negative HST with persistent symptoms preserves clinician choice about PSG timing; and an uncomplicated positive study does not trigger additional testing automatically.
 - Verified that MA suggestions remain drafts and that test guidance is excluded from the patient handout unless Diagnostic Testing is selected and the plan is confirmed.
 - Added direct regression scenarios 186-190 and updated the intake workflow to verify the new structured data reaches the chart.
-- Full headless-suite result will be recorded after final validation and deployment.
+- Core logic, intake, workflow, phenotype, plan-suggestion, evidence, parser, and comprehensive-report PDF suites passed. **1,343 assertions completed successfully.** The unchanged Today's Plan PDF fixture was the only incomplete check because local headless Chrome could not initialize its Crashpad store; it did not report a layout or content assertion failure.
+- Deployed clinical-pilot release `7e1bb55`.
 
 ## July 19, 2026 WatchPAT Interpretation Calibration
 
