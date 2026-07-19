@@ -2107,7 +2107,9 @@ ${items.join('')}`;
       const preStudy = stage === 'pre-study';
       const confirmNegativeHomeTest = !preStudy && data.negativeHstNeedsPsg;
       const confirmNondiagnosticHomeTest = !preStudy && data.nondiagnosticHstNeedsPsg;
-      const inLabConfirmation = confirmNegativeHomeTest || confirmNondiagnosticHomeTest;
+      const testGuidanceState = data.nextTestGuidance?.state || '';
+      const multiNightHomeTest = !preStudy && testGuidanceState === 'multi-night-hst';
+      const inLabConfirmation = confirmNegativeHomeTest || confirmNondiagnosticHomeTest || ['psg-recommended', 'psg-consider'].includes(testGuidanceState);
       const priorStudyReported = preStudy && data.priorSleepStudyAnswer === 'yes';
       const priorStudyType = data.priorSleepStudyType === 'home' ? 'home sleep study' : data.priorSleepStudyType === 'lab' ? 'in-lab sleep study' : 'sleep study';
       const priorStudyWhen = data.priorSleepStudyYear ? ` from around ${data.priorSleepStudyYear}` : '';
@@ -2115,7 +2117,9 @@ ${items.join('')}`;
         ? priorStudyReported
           ? `Ask the care team to obtain and review your prior ${priorStudyType}${priorStudyWhen}. They will decide whether it still answers the current question or whether updated testing is needed.`
           : 'Complete the sleep study, then schedule a follow-up visit so we can review the results and choose treatment together.'
-        : inLabConfirmation
+          : multiNightHomeTest
+            ? 'Complete the recommended multi-night home sleep testing, then return to review the average result and how much it varied from night to night.'
+          : inLabConfirmation
           ? 'Schedule the recommended in-lab sleep study, then return to review whether it explains the symptoms and changes the treatment plan.'
           : 'Complete the additional sleep testing recommended today, then return to review what it changes about your treatment plan.'];
       if (preStudy && data.snoringReported) {
@@ -2128,11 +2132,13 @@ ${items.join('')}`;
         id: 'study',
         priority: preStudy ? 0 : 2,
         icon: 'bi-moon-stars',
-        title: preStudy ? 'While we complete your sleep evaluation' : inLabConfirmation ? 'Complete the recommended in-lab sleep study' : 'Complete the recommended sleep testing',
+        title: preStudy ? 'While we complete your sleep evaluation' : multiNightHomeTest ? 'Complete the recommended multi-night home sleep testing' : inLabConfirmation ? 'Complete the recommended in-lab sleep study' : 'Complete the recommended sleep testing',
         reason: preStudy
           ? priorStudyReported
             ? 'A previous sleep study may still be useful, but the actual report must be reviewed before it can guide current treatment.'
             : 'Snoring can occur with or without sleep apnea. The sleep study will show whether breathing interruptions are present and how important they are.'
+          : multiNightHomeTest
+            ? 'Your clinician recommended more than one home testing night because the result may vary meaningfully from night to night.'
           : confirmNegativeHomeTest
             ? 'The home study did not show sleep apnea, but it did not fully explain the ongoing symptoms. An in-lab study measures sleep and breathing in more detail.'
             : confirmNondiagnosticHomeTest

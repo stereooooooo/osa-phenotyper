@@ -1110,6 +1110,10 @@ function buildHstFlags(m, T){
     odi: m.odi, t90: m.t90, nadir: m.nadir,
     heartFailure: m.heartFailure,
     strokeHistory: m.strokeHistory,
+    chronicOpioidUse: m.chronicOpioidUse,
+    neuromuscularRespiratoryRisk: m.neuromuscularRespiratoryRisk,
+    hypoventilationRisk: m.hypoventilationRisk,
+    severeInsomniaCompromisesHst: m.severeInsomniaCompromisesHst,
   }, T);
 
   // 1. Total sleep time assessment
@@ -1148,12 +1152,12 @@ function buildHstFlags(m, T){
   }
 
   if (signals.psgPreferredComorbidity) {
-    const conditions = [m.heartFailure ? 'heart failure' : '', m.strokeHistory ? 'history of stroke' : ''].filter(Boolean).join(' and ');
+    const conditions = signals.psgPreferredReasons.join(', ');
     flags.push({
       severity: 'warning',
       flag: 'PSG preferred for diagnostic testing',
-      detail: `${conditions} ${m.heartFailure && m.strokeHistory ? 'are' : 'is'} documented. AASM guidance recommends in-lab PSG rather than HSAT for initial OSA diagnosis in this setting. Review whether this home result is sufficient for the current decision or needs laboratory confirmation.`,
-      tooltip: 'The AASM diagnostic-testing guideline recommends PSG rather than HSAT for significant cardiorespiratory disease and history of stroke. This flag does not automatically invalidate prior treatment response or require repeat testing when the current decision does not depend on diagnostic reclassification.',
+      detail: `The chart documents: ${conditions}. AASM guidance recommends in-lab PSG rather than HSAT for initial OSA diagnosis in this setting. Review whether this home result is sufficient for the current decision or needs laboratory confirmation.`,
+      tooltip: 'The AASM diagnostic-testing guideline recommends PSG rather than HSAT for significant cardiorespiratory disease, possible respiratory muscle weakness, awake or suspected sleep-related hypoventilation, chronic opioid use, history of stroke, and severe insomnia. This flag does not automatically invalidate prior treatment response when the current decision does not depend on diagnostic reclassification.',
     });
   }
 
@@ -1647,7 +1651,8 @@ function buildClinicianReport(f, m, T){
     hgnsHelped, hgnsImplantYear, priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType,
     cvdConditions, lvefFollowupNeeded, glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
-    encounter,
+    encounter, nextTestGuidance, chronicOpioidUse, neuromuscularRespiratoryRisk,
+    hypoventilationRisk, severeInsomniaCompromisesHst,
   } = m;
   const studyType = f.get('studyType') || null;
 
@@ -1700,6 +1705,10 @@ function buildClinicianReport(f, m, T){
     snoringReported: yes(f, 'snoringReported'),
     heartFailure: cvdConditions.includes('cvdHeartFailure'),
     strokeHistory: cvdConditions.includes('cvdStroke'),
+    chronicOpioidUse,
+    neuromuscularRespiratoryRisk,
+    hypoventilationRisk,
+    severeInsomniaCompromisesHst,
   }, T);
 
   // Build HST validity HTML
@@ -1713,6 +1722,19 @@ function buildClinicianReport(f, m, T){
         return `<li><i class="bi ${icon} me-1"></i><strong>${f.flag}:</strong>${tooltip} ${f.detail}</li>`;
       }).join('')}</ul>
     </div>` : '';
+
+  const nextTestGuidanceHTML = nextTestGuidance ? `
+    <section class="osa-next-test-guidance osa-next-test-guidance--${escapeHtml(nextTestGuidance.state)}" aria-label="Next test guidance">
+      <div class="osa-next-test-guidance__kicker">Next test guidance <span>${escapeHtml(nextTestGuidance.label)}</span></div>
+      <div class="osa-next-test-guidance__body">
+        <div>
+          <h3>${escapeHtml(nextTestGuidance.title)}</h3>
+          <p>${escapeHtml(nextTestGuidance.reason)}.</p>
+        </div>
+        <div class="osa-next-test-guidance__action"><strong>Clinician action</strong><span>${escapeHtml(nextTestGuidance.action)}</span></div>
+      </div>
+      <details><summary>Evidence and interpretation</summary><p>${escapeHtml(nextTestGuidance.evidence)}</p></details>
+    </section>` : '';
 
   /* ─── Clinician Decision Support ──────────────────────────── */
 
@@ -2294,6 +2316,7 @@ function buildClinicianReport(f, m, T){
     ${cpapFailed ? `<p class="mb-2"><strong>PAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? `<p class="mb-2"><strong>PAP History:</strong> Currently using ${papMode || 'PAP'}</p>` : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
+    ${nextTestGuidanceHTML}
     ${insufficientDataHTML}
     ${treatmentSafetyHTML}
     ${out.phen.length ? `
@@ -2439,6 +2462,12 @@ document.getElementById('form').addEventListener('submit', e => {
   const glp1Effective = f.get('glp1Effective') || '';
   const glp1Issues = ['glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther'].filter(key => yes(f, key));
   const cvdConditions = ['cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther','cvdUnsure'].filter(key => yes(f, key));
+  const chronicOpioidUse = f.get('chronicOpioidUse') || '';
+  const neuromuscularRespiratoryRisk = f.get('neuromuscularRespiratoryRisk') || '';
+  const hypoventilationRisk = f.get('hypoventilationRisk') || '';
+  const severeInsomniaCompromisesHst = yes(f, 'severeInsomniaCompromisesHst');
+  const nightVariabilityConcern = yes(f, 'nightVariabilityConcern');
+  const severityPrecisionNeeded = yes(f, 'severityPrecisionNeeded');
   const lvef = n(f.get('lvef'));
   const lvefFollowupNeeded = yes(f, 'lvefFollowupNeeded') ||
     ((cvdConditions.includes('cvdHeartFailure') || (f.get('echoHistory') || '').toLowerCase() === 'yes') && !exists(lvef));
@@ -2555,6 +2584,18 @@ document.getElementById('form').addEventListener('submit', e => {
     tst: n(f.get('tst')), remPercent, centralIndex: pahic3, csr, cai,
     hbPerHour: hbPH, hbAreaUnder90: hb90PH, odi, t90, nadir,
     visitReason,
+    heartFailure: cvdConditions.includes('cvdHeartFailure'),
+    strokeHistory: cvdConditions.includes('cvdStroke'),
+    chronicOpioidUse: chronicOpioidUse === 'yes',
+    neuromuscularRespiratoryRisk: neuromuscularRespiratoryRisk === 'yes',
+    hypoventilationRisk: hypoventilationRisk === 'yes',
+    severeInsomniaCompromisesHst,
+  }, T);
+  const patRdi = n(f.get('patRdi'));
+  const ahiRdiDiscordanceConcern = studyType === 'watchpat' && exists(ahi) && exists(patRdi) && patRdi > 0 && (ahi / patRdi) < T.hstValidity.ahiRdiRatioLow;
+  const nextTestGuidance = OSAReportShared.buildNextTestGuidance({
+    studyType, ahi, signals: diagnosticSignals,
+    severityPrecisionNeeded, nightVariabilityConcern, ahiRdiDiscordanceConcern,
   }, T);
   const hbHighTier = diagnosticSignals.highHypoxicBurden;
 
@@ -2619,7 +2660,11 @@ document.getElementById('form').addEventListener('submit', e => {
     priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType, cvdConditions, lvefFollowupNeeded,
     glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
-    encounter,
+    encounter, nextTestGuidance,
+    chronicOpioidUse: chronicOpioidUse === 'yes',
+    neuromuscularRespiratoryRisk: neuromuscularRespiratoryRisk === 'yes',
+    hypoventilationRisk: hypoventilationRisk === 'yes',
+    severeInsomniaCompromisesHst,
   }, T);
 
   // ── Populate analysis data for patient report ──
@@ -2704,6 +2749,7 @@ document.getElementById('form').addEventListener('submit', e => {
     oxygenMetricsAvailable,
     negativeHstNeedsPsg: diagnosticSignals.negativeHstNeedsPsg,
     nondiagnosticHstNeedsPsg: diagnosticSignals.nondiagnosticHstNeedsPsg,
+    nextTestGuidance,
     insufficientDataDomains,
     treatmentSafetyChecks,
     apneaIndex,

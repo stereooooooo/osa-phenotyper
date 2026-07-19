@@ -96,6 +96,10 @@
       visitReason: fieldValue('visitReason'),
       heartFailure: checked('cvdHeartFailure'),
       strokeHistory: checked('cvdStroke'),
+      chronicOpioidUse: fieldValue('chronicOpioidUse') === 'yes',
+      neuromuscularRespiratoryRisk: fieldValue('neuromuscularRespiratoryRisk') === 'yes',
+      hypoventilationRisk: fieldValue('hypoventilationRisk') === 'yes',
+      severeInsomniaCompromisesHst: checked('severeInsomniaCompromisesHst'),
     }, thresholds);
   }
 
@@ -116,6 +120,18 @@
     const visitReason = fieldValue('visitReason');
     const study = primaryStudyValues();
     const signals = encounterSignals(study);
+    const patRdi = numberValue('patRdi');
+    const thresholds = typeof OSA_CONFIG !== 'undefined' ? (OSA_CONFIG.thresholds || {}) : {};
+    const ahiRdiDiscordanceConcern = study.ahi !== null && patRdi !== null && patRdi > 0 &&
+      (study.ahi / patRdi) < (thresholds.hstValidity?.ahiRdiRatioLow ?? 0.5);
+    const nextTestGuidance = OSAReportShared.buildNextTestGuidance({
+      studyType: form.querySelector('input[name="studyType"]:checked')?.value || 'watchpat',
+      ahi: study.ahi,
+      signals,
+      nightVariabilityConcern: checked('nightVariabilityConcern'),
+      severityPrecisionNeeded: checked('severityPrecisionNeeded'),
+      ahiRdiDiscordanceConcern,
+    }, thresholds);
     const osaPresent = study.ahi !== null && study.ahi >= 5;
     const papMode = fieldValue('papMode') || 'PAP';
     const currentPap = checked('cpapCurrent');
@@ -189,6 +205,24 @@
         'decide whether to obtain an in-lab sleep study now or reassess persistent symptoms after treating another plausible contributor',
         5,
         'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected; simply repeating another home test is generally not recommended. The suggestion remains a draft: the clinician decides whether PSG is needed now or whether to reassess after treating another plausible contributor.'
+      );
+    } else if (nextTestGuidance?.state === 'psg-consider') {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        nextTestGuidance.reason,
+        'consider in-lab polysomnography if the result would materially change the current decision',
+        5,
+        nextTestGuidance.evidence
+      );
+    } else if (nextTestGuidance?.state === 'multi-night-hst') {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        nextTestGuidance.reason,
+        'consider a selective multi-night home assessment using the same validated device for approximately three valid nights',
+        5,
+        nextTestGuidance.evidence
       );
     }
 

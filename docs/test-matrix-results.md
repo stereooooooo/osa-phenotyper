@@ -1,8 +1,17 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 19, 2026
-**Latest app version:** clinical-pilot build `d4fdd89` (`fix: calibrate WatchPAT interpretation`)
+**Latest app version:** pending deployment (`feat: add clinician next-test guidance`)
 
 ---
+
+## July 19, 2026 Clinician Next-Test Guidance
+
+- Added clinician and patient-intake fields for chronic opioid use, neuromuscular respiratory weakness, and suspected hypoventilation. Added clinician-only designations for severe insomnia likely to compromise HSAT, suspected night-to-night variability, and decisions that require an exact severity category.
+- Added a shared four-state module: PSG recommended, PSG reasonable to consider, selective multi-night HST may be useful, or no additional diagnostic testing now.
+- Verified that a short study and AASM-defined complicating conditions take priority over selective multi-night HST; an adequate negative HST with persistent symptoms preserves clinician choice about PSG timing; and an uncomplicated positive study does not trigger additional testing automatically.
+- Verified that MA suggestions remain drafts and that test guidance is excluded from the patient handout unless Diagnostic Testing is selected and the plan is confirmed.
+- Added direct regression scenarios 186-190 and updated the intake workflow to verify the new structured data reaches the chart.
+- Full headless-suite result will be recorded after final validation and deployment.
 
 ## July 19, 2026 WatchPAT Interpretation Calibration
 

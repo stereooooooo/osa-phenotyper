@@ -1028,6 +1028,73 @@ fieldset legend {
   .osa-plan-option { transition: none; }
 }
 
+/* ── Clinician next-test guidance ───────────────────────────── */
+.osa-next-test-guidance {
+  --guidance-accent: #667085;
+  margin: 0.9rem 0 1.1rem;
+  padding: 0.85rem 1rem 0.75rem;
+  border: 1px solid #dfe3e8;
+  border-left: 4px solid var(--guidance-accent);
+  border-radius: 0.45rem;
+  background: #fff;
+}
+.osa-next-test-guidance--psg-recommended { --guidance-accent: #b42318; }
+.osa-next-test-guidance--psg-consider { --guidance-accent: #b54708; }
+.osa-next-test-guidance--multi-night-hst { --guidance-accent: #175cd3; }
+.osa-next-test-guidance--no-additional-test { --guidance-accent: #027a48; }
+.osa-next-test-guidance__kicker {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  color: #667085;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.osa-next-test-guidance__kicker span {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: var(--guidance-accent);
+  letter-spacing: 0;
+}
+.osa-next-test-guidance--psg-recommended .osa-next-test-guidance__kicker span { background: #fef3f2; }
+.osa-next-test-guidance--psg-consider .osa-next-test-guidance__kicker span { background: #fffaeb; }
+.osa-next-test-guidance--multi-night-hst .osa-next-test-guidance__kicker span { background: #eff8ff; }
+.osa-next-test-guidance--no-additional-test .osa-next-test-guidance__kicker span { background: #ecfdf3; }
+.osa-next-test-guidance__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.9fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+.osa-next-test-guidance h3 {
+  margin: 0 0 0.2rem;
+  color: var(--osa-navy);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.osa-next-test-guidance p { margin: 0; color: #475467; font-size: 0.84rem; line-height: 1.45; }
+.osa-next-test-guidance__action {
+  display: grid;
+  gap: 0.15rem;
+  padding-left: 1rem;
+  border-left: 1px solid #e4e7ec;
+  color: #475467;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.osa-next-test-guidance__action strong { color: #344054; }
+.osa-next-test-guidance details { margin-top: 0.55rem; color: #667085; font-size: 0.76rem; }
+.osa-next-test-guidance summary { cursor: pointer; font-weight: 600; }
+.osa-next-test-guidance details p { margin-top: 0.3rem; font-size: 0.76rem; }
+@media (max-width: 767.98px) {
+  .osa-next-test-guidance__body { grid-template-columns: 1fr; gap: 0.65rem; }
+  .osa-next-test-guidance__action { padding: 0.65rem 0 0; border-left: 0; border-top: 1px solid #e4e7ec; }
+}
+
 /* ── Collapsible Clinician Sections ─────────────────────────── */
 .osa-clin-section {
   border: 1px solid var(--osa-gray-border);

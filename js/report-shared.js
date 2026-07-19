@@ -2,7 +2,7 @@
 /* ── Shared report / pathway helpers ──────────────────────────────────────
    Shared by js/patientReport.js and js/app.js to reduce rule drift.
    Exposes: OSAReportShared.buildCarePathway(), OSAReportShared.detectUARS(),
-   OSAReportShared.assessEncounterSignals()
+   OSAReportShared.assessEncounterSignals(), OSAReportShared.buildNextTestGuidance()
    ─────────────────────────────────────────────────────────────────────── */
 
 var OSAReportShared = (() => {
@@ -54,6 +54,10 @@ var OSAReportShared = (() => {
     visitReason,
     heartFailure = false,
     strokeHistory = false,
+    chronicOpioidUse = false,
+    neuromuscularRespiratoryRisk = false,
+    hypoventilationRisk = false,
+    severeInsomniaCompromisesHst = false,
   } = {}, thresholds = {}) {
     const numberOrNull = value => (value !== '' && value !== null && value !== undefined && Number.isFinite(+value)) ? +value : null;
     const ahiVal = numberOrNull(ahi);
@@ -96,7 +100,15 @@ var OSAReportShared = (() => {
     // AASM recommends PSG rather than HSAT for initial diagnosis when defined
     // complicating conditions are present. Only conditions captured explicitly
     // by the current app are evaluated here; do not infer the others.
-    const psgPreferredComorbidity = isHomeStudyOnly && (heartFailure || strokeHistory);
+    const psgPreferredReasons = [
+      heartFailure ? 'significant cardiorespiratory disease' : '',
+      strokeHistory ? 'history of stroke or TIA' : '',
+      chronicOpioidUse ? 'chronic opioid use' : '',
+      neuromuscularRespiratoryRisk ? 'possible respiratory muscle weakness' : '',
+      hypoventilationRisk ? 'awake hypoventilation or suspected sleep-related hypoventilation' : '',
+      severeInsomniaCompromisesHst ? 'severe insomnia likely to compromise home testing' : '',
+    ].filter(Boolean);
+    const psgPreferredComorbidity = isHomeStudyOnly && psgPreferredReasons.length > 0;
     // Fatigue is not interchangeable with sleep propensity, so the clinician's
     // symptom-focused visit selection also counts as persistent concern even
     // when the Epworth score is below 10. Isolated snoring does not.
@@ -119,6 +131,7 @@ var OSAReportShared = (() => {
       normalHomeStudy,
       watchpatSeverityUncertain,
       psgPreferredComorbidity,
+      psgPreferredReasons,
       persistentClinicalConcern,
       remMinutes,
       shortRecording,
@@ -130,6 +143,76 @@ var OSAReportShared = (() => {
       centralSignal,
       centralConfirmationNeeded: centralSignal && !hasPsgCentralConfirmation,
       highHypoxicBurden,
+    };
+  }
+
+  /* Clinician-only next-test guidance. This deliberately separates test
+     interpretation from the finalized plan: it never selects planStudy and it
+     is not patient-facing unless the clinician later confirms diagnostic
+     testing. AASM 2017 supplies the PSG escalation rules; selective multi-night
+     HST is an emerging option for suspected night-to-night variability, not a
+     routine replacement for PSG (Fricke et al., 2026 Delphi consensus). */
+  function buildNextTestGuidance(input = {}, thresholds = {}) {
+    const signals = input.signals || assessEncounterSignals(input, thresholds);
+    const numberOrNull = value => (value !== '' && value !== null && value !== undefined && Number.isFinite(+value)) ? +value : null;
+    const ahi = numberOrNull(input.ahi);
+    const hasCompletedStudy = ahi !== null || input.studyType === 'psg' || input.studyType === 'both';
+    if (!hasCompletedStudy) return null;
+
+    const psgReasons = [];
+    if (signals.inadequateRecording || signals.shortRecording) psgReasons.push('the home study was technically inadequate or too short for a reliable decision');
+    if (signals.centralConfirmationNeeded) psgReasons.push('central or periodic-breathing signals require laboratory confirmation');
+    if (signals.uars?.isUARS) psgReasons.push('arousal-based scoring is needed to evaluate possible upper airway resistance syndrome');
+    if (signals.psgPreferredComorbidity) psgReasons.push(...signals.psgPreferredReasons);
+
+    if (psgReasons.length) {
+      return {
+        state: 'psg-recommended',
+        label: 'PSG recommended',
+        title: 'In-lab polysomnography is recommended',
+        reason: psgReasons.join('; '),
+        action: 'Review the indication, draft diagnostic testing if it fits today\'s decision, and obtain clinician confirmation before it appears in the patient plan.',
+        evidence: 'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home test and instead of home testing when specified complicating conditions are present.',
+      };
+    }
+
+    const considerReasons = [];
+    if (signals.negativeHstNeedsPsg) considerReasons.push('the home study is negative, but symptoms or clinical concern remain unexplained');
+    if (input.severityPrecisionNeeded && signals.watchpatSeverityUncertain) considerReasons.push('a different mild-versus-moderate severity category would materially change management, eligibility, or risk assessment');
+    if (input.ahiRdiDiscordanceConcern) considerReasons.push('AHI and RDI are substantially discordant and the result does not fit the clinical picture');
+    if (signals.limitedRemSampling && input.severityPrecisionNeeded) considerReasons.push('REM sampling is limited and REM-specific severity would change management');
+
+    if (considerReasons.length) {
+      return {
+        state: 'psg-consider',
+        label: 'Consider PSG',
+        title: 'In-lab polysomnography is reasonable to consider',
+        reason: considerReasons.join('; '),
+        action: signals.negativeHstNeedsPsg
+          ? 'Decide whether to obtain PSG now or first treat another plausible contributor, such as nasal obstruction, then reassess persistent symptoms. Confirm the choice before patient reporting.'
+          : 'Decide whether laboratory confirmation would change today\'s management enough to justify testing, then confirm or dismiss the draft suggestion.',
+        evidence: 'AASM supports PSG when suspicion remains after a negative home test. WatchPAT severity agreement is weakest in mild and moderate OSA, which supports selective rather than automatic confirmation.',
+      };
+    }
+
+    if (input.nightVariabilityConcern && signals.isHomeStudy) {
+      return {
+        state: 'multi-night-hst',
+        label: 'Selective multi-night HST',
+        title: 'Selective multi-night home testing may be useful',
+        reason: 'The clinician marked meaningful night-to-night variability as a concern, and no current feature makes PSG the preferred test.',
+        action: 'If chosen, use the same validated device for approximately three valid nights and review both the average and range. Use PSG instead when excluding disease or another sleep disorder requires greater diagnostic detail.',
+        evidence: 'Recent expert consensus supports selective multi-night home testing for suspected variability or borderline, incongruent results, but not routine multi-night testing for every patient.',
+      };
+    }
+
+    return {
+      state: 'no-additional-test',
+      label: 'No additional test now',
+      title: 'No additional diagnostic testing is indicated now',
+      reason: 'The current study and chart inputs do not trigger a repeat-HST or PSG escalation rule.',
+      action: 'Proceed with the clinician-confirmed care plan. Reassess testing if symptoms, weight, treatment response, or the clinical question later become discordant with the current result.',
+      evidence: 'This is a rule-based workflow conclusion, not proof that future testing will never be needed.',
     };
   }
 
@@ -245,6 +328,7 @@ var OSAReportShared = (() => {
     buildCarePathway,
     detectUARS,
     assessEncounterSignals,
+    buildNextTestGuidance,
     resolvePapState,
   };
 })();

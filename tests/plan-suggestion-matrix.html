@@ -368,7 +368,7 @@ const SCENARIOS = [
     clinicianExcludes: [],
     patientIncludes: ['sleep apnea'],
     patientExcludes: ['PSG preferred for diagnostic testing', 'WatchPAT severity-category uncertainty'],
-    todayPlanIncludes: ['Complete the recommended sleep testing']
+    todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'Schedule the recommended in-lab sleep study']
   },
   {
     id: 'current-cpap-no-difficulty-glp-cost',
@@ -569,7 +569,7 @@ const SCENARIOS = [
     clinicianExcludes: ['Echo/LVEF Needed', 'makes ASV unsafe'],
     patientIncludes: ['central-breathing', 'in-lab sleep study', 'Building on your current BiPAP therapy'],
     patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
-    todayPlanIncludes: ['Complete the recommended sleep testing', 'Complete the additional sleep testing recommended today', 'You reported no current difficulty with BiPAP', 'Bring or upload the compliance report'],
+    todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'Schedule the recommended in-lab sleep study', 'You reported no current difficulty with BiPAP', 'Bring or upload the compliance report'],
     todayPlanExcludes: ['request the latest echo']
   },
   {
@@ -723,7 +723,7 @@ const SCENARIOS = [
     clinicianExcludes: ['Documented reduced ejection fraction makes ASV unsafe'],
     patientIncludes: ['heart function', 'in-lab sleep study', 'Building on your current BiPAP therapy'],
     patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
-    todayPlanIncludes: ['Complete the recommended sleep testing', 'request the latest echocardiogram', 'Continue BiPAP'],
+    todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'request the latest echocardiogram', 'Continue BiPAP'],
     todayPlanExcludes: ['ASV is unsafe']
   }
 ];

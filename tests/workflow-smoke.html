@@ -262,6 +262,9 @@ async function run() {
   setValue(intakeWin, '#hgnsImplantYear', '2024');
 
   chooseRadio(intakeWin, 'cvdHistory', 'yes');
+  chooseRadio(intakeWin, 'chronicOpioidUse', 'no');
+  chooseRadio(intakeWin, 'neuromuscularRespiratoryRisk', 'no');
+  chooseRadio(intakeWin, 'hypoventilationRisk', 'no');
   assert(intakeDoc.getElementById('echoHistoryDetails').classList.contains('intake-conditional--visible'), 'Cardiovascular history opens the echocardiogram question');
   click(intakeWin, 'input[name="cvdCondition"][value="hypertension"]');
   chooseRadio(intakeWin, 'echoHistory', 'yes');
@@ -279,6 +282,9 @@ async function run() {
   assertEqual(intakeSubmission.payload.cardiovascularHistory.echoHistory, 'yes', 'Intake records prior echocardiogram');
   assertEqual(intakeSubmission.payload.cardiovascularHistory.resultKnowledge, 'unknown', 'Intake accepts an unknown echo result without asking the patient to guess LVEF');
   assert(intakeSubmission.payload.cardiovascularHistory.conditions.includes('hypertension'), 'Intake distinguishes hypertension from heart failure and other cardiovascular disease');
+  assertEqual(intakeSubmission.payload.sleepTestingRisks.chronicOpioidUse, 'no', 'Intake records chronic opioid screening for sleep-study selection');
+  assertEqual(intakeSubmission.payload.sleepTestingRisks.neuromuscularRespiratoryRisk, 'no', 'Intake records neuromuscular respiratory-risk screening');
+  assertEqual(intakeSubmission.payload.sleepTestingRisks.hypoventilationRisk, 'no', 'Intake records hypoventilation screening');
   assertEqual(intakeSubmission.payload.sleepStudyHistory.studyType, 'home', 'Intake records prior home versus lab sleep study');
   assertEqual(intakeSubmission.payload.cpapHistory.deviceType, 'bipap', 'Intake records CPAP versus BiPAP without asking for pressure settings');
   assertEqual(intakeSubmission.payload.cpapHistory.hasDifficulty, 'no', 'Intake records whether a current PAP user has difficulty before asking for specific problems');

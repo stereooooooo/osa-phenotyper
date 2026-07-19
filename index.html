@@ -524,6 +524,27 @@
                 <option value="severe">Active / severe TMJ problem</option>
               </select>
             </div>
+            <div class="col-12"><hr class="my-1"></div>
+            <div class="col-12">
+              <div class="small fw-semibold text-muted text-uppercase">Sleep study selection risks <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="AASM recommends in-lab polysomnography rather than home testing when certain conditions could make home testing incomplete or unsafe to rely on. Patient answers should be verified clinically."></i></div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-1" for="chronicOpioidUse">Regular opioid medicine use</label>
+              <select class="form-select form-select-sm" name="chronicOpioidUse" id="chronicOpioidUse"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-1" for="neuromuscularRespiratoryRisk">Neuromuscular breathing weakness</label>
+              <select class="form-select form-select-sm" name="neuromuscularRespiratoryRisk" id="neuromuscularRespiratoryRisk"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-1" for="hypoventilationRisk">Hypoventilation concern</label>
+              <select class="form-select form-select-sm" name="hypoventilationRisk" id="hypoventilationRisk"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select>
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-3 small">
+              <label for="severeInsomniaCompromisesHst"><input type="checkbox" name="severeInsomniaCompromisesHst" id="severeInsomniaCompromisesHst"> Severe insomnia likely to compromise HSAT</label>
+              <label for="nightVariabilityConcern"><input type="checkbox" name="nightVariabilityConcern" id="nightVariabilityConcern"> Meaningful night-to-night variability suspected</label>
+              <label for="severityPrecisionNeeded"><input type="checkbox" name="severityPrecisionNeeded" id="severityPrecisionNeeded"> Exact severity category would change management or eligibility</label>
+            </div>
           </div>
         </div>
       </div>
@@ -1342,7 +1363,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['visitReason','priorCpap','cpapDifficulty','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','priorSleepStudy','priorSleepStudyAnswer','priorSleepStudyYear','priorSleepStudyType','madHelped','madTolerated','madProblemTmj','madProblemTeeth','madProblemBite','madProblemDiscomfort','priorUPPPHelped','priorNasalHelped','priorSinusHelped','priorJawHelped','hgnsHelped','hgnsImplantYear','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','glp1Status','glp1Medication','glp1Effective','glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther','cvdUnsure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
+    treatment:    ['visitReason','priorCpap','cpapDifficulty','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','priorSleepStudy','priorSleepStudyAnswer','priorSleepStudyYear','priorSleepStudyType','madHelped','madTolerated','madProblemTmj','madProblemTeeth','madProblemBite','madProblemDiscomfort','priorUPPPHelped','priorNasalHelped','priorSinusHelped','priorJawHelped','hgnsHelped','hgnsImplantYear','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','glp1Status','glp1Medication','glp1Effective','glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther','cvdUnsure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj','chronicOpioidUse','neuromuscularRespiratoryRisk','hypoventilationRisk','severeInsomniaCompromisesHst','nightVariabilityConcern','severityPrecisionNeeded'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -2124,6 +2145,12 @@ function applyRuntimeMeta(meta) {
     madDentition: 'MAD tooth support',
     madProtrusion: 'MAD protrusion',
     madTmj: 'TMJ status',
+    chronicOpioidUse: 'Regular opioid medicine use',
+    neuromuscularRespiratoryRisk: 'Neuromuscular breathing weakness',
+    hypoventilationRisk: 'Hypoventilation concern',
+    severeInsomniaCompromisesHst: 'Severe insomnia may compromise HSAT',
+    nightVariabilityConcern: 'Night-to-night variability concern',
+    severityPrecisionNeeded: 'Exact severity category needed',
   };
 
   function getChartFieldLabel(key) {

@@ -593,6 +593,38 @@
               </div>
             </div>
           </div>
+
+          <div class="intake-conditional intake-conditional--visible" id="sleepTestingRiskDetails">
+            <div class="intake-conditional__title">Conditions that can change the best type of sleep study</div>
+            <p class="intake-section__intro intake-section__intro--compact">These brief questions help your clinician decide whether a home study provides enough information. It is fine to choose Not sure.</p>
+            <div class="intake-question">
+              <div class="intake-question__text intake-question__text--compact">Do you regularly take an opioid pain medicine, such as hydrocodone, oxycodone, morphine, fentanyl, or methadone?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="chronicOpioidUse" value="yes" id="chronicOpioidUseYes" class="intake-radio"><label for="chronicOpioidUseYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="chronicOpioidUse" value="no" id="chronicOpioidUseNo" class="intake-radio"><label for="chronicOpioidUseNo" class="intake-radio-label">No</label>
+                <input type="radio" name="chronicOpioidUse" value="unsure" id="chronicOpioidUseUnsure" class="intake-radio"><label for="chronicOpioidUseUnsure" class="intake-radio-label">Not sure</label>
+              </div>
+              <div class="intake-error" id="chronicOpioidUseError">Please select an answer.</div>
+            </div>
+            <div class="intake-question">
+              <div class="intake-question__text intake-question__text--compact">Do you have a nerve or muscle condition that weakens your breathing or coughing?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="neuromuscularRespiratoryRisk" value="yes" id="neuromuscularRespiratoryRiskYes" class="intake-radio"><label for="neuromuscularRespiratoryRiskYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="neuromuscularRespiratoryRisk" value="no" id="neuromuscularRespiratoryRiskNo" class="intake-radio"><label for="neuromuscularRespiratoryRiskNo" class="intake-radio-label">No</label>
+                <input type="radio" name="neuromuscularRespiratoryRisk" value="unsure" id="neuromuscularRespiratoryRiskUnsure" class="intake-radio"><label for="neuromuscularRespiratoryRiskUnsure" class="intake-radio-label">Not sure</label>
+              </div>
+              <div class="intake-error" id="neuromuscularRespiratoryRiskError">Please select an answer.</div>
+            </div>
+            <div class="intake-question">
+              <div class="intake-question__text intake-question__text--compact">Have you been told that you retain carbon dioxide, have low oxygen while awake, or need oxygen or breathing support at night for something other than sleep apnea?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="hypoventilationRisk" value="yes" id="hypoventilationRiskYes" class="intake-radio"><label for="hypoventilationRiskYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="hypoventilationRisk" value="no" id="hypoventilationRiskNo" class="intake-radio"><label for="hypoventilationRiskNo" class="intake-radio-label">No</label>
+                <input type="radio" name="hypoventilationRisk" value="unsure" id="hypoventilationRiskUnsure" class="intake-radio"><label for="hypoventilationRiskUnsure" class="intake-radio-label">Not sure</label>
+              </div>
+              <div class="intake-error" id="hypoventilationRiskError">Please select an answer.</div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1703,6 +1735,14 @@
       }
     }
 
+    ['chronicOpioidUse', 'neuromuscularRespiratoryRisk', 'hypoventilationRisk'].forEach(function(name) {
+      if (!document.querySelector('input[name="' + name + '"]:checked')) {
+        showRadioGroupError(name, name + 'Error');
+        errors.push(name);
+        if (!firstErrorEl) firstErrorEl = document.getElementById(name + 'Yes');
+      }
+    });
+
     // CPAP history details become required once prior CPAP is selected
     if (document.querySelector('input[name="priorTx"][value="cpap"]:checked')) {
       var cpapCurrent = document.querySelector('input[name="cpapCurrent"]:checked');
@@ -1916,6 +1956,11 @@
         lvef: radioVal('echoResultKnowledge') === 'exact'
           ? Number(document.getElementById('knownLvef').value)
           : null
+      },
+      sleepTestingRisks: {
+        chronicOpioidUse: radioVal('chronicOpioidUse'),
+        neuromuscularRespiratoryRisk: radioVal('neuromuscularRespiratoryRisk'),
+        hypoventilationRisk: radioVal('hypoventilationRisk')
       },
       weightLossReadiness: weightLossReadiness,
       glp1History: {

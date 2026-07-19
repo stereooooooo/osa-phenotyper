@@ -370,3 +370,13 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 |---|------|-------------|
 | 184 | Normal HST with snoring and persistent fatigue | A normal AHI after a technically adequate home study should still route to in-lab PSG when the encounter remains symptom-focused, even if the Epworth score is low and RDI/arousal data do not meet the more specific UARS rule; an uncomplicated normal-study snoring case should remain outside that pathway |
 | 185 | Normal HST with severe nasal obstruction and a clinician-confirmed nasal-first plan | The clinician view should retain the negative-HST diagnostic flag and PSG draft suggestion, but a patient handout should not order or schedule PSG when the clinician confirms nasal treatment without Diagnostic Testing; it should describe in-lab testing only as a possible later step if symptoms persist |
+
+### Group 41: Clinician Next-Test Guidance
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 186 | Short symptomatic WatchPAT | The clinician module should label PSG recommended and draft, but not confirm, Diagnostic Testing |
+| 187 | Adequate negative WatchPAT with persistent symptoms | The module should say PSG is reasonable to consider and preserve the clinician's option to treat another plausible contributor first |
+| 188 | Explicit night-to-night variability concern without a PSG-preferred condition | The module should offer selective multi-night HST, approximately three valid nights with the same device, without presenting it as routine care |
+| 189 | Adequate uncomplicated positive WatchPAT | The module should state that no additional diagnostic test is indicated now |
+| 190 | WatchPAT with chronic opioid use, respiratory muscle weakness, hypoventilation concern, or clinician-designated severe insomnia | The module should identify the documented reason and recommend PSG; patient questionnaire answers remain subject to clinical verification |

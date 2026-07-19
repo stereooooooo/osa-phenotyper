@@ -326,6 +326,35 @@ const psgSignals = OSAReportShared.assessEncounterSignals({ studyType: 'psg', ah
 assert(!psgSignals.watchpatSeverityUncertain, 'PSG result does not receive a WatchPAT uncertainty flag');
 const complicatedHstSignals = OSAReportShared.assessEncounterSignals({ studyType: 'watchpat', ahi: 18, heartFailure: true }, T);
 assert(complicatedHstSignals.psgPreferredComorbidity, 'Heart failure on a diagnostic WatchPAT raises the PSG-preferred signal');
+const opioidHstSignals = OSAReportShared.assessEncounterSignals({ studyType: 'watchpat', ahi: 18, chronicOpioidUse: true }, T);
+assert(opioidHstSignals.psgPreferredComorbidity && opioidHstSignals.psgPreferredReasons.includes('chronic opioid use'), 'Chronic opioid use raises the PSG-preferred signal with an explicit reason');
+
+group('Clinician Next-Test Guidance');
+assertEqual(
+  OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 4, tst: 3, visitReason: 'symptoms' }, T).state,
+  'psg-recommended',
+  'Short symptomatic home study produces PSG-recommended guidance'
+);
+assertEqual(
+  OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 3, tst: 6, remPercent: 20, visitReason: 'symptoms' }, T).state,
+  'psg-consider',
+  'Adequate negative home study with persistent symptoms produces consider-PSG guidance'
+);
+assertEqual(
+  OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 7, tst: 6, remPercent: 20, visitReason: 'snoring', nightVariabilityConcern: true }, T).state,
+  'multi-night-hst',
+  'Clinician-marked night variability produces selective multi-night HST guidance'
+);
+assertEqual(
+  OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 16, tst: 6, remPercent: 20, visitReason: 'new-diagnosis' }, T).state,
+  'no-additional-test',
+  'Adequate uncomplicated positive home study does not automatically trigger more testing'
+);
+assertEqual(
+  OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 18, tst: 6, chronicOpioidUse: true }, T).state,
+  'psg-recommended',
+  'Chronic opioid use produces PSG-recommended guidance'
+);
 
 group('Oxygen Data Sufficiency Guardrails');
 assertEqual(

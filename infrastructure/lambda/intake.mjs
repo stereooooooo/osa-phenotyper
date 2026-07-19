@@ -259,6 +259,7 @@ const CHECKBOX_STYLE_FORM_KEYS = new Set([
   'cvdStroke', 'cvdValve', 'cvdOther', 'cvdUnsure', 'lvefFollowupNeeded',
   'priorSleepStudy', 'madProblemTmj', 'madProblemTeeth', 'madProblemBite',
   'madProblemDiscomfort', 'glp1IssueNone', 'glp1IssueDigestive', 'glp1IssueCost', 'glp1IssueOther',
+  'severeInsomniaCompromisesHst', 'nightVariabilityConcern', 'severityPrecisionNeeded',
 ]);
 
 function isEmptyLike(val) {
@@ -749,6 +750,27 @@ function validateIntakeData(body) {
     data.cardiovascularHistory = cardiovascularHistory;
   }
 
+  // ── Sleep-testing risks that may favor PSG ───────────────
+  const sleepRiskAnswers = new Set(['yes', 'no', 'unsure']);
+  if (body.sleepTestingRisks === undefined) {
+    // Backward compatibility for a questionnaire page that was already open
+    // when this field group was deployed. New pages require all three answers.
+    data.sleepTestingRisks = {
+      chronicOpioidUse: 'unsure',
+      neuromuscularRespiratoryRisk: 'unsure',
+      hypoventilationRisk: 'unsure',
+    };
+  } else if (typeof body.sleepTestingRisks !== 'object' || body.sleepTestingRisks === null || Array.isArray(body.sleepTestingRisks)) {
+    errors.push('sleepTestingRisks');
+  } else {
+    const risks = {};
+    for (const key of ['chronicOpioidUse', 'neuromuscularRespiratoryRisk', 'hypoventilationRisk']) {
+      if (!sleepRiskAnswers.has(body.sleepTestingRisks[key])) errors.push(`sleepTestingRisks.${key}`);
+      else risks[key] = body.sleepTestingRisks[key];
+    }
+    data.sleepTestingRisks = risks;
+  }
+
   // ── Weight loss readiness (optional enum) ────────────────
   if (body.weightLossReadiness !== undefined && body.weightLossReadiness !== null) {
     const validWlr = new Set(['ready', 'considering', 'not-ready', '']);
@@ -796,7 +818,7 @@ function validateIntakeData(body) {
     'ess', 'isi', 'nose',
     'nasalObs', 'snoringReported', 'alcoholNearBed',
     'preferences', 'priorTreatments', 'sleepStudyHistory', 'treatmentOutcomes',
-    'cpapHistory', 'cardiovascularHistory', 'weightLossReadiness', 'glp1History',
+    'cpapHistory', 'cardiovascularHistory', 'sleepTestingRisks', 'weightLossReadiness', 'glp1History',
   ]);
   for (const key of Object.keys(body)) {
     if (!allowedKeys.has(key)) {
@@ -878,6 +900,9 @@ function mapToFormData(data, scores) {
     glp1Status:       data.glp1History?.status || '',
     glp1Medication:   data.glp1History?.medication || '',
     glp1Effective:    data.glp1History?.effective || '',
+    chronicOpioidUse: data.sleepTestingRisks?.chronicOpioidUse || '',
+    neuromuscularRespiratoryRisk: data.sleepTestingRisks?.neuromuscularRespiratoryRisk || '',
+    hypoventilationRisk: data.sleepTestingRisks?.hypoventilationRisk || '',
   };
 
   const madProblems = data.treatmentOutcomes?.mad?.problems || [];
