@@ -4,7 +4,7 @@
 |---|---|
 | Application | Capital ENT Precision Sleep Clinical Hub |
 | Document status | Living pre-validation evidence register |
-| Register version | 1.1 |
+| Register version | 1.2 |
 | Clinical logic reviewed through | Build `06c9c6d` |
 | Last comprehensive review | 2026-06-11 |
 | Last targeted review | 2026-07-19 |
@@ -79,6 +79,7 @@ indirect support for a different threshold, population, device, or treatment seq
 | TX-03 | HGNS candidacy and response context | Device-specific FDA eligibility and safety rules are separated from a qualitative, unvalidated response tier | E1/E4 | Guideline aligned for labeling; exploratory for response prediction | `citations.md`, HNS Clinical Staging | Device labels and payer rules change; the Ji model is single-center and incompletely represented | Eligibility accuracy and response prediction by device |
 | TX-04 | Weight-management and tirzepatide pathway | Weight counseling by BMI; tirzepatide discussion limited to the on-label obesity plus moderate-to-severe OSA context | E1/E2 | Guideline aligned | `citations.md`, Weight Management | Individual response varies and medication eligibility requires full clinical review | Weight change, AHI, symptoms, adverse effects, and treatment persistence |
 | TX-05 | Nasal-first sequencing after a negative HSAT | Available only through clinician judgment and plan confirmation; PSG remains a possible later step if symptoms persist | E2/E5 | Local governance informed by symptom evidence | `citations.md`, Diagnostic Testing and Nasal Obstruction and Treatment | No direct trial compares nasal-first with PSG-first diagnostic sequencing | Resolution of symptoms, eventual PSG yield, delay to diagnosis, and patient preference |
+| TX-06 | Primary-snoring treatment pathway after OSA is not identified | Conservative contributors are addressed first; an oral appliance remains an evidence-based option when requested; nasal surgery is presented only as an adjunct for documented obstruction with uncertain snoring response | E1/E2/E5 | Guideline aligned with local signoff workflow | `citations.md`, Primary Snoring | Partner-reported and objective snoring measures are poorly standardized; isolated nasal-surgery evidence is inconsistent and AAO-HNS did not reach consensus on septoplasty for primary snoring | Partner-reported snoring, validated SOS, objective acoustic burden, persistence, adverse effects, and treatment escalation |
 | SAF-01 | ASV and reduced LVEF | Suppress or warn against ASV when LVEF is 45% or lower; request missing LVEF when central-directed therapy is considered | E1/E2 | Guideline aligned safety rule | `citations.md`, CPAP Limitations and Cautions | Applies to the defined heart-failure population and therapy context | Safety-rule sensitivity and missed contraindications |
 | SAF-02 | Central or periodic-breathing signals on home testing | Require in-lab confirmation before advanced central-apnea-directed treatment is finalized | E1/E3 | Guideline aligned safety rule | `citations.md`, Diagnostic Testing and CPAP Limitations | Device-derived central classification has imperfect specificity | PSG confirmation rate and inappropriate advanced-treatment avoidance |
 

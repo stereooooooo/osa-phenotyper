@@ -1491,7 +1491,11 @@ function mapTreatments(f, m, T){
       /* Snoring-specific recommendations */
       if (bmi >= 27) pushRec(recs,'Weight management can reduce snoring intensity and frequency.','WEIGHT');
       if (nasalObs || ctSeptum || ctTurbs || (noseScore && noseScore >= T.nasal.noseMild)) {
-        pushRec(recs,'Nasal optimization to improve nasal airflow and reduce snoring.','NASAL-OPT');
+        // TX-06: nasal treatment is adjunctive for primary snoring. Subjective
+        // snoring may improve, but objective acoustic results are mixed and
+        // AAO-HNS did not reach consensus that septoplasty reliably reduces
+        // primary snoring (Han 2015; Ishii 2017; Virkkula 2006; Sarkis 2023).
+        pushRec(recs,'Nasal optimization to improve nasal airflow and potentially reduce snoring.','NASAL-OPT');
       }
       pushRec(recs,'Positional therapy — snoring is often worse on your back.','POS');
       pushRec(recs,'Custom oral appliance (MAD) can reduce snoring by repositioning the jaw.','MAD');
@@ -2168,7 +2172,7 @@ function buildClinicianReport(f, m, T){
   const normalStudyContextHTML = exists(ahi) && ahi < T.severity.mild ? `
     <div class="alert alert-success py-2 px-3 mb-3">
       <strong>Normal study by AHI:</strong> The AHI of ${ahi} is below the diagnostic threshold for obstructive sleep apnea.
-      ${encounter.visitReason === 'snoring' || yes(f, 'snoringReported') ? '<div><strong>Snoring pathway:</strong> Address nasal airflow, sleep position, alcohol near bedtime, weight when relevant, and other symptom drivers without activating an OSA treatment pathway.</div>' : ''}
+      ${encounter.visitReason === 'snoring' || yes(f, 'snoringReported') ? `<div><strong>Snoring pathway:</strong>${clinicianEvidenceTooltip('AAO-HNS did not reach consensus that septoplasty reliably reduces primary snoring. Prospective cohorts report improvement in subjective snoring-related quality of life, but objective acoustic findings are mixed. Treat nasal surgery as an adjunct for documented obstruction and counsel that snoring may persist.', 'Evidence context for nasal treatment of primary snoring')} Address nasal airflow, sleep position, alcohol near bedtime, weight when relevant, and other symptom drivers without activating an OSA treatment pathway.</div>` : ''}
       ${nasalExamFindings.length ? `<div><strong>Nasal exam:</strong> ${escapeHtml(nasalExamFindings.join(', '))}.</div>` : ''}
     </div>` : '';
   const lvefFollowupHTML = lvefFollowupNeeded ? `

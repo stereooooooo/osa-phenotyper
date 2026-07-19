@@ -22,6 +22,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 | ER-2026-07-15 | 2026-07-15 | 2026-07-15 | Device-specific HGNS labeling and complete concentric collapse | FDA Inspire P130008/S090; FDA Genio P240024 labeling and SSED; supporting HGNS literature in `citations.md` | Complete concentric collapse remains a device-specific contraindication for unilateral Inspire. Genio is not an automatic alternative because current US evidence and labeling do not establish safety/effectiveness in that subgroup. BMI 40 remains a local referral guardrail, not a universal device rule. | TX-03 | Device-specific logic and patient wording updated; see `phenotype-baseline-review.md` v5 |
 | ER-2026-07-19 | 2026-07-19 | 2026-07-19 | Negative HSAT, arousal-based scoring, UARS terminology, nasal-first sequencing, and WatchPAT sleep staging | Kapur et al. 2017 AASM diagnostic guideline; Malhotra et al. 2018 AASM position statement; Zhang et al. 2020 WatchPAT validation; nasal-treatment evidence already cataloged in `citations.md` | AASM supports PSG rather than a second HSAT when OSA remains suspected after a negative, inconclusive, or inadequate HSAT. UARS is presented within the OSA spectrum and evaluated with PSG using arousal-based scoring. Nasal-first sequencing remains a clinician-controlled option with an explicit evidence gap. WatchPAT is not described as a recording-time-only device. | DX-01, DX-02, TX-05 | Clinician tooltips and UARS wording shipped in build `bb4d319`; patient PSG action still requires clinician selection and confirmation |
 | ER-2026-07-19-NASAL | 2026-07-19 | 2026-07-19 | Predictors of symptom, sleep-quality, AHI, and PAP response after septoplasty or other nasal surgery | Carrie et al. 2023 NAIROS RCT; Stapleton et al. 2014 prospective cohort; Koutsourelakis et al. 2008 sham-controlled RCT; Camacho et al. 2015 meta-analysis; Cha et al. 2023 retrospective cohort | Baseline NOSE severity supports expectation-setting for nasal-symptom improvement and subjective sleep quality may improve when obstruction improves. It does not predict AHI response. Nasal obstruction as a dominant PAP barrier is a plausible but not externally validated PAP-response signal. No deterministic septoplasty-candidacy or AHI-response rule was added. | PH-08, TX-05 | Documentation refined and a clinician-only evidence-boundary tooltip added; patient wording and treatment ranking unchanged |
+| ER-2026-07-19-SNORING | 2026-07-19 | 2026-07-19 | Isolated nasal surgery and the adult primary-snoring pathway | AAO-HNS septoplasty consensus statement 2015; AAO-HNS rhinoplasty guideline 2017; Australasian Sleep Association primary-snoring position statement 2023; AASM/AADSM oral-appliance guideline 2015; Yamasaki et al. 2020; Virkkula et al. 2006 | Subjective snoring-related quality of life may improve after functional nasal surgery, but objective acoustic evidence is mixed and AAO-HNS did not reach consensus that septoplasty reliably reduces primary snoring. Nasal treatment remains adjunctive; no automatic surgery rule was added. | PH-08, TX-06 | Clinician counseling tooltip and cautious nasal-recommendation wording added; patient treatment ranking unchanged |
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 
@@ -71,6 +72,57 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Next review trigger or due date:** External validation of a nasal-surgery response model; a new
   randomized trial reporting sleep-specific treatment-effect modifiers; or the next scheduled
   comprehensive evidence review
+
+### ER-2026-07-19-SNORING: Nasal surgery in adult primary snoring
+
+- **Reviewer:** Codex evidence review for Capital ENT clinician review
+- **Review date:** 2026-07-19
+- **Evidence cutoff date:** 2026-07-19
+- **Reason for review:** New Open Evidence synthesis supplied by the clinician and refinement of the
+  normal-AHI snoring pathway
+- **Affected Logic IDs:** PH-08 and TX-06
+- **Databases and official sources searched:** AAO-HNS journal publications, PubMed, PubMed Central,
+  AASM, and the primary Australasian Sleep Association position statement
+- **Search concepts or saved search strings:** `AAO-HNS septoplasty primary snoring consensus`,
+  `functional nasal surgery snoring outcome survey`, `nasal surgery objective snoring acoustic`,
+  and `primary snoring oral appliance guideline`
+- **Inclusion criteria:** Adult primary-snoring or mixed snoring cohorts reporting partner,
+  validated questionnaire, acoustic, or sleep-study outcomes after isolated or functional nasal
+  surgery; current professional guidance for primary-snoring and oral-appliance management
+- **Key studies or documents added:** Han et al. 2015 AAO-HNS consensus statement; Ishii et al. 2017
+  AAO-HNS rhinoplasty guideline; Sarkis et al. 2023 Australasian Sleep Association position
+  statement; Ramar et al. 2015 AASM/AADSM oral-appliance guideline; Yamasaki et al. 2020 prospective
+  cohort; Virkkula et al. 2006 prospective objective-outcome study
+- **Key studies considered but not used, with reason:** Carroll et al. combined nasal surgery with
+  upper-airway radiofrequency ablation, so its snoring response cannot be attributed to nasal
+  surgery. Koo et al. included only 15 patients and used short-term smartphone acoustic outcomes.
+  Mandour et al., Li et al., Ertugay et al., and Wu et al. provide supportive or mixed cohort data
+  but do not resolve the guideline-level uncertainty. Long-term septoplasty reviews establish
+  durable nasal-obstruction benefit, not durable objective snoring control.
+- **Risk of bias or applicability concerns:** Snoring definitions, partner reporting, questionnaires,
+  recording methods, procedures, and follow-up intervals are heterogeneous. The largest long-term
+  cohort measured snoring-related quality of life rather than calibrated acoustic burden and was
+  not restricted to primary snoring. The AAO-HNS consensus statement records lack of consensus,
+  not a recommendation against septoplasty. The Australasian position statement combines limited
+  evidence with expert consensus and defines its target population more broadly than the app's
+  stricter AHI-below-5 primary-snoring pathway.
+- **Conclusion:** Counseling-context and wording change only. Nasal treatment can be selected for
+  documented obstruction and may improve subjective snoring-related quality of life, but nasal
+  surgery is adjunctive and must not be presented as reliably eliminating primary snoring. Oral
+  appliance therapy remains an evidence-based option after OSA has been excluded and conservative
+  measures are insufficient, subject to clinician selection and dental review.
+- **Code and patient-report effect:** Added a clinician-only tooltip to the normal-AHI snoring
+  pathway and changed clinician wording from "reduce snoring" to "potentially reduce snoring."
+  Patient wording and treatment ranking were already appropriately conditional and were unchanged.
+- **Regression scenarios added or updated:** The normal-AHI snoring, severe nasal obstruction,
+  alcohol, and weight-readiness scenario now verifies the adjunctive-surgery counseling boundary
+  and cautious snoring wording.
+- **Clinician reviewer and decision:** Raymond Brown, MD, review pending
+- **Commit:** Pending
+- **Deployed build:** Pending
+- **Next review trigger or due date:** Updated AAO-HNS or AASM guidance, a randomized trial of
+  isolated nasal surgery with a prespecified primary-snoring endpoint, or standardized objective
+  acoustic-response evidence
 
 ## Review template
 
