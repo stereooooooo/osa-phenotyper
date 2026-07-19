@@ -241,7 +241,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   index, and a central-event signal with reduced or missing LVEF context.
 - **Clinician reviewer and decision:** Raymond Brown, MD, review pending
 - **Commit:** `525c740`
-- **Deployed build:** `d967dd2`
+- **Deployed build:** `c7b1ab3`
 - **Next review trigger or due date:** AASM or ATS update; validated manufacturer-specific report
   definitions; prospective PSG comparison; external validation of a PAP-download action algorithm;
   or the next scheduled comprehensive review
