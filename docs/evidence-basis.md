@@ -4,7 +4,7 @@
 |---|---|
 | Application | Capital ENT Precision Sleep Clinical Hub |
 | Document status | Living pre-validation evidence register |
-| Register version | 1.0 |
+| Register version | 1.1 |
 | Clinical logic reviewed through | Build `bb4d319` |
 | Last comprehensive review | 2026-06-11 |
 | Last targeted review | 2026-07-19 |
@@ -72,7 +72,7 @@ indirect support for a different threshold, population, device, or treatment seq
 | PH-05 | Positional OSA | Supine/non-supine ratio plus non-supine AHI ceiling | E3 | Evidence informed | `citations.md`, OSA Phenotyping | Night-to-night position exposure and limited non-supine sleep can change classification | Reproducibility and response to positional therapy |
 | PH-06 | REM-predominant OSA | REM/NREM ratio plus NREM ceiling; requires adequate REM sampling when duration can be calculated | E3 | Evidence informed | `citations.md`, OSA Phenotyping | WatchPAT staging is algorithmic and REM exposure varies by night | Agreement with PSG and stability across nights |
 | PH-07 | Elevated or high hypoxic burden | Composite of HB, ODI, T90, and nadir; moderate tier is context only, high tier can increase urgency | E2/E3 | Evidence informed with exploratory composite | `citations.md`, Hypoxic Burden | Cohort thresholds are population-derived and are not universal guideline cutoffs; the exact worst-metric composite is app-specific | Cardiovascular-risk discrimination, treatment response, and calibration |
-| PH-08 | Nasal-resistance contributor | NOSE score, symptoms, and structural exam findings | E2/E3 | Evidence informed | `citations.md`, Nasal Obstruction and Treatment | Nasal treatment often improves symptoms and PAP tolerance but does not reliably normalize OSA | Change in NOSE, snoring, PAP adherence/pressure, and AHI |
+| PH-08 | Nasal-resistance contributor | NOSE score, symptoms, and structural exam findings; clinician tooltip separates expected nasal-symptom benefit from uncertain AHI response | E2/E3 | Evidence informed | `citations.md`, Nasal Obstruction and Treatment | Higher baseline NOSE predicts greater average nasal-symptom benefit, not AHI response. PAP benefit is most plausible when obstruction is the dominant barrier, but that predictor is supported by small observational cohorts and is not externally validated. | Change in NOSE, sleep quality, snoring, PAP adherence/pressure, and AHI, stratified by baseline NOSE and competing PAP barriers |
 | PH-09 | Elevated delta heart rate | Manual entry pathway retained but disabled for the current device workflow | E3 | Inactive or future | `citations.md`, HB Treatment Allocation and HBOxi methods | WatchPAT pulse-rate summary must not be substituted for event-linked delta HR | Association with cardiovascular outcomes and incremental value beyond HB |
 | TX-01 | COMISA sequencing | CBT-I is offered early; PAP may begin concurrently or sequentially based on severity, oxygen burden, sleepiness, access, and preference | E2 | Evidence informed | `citations.md`, COMISA | Adherence benefit varies across trials; urgent OSA treatment should not be delayed | ISI, PAP uptake/adherence, sleepiness, and patient-reported benefit |
 | TX-02 | MAD candidacy tier | Composite score using severity, BMI, age, sex, neck, position, anatomy, and available endotype signals | E3/E4 | Exploratory | `citations.md`, MAD Candidacy | Individual predictors are supported, but the exact point score and tier cutoffs are app-created | Discrimination and calibration for MAD response and discontinuation |

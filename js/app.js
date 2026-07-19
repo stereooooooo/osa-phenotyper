@@ -1644,6 +1644,14 @@ function buildClinicianReport(f, m, T){
     'Elevated Delta Heart Rate':    'bi-activity'
   };
 
+  // PH-08 evidence boundary: baseline NOSE severity predicts average nasal-symptom
+  // benefit after septoplasty, not AHI response. PAP benefit is most plausible when
+  // nasal obstruction is the dominant adherence barrier (Carrie 2023; Stapleton
+  // 2014; Koutsourelakis 2008; Cha 2023; see docs/citations.md).
+  const phenEvidenceTooltips = {
+    'Nasal-Resistance Contributor': 'Higher baseline NOSE severity predicts a larger average improvement in nasal symptoms after septoplasty, but it does not reliably predict AHI improvement. Nasal surgery is most likely to improve PAP use when nasal obstruction is the dominant barrier; evidence for this PAP predictor comes from small observational cohorts.'
+  };
+
   // Signal-strength badges — used by clinician phenotype table
   const confBadge = (conf) => {
     if (conf === 'High')     return '<span class="badge bg-danger">Strong signal</span>';
@@ -1678,7 +1686,10 @@ function buildClinicianReport(f, m, T){
     const conf = confidenceFor(tag,{reasons: out.why[tag], metrics: ctxBase});
     const icon = phenIcons[tag] || 'bi-circle';
     const displayTag = tag === 'High Hypoxic Burden' && !hbHighTier ? 'Elevated Hypoxic Burden' : tag;
-    return `<tr><td><i class="bi ${icon} me-1"></i>${displayTag}</td><td>${confBadge(conf)}</td><td><small>${out.why[tag].filter(Boolean).join(', ')||'\u2014'}</small></td></tr>`;
+    const evidenceTooltip = phenEvidenceTooltips[tag]
+      ? clinicianEvidenceTooltip(phenEvidenceTooltips[tag], `Evidence context for ${displayTag}`)
+      : '';
+    return `<tr><td><i class="bi ${icon} me-1"></i>${displayTag}${evidenceTooltip}</td><td>${confBadge(conf)}</td><td><small>${out.why[tag].filter(Boolean).join(', ')||'\u2014'}</small></td></tr>`;
   }).join('');
 
   const guardrails = [];
