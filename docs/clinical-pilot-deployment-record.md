@@ -3,7 +3,7 @@
 **Current decision:** NO GO for real PHI until the remaining human and synthetic-workflow gates below are complete.  
 **Environment:** Isolated clinician-only clinical pilot  
 **Pilot URL:** https://d3fgk3yvbi0jvr.cloudfront.net  
-**Approved code candidate:** `c7b1ab3`
+**Approved code candidate:** `27b42ec`
 **Stack:** `osa-phenotyper-capital-ent-precision-sleep-pilot`  
 **AWS region:** `us-east-2` (CloudFront WAF resources in `us-east-1`)  
 **Initial administrator:** `drbrown@capitalent.com`  
@@ -62,13 +62,14 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 
 ### PAP compliance assistant update, 2026-07-19
 
-- Build `c7b1ab3` contains the clinician-only PAP compliance review workflow and its AirView 4.51 parser calibration.
+- Build `27b42ec` contains the clinician-only PAP compliance review workflow and its AirView 4.51 parser calibration.
 - PAP compliance PDFs are parsed locally in the authenticated browser and are not uploaded or retained by the app.
 - Only values that staff review against the source report are eligible for structured chart storage.
 - The initial parser is intentionally limited to ResMed AirView-oriented reports. Unrecognized or other-vendor fields require manual verification.
 - Guidance is manufacturer-aware, separates the insurance four-hour metric from all-night treatment, assesses leak before residual events, and flags symptom-download discordance and possible central events.
+- An elevated P95 leak is contextual and does not establish sustained major leak without corroborating report pattern or clinical evidence. Symptom-download discordance requires explicit current symptoms despite PAP and names the selected symptoms.
 - The workflow never selects a pressure or changes settings. Clinician disposition and notes remain editable.
-- The complete local regression suite passed 1,386 assertions before deployment. Live CloudFront verification confirmed the new HTML shell and both PAP modules at the pilot URL.
+- The complete local regression suite passed 1,394 assertions before deployment. Live CloudFront verification confirmed build `27b42ec`, the updated clinician inputs, and revised PAP guidance at the pilot URL.
 
 ## Required synthetic rehearsal
 

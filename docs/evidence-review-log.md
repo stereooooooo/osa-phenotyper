@@ -246,8 +246,10 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   current symptoms despite a low device index, historical symptoms that must not create discordance,
   and a central-event signal with reduced or missing LVEF context.
 - **Clinician reviewer and decision:** Raymond Brown, MD, review pending
-- **Commit:** `525c740`
-- **Deployed build:** `c7b1ab3`
+- **Initial commit:** `525c740`
+- **AirView parser calibration:** `c7b1ab3`
+- **P95 leak and explicit symptom refinement:** `27b42ec`
+- **Deployed build:** `27b42ec`
 - **Next review trigger or due date:** AASM or ATS update; validated manufacturer-specific report
   definitions; prospective PSG comparison; external validation of a PAP-download action algorithm;
   or the next scheduled comprehensive review
