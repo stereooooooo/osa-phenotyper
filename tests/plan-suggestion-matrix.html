@@ -445,6 +445,109 @@ const SCENARIOS = [
     patientExcludes: ['We are recommending a sleep study', 'heart-pumping function'],
     todayPlanIncludes: ['obtain and review your prior in-lab sleep study from around 2021'],
     todayPlanExcludes: ['request the latest echo']
+  },
+  {
+    id: 'recurrent-nasal-obstruction-after-beneficial-surgery',
+    name: 'Current APAP with recurrent severe nasal obstruction after previously helpful nasal surgery',
+    visitReason: 'pap-troubleshoot',
+    fields: {
+      sex: 'F', bmi: '28', neck: '14', tonsils: '1', ftp: 'II', ess: '10', isi: '6', noseScore: '65',
+      pahi: '17', tst: '6.8', remPercent: '22', supPahi: '20', nonSupPahi: '14', remPahi: '19',
+      nremPahi: '16', odi: '15', nadir: '86', hbAreaPH: '28', t90: '2', papMode: 'APAP',
+      papMinPressure: '6', papMaxPressure: '14', cpapDifficulty: 'yes', priorNasalHelped: 'yes'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cpapDry', 'priorNasal', 'nasalObs'],
+    expectedSuggestions: ['PAP management', 'Nasal treatment'],
+    expectedTags: ['CPAP', 'NASAL-OPT', 'NASAL-PRIOR'],
+    clinicianIncludes: ['Prior surgery response: nasal surgery: yes', 'It previously helped, so assess for recurrent or residual obstruction'],
+    clinicianExcludes: ['avoid assuming revision alone will improve OSA'],
+    patientIncludes: ['nasal surgery that helped', 'Building on your current APAP therapy', 'NOSE symptom score is 65/100, which is in the severe range'],
+    patientExcludes: ['Begin PAP therapy now'],
+    todayPlanIncludes: ['prior nasal surgery helped', 'recurrent or residual blockage', 'Track whether nasal breathing, dry mouth, mask comfort, and PAP use improve'],
+    todayPlanExcludes: ['another nasal procedure will treat the sleep apnea']
+  },
+  {
+    id: 'prior-jaw-surgery-mad-interest',
+    name: 'Oral appliance interest after helpful prior jaw surgery',
+    visitReason: 'oral-appliance',
+    fields: {
+      sex: 'M', bmi: '27', neck: '15', tonsils: '1', ftp: 'II', ess: '9', isi: '5', noseScore: '10',
+      pahi: '14', tst: '6.9', remPercent: '21', supPahi: '17', nonSupPahi: '11', remPahi: '16',
+      nremPahi: '13', odi: '12', nadir: '88', hbAreaPH: '21', t90: '1', priorJawHelped: 'yes'
+    },
+    checks: ['priorJaw', 'prefAvoidCpap'],
+    expectedSuggestions: ['Oral appliance'],
+    expectedTags: ['MAD', 'MAD-WORKUP'],
+    clinicianIncludes: ['Prior surgery response: jaw surgery: yes', 'prior jaw surgery still warrants occlusal review', 'prior jaw surgery occlusal assessment'],
+    clinicianExcludes: ['MAD-SAFETY-LIMIT'],
+    patientIncludes: ['jaw surgery that helped', 'sleep-dentist exam'],
+    patientExcludes: ['safe or practical fit right now'],
+    todayPlanIncludes: ['had jaw surgery', 'occlusion', 'sleep dentist'],
+    todayPlanExcludes: ['Begin PAP therapy now']
+  },
+  {
+    id: 'existing-hgns-residual-severe-osa',
+    name: 'Existing HGNS without benefit plus residual severe hypoxic OSA and weight readiness',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '36', neck: '18', tonsils: '1', ftp: 'IV', ess: '16', isi: '7', noseScore: '15',
+      pahi: '48', tst: '6.2', remPercent: '18', supPahi: '54', nonSupPahi: '42', remPahi: '55',
+      nremPahi: '46', odi: '52', nadir: '72', hbAreaPH: '84', t90: '21', hgnsHelped: 'no',
+      hgnsImplantYear: '2023', weightLossReadiness: 'ready'
+    },
+    checks: ['priorInspire'],
+    expectedSuggestions: ['Nerve stimulation', 'Weight management'],
+    expectedTags: ['INSPIRE-OPT', 'WEIGHT', 'HB-URG'],
+    excludedTags: ['HNS-WORKUP'],
+    clinicianIncludes: ['reports no clear benefit', 'obtain on-therapy testing', 'High Hypoxic Burden'],
+    clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'HGNS response tier'],
+    patientIncludes: ['hypoglossal nerve stimulator implanted around 2023 without clear improvement', 'oxygen', 'weight management'],
+    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE'],
+    todayPlanIncludes: ['existing nerve stimulator has not clearly helped', 'prompt objective on-therapy testing', 'severe breathing and oxygen findings', 'Choose one realistic nutrition or activity step'],
+    todayPlanExcludes: ['complete the nerve-stimulation evaluation']
+  },
+  {
+    id: 'current-apap-glp-digestive-barrier',
+    name: 'Current APAP comfort problems with effective GLP-1 treatment and digestive side effects',
+    visitReason: 'pap-troubleshoot',
+    fields: {
+      sex: 'F', bmi: '35', neck: '15', tonsils: '1', ftp: 'III', ess: '11', isi: '8', noseScore: '15',
+      pahi: '26', tst: '6.5', remPercent: '20', supPahi: '29', nonSupPahi: '23', remPahi: '30',
+      nremPahi: '25', odi: '23', nadir: '83', hbAreaPH: '44', t90: '4', papMode: 'APAP',
+      papMinPressure: '7', papMaxPressure: '16', cpapDifficulty: 'yes', weightLossReadiness: 'ready',
+      glp1Status: 'current', glp1Medication: 'semaglutide', glp1Effective: 'yes'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cpapMask', 'cpapLeaks', 'glp1IssueDigestive'],
+    expectedSuggestions: ['PAP management', 'Weight management'],
+    expectedTags: ['CPAP', 'WEIGHT'],
+    clinicianIncludes: ['Currently using APAP', 'mask fit', 'leaks/noise', 'GLP-1 history: current, semaglutide, weight benefit yes, digestive side effects'],
+    clinicianExcludes: ['Begin nasal treatment'],
+    patientIncludes: ['Building on your current APAP therapy', 'currently take semaglutide', 'digestive side effects'],
+    patientExcludes: ['Begin PAP therapy now'],
+    todayPlanIncludes: ['mask', 'leak', 'Continue it only as directed by the prescribing clinician', 'specifically review digestive side effects'],
+    todayPlanExcludes: ['Improve nasal airflow']
+  },
+  {
+    id: 'heart-failure-lvef-55-central-hst',
+    name: 'Current BiPAP with heart failure, documented LVEF 55, and central home-study signals',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'M', bmi: '31', neck: '17', tonsils: '1', ftp: 'III', ess: '13', isi: '6', noseScore: '10',
+      pahi: '29', pahic: '11', csr: '16', tst: '6.1', remPercent: '19', supPahi: '32', nonSupPahi: '26',
+      remPahi: '33', nremPahi: '28', odi: '25', nadir: '82', hbAreaPH: '47', t90: '5', lvef: '55',
+      papMode: 'BiPAP', papEpapPressure: '8', papIpapPressure: '14', cpapDifficulty: 'no', echoHistory: 'yes'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cvd', 'cvdHeartFailure'],
+    expectedSuggestions: ['Diagnostic testing', 'PAP management'],
+    expectedTags: ['CENTRAL-PSG-WORKUP', 'CPAP'],
+    excludedTags: ['ASV-CONTRA', 'ASV-SAFETY', 'HLG-ADV'],
+    expectedInputState: { lvefFollowupNeeded: false },
+    clinicianIncludes: ['Currently using BiPAP', 'Documented LVEF: 55%', 'heart failure or cardiomyopathy'],
+    clinicianExcludes: ['Echo/LVEF Needed', 'makes ASV unsafe'],
+    patientIncludes: ['central-breathing', 'in-lab sleep study', 'Building on your current BiPAP therapy'],
+    patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Complete the recommended sleep testing', 'Complete the additional sleep testing recommended today', 'You reported no current difficulty with BiPAP', 'Bring or upload the compliance report'],
+    todayPlanExcludes: ['request the latest echo']
   }
 ];
 

@@ -2086,6 +2086,9 @@ function buildClinicianReport(f, m, T){
     };
     historyContextParts.push(`Cardiovascular history: ${cvdConditions.map(condition => conditionLabels[condition] || condition).join(', ')}.`);
   }
+  if (exists(lvef)) {
+    historyContextParts.push(`Documented LVEF: ${lvef}%.`);
+  }
   if (glp1Status === 'current' || glp1Status === 'previous') {
     const medicationLabels = { semaglutide: 'semaglutide', tirzepatide: 'tirzepatide', liraglutide: 'liraglutide', other: 'other GLP-1 medication', unsure: 'GLP-1 medication unknown' };
     const issueLabels = { glp1IssueNone: 'no significant problems', glp1IssueDigestive: 'digestive side effects', glp1IssueCost: 'cost or coverage', glp1IssueOther: 'other issue' };

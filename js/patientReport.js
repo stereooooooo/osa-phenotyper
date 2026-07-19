@@ -858,6 +858,10 @@ var PatientReport = (() => {
     if (data.priorSinus) txParts.push(`You had sinus surgery${data.priorSinusHelped === 'yes' ? ' that helped' : data.priorSinusHelped === 'no' ? ' without clear sleep or snoring improvement' : ''}`);
     if (data.priorJaw) txParts.push(`You had jaw surgery${data.priorJawHelped === 'yes' ? ' that helped' : data.priorJawHelped === 'no' ? ' without clear sleep or snoring improvement' : ''}`);
     if (data.priorInspire) txParts.push(`You have a hypoglossal nerve stimulator${data.hgnsImplantYear ? ` implanted around ${data.hgnsImplantYear}` : ''}${data.hgnsHelped === 'yes' ? ' that has helped' : data.hgnsHelped === 'no' ? ' without clear improvement' : ''}`);
+    if (data.priorJaw && selectedPlanSet(data).has('planMad')) {
+      const jawGuidance = 'Because you have had jaw surgery, a sleep-dentist exam should review your bite (occlusion), tooth support, jaw movement, and jaw-joint health before an oral appliance is finalized.';
+      treatmentHistoryGuidance = [treatmentHistoryGuidance, jawGuidance].filter(Boolean).join(' ');
+    }
     if (!txParts.length) return '';
 
     return `
@@ -2150,6 +2154,8 @@ ${items.join('')}`;
       }
       if (data.priorNasal && data.priorNasalHelped === 'no') {
         nasalActions.unshift('Because prior nasal surgery did not clearly improve sleep or snoring, reassess the current source of blockage rather than assuming another nasal procedure will treat the sleep apnea.');
+      } else if (data.priorNasal && data.priorNasalHelped === 'yes') {
+        nasalActions.unshift('Because prior nasal surgery helped before obstruction returned, reassess for recurrent or residual blockage and choose treatment based on the current nasal findings.');
       }
       modules.push({
         id: 'nasal',
@@ -2261,12 +2267,15 @@ ${items.join('')}`;
         ? `Before trying another oral appliance, ask the sleep dentist to address the prior ${madBarriers.length ? madBarriers.join(', ') : 'tolerance problem'} and decide whether a safer redesign or another treatment makes more sense.`
         : data.priorMAD && data.madHelped === 'yes' && data.madTolerated === 'yes'
           ? 'Because the prior oral appliance helped and was tolerable, review its fit and adjustment, continue or retitrate it as appropriate, and arrange an on-treatment sleep study to confirm control.'
+          : data.priorJaw
+            ? 'Because you have had jaw surgery, ask the sleep dentist to review your bite (occlusion), tooth support, jaw movement, and jaw-joint health before finalizing an oral appliance.'
           : 'Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
     }
     if (selected.has('planInspire')) {
       if (data.priorInspire) {
+        const urgentOxygenFollowup = (data.recTags || []).some(entry => entry?.tag === 'HB-URG');
         add(data.hgnsHelped === 'no'
-          ? 'Because the existing nerve stimulator has not clearly helped, confirm activation and use, review programming, and arrange objective on-therapy testing before changing treatment.'
+          ? `Because the existing nerve stimulator has not clearly helped, confirm activation and use, review programming, and arrange ${urgentOxygenFollowup ? 'prompt ' : ''}objective on-therapy testing before changing treatment.${urgentOxygenFollowup ? ' The severe breathing and oxygen findings make timely confirmation of effective treatment important.' : ''}`
           : data.hgnsHelped === 'yes'
             ? 'Because the existing nerve stimulator has helped, continue it and confirm current settings, nightly use, and objective treatment efficacy.'
             : 'Review activation, nightly use, settings, and objective treatment efficacy for the existing nerve stimulator.');

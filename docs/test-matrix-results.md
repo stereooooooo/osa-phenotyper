@@ -1396,3 +1396,16 @@
 - patient handouts and action plans in all scenarios remained free of typographic dash characters
 - full headless suite passed with 889 assertions
 **Finding:** fixed. Treatment history now changes routing in both directions: failure creates barrier-specific reassessment, while benefit creates continuation and efficacy-verification guidance. No additional clinical or report-personalization errors were found in the fresh five-scenario batch.
+
+### Tests 174-178: Mixed current-therapy and prior-treatment stress tests
+**Status:** local executable clinical-routing, clinician-report, patient-report, action-plan, syntax, and regression testing complete
+**Result:** passed after four global improvements ✅
+**Scenarios and findings:**
+- current APAP with severe recurrent nasal obstruction after previously helpful nasal surgery correctly retained PAP and nasal pathways; the action plan now explicitly reassesses recurrent or residual blockage instead of treating the prior operation as either irrelevant or an automatic reason for revision
+- oral-appliance interest after helpful jaw surgery correctly remained available but required a sleep-dentist exam; the comprehensive report and action plan now name bite (occlusion), tooth support, jaw movement, and jaw-joint review
+- an existing HGNS device without benefit plus residual AHI 48, nadir 72%, T90 21%, and high hypoxic burden excluded new-device candidacy and DISE language; the action plan now calls for prompt objective on-therapy testing because the severe breathing and oxygen findings require timely confirmation of effective treatment
+- current APAP mask/leak difficulty and current effective semaglutide with digestive side effects stayed as separate PAP and weight-management pathways; the clinician and patient outputs preserved the exact barriers and did not invent nasal treatment or suggest autonomous pressure changes
+- heart failure with documented LVEF 55% and WatchPAT central signals required in-lab confirmation while continuing BiPAP review; documented LVEF is now visible in clinician decision context, the LVEF follow-up flag remained cleared, and ASV contraindication language stayed suppressed
+- all five cases preserved the no-typographic-dash patient-handout rule
+- full headless suite passed with 1,017 assertions
+**Finding:** fixed. The mixed cases are becoming more stable: the remaining defects were missing personalization and visibility, not contradictory phenotype calculations or unsafe treatment selection. No unresolved issue remained after the final rerun.

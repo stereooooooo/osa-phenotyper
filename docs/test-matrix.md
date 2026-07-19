@@ -336,3 +336,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 171 | Successful prior throat surgery with recurrence | Prior benefit followed by recurrent symptoms or OSA should be acknowledged while operative-report review, current anatomy, and DISE still precede selection of another surgical target |
 | 172 | Helpful existing HGNS | An existing helpful hypoglossal nerve stimulator should remain in an optimization and objective-efficacy pathway without new-device candidacy staging or DISE prerequisites |
 | 173 | Hypertension-only cardiac history | Isolated hypertension without heart failure or a prior echo should appear as clinical context but should not create an unnecessary LVEF-record request |
+
+### Group 39: Mixed Current-Therapy And Prior-Treatment Stress Tests
+| # | Name | Key Features |
+|---|------|-------------|
+| 174 | Recurrent nasal obstruction after prior benefit | A current APAP user with severe recurrent nasal symptoms after previously helpful nasal surgery should continue APAP, receive nasal treatment, and be reassessed for recurrent or residual blockage rather than automatically routed to revision surgery |
+| 175 | Oral appliance planning after jaw surgery | Prior helpful jaw surgery should not automatically exclude an oral appliance, but the clinician and patient plans should require sleep-dentist review of bite, tooth support, jaw movement, and jaw-joint health |
+| 176 | Existing HGNS with severe residual hypoxic OSA | An existing nerve stimulator without benefit plus severe residual breathing and oxygen abnormalities should trigger prompt programming, use review, and objective on-therapy testing while preserving weight-management support and excluding new-device candidacy workup |
+| 177 | Current APAP plus GLP-1 adverse effects | PAP mask and leak problems and a current effective GLP-1 medication with digestive side effects should remain separate, specific management pathways without inventing nasal obstruction or recommending autonomous pressure changes |
+| 178 | Heart failure with documented preserved LVEF and central HST signals | A current BiPAP user with LVEF 55% and central home-study signals should receive in-lab confirmation and continued BiPAP review without an unresolved-LVEF flag, ASV contraindication, or premature central-directed treatment |
