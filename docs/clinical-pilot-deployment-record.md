@@ -3,7 +3,7 @@
 **Current decision:** NO GO for real PHI until the remaining human and synthetic-workflow gates below are complete.  
 **Environment:** Isolated clinician-only clinical pilot  
 **Pilot URL:** https://d3fgk3yvbi0jvr.cloudfront.net  
-**Approved code candidate:** `10eeffb`  
+**Approved code candidate:** `d967dd2`
 **Stack:** `osa-phenotyper-capital-ent-precision-sleep-pilot`  
 **AWS region:** `us-east-2` (CloudFront WAF resources in `us-east-1`)  
 **Initial administrator:** `drbrown@capitalent.com`  
@@ -59,6 +59,16 @@ This record documents technical verification. It is not a declaration of HIPAA c
 - [ ] Send and receive one PHI-free WAF test alarm
 
 Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destination mailboxes still requires human confirmation.
+
+### PAP compliance assistant update, 2026-07-19
+
+- Build `d967dd2` added the clinician-only PAP compliance review workflow.
+- PAP compliance PDFs are parsed locally in the authenticated browser and are not uploaded or retained by the app.
+- Only values that staff review against the source report are eligible for structured chart storage.
+- The initial parser is intentionally limited to ResMed AirView-oriented reports. Unrecognized or other-vendor fields require manual verification.
+- Guidance is manufacturer-aware, separates the insurance four-hour metric from all-night treatment, assesses leak before residual events, and flags symptom-download discordance and possible central events.
+- The workflow never selects a pressure or changes settings. Clinician disposition and notes remain editable.
+- The complete local regression suite passed 1,380 assertions before deployment. Live CloudFront verification confirmed the new HTML shell and both PAP modules at the pilot URL.
 
 ## Required synthetic rehearsal
 
