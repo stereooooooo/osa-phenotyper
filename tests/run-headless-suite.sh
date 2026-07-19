@@ -143,6 +143,9 @@ TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
 MATRIX_PASSED="$(run_suite "tests/phenotype-matrix.html" "phenotype characterization matrix" 30000)"
 TOTAL_PASSED=$((TOTAL_PASSED + MATRIX_PASSED))
 
+PLAN_SUGGESTION_PASSED="$(run_suite "tests/plan-suggestion-matrix.html" "plan suggestion matrix" 30000)"
+TOTAL_PASSED=$((TOTAL_PASSED + PLAN_SUGGESTION_PASSED))
+
 PDF_PAGINATION_PASSED="$(run_pdf_pagination_suite)"
 TOTAL_PASSED=$((TOTAL_PASSED + PDF_PAGINATION_PASSED))
 

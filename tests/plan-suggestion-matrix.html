@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Precision Sleep Plan Suggestion Matrix</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
+  .pass { color: #198754; } .fail { color: #dc3545; }
+  .summary { padding: 1rem; border-radius: 8px; background: #fff; }
+  pre { background: #fff; padding: .5rem; border: 1px solid #dee2e6; margin: .25rem 0; white-space: pre-wrap; }
+  iframe { position: absolute; left: -9999px; width: 1440px; height: 2400px; border: 0; }
+</style>
+</head>
+<body>
+<h1>Precision Sleep Plan Suggestion Matrix</h1>
+<div id="results"></div>
+<pre id="capture" hidden></pre>
+<iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
+<script>
+let passed = 0;
+let failed = 0;
+const results = [];
+const captures = [];
+
+function assert(condition, message) {
+  if (condition) passed++; else failed++;
+  results.push({ pass: Boolean(condition), message });
+}
+function assertEqual(actual, expected, message) {
+  assert(actual === expected, `${message}${actual === expected ? '' : ` (got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)})`}`);
+}
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+async function waitFor(predicate, label, timeout = 12000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    try { const value = predicate(); if (value) return value; } catch (_) {}
+    await wait(50);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+function setValue(win, name, value) {
+  const el = win.document.querySelector(`[name="${name}"]`);
+  if (!el) throw new Error(`Missing field ${name}`);
+  el.value = value;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function setId(win, id, value) {
+  const el = win.document.getElementById(id);
+  if (!el) throw new Error(`Missing field ${id}`);
+  el.value = value;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function setCheck(win, id, checked = true) {
+  const el = win.document.getElementById(id);
+  if (!el) throw new Error(`Missing checkbox ${id}`);
+  el.checked = checked;
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function textOnly(html, win) {
+  const shell = win.document.createElement('div');
+  shell.innerHTML = html;
+  return shell.textContent.replace(/\s+/g, ' ').trim();
+}
+
+const SCENARIOS = [
+  {
+    id: 'current-apap',
+    name: 'Current APAP with nasal symptoms and weight interest',
+    visitReason: 'pap-troubleshoot',
+    fields: {
+      sex: 'M', bmi: '31.8', neck: '17', tonsils: '1', ftp: 'IV', ess: '11', isi: '8', noseScore: '60',
+      pahi: '21.6', tst: '6.2', remPercent: '22', supPahi: '36', nonSupPahi: '9.5', remPahi: '29',
+      odi: '18.5', nadir: '84', hbAreaPH: '42', t90: '3.1', papMode: 'APAP', papMinPressure: '7',
+      papMaxPressure: '15', weightLossReadiness: 'considering'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cpapDry'],
+    expectedSuggestions: ['PAP management', 'Nasal treatment', 'Positional therapy', 'Weight management'],
+    expectedTags: ['CPAP', 'NASAL-OPT', 'POS', 'WEIGHT'],
+    patientIncludes: ['Building on your current APAP therapy', 'prioritize nasal treatment', 'supported weight management'],
+    patientExcludes: ['Begin PAP therapy now']
+  },
+  {
+    id: 'new-comisa',
+    name: 'New moderate OSA diagnosis with COMISA',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'F', bmi: '29', neck: '14', tonsils: '1', ftp: 'II', ess: '12', isi: '19', noseScore: '10',
+      pahi: '18', tst: '6.5', remPercent: '20', supPahi: '22', nonSupPahi: '16', remPahi: '21',
+      nremPahi: '17', odi: '16', nadir: '86', hbAreaPH: '28', t90: '2'
+    },
+    checks: [],
+    expectedSuggestions: ['CBT-I', 'PAP management'],
+    expectedTags: ['CBTI', 'CPAP'],
+    patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel'],
+    patientExcludes: ['Complete DISE-Guided']
+  },
+  {
+    id: 'oral-appliance',
+    name: 'PAP-intolerant patient requesting an oral appliance',
+    visitReason: 'oral-appliance',
+    fields: {
+      sex: 'F', bmi: '26', neck: '13.5', tonsils: '1', ftp: 'II', ess: '10', isi: '7', noseScore: '10',
+      pahi: '12', tst: '6.8', remPercent: '21', supPahi: '14', nonSupPahi: '10', odi: '10', nadir: '88',
+      hbAreaPH: '20', t90: '1', cpapHelped: 'No', cpapRetry: 'No'
+    },
+    checks: ['priorCpap', 'cpapMask', 'prefAvoidCpap'],
+    expectedSuggestions: ['Oral appliance'],
+    expectedTags: ['MAD-FAVORABLE'],
+    patientIncludes: ['oral appliance', 'sleep dentist'],
+    patientExcludes: ['Begin PAP therapy now', 'DISE-Guided']
+  },
+  {
+    id: 'inspire-goal',
+    name: 'Patient specifically interested in Inspire',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '30', neck: '16', tonsils: '1', ftp: 'III', ess: '13', isi: '6', noseScore: '10',
+      pahi: '28', tst: '6.4', remPercent: '19', supPahi: '32', nonSupPahi: '24', odi: '24', nadir: '82',
+      hbAreaPH: '48', t90: '4', cpapHelped: 'No', cpapRetry: 'No'
+    },
+    checks: ['priorCpap'],
+    expectedSuggestions: ['Nerve stimulation'],
+    expectedTags: [],
+    patientIncludes: ['nerve stimulation'],
+    patientExcludes: ['custom oral appliance']
+  },
+  {
+    id: 'pre-study',
+    name: 'Symptomatic patient without a completed sleep study',
+    visitReason: 'symptoms',
+    fields: { sex: 'M', bmi: '28', neck: '16', tonsils: '2', ftp: 'III', ess: '16', isi: '9', noseScore: '15' },
+    checks: [],
+    expectedSuggestions: ['Diagnostic testing'],
+    expectedTags: ['SLEEP-STUDY'],
+    patientIncludes: ['recommend a sleep study', 'Complete diagnostic sleep testing'],
+    patientExcludes: ['Begin PAP therapy now', 'Inspire']
+  }
+];
+
+async function runScenario(win, doc, scenario, index) {
+  doc.getElementById('form').reset();
+  await wait(0);
+  setId(win, 'patientName', `SYNTHETIC PLAN ${index + 1}, Test`);
+  setId(win, 'patientDob', '1975-01-15');
+  setValue(win, 'visitReason', scenario.visitReason);
+  Object.entries(scenario.fields).forEach(([name, value]) => setValue(win, name, value));
+  scenario.checks.forEach(id => setCheck(win, id));
+  await waitFor(() => (
+    win.OSAPlanSuggestions.derive().length === scenario.expectedSuggestions.length &&
+    doc.querySelectorAll('#planSuggestionList .osa-plan-suggestion').length === scenario.expectedSuggestions.length
+  ), `${scenario.id} suggestions`);
+
+  const suggestions = win.OSAPlanSuggestions.derive();
+  const labels = suggestions.map(item => item.label);
+  assertEqual(JSON.stringify(labels), JSON.stringify(scenario.expectedSuggestions), `${scenario.name}: suggested pathways`);
+  assert(suggestions.every(item => item.reason && item.reason.length > 10), `${scenario.name}: every suggestion explains why it appeared`);
+  assert(scenario.expectedSuggestions.every(label => !doc.querySelector(`[data-plan-option] input:checked`)), `${scenario.name}: suggestions remain unapplied initially`);
+
+  win.OSAPlanSuggestions.apply();
+  const draftSummary = doc.getElementById('planSummary').value;
+  assert(draftSummary.length > 15 && draftSummary.length <= 240, `${scenario.name}: creates a usable editable summary`);
+  setCheck(win, 'planConfirmed');
+  doc.querySelector('#form button[type="submit"]').click();
+  const expectedPatientName = `SYNTHETIC PLAN ${index + 1}, Test`;
+  const data = await waitFor(() => {
+    const latest = win.OSAReportState.getLastAnalysisData();
+    return latest?.patientName === expectedPatientName ? latest : null;
+  }, `${scenario.id} analysis`);
+  const recTags = (data.recTags || []).map(rec => rec.tag);
+  scenario.expectedTags.forEach(tag => assert(recTags.includes(tag), `${scenario.name}: clinician output includes ${tag}`));
+  assertEqual(
+    JSON.stringify([...data.selectedPlanFields].sort()),
+    JSON.stringify(suggestions.map(item => item.field).sort()),
+    `${scenario.name}: confirmed plan matches applied suggestions`
+  );
+
+  const patientHtml = win.PatientReport.generateReportHTML(data);
+  const patientText = textOnly(patientHtml, win);
+  scenario.patientIncludes.forEach(phrase => assert(patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report includes "${phrase}"`));
+  scenario.patientExcludes.forEach(phrase => assert(!patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report excludes "${phrase}"`));
+
+  captures.push({
+    id: scenario.id,
+    scenario: scenario.name,
+    suggestions: suggestions.map(item => ({ label: item.label, reason: item.reason })),
+    draftSummary,
+    selectedPlanFields: data.selectedPlanFields,
+    recommendationTags: recTags,
+    analysisFlags: {
+      selectedNerveStimulationWithoutRecommendation: data.selectedPlanFields.includes('planInspire') &&
+        !recTags.some(tag => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(tag))
+    },
+    clinicianPlanExcerpt: (doc.getElementById('clinicianReport')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 1200),
+    patientReportExcerpt: patientText.slice(0, 1600)
+  });
+}
+
+async function run() {
+  const frame = document.getElementById('appFrame');
+  await waitFor(() => frame.contentWindow?.OSAPlanSuggestions && frame.contentWindow?.OSAReportState, 'app ready');
+  const win = frame.contentWindow;
+  const doc = frame.contentDocument;
+  win.alert = () => {};
+  win.confirm = () => true;
+  await waitFor(() => !doc.getElementById('appContainer').classList.contains('d-none'), 'app visible');
+
+  for (let index = 0; index < SCENARIOS.length; index++) {
+    await runScenario(win, doc, SCENARIOS[index], index);
+  }
+  window.__CAPTURE__ = captures;
+  document.getElementById('capture').textContent = JSON.stringify(captures, null, 2);
+}
+
+function renderResults() {
+  const container = document.getElementById('results');
+  const summary = document.createElement('div');
+  summary.className = 'summary';
+  summary.innerHTML = `<strong>${passed} passed</strong>, <strong>${failed} failed</strong>`;
+  container.appendChild(summary);
+  results.forEach(result => {
+    const pre = document.createElement('pre');
+    pre.className = result.pass ? 'pass' : 'fail';
+    pre.textContent = `${result.pass ? 'PASS' : 'FAIL'}: ${result.message}`;
+    container.appendChild(pre);
+  });
+}
+
+(async function main() {
+  try { await run(); }
+  catch (error) { failed++; results.push({ pass: false, message: `Unhandled matrix error: ${error.message}` }); }
+  renderResults();
+})();
+</script>
+</body>
+</html>

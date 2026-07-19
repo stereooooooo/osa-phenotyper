@@ -4,6 +4,18 @@
 
 ---
 
+## July 18, 2026 Five-Scenario Guided-Plan Audit
+
+- Added five full encounter simulations covering current APAP with discomfort and nasal obstruction, new moderate OSA with COMISA, PAP intolerance with an oral-appliance goal, an Inspire-focused consultation, and a symptomatic pre-study evaluation.
+- The new matrix passed **51 assertions**. The complete headless suite now passes **480 assertions**. It verifies the suggested pathways and rationale, one-click draft application, clinician-confirmed plan, recommendation tags, and patient-report inclusion and exclusion rules.
+- Four pathways were internally coherent: current APAP correctly continued rather than restarted, CBT-I and PAP ran in parallel for COMISA, oral-appliance content stayed focused on the patient's stated goal, and the pre-study report recommended diagnostic testing without introducing OSA therapy.
+- Review found a material intent-integration gap: selecting `Discuss Inspire` as the primary visit goal suggests and confirms nerve stimulation, but the clinician treatment engine emits no HNS recommendation unless the separate `Interested in Inspire` preference is also checked. The patient report can therefore name nerve stimulation in the summary without a corresponding active-treatment entry.
+- Review found three additional UX/content defects: reports generated after 7 PM Central use the next UTC calendar date; the pre-study clinician-report area is blank despite a valid diagnostic plan; and the clinician summary labels a documented APAP user as `Currently using CPAP`.
+- The COMISA clinician recommendation still names Pear Somryst as an FDA-cleared digital CBT-I example. The FDA clearance remains in the device database, but Pear's 2023 Chapter 11 filing makes the named operational example stale. The general evidence-based digital CBT-I recommendation remains appropriate.
+- No runtime behavior was changed or deployed during this diagnostic audit.
+
+---
+
 ## July 18, 2026 Chart-Aware Encounter Plan Drafts
 
 - Headless regression suite: **429 assertions passed**. End-to-end coverage confirms suggestions remain unselected until staff applies them, non-suggested pathways remain available, and applying a draft requires clinician confirmation again.
