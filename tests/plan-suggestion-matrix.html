@@ -303,8 +303,10 @@ const SCENARIOS = [
     },
     checks: [],
     expectedSuggestions: ['Diagnostic testing'],
+    expectedSuggestionTooltips: { 'Diagnostic testing': ['UARS', 'EEG'] },
     expectedTags: ['UARS-EVAL'],
     clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'UARS'],
+    clinicianTooltipIncludes: ['UARS', 'EEG'],
     clinicianExcludes: [],
     patientIncludes: ['upper airway resistance syndrome', 'in-lab sleep study'],
     patientExcludes: ['Begin PAP therapy now'],
@@ -323,6 +325,7 @@ const SCENARIOS = [
     expectedSuggestions: ['Diagnostic testing'],
     expectedTags: [],
     clinicianIncludes: ['Short recording time', 'Limited REM sampling'],
+    clinicianTooltipIncludes: ['Quality flags identify limitations'],
     clinicianExcludes: [],
     patientIncludes: ['sleep apnea'],
     patientExcludes: ['Short recording time', 'Limited REM sampling', 'bad sleep study', 'Worse during dream (REM) sleep'],
@@ -560,9 +563,11 @@ const SCENARIOS = [
     },
     checks: ['snoringReported'],
     expectedSuggestions: ['Diagnostic testing'],
+    expectedSuggestionTooltips: { 'Diagnostic testing': ['AASM', 'clinician decides'] },
     expectedTags: ['NEG-HST-PSG'],
     excludedTags: ['UARS-EVAL', 'CPAP'],
     clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'AASM guidance supports in-lab PSG'],
+    clinicianTooltipIncludes: ['AASM', 'not a proven substitute for PSG'],
     clinicianExcludes: ['Start CPAP/APAP'],
     patientIncludes: ['did not fully explain your ongoing symptoms', 'in-lab sleep study'],
     patientExcludes: ['upper airway resistance syndrome', 'Begin PAP therapy now'],
@@ -580,12 +585,14 @@ const SCENARIOS = [
     },
     checks: ['snoringReported', 'nasalObs', 'ctDev'],
     expectedSuggestions: ['Diagnostic testing', 'Nasal treatment'],
+    expectedSuggestionTooltips: { 'Diagnostic testing': ['AASM', 'clinician decides'] },
     confirmedPlanFields: ['planNasal'],
     manualSummary: 'Begin the clinician-selected nasal treatment plan, then reassess snoring, fatigue, and sleep quality.',
     expectedTags: ['NASAL-OPT'],
     excludedTags: ['NEG-HST-PSG', 'UARS-EVAL', 'CPAP'],
     expectedInputState: { ctSeptum: true },
     clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'AASM guidance supports in-lab PSG', 'Nasal exam: deviated septum', 'Confirmed plan: nasal treatment'],
+    clinicianTooltipIncludes: ['AASM', 'not a proven substitute for PSG'],
     clinicianExcludes: ['Start CPAP/APAP'],
     patientIncludes: ['deviated nasal septum', 'may improve snoring or sleep quality', 'possible later step, not a test ordered by this handout'],
     patientExcludes: ['Confirm the Negative Home Test in the Sleep Lab', 'Schedule the in-lab sleep study recommended', 'Begin PAP therapy now'],
@@ -722,6 +729,14 @@ async function runScenario(win, doc, scenario, index) {
   const labels = suggestions.map(item => item.label);
   assertEqual(JSON.stringify(labels), JSON.stringify(scenario.expectedSuggestions), `${scenario.name}: suggested pathways`);
   assert(suggestions.every(item => item.reason && item.reason.length > 10), `${scenario.name}: every suggestion explains why it appeared`);
+  Object.entries(scenario.expectedSuggestionTooltips || {}).forEach(([label, phrases]) => {
+    const suggestion = suggestions.find(item => item.label === label);
+    assert(Boolean(suggestion?.tooltip), `${scenario.name}: ${label} includes an evidence tooltip`);
+    phrases.forEach(phrase => assert(suggestion.tooltip.includes(phrase), `${scenario.name}: ${label} tooltip includes "${phrase}"`));
+    const renderedTooltip = [...doc.querySelectorAll('#planSuggestionList [data-bs-toggle="tooltip"]')]
+      .find(element => element.closest('.osa-plan-suggestion')?.textContent.includes(label));
+    assert(Boolean(renderedTooltip), `${scenario.name}: ${label} tooltip is rendered`);
+  });
   assert(scenario.expectedSuggestions.every(label => !doc.querySelector(`[data-plan-option] input:checked`)), `${scenario.name}: suggestions remain unapplied initially`);
 
   if (Array.isArray(scenario.confirmedPlanFields)) {
@@ -768,9 +783,13 @@ async function runScenario(win, doc, scenario, index) {
   const todayPlanHtml = win.PatientReport.generateTodayPlanHTML(data);
   const todayPlanText = textOnly(todayPlanHtml, win);
   const clinicianText = (doc.getElementById('clinicianReport')?.textContent || '').replace(/\s+/g, ' ').trim();
+  const clinicianTooltipText = [...doc.querySelectorAll('#clinicianReport [data-bs-toggle="tooltip"]')]
+    .map(element => element.getAttribute('title') || element.getAttribute('data-bs-original-title') || '')
+    .join(' ');
   assert(clinicianText.length > 100, `${scenario.name}: clinician report is populated`);
   (scenario.clinicianIncludes || []).forEach(phrase => assert(clinicianText.includes(phrase), `${scenario.name}: clinician report includes "${phrase}"`));
   (scenario.clinicianExcludes || []).forEach(phrase => assert(!clinicianText.includes(phrase), `${scenario.name}: clinician report excludes "${phrase}"`));
+  (scenario.clinicianTooltipIncludes || []).forEach(phrase => assert(clinicianTooltipText.includes(phrase), `${scenario.name}: clinician tooltip includes "${phrase}"`));
   scenario.patientIncludes.forEach(phrase => assert(patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report includes "${phrase}"`));
   scenario.patientExcludes.forEach(phrase => assert(!patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report excludes "${phrase}"`));
   (scenario.todayPlanIncludes || []).forEach(phrase => assert(todayPlanText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: today's plan includes "${phrase}"`));

@@ -35,6 +35,24 @@ function escapeHtml(value){
     .replaceAll("'", '&#39;');
 }
 
+/* Clinician-only evidence explanations. Keep these sparse: use them for
+   interpretation boundaries or unfamiliar concepts, not basic sleep terms. */
+function clinicianEvidenceTooltip(text, label = 'Why this matters') {
+  return `<button type="button" class="osa-evidence-tooltip" data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(text)}" aria-label="${escapeHtml(label)}"><i class="bi bi-info-circle" aria-hidden="true"></i></button>`;
+}
+
+function initializeClinicalTooltips(root = document) {
+  if (!root || !window.bootstrap?.Tooltip) return;
+  root.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => {
+    window.bootstrap.Tooltip.getOrCreateInstance(element);
+  });
+}
+
+window.OSAClinicianTooltips = {
+  button: clinicianEvidenceTooltip,
+  initialize: initializeClinicalTooltips,
+};
+
 /* ── Shorthand for threshold access ───────────────────────────── */
 const T = OSA_CONFIG.thresholds;
 /* Feature toggle — ΔHR disabled (device can't measure it); see config.js. */
@@ -1135,7 +1153,12 @@ function buildHstFlags(m, T){
     const symptomContext = exists(m.ess) && m.ess >= HST.essSignificant
       ? `ESS ${m.ess} indicates ongoing sleepiness`
       : 'the symptom-focused visit indicates ongoing fatigue, unrefreshing sleep, or other clinical concern';
-    flags.push({ severity: 'warning', flag: 'Negative home sleep test with persistent symptoms', detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. If clinical suspicion remains after the full evaluation, AASM guidance supports in-lab PSG; the clinician should decide whether to test now or reassess after treating another plausible contributor.` });
+    flags.push({
+      severity: 'warning',
+      flag: 'Negative home sleep test with persistent symptoms',
+      detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. If clinical suspicion remains after the full evaluation, AASM guidance supports in-lab PSG; the clinician should decide whether to test now or reassess after treating another plausible contributor.`,
+      tooltip: 'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected. Most home tests cannot score EEG arousals or respiratory effort-related arousals. Treating another plausible contributor first is an individualized sequencing decision, not a proven substitute for PSG.',
+    });
   }
 
   // 5. High central apnea component — confirm with lab PSG
@@ -1458,7 +1481,9 @@ function mapTreatments(f, m, T){
     const uars = OSAReportShared.detectUARS({ ahi, rdi, arInd, ess, isi });
 
     if (uars.isUARS) {
-      pushRec(recs,'Possible UARS (upper airway resistance syndrome) — consider in-lab polysomnography with esophageal pressure monitoring for definitive evaluation.','UARS-EVAL');
+      // Malhotra et al. 2018: use PSG with arousal-based scoring to capture
+      // respiratory effort-related arousals that most HSATs cannot score.
+      pushRec(recs,'Possible UARS (upper airway resistance syndrome): consider in-lab polysomnography with arousal-based scoring for definitive evaluation.','UARS-EVAL');
     } else if (negativeHstNeedsPsg) {
       pushRec(recs,'Negative home sleep apnea test with persistent symptoms or clinical concern: consider in-lab polysomnography if suspicion remains. The clinician may test now or first treat another plausible contributor and reassess persistent symptoms.','NEG-HST-PSG');
     }
@@ -1639,9 +1664,11 @@ function buildClinicianReport(f, m, T){
   const hstValidityHTML = hstFlags.length ? `
     <div class="alert ${hstFlags.some(f=>f.severity==='danger') ? 'alert-danger' : hstFlags.some(f=>f.severity==='warning') ? 'alert-warning' : 'alert-info'} mt-2 mb-3">
       <strong><i class="bi bi-exclamation-triangle me-1"></i>Sleep Study Quality Flags</strong>
+      ${clinicianEvidenceTooltip('Quality flags identify limitations or unresolved questions that may change interpretation. They are not diagnoses, and they do not select the final treatment plan.', 'How to use sleep study quality flags')}
       <ul class="mb-0 mt-1">${hstFlags.map(f => {
         const icon = f.severity === 'danger' ? 'bi-x-circle-fill text-danger' : f.severity === 'warning' ? 'bi-exclamation-triangle-fill text-warning' : 'bi-info-circle-fill text-info';
-        return `<li><i class="bi ${icon} me-1"></i><strong>${f.flag}:</strong> ${f.detail}</li>`;
+        const tooltip = f.tooltip ? clinicianEvidenceTooltip(f.tooltip, `Why ${f.flag.toLowerCase()} matters`) : '';
+        return `<li><i class="bi ${icon} me-1"></i><strong>${f.flag}:</strong>${tooltip} ${f.detail}</li>`;
       }).join('')}</ul>
     </div>` : '';
 
@@ -1980,9 +2007,12 @@ function buildClinicianReport(f, m, T){
   })();
 
   /* ── Treatment plan with numbered badges ─────────────────── */
-  const rankedPlan = guardedRecTexts.map((r, i) => {
+  const rankedPlan = guardedRecEntries.map((entry, i) => {
     const priority = i === 0 ? ' osa-rec-priority' : '';
-    return `<div class="osa-clin-rec${priority}"><span class="osa-clin-rec-num">${i+1}</span><span>${r}</span></div>`;
+    const tooltip = entry.tag === 'UARS-EVAL'
+      ? clinicianEvidenceTooltip('UARS refers to symptomatic sleep-disordered breathing associated with flow limitation and respiratory effort-related arousals. ICSD-3 places this presentation within OSA. In-lab PSG with arousal-based scoring can evaluate events that most home studies cannot score because they do not record EEG.', 'Why possible UARS requires arousal-based scoring')
+      : '';
+    return `<div class="osa-clin-rec${priority}"><span class="osa-clin-rec-num">${i+1}</span><span>${entry.text}${tooltip}</span></div>`;
   }).join('');
 
   /* ── Care Pathway Bar (clinician report) ──────────────── */
@@ -2668,6 +2698,7 @@ document.getElementById('form').addEventListener('submit', e => {
   /* Render */
   const clinEl = document.getElementById('clinicianReport');
   clinEl.innerHTML = cHTML;
+  initializeClinicalTooltips(clinEl);
   /* Wire clinician PDF download button */
   const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
   if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());

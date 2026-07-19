@@ -97,9 +97,9 @@
     }, thresholds);
   }
 
-  function addSuggestion(suggestions, field, reason, action, priority) {
+  function addSuggestion(suggestions, field, reason, action, priority, tooltip = '') {
     if (suggestions.some(item => item.field === field)) return;
-    suggestions.push({ field, label: PLAN_LABELS[field], reason, action, priority });
+    suggestions.push({ field, label: PLAN_LABELS[field], reason, action, priority, tooltip });
   }
 
   function noseSeverity(score) {
@@ -151,7 +151,8 @@
         'planStudy',
         `AHI ${study.ahi} is below the OSA range, but symptoms and RDI/arousal data suggest possible upper airway resistance syndrome.`,
         'arrange an in-lab sleep study to evaluate possible upper airway resistance syndrome',
-        5
+        5,
+        'UARS refers to symptomatic sleep-disordered breathing associated with flow limitation and respiratory effort-related arousals. ICSD-3 places this presentation within OSA. In-lab PSG with arousal-based scoring can evaluate events that most home studies cannot score because they do not record EEG.'
       );
     } else if (signals.centralConfirmationNeeded) {
       addSuggestion(
@@ -175,7 +176,8 @@
         'planStudy',
         `The home study AHI is ${study.ahi}, but the patient's persistent symptoms keep clinical concern for sleep-disordered breathing high.`,
         'decide whether to obtain an in-lab sleep study now or reassess persistent symptoms after treating another plausible contributor',
-        5
+        5,
+        'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected. The suggestion remains a draft: the clinician decides whether PSG is needed now or whether to reassess after treating another plausible contributor.'
       );
     }
 
@@ -342,7 +344,20 @@
       suggestion.className = 'osa-plan-suggestion';
       const title = document.createElement('div');
       title.className = 'osa-plan-suggestion-name';
-      title.textContent = item.label;
+      const titleText = document.createElement('span');
+      titleText.textContent = item.label;
+      title.appendChild(titleText);
+      if (item.tooltip) {
+        const tooltip = document.createElement('button');
+        tooltip.type = 'button';
+        tooltip.className = 'osa-evidence-tooltip';
+        tooltip.dataset.bsToggle = 'tooltip';
+        tooltip.dataset.bsPlacement = 'top';
+        tooltip.title = item.tooltip;
+        tooltip.setAttribute('aria-label', `Why ${item.label.toLowerCase()} is suggested`);
+        tooltip.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i>';
+        title.appendChild(tooltip);
+      }
       const reason = document.createElement('div');
       reason.className = 'osa-plan-suggestion-reason';
       reason.textContent = item.reason;
@@ -350,6 +365,7 @@
       list.appendChild(suggestion);
     });
     list.classList.remove('d-none');
+    window.OSAClinicianTooltips?.initialize(list);
     applyButton.disabled = false;
     applyButton.innerHTML = `<i class="bi bi-check2-square"></i> Apply ${currentSuggestions.length} suggestion${currentSuggestions.length === 1 ? '' : 's'}`;
   }
