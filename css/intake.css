@@ -135,13 +135,13 @@ body {
 /* ── Page Header ─────────────────────────────────────────────── */
 .intake-header {
   background: var(--intake-white);
-  padding: 1.5rem 1rem;
+  padding: 1.1rem 1rem 1rem;
   text-align: center;
   border-bottom: 2px solid var(--intake-navy);
 }
 
 .intake-header__logo {
-  height: 48px;
+  height: 42px;
   width: auto;
   margin-bottom: 0.75rem;
 }
@@ -175,9 +175,9 @@ body {
 
 /* ── Container ───────────────────────────────────────────────── */
 .intake-container {
-  max-width: 680px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0.85rem 1rem 1rem;
 }
 
 /* ── Section Cards ───────────────────────────────────────────── */
@@ -185,14 +185,14 @@ body {
   background: var(--intake-white);
   border: 1px solid var(--intake-gray-border);
   border-radius: 10px;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.9rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   overflow: hidden;
 }
 
 .intake-section__header {
   background: var(--intake-white);
-  padding: 1rem 1.25rem 0.75rem;
+  padding: 0.75rem 1.1rem 0.6rem;
   border-bottom: 1px solid var(--intake-gray-border);
   position: relative;
 }
@@ -201,7 +201,7 @@ body {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 1.25rem;
+  left: 1.1rem;
   width: 36px;
   height: 3px;
   background: var(--intake-crimson);
@@ -225,13 +225,13 @@ body {
 }
 
 .intake-section__body {
-  padding: 1.25rem;
+  padding: 1rem 1.1rem;
 }
 
 .intake-section__intro {
   font-size: 0.9rem;
   color: var(--intake-gray-body);
-  margin-bottom: 1rem;
+  margin: 0 0 0.75rem;
   line-height: 1.55;
 }
 
@@ -304,7 +304,7 @@ body {
 }
 
 .intake-field-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 
 .intake-field-group:last-child {
@@ -382,7 +382,7 @@ body {
 
 /* ── ESS / ISI / NOSE Question Rows ──────────────────────────── */
 .intake-question {
-  padding: 0.85rem 0;
+  padding: 0.7rem 0;
   border-bottom: 1px solid var(--intake-gray-border);
 }
 
@@ -394,7 +394,7 @@ body {
 .intake-question__text {
   font-size: 0.95rem;
   color: var(--intake-body-color);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   line-height: 1.45;
 }
 
@@ -472,7 +472,7 @@ body {
   align-items: center;
   gap: 0.65rem;
   min-height: 44px;
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.7rem;
   border: 1.5px solid var(--intake-gray-border);
   border-radius: 8px;
   cursor: pointer;
@@ -508,8 +508,8 @@ body {
 /* ── Conditional Section (CPAP details) ──────────────────────── */
 .intake-conditional {
   display: none;
-  margin-top: 1rem;
-  padding: 1rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem;
   background: #F9FAFB;
   border: 1px solid var(--intake-gray-border);
   border-radius: 8px;
@@ -523,7 +523,57 @@ body {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--intake-navy);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.intake-question--first {
+  padding-top: 0;
+}
+
+.intake-question__text--compact {
+  font-size: 0.9rem;
+}
+
+.intake-section__intro--compact {
+  margin-bottom: 0.55rem;
+}
+
+.intake-conditional--compact {
+  margin-top: 0.5rem;
+}
+
+.intake-conditional--nested {
+  margin-top: 0.6rem;
+  padding: 0.75rem;
+  background: var(--intake-white);
+}
+
+.intake-field-row--responsive {
+  align-items: flex-start;
+}
+
+.intake-checkbox-group--two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.intake-outcome-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--intake-gray-border);
+}
+
+.intake-outcome-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.intake-outcome-row__label {
+  font-size: 0.9rem;
+  color: var(--intake-body-color);
 }
 
 /* ── Submit Section ──────────────────────────────────────────── */
@@ -693,6 +743,20 @@ body {
     padding: 1rem;
   }
 
+  .intake-checkbox-group--two-column,
+  .intake-outcome-row {
+    grid-template-columns: 1fr;
+  }
+
+  .intake-field-row--responsive {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .intake-field-row--responsive > .intake-field-group {
+    width: 100%;
+  }
+
   .intake-radio-label {
     padding: 0.5rem 0.75rem;
     font-size: 0.82rem;
@@ -724,11 +788,11 @@ body {
 
 @media (min-width: 768px) {
   .intake-container {
-    padding: 1.5rem;
+    padding: 1rem 1.25rem 1.5rem;
   }
 
   .intake-header {
-    padding: 2rem 1.5rem;
+    padding: 1.15rem 1.5rem 1rem;
   }
 
   .intake-radio-group {

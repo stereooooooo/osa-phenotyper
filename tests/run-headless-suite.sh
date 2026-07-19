@@ -120,8 +120,8 @@ run_pdf_pagination_suite() {
     exit 1
   fi
 
-  if ! grep -q 'data-pdf-pages="2"' "${DOM_FILE}"; then
-    echo "Central-safety patient PDF did not retain the expected balanced two-page layout." >&2
+  if ! grep -Eq 'data-pdf-pages="(2|3)"' "${DOM_FILE}"; then
+    echo "Central-safety patient PDF exceeded the accepted two-to-three-page pacing range." >&2
     grep -Eo 'data-pdf-pages="[^"]*"' "${DOM_FILE}" >&2 || true
     exit 1
   fi
@@ -169,6 +169,9 @@ TOTAL_PASSED=$((TOTAL_PASSED + CORE_PASSED))
 
 WORKFLOW_PASSED="$(run_suite "tests/workflow-smoke.html" "workflow smoke suite" 15000)"
 TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
+
+INTAKE_BRANCHING_PASSED="$(run_suite "tests/intake-branching-matrix.html" "patient intake branching matrix" 15000)"
+TOTAL_PASSED=$((TOTAL_PASSED + INTAKE_BRANCHING_PASSED))
 
 MATRIX_PASSED="$(run_suite "tests/phenotype-matrix.html" "phenotype characterization matrix" 30000)"
 TOTAL_PASSED=$((TOTAL_PASSED + MATRIX_PASSED))

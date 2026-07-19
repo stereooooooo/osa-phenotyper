@@ -284,6 +284,34 @@ var PatientReport = (() => {
     return '';
   }
 
+  function glpMedicationLabel(value) {
+    const labels = {
+      semaglutide: 'semaglutide (Ozempic or Wegovy)',
+      tirzepatide: 'tirzepatide (Mounjaro or Zepbound)',
+      liraglutide: 'liraglutide (Saxenda or Victoza)',
+      other: 'another GLP-1 medication',
+      unsure: 'a GLP-1 medication',
+    };
+    return labels[value] || 'a GLP-1 medication';
+  }
+
+  function glpHistorySupport(data) {
+    if (!data) return '';
+    const medication = glpMedicationLabel(data.glp1Medication);
+    if (data.glp1Status === 'current') {
+      return `You reported that you currently take ${medication}. Continue it only as directed by the prescribing clinician, and review your weight response and any side effects or access problems at follow-up.`;
+    }
+    if (data.glp1Status === 'previous') {
+      const response = data.glp1Effective === 'yes'
+        ? 'You reported that it helped with weight loss.'
+        : data.glp1Effective === 'no'
+          ? 'You did not report a clear weight-loss benefit.'
+          : 'The amount of benefit was uncertain.';
+      return `You reported a previous trial of ${medication}. ${response} Review any side effects, cost, or coverage barriers before deciding whether another medication plan makes sense.`;
+    }
+    return '';
+  }
+
   function normalizeFtp(ftp) {
     if (!exists(ftp)) return null;
     if (typeof ftp === 'number') return Number.isFinite(ftp) ? ftp : null;
@@ -796,9 +824,12 @@ var PatientReport = (() => {
     const txParts = [];
     if (data.cpapCurrent) txParts.push(`You are currently using ${papDeviceLabel(data)}`);
     else if (data.cpapFailed) txParts.push(data.cpapWillRetry ? 'You tried CPAP and are willing to retry it' : 'You tried CPAP and discontinued it');
-    if (data.priorMAD) txParts.push('You tried an oral appliance');
+    if (data.priorMAD && data.madHelped === 'yes' && data.madTolerated === 'yes') txParts.push('Your prior oral appliance helped and was tolerable');
+    else if (data.priorMAD && data.madTolerated === 'no') txParts.push('You tried an oral appliance but had trouble tolerating it');
+    else if (data.priorMAD && data.madHelped === 'no') txParts.push('You tried an oral appliance without clear improvement');
+    else if (data.priorMAD) txParts.push('You tried an oral appliance');
     if (data.priorUPPP) txParts.push('You had UPPP surgery');
-    if (data.priorInspire) txParts.push('You have an Inspire implant');
+    if (data.priorInspire) txParts.push('You have a hypoglossal nerve stimulator implant');
     if (!txParts.length) return '';
 
     return `
@@ -1365,9 +1396,10 @@ ${items}`;
     }
     if (tag === 'WEIGHT' && data) {
       const lead = weightReadinessLead(data);
-      const support = data.bmi >= 30
+      const priorMedicationSupport = glpHistorySupport(data);
+      const support = priorMedicationSupport || (data.bmi >= 30
         ? 'Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).'
-        : 'Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.';
+        : 'Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.');
       return `<strong>Weight Management</strong> — ${lead}Weight loss can reduce sleep apnea severity and improve how well other treatments work, but the amount of improvement varies from person to person. ${support}`;
     }
 
@@ -1697,9 +1729,10 @@ ${items}`;
     }
 
     if (tags.has('WEIGHT')) {
-      add(data.bmi >= 30
+      const medicationHistory = glpHistorySupport(data);
+      add(medicationHistory || (data.bmi >= 30
         ? 'Choose one realistic weight-management step and discuss dietitian, structured-program, or medication support if appropriate.'
-        : 'Choose one realistic nutrition or activity step and ask whether structured weight-management support would help.', 2);
+        : 'Choose one realistic nutrition or activity step and ask whether structured weight-management support would help.'), 2);
     }
 
     if (tags.has('POS')) {
@@ -1931,6 +1964,7 @@ ${items.join('')}`;
 
   function alcoholNearBedLabel(value) {
     const labels = {
+      'social-only': 'occasional social events',
       '1-2': '1 to 2 nights per week',
       '3-4': '3 to 4 nights per week',
       '5-plus': '5 or more nights per week',
@@ -2069,6 +2103,8 @@ ${items.join('')}`;
           : data.weightLossReadiness === 'considering'
             ? 'Discuss a realistic first step and the types of support available. A small, sustainable start is more useful than an extreme short-term plan.'
             : 'Keep weight management available as an option without making it the only focus of your sleep plan.');
+        const medicationSupport = glpHistorySupport(data);
+        if (medicationSupport) actions.push(medicationSupport);
       }
       if (selected.has('planLifestyle')) {
         if (alcoholFrequency) {
@@ -2144,6 +2180,7 @@ ${items.join('')}`;
     if (selected.has('planMad')) add('Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
     if (selected.has('planInspire')) add('Continue the device-specific nerve-stimulation evaluation discussed with your ENT.');
     if (selected.has('planSurgery')) add('Continue the airway-surgery evaluation discussed today; the procedure should match your anatomy and goals.');
+    if (selected.has('planWeight')) add(glpHistorySupport(data));
     if (data.planObserve) add('Continue observation and return at the interval chosen with your clinician, or sooner if symptoms worsen.');
     return actions;
   }

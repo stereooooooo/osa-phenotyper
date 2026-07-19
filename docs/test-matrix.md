@@ -277,7 +277,7 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 136 | Surgery preference without HNS routing | A general preference to discuss airway surgery should not create an HNS workup unless Inspire or another nerve-stimulation pathway is actually referenced |
 | 137 | Adaptive patient-PDF pagination | Semantic contributor units and bounded compact styling should remove sparse third pages when a report fits safely on two, while genuinely content-rich reports retain additional pages |
 | 138 | HST-to-PSG stage-data isolation | When a chart switches to PSG or combined testing, stale hidden HST REM percentage and duration values must not suppress valid PSG REM/NREM indices |
-| 139 | Second five-scenario safety and PDF matrix | Adequate REM-predominant OSA, home-study central signals with reduced LVEF, very severe hypoxic OSA above BMI 40 after PAP failure, current PAP with nasal obstruction, and pre-study insomnia/snoring should all preserve their distinct safety, staging, terminology, and treatment-plan behavior; the central-safety PDF should remain a balanced two-page report |
+| 139 | Second five-scenario safety and PDF matrix | Adequate REM-predominant OSA, home-study central signals with reduced LVEF, very severe hypoxic OSA above BMI 40 after PAP failure, current PAP with nasal obstruction, and pre-study insomnia/snoring should all preserve their distinct safety, staging, terminology, and treatment-plan behavior; the central-safety PDF should remain within a readable two-to-three-page pacing range |
 
 ### Group 33: Guided-Plan Edge-Case Audit
 | # | Name | Key Features |
@@ -303,3 +303,15 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 150 | Current APAP comfort plan | A current APAP user with mask, leak, dryness, nasal, weight, and positional pathways should receive expanded PAP and nasal modules, with weight and positional actions kept compact and no new-start or autonomous pressure-change language |
 | 151 | Pre-study snoring plan | A patient awaiting a sleep study with snoring, severe nasal symptoms, BMI 29, weight readiness, and frequent alcohol near bedtime should receive a diagnostic-boundary explanation, interim side-sleeping advice, expanded nasal instructions, and compact confirmed weight/alcohol actions without an OSA diagnosis |
 | 152 | Bounded action-plan PDF | The most content-rich first-release action plan should remain within one or two PDF pages while preserving readable spacing, terminology definitions, and the no-typographic-dash rule |
+
+### Group 36: Progressive Patient Intake History
+| # | Name | Key Features |
+|---|------|-------------|
+| 153 | Uncomplicated snoring fast path | A patient without prior studies, treatments, cardiovascular disease, or GLP-1 exposure should complete the history portion with a few core selections while every irrelevant detail branch stays hidden |
+| 154 | Clinically relevant snoring and alcohol choices | The snoring question should specify loud, frequent, or bothersome snoring, and alcohol frequency should include occasional or social-event use between never and weekly use |
+| 155 | Prior sleep-study history | A prior-study answer should conditionally capture an optional approximate year and home-versus-lab location without asking patients to reproduce study metrics |
+| 156 | Current PAP progressive disclosure | Current PAP users should identify CPAP/APAP, BiPAP, or unsure, then answer whether they have difficulty before seeing the PAP problem checklist; patient pressure settings should not be requested |
+| 157 | Prior treatment outcomes | Oral appliance history should capture benefit, tolerance, and dental/TMJ barriers; selected throat, nasal, sinus, and jaw surgeries should capture sleep/snoring benefit; nerve stimulation should capture benefit and optional implant year |
+| 158 | Cardiovascular differentiation and LVEF flag | Cardiovascular history should distinguish hypertension from heart failure, arrhythmia, coronary disease, stroke, and valve disease; an LVEF-record flag should be limited to heart-failure history or a known prior echo without a documented numeric result |
+| 159 | GLP-1 medication history | Current or prior GLP-1 use should reveal medication, weight response, and structured problem choices while never/unsure responses stay on the short path |
+| 160 | Intake-to-chart persistence | New study, PAP mode, treatment outcome, cardiovascular subtype, and GLP-1 fields should survive validation and map to named clinician-chart fields with provenance-compatible values |

@@ -82,9 +82,10 @@
   const intakeTokens = new Map();
 
   function needsLvefFollowup(formData) {
-    const hasCvd = formData?.cvd === true || formData?.cvd === 'on' || formData?.cvd === 'true';
+    const hasHeartFailure = formData?.cvdHeartFailure === true || formData?.cvdHeartFailure === 'on' || formData?.cvdHeartFailure === 'true';
+    const hasPriorEcho = String(formData?.echoHistory || '').toLowerCase() === 'yes';
     const lvef = Number(formData?.lvef);
-    return hasCvd && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
+    return (hasHeartFailure || hasPriorEcho) && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
   }
 
   function patientClone(patient) {

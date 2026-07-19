@@ -1137,7 +1137,7 @@ function mapTreatments(f, m, T){
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, papMode,
     prefAvoidCpap, prefSurgery, prefInspire,
-    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated,
   } = m;
   const out = { phen };
   const recs = [];
@@ -1435,8 +1435,14 @@ function mapTreatments(f, m, T){
     if (prefSurgery && !priorUPPP) {
       pushRec(recs,'Patient open to surgical options \u2014 consider DISE-guided surgical planning.','SURG-PREF');
     }
-    if(priorMAD) {
-      pushRec(recs,'Prior oral appliance trial not tolerated \u2014 consider alternative approaches (Inspire, positional therapy, surgery) rather than repeat MAD trial','MAD');
+    if(priorMAD && madHelped === 'yes' && madTolerated === 'yes') {
+      pushRec(recs,'Prior oral appliance was helpful and tolerated. Consider continuing or retitrating it, and verify control with an on-treatment sleep study.','MAD');
+    } else if(priorMAD && madTolerated === 'no') {
+      pushRec(recs,'Prior oral appliance was not tolerated. Address the documented dental or TMJ barrier before reconsidering it, and prioritize appropriate alternatives.','MAD');
+    } else if(priorMAD && madHelped === 'no') {
+      pushRec(recs,'Prior oral appliance did not provide a clear benefit. Verify whether it was adequately fitted and titrated before repeating it, and consider other treatment pathways.','MAD');
+    } else if(priorMAD) {
+      pushRec(recs,'Prior oral appliance trial documented. Clarify effectiveness, tolerance, fitting, and titration before deciding whether to continue or repeat it.','MAD');
     } else if(priorJaw) {
       /* Fix #1: Wire priorJaw — prior jaw surgery affects MAD candidacy */
       pushRec(recs,'Prior jaw surgery noted \u2014 MAD candidacy requires careful dental evaluation of occlusal changes','MAD');
@@ -2160,11 +2166,17 @@ document.getElementById('form').addEventListener('submit', e => {
   const priorJaw      = yes(f,'priorJaw');
   const priorInspire  = yes(f,'priorInspire');
   const priorMAD      = yes(f,'priorMAD');
+  const madHelped     = (f.get('madHelped') || '').toLowerCase();
+  const madTolerated  = (f.get('madTolerated') || '').toLowerCase();
   const visitReason   = f.get('visitReason') || '';
   const prefAvoidCpap = yes(f,'prefAvoidCpap');
   const prefSurgery   = yes(f,'prefSurgery') || visitReason === 'surgery';
   const prefInspire   = yes(f,'prefInspire') || visitReason === 'inspire';
   const weightLossReadiness = f.get('weightLossReadiness') || '';
+  const glp1Status = f.get('glp1Status') || '';
+  const glp1Medication = f.get('glp1Medication') || '';
+  const glp1Effective = f.get('glp1Effective') || '';
+  const glp1Issues = ['glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther'].filter(key => yes(f, key));
   const lvef = n(f.get('lvef'));
   const madDentition = f.get('madDentition') || '';
   const madProtrusion = f.get('madProtrusion') || '';
@@ -2311,7 +2323,7 @@ document.getElementById('form').addEventListener('submit', e => {
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
     papMode: f.get('papMode') || '',
     prefAvoidCpap, prefSurgery, prefInspire,
-    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated,
   }, T);
   const recTags = filterRecommendationsForEncounter(generatedRecTags, encounter);
   const recTexts = recTags.map(entry => entry.text);
@@ -2375,6 +2387,8 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapReasons,
     prefAvoidCpap,
     priorMAD,
+    madHelped,
+    madTolerated,
     priorJaw,
     priorInspire,
     priorUPPP,
@@ -2409,6 +2423,10 @@ document.getElementById('form').addEventListener('submit', e => {
     studyType,
     cpapPressure: n(f.get('cpapPressure')),
     weightLossReadiness,
+    glp1Status,
+    glp1Medication,
+    glp1Effective,
+    glp1Issues,
     alcoholNearBed: f.get('alcoholNearBed') || '',
     age: n(f.get('age')),
     visitReason: encounter.visitReason,

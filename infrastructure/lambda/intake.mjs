@@ -246,13 +246,19 @@ const VALID_CPAP_REASONS = new Set([
   'mask', 'claustrophobia', 'dryMouth', 'leaks',
   'troubleSleeping', 'skinIrritation', 'noImprovement', 'travel',
 ]);
+const VALID_MAD_PROBLEMS = new Set(['tmj', 'teeth', 'bite', 'discomfort']);
+const VALID_CVD_CONDITIONS = new Set(['hypertension', 'cad', 'heart-failure', 'arrhythmia', 'stroke', 'valve', 'other', 'unsure']);
+const VALID_GLP1_ISSUES = new Set(['none', 'digestive', 'cost', 'other']);
 
 const CHECKBOX_STYLE_FORM_KEYS = new Set([
   'nasalObs', 'snoringReported', 'prefAvoidCpap', 'prefSurgery', 'prefInspire',
   'priorUPPP', 'priorNasal', 'priorSinus', 'priorJaw', 'priorInspire', 'priorMAD',
   'priorCpap', 'cpapCurrent', 'cpapMask', 'cpapClaustro', 'cpapDry', 'cpapLeaks',
   'cpapSleep', 'cpapSkin', 'cpapNoImprove', 'cpapTravel',
-  'cvd', 'lvefFollowupNeeded',
+  'cvd', 'cvdHypertension', 'cvdCad', 'cvdHeartFailure', 'cvdArrhythmia',
+  'cvdStroke', 'cvdValve', 'cvdOther', 'cvdUnsure', 'lvefFollowupNeeded',
+  'priorSleepStudy', 'madProblemTmj', 'madProblemTeeth', 'madProblemBite',
+  'madProblemDiscomfort', 'glp1IssueNone', 'glp1IssueDigestive', 'glp1IssueCost', 'glp1IssueOther',
 ]);
 
 function isEmptyLike(val) {
@@ -461,7 +467,7 @@ function validateIntakeData(body) {
   data.nasalObs = body.nasalObs === true;
   data.snoringReported = body.snoringReported === true;
 
-  const validAlcoholNearBed = new Set(['', 'never', '1-2', '3-4', '5-plus']);
+  const validAlcoholNearBed = new Set(['', 'never', 'social-only', '1-2', '3-4', '5-plus']);
   const alcoholNearBed = body.alcoholNearBed === undefined || body.alcoholNearBed === null
     ? ''
     : stripHtml(String(body.alcoholNearBed));
@@ -500,6 +506,100 @@ function validateIntakeData(body) {
     }
   }
 
+  // ── Prior sleep study history (required, concise) ────────
+  const sleepStudyAnswers = new Set(['yes', 'no', 'unsure']);
+  const priorStudyTypes = new Set(['home', 'lab', 'unsure']);
+  if (typeof body.sleepStudyHistory !== 'object' || body.sleepStudyHistory === null || Array.isArray(body.sleepStudyHistory)) {
+    errors.push('sleepStudyHistory');
+  } else {
+    const source = body.sleepStudyHistory;
+    const sleepStudyHistory = {
+      historyAnswer: source.historyAnswer,
+      approximateYear: null,
+      studyType: null,
+    };
+    if (!sleepStudyAnswers.has(source.historyAnswer)) {
+      errors.push('sleepStudyHistory.historyAnswer');
+    } else if (source.historyAnswer === 'yes') {
+      if (!priorStudyTypes.has(source.studyType)) {
+        errors.push('sleepStudyHistory.studyType');
+      } else {
+        sleepStudyHistory.studyType = source.studyType;
+      }
+      if (source.approximateYear !== null && source.approximateYear !== undefined) {
+        const currentYear = new Date().getUTCFullYear();
+        if (!isIntInRange(source.approximateYear, 1970, currentYear)) {
+          errors.push('sleepStudyHistory.approximateYear');
+        } else {
+          sleepStudyHistory.approximateYear = source.approximateYear;
+        }
+      }
+    }
+    data.sleepStudyHistory = sleepStudyHistory;
+  }
+
+  // ── Prior treatment outcomes (conditional, structured) ───
+  const outcomeAnswers = new Set(['yes', 'no', 'unsure']);
+  if (typeof body.treatmentOutcomes !== 'object' || body.treatmentOutcomes === null || Array.isArray(body.treatmentOutcomes)) {
+    errors.push('treatmentOutcomes');
+  } else {
+    const source = body.treatmentOutcomes;
+    const outcomes = { mad: null, surgeries: {}, hgns: null };
+
+    if (data.priorTreatments?.mad) {
+      if (!source.mad || !outcomeAnswers.has(source.mad.helped) || !outcomeAnswers.has(source.mad.tolerated)) {
+        errors.push('treatmentOutcomes.mad');
+      } else {
+        const problems = Array.isArray(source.mad.problems) ? source.mad.problems : [];
+        if (problems.some((problem) => !VALID_MAD_PROBLEMS.has(problem))) {
+          errors.push('treatmentOutcomes.mad.problems');
+        } else {
+          outcomes.mad = {
+            helped: source.mad.helped,
+            tolerated: source.mad.tolerated,
+            problems: [...new Set(problems)],
+          };
+        }
+      }
+    }
+
+    const surgeryKeys = ['uppp', 'nasal-surgery', 'sinus-surgery', 'jaw-surgery'];
+    const surgerySelected = {
+      uppp: data.priorTreatments?.uppp,
+      'nasal-surgery': data.priorTreatments?.nasalSurgery,
+      'sinus-surgery': data.priorTreatments?.sinusSurgery,
+      'jaw-surgery': data.priorTreatments?.jawSurgery,
+    };
+    for (const key of surgeryKeys) {
+      if (!surgerySelected[key]) continue;
+      const value = source.surgeries?.[key];
+      if (!outcomeAnswers.has(value)) {
+        errors.push(`treatmentOutcomes.surgeries.${key}`);
+      } else {
+        outcomes.surgeries[key] = value;
+      }
+    }
+
+    if (data.priorTreatments?.inspire) {
+      if (!source.hgns || !outcomeAnswers.has(source.hgns.helped)) {
+        errors.push('treatmentOutcomes.hgns');
+      } else {
+        let implantYear = null;
+        if (source.hgns.implantYear !== null && source.hgns.implantYear !== undefined) {
+          const currentYear = new Date().getUTCFullYear();
+          if (!isIntInRange(source.hgns.implantYear, 2014, currentYear)) {
+            errors.push('treatmentOutcomes.hgns.implantYear');
+          } else {
+            implantYear = source.hgns.implantYear;
+          }
+        }
+        outcomes.hgns = { helped: source.hgns.helped, implantYear };
+      }
+    }
+
+    data.treatmentOutcomes = outcomes;
+  }
+
   // ── CPAP history (optional, structured) ──────────────────
   if (body.cpapHistory !== undefined) {
     if (typeof body.cpapHistory !== 'object' || body.cpapHistory === null) {
@@ -519,8 +619,26 @@ function validateIntakeData(body) {
         cpap.currentlyUsing = ch.currentlyUsing;
       }
 
-      // helped: one of "Yes", "No", "Unsure", ""
-      const validHelped = new Set(['Yes', 'No', 'Unsure', '']);
+      const validDeviceTypes = new Set(['cpap', 'bipap', 'unsure']);
+      const validDifficulty = new Set(['yes', 'no', 'unsure']);
+      if (cpap.currentlyUsing === true) {
+        if (!validDeviceTypes.has(ch.deviceType)) {
+          errors.push('cpapHistory.deviceType');
+        } else {
+          cpap.deviceType = ch.deviceType;
+        }
+        if (!validDifficulty.has(ch.hasDifficulty)) {
+          errors.push('cpapHistory.hasDifficulty');
+        } else {
+          cpap.hasDifficulty = ch.hasDifficulty;
+        }
+      } else {
+        cpap.deviceType = null;
+        cpap.hasDifficulty = 'yes';
+      }
+
+      // helped: patient can choose Yes, No, or Unsure, but should not guess.
+      const validHelped = new Set(['Yes', 'No', 'Unsure']);
       if (ch.helped !== undefined && ch.helped !== null) {
         const helpedVal = stripHtml(String(ch.helped));
         if (!validHelped.has(helpedVal)) {
@@ -529,7 +647,7 @@ function validateIntakeData(body) {
           cpap.helped = helpedVal;
         }
       } else {
-        cpap.helped = '';
+        errors.push('cpapHistory.helped');
       }
 
       // retryWilling: one of "Yes", "No", "Maybe", ""
@@ -594,6 +712,7 @@ function validateIntakeData(body) {
     const cardiovascularHistory = {
       historyAnswer: source.historyAnswer,
       hasCvd: source.historyAnswer === 'yes',
+      conditions: [],
       echoHistory: null,
       resultKnowledge: null,
       lvef: null,
@@ -602,6 +721,11 @@ function validateIntakeData(body) {
     if (!cvdAnswers.has(source.historyAnswer) || source.hasCvd !== (source.historyAnswer === 'yes')) {
       errors.push('cardiovascularHistory.historyAnswer');
     } else if (source.historyAnswer === 'yes') {
+      if (!Array.isArray(source.conditions) || source.conditions.length === 0 || source.conditions.some((condition) => !VALID_CVD_CONDITIONS.has(condition))) {
+        errors.push('cardiovascularHistory.conditions');
+      } else {
+        cardiovascularHistory.conditions = [...new Set(source.conditions)];
+      }
       if (!echoAnswers.has(source.echoHistory)) {
         errors.push('cardiovascularHistory.echoHistory');
       } else {
@@ -636,13 +760,43 @@ function validateIntakeData(body) {
     }
   }
 
+  // ── GLP-1 medication history (required status, conditional detail) ──
+  const glp1Statuses = new Set(['current', 'previous', 'never', 'unsure']);
+  const glp1Medications = new Set(['semaglutide', 'tirzepatide', 'liraglutide', 'other', 'unsure']);
+  if (typeof body.glp1History !== 'object' || body.glp1History === null || Array.isArray(body.glp1History)) {
+    errors.push('glp1History');
+  } else {
+    const source = body.glp1History;
+    const history = { status: source.status, medication: '', effective: null, issues: [] };
+    if (!glp1Statuses.has(source.status)) {
+      errors.push('glp1History.status');
+    } else if (source.status === 'current' || source.status === 'previous') {
+      if (!glp1Medications.has(source.medication)) {
+        errors.push('glp1History.medication');
+      } else {
+        history.medication = source.medication;
+      }
+      if (!outcomeAnswers.has(source.effective)) {
+        errors.push('glp1History.effective');
+      } else {
+        history.effective = source.effective;
+      }
+      if (!Array.isArray(source.issues) || source.issues.length === 0 || source.issues.some((issue) => !VALID_GLP1_ISSUES.has(issue))) {
+        errors.push('glp1History.issues');
+      } else {
+        history.issues = [...new Set(source.issues)];
+      }
+    }
+    data.glp1History = history;
+  }
+
   // ── Reject unexpected top-level fields ───────────────────
   const allowedKeys = new Set([
     'sex', 'heightInches', 'weightLbs',
     'ess', 'isi', 'nose',
     'nasalObs', 'snoringReported', 'alcoholNearBed',
-    'preferences', 'priorTreatments', 'cpapHistory', 'cardiovascularHistory',
-    'weightLossReadiness',
+    'preferences', 'priorTreatments', 'sleepStudyHistory', 'treatmentOutcomes',
+    'cpapHistory', 'cardiovascularHistory', 'weightLossReadiness', 'glp1History',
   ]);
   for (const key of Object.keys(body)) {
     if (!allowedKeys.has(key)) {
@@ -705,12 +859,58 @@ function mapToFormData(data, scores) {
     priorJaw:         data.priorTreatments?.jawSurgery ? 'on' : '',
     priorInspire:     data.priorTreatments?.inspire ? 'on' : '',
     priorMAD:         data.priorTreatments?.mad ? 'on' : '',
+    priorSleepStudy:  data.sleepStudyHistory?.historyAnswer === 'yes' ? 'on' : '',
+    priorSleepStudyAnswer: data.sleepStudyHistory?.historyAnswer || '',
+    priorSleepStudyType: data.sleepStudyHistory?.studyType || '',
+    priorSleepStudyYear: data.sleepStudyHistory?.approximateYear || '',
+    madHelped:        data.treatmentOutcomes?.mad?.helped || '',
+    madTolerated:     data.treatmentOutcomes?.mad?.tolerated || '',
+    priorUPPPHelped:  data.treatmentOutcomes?.surgeries?.uppp || '',
+    priorNasalHelped: data.treatmentOutcomes?.surgeries?.['nasal-surgery'] || '',
+    priorSinusHelped: data.treatmentOutcomes?.surgeries?.['sinus-surgery'] || '',
+    priorJawHelped:   data.treatmentOutcomes?.surgeries?.['jaw-surgery'] || '',
+    hgnsHelped:       data.treatmentOutcomes?.hgns?.helped || '',
+    hgnsImplantYear:  data.treatmentOutcomes?.hgns?.implantYear || '',
     cvd:              data.cardiovascularHistory?.hasCvd ? 'on' : '',
     cvdHistoryAnswer: data.cardiovascularHistory?.historyAnswer || '',
     echoHistory:      data.cardiovascularHistory?.echoHistory || '',
     echoResultKnowledge: data.cardiovascularHistory?.resultKnowledge || '',
-    lvefFollowupNeeded: data.cardiovascularHistory?.hasCvd && !isNumInRange(data.cardiovascularHistory?.lvef, 5, 90) ? 'on' : '',
+    glp1Status:       data.glp1History?.status || '',
+    glp1Medication:   data.glp1History?.medication || '',
+    glp1Effective:    data.glp1History?.effective || '',
   };
+
+  const madProblems = data.treatmentOutcomes?.mad?.problems || [];
+  formData.madProblemTmj = madProblems.includes('tmj') ? 'on' : '';
+  formData.madProblemTeeth = madProblems.includes('teeth') ? 'on' : '';
+  formData.madProblemBite = madProblems.includes('bite') ? 'on' : '';
+  formData.madProblemDiscomfort = madProblems.includes('discomfort') ? 'on' : '';
+
+  const cvdConditions = data.cardiovascularHistory?.conditions || [];
+  const cvdFieldMap = {
+    hypertension: 'cvdHypertension',
+    cad: 'cvdCad',
+    'heart-failure': 'cvdHeartFailure',
+    arrhythmia: 'cvdArrhythmia',
+    stroke: 'cvdStroke',
+    valve: 'cvdValve',
+    other: 'cvdOther',
+    unsure: 'cvdUnsure',
+  };
+  for (const [condition, field] of Object.entries(cvdFieldMap)) {
+    formData[field] = cvdConditions.includes(condition) ? 'on' : '';
+  }
+
+  const glp1Issues = data.glp1History?.issues || [];
+  formData.glp1IssueNone = glp1Issues.includes('none') ? 'on' : '';
+  formData.glp1IssueDigestive = glp1Issues.includes('digestive') ? 'on' : '';
+  formData.glp1IssueCost = glp1Issues.includes('cost') ? 'on' : '';
+  formData.glp1IssueOther = glp1Issues.includes('other') ? 'on' : '';
+
+  const needsHeartFunctionRecord = (
+    cvdConditions.includes('heart-failure') || data.cardiovascularHistory?.echoHistory === 'yes'
+  ) && !isNumInRange(data.cardiovascularHistory?.lvef, 5, 90);
+  formData.lvefFollowupNeeded = needsHeartFunctionRecord ? 'on' : '';
 
   if (isNumInRange(data.cardiovascularHistory?.lvef, 5, 90)) {
     formData.lvef = data.cardiovascularHistory.lvef;
@@ -722,6 +922,15 @@ function mapToFormData(data, scores) {
     formData.cpapCurrent = data.cpapHistory.currentlyUsing ? 'on' : '';
     formData.cpapHelped  = data.cpapHistory.helped || '';
     formData.cpapRetry   = data.cpapHistory.retryWilling || '';
+    formData.cpapDifficulty = data.cpapHistory.hasDifficulty || '';
+
+    if (data.cpapHistory.currentlyUsing) {
+      formData.papMode = data.cpapHistory.deviceType === 'bipap'
+        ? 'BiPAP'
+        : data.cpapHistory.deviceType === 'cpap'
+          ? 'CPAP'
+          : '';
+    }
 
     if (data.cpapHistory.pressure !== null) {
       formData.cpapPressure = data.cpapHistory.pressure;
@@ -753,15 +962,19 @@ function mapToFormData(data, scores) {
 }
 
 function needsLvefFollowup(formData, pendingOverrides = {}) {
-  const candidateCvd = Object.prototype.hasOwnProperty.call(pendingOverrides, 'cvd')
-    ? pendingOverrides.cvd
-    : formData?.cvd;
+  const candidateHeartFailure = Object.prototype.hasOwnProperty.call(pendingOverrides, 'cvdHeartFailure')
+    ? pendingOverrides.cvdHeartFailure
+    : formData?.cvdHeartFailure;
+  const candidateEchoHistory = Object.prototype.hasOwnProperty.call(pendingOverrides, 'echoHistory')
+    ? pendingOverrides.echoHistory
+    : formData?.echoHistory;
   const candidateLvef = Object.prototype.hasOwnProperty.call(pendingOverrides, 'lvef')
     ? pendingOverrides.lvef
     : formData?.lvef;
-  const hasCvd = candidateCvd === true || candidateCvd === 'on' || candidateCvd === 'true';
+  const hasHeartFailure = candidateHeartFailure === true || candidateHeartFailure === 'on' || candidateHeartFailure === 'true';
+  const hasPriorEcho = String(candidateEchoHistory || '').toLowerCase() === 'yes';
   const lvef = Number(candidateLvef);
-  return hasCvd && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
+  return (hasHeartFailure || hasPriorEcho) && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
 }
 
 /* ── POST /intake/{token} ────────────────────────────────── */

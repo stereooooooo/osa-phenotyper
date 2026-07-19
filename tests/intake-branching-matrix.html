@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Patient Intake Branching Matrix</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
+  .pass { color: #198754; } .fail { color: #dc3545; }
+  .summary { padding: 1rem; border-radius: 8px; background: #fff; }
+  pre { background: #fff; padding: .5rem; border: 1px solid #dee2e6; margin: .25rem 0; }
+  iframe { position: absolute; left: -9999px; width: 1024px; height: 2400px; border: 0; }
+</style>
+</head>
+<body>
+<h1>Patient Intake Branching Matrix</h1>
+<div id="results"></div>
+<iframe id="intakeFrame" src="../intake.html?testMode=workflow&amp;t=short-path-token"></iframe>
+<script>
+let passed = 0;
+let failed = 0;
+const results = [];
+
+function assert(condition, message) {
+  if (condition) passed++; else failed++;
+  results.push({ pass: Boolean(condition), message });
+}
+
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+async function waitFor(predicate, label, timeout = 12000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    try { const value = predicate(); if (value) return value; } catch (_) {}
+    await wait(50);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+
+function click(win, selector) {
+  const el = win.document.querySelector(selector);
+  if (!el) throw new Error(`Missing element ${selector}`);
+  el.click();
+}
+
+function chooseRadio(win, name, value) {
+  click(win, `input[name="${name}"][value="${value}"]`);
+}
+
+async function run() {
+  const frame = document.getElementById('intakeFrame');
+  await waitFor(() => frame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'patient intake form');
+  const win = frame.contentWindow;
+  const doc = frame.contentDocument;
+
+  chooseRadio(win, 'snoringReported', 'yes');
+  chooseRadio(win, 'priorSleepStudy', 'no');
+  click(win, '#priorTxNone');
+  chooseRadio(win, 'cvdHistory', 'no');
+  chooseRadio(win, 'weightInterest', 'not-now');
+  chooseRadio(win, 'glp1Status', 'never');
+
+  assert(!doc.getElementById('sleepStudyDetails').classList.contains('intake-conditional--visible'), 'No prior study keeps study details hidden');
+  assert(!doc.getElementById('cpapDetails').classList.contains('intake-conditional--visible'), 'No prior treatment keeps PAP details hidden');
+  assert(!doc.getElementById('madDetails').classList.contains('intake-conditional--visible'), 'No prior treatment keeps oral appliance details hidden');
+  assert(!doc.getElementById('surgeryDetails').classList.contains('intake-conditional--visible'), 'No prior treatment keeps surgery outcomes hidden');
+  assert(!doc.getElementById('hgnsDetails').classList.contains('intake-conditional--visible'), 'No prior treatment keeps nerve stimulator details hidden');
+  assert(!doc.getElementById('echoHistoryDetails').classList.contains('intake-conditional--visible'), 'No cardiovascular history keeps cardiac details hidden');
+  assert(!doc.getElementById('glp1Details').classList.contains('intake-conditional--visible'), 'No GLP-1 history keeps medication details hidden');
+  assert(doc.querySelectorAll('[data-section="7"] input:checked').length === 2, 'Uncomplicated prior-history path requires only two selections');
+  assert(doc.querySelector('#alcoholNearBed option[value="social-only"]').textContent.includes('social events'), 'Alcohol frequency includes occasional social use');
+  assert(!doc.querySelector('#cpapDetails input[name="cpapPressure"]'), 'Patient questionnaire does not request PAP pressure');
+  assert(doc.querySelector('[name="prefInspire"]').closest('label').textContent.includes('hypoglossal nerve stimulator'), 'Treatment preference uses general nerve-stimulation terminology');
+}
+
+function render() {
+  const container = document.getElementById('results');
+  const summary = document.createElement('div');
+  summary.className = 'summary';
+  summary.innerHTML = `<strong>${passed} passed</strong>, <strong>${failed} failed</strong>`;
+  container.appendChild(summary);
+  results.forEach(result => {
+    const row = document.createElement('pre');
+    row.className = result.pass ? 'pass' : 'fail';
+    row.textContent = `${result.pass ? 'PASS' : 'FAIL'}: ${result.message}`;
+    container.appendChild(row);
+  });
+}
+
+(async () => {
+  try { await run(); }
+  catch (err) { failed++; results.push({ pass: false, message: `Unhandled branching-suite error: ${err.message}` }); }
+  render();
+})();
+</script>
+</body>
+</html>

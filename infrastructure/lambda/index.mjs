@@ -89,9 +89,10 @@ function formValuesEqual(a, b) {
 }
 
 function needsLvefFollowup(formData) {
-  const cvd = formData?.cvd === true || formData?.cvd === 'on' || formData?.cvd === 'true';
+  const heartFailure = formData?.cvdHeartFailure === true || formData?.cvdHeartFailure === 'on' || formData?.cvdHeartFailure === 'true';
+  const priorEcho = String(formData?.echoHistory || '').toLowerCase() === 'yes';
   const lvef = Number(formData?.lvef);
-  return cvd && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
+  return (heartFailure || priorEcho) && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
 }
 
 function cloneJson(value) {

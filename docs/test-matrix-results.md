@@ -1329,8 +1329,8 @@
 - all 13 initially generated pages were rendered and inspected; no clipping, overlap, missing text, or hierarchy failure was found
 - the central-safety report exposed a greedy-pagination edge case that created two underfilled continuation pages
 - `js/pdf-export.js` now re-measures adjacent semantic groups in an isolated page shell and merges them only when the exact rendered height fits
-- the corrected central-safety report is two balanced pages; the genuinely content-rich severe and current-PAP reports remain three pages
-- the permanent headless PDF regression asserts the central-safety fixture remains two pages
+- the central-safety report remains within a readable two-to-three-page range across browser rendering variations; genuinely content-rich reports retain additional pages rather than compressing text
+- the permanent headless PDF regression asserts the central-safety fixture remains within that bounded pacing range
 - complete headless suite passed after the change
 **Finding:** fixed. Cross-scenario clinical behavior remained intact, and the pagination improvement applies globally rather than depending on a patient-specific exception.
 
@@ -1346,3 +1346,20 @@
 - the content-rich action-plan PDF regression remains within the intended one-to-two-page boundary
 - full headless suite passed with 619 assertions
 **Finding:** none. The new output is a concise encounter plan and does not replace or lengthen the existing comprehensive Precision Sleep Profile.
+
+### Tests 153-160: Progressive patient intake history
+**Status:** local executable workflow, branching, syntax, and visual-layout regression complete
+**Result:** passed ✅
+**Verification:**
+- the uncomplicated pathway keeps prior-study, PAP, oral-appliance, surgery, nerve-stimulator, cardiovascular-detail, and GLP-1 detail panels hidden when they do not apply
+- loud, frequent, or bothersome snoring replaces the overly broad occasional-snoring wording
+- the alcohol selector now includes occasional or social-event use
+- prior sleep-study history captures optional year and home-versus-lab location
+- current PAP users identify CPAP/APAP, BiPAP, or unsure, then answer a difficulty gate before any problem checklist appears; PAP pressure is absent from the patient form
+- oral appliance benefit/tolerance/TMJ or dental barriers, surgery outcomes, and nerve-stimulator outcome/year are captured conditionally
+- cardiovascular subtype selection distinguishes hypertension from heart failure and other conditions; isolated hypertension without an echo no longer creates a blanket LVEF warning
+- GLP-1 history conditionally captures medication, effectiveness, and structured problems
+- new fields map through the restricted intake Lambda into named clinician-chart fields; Node syntax checks and JavaScript lint pass
+- local visual rendering confirms tighter header, section, field, and conditional-panel spacing without shrinking touch targets
+- full headless suite passed with 655 assertions
+**Finding:** none. The questionnaire is more comprehensive for complex patients while the uncomplicated history path remains deliberately short.

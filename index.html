@@ -283,7 +283,7 @@
         <option value="pap-troubleshoot">Improve PAP comfort, dryness, mask fit, or results</option>
         <option value="restart-pap">Restart PAP after prior use</option>
         <option value="oral-appliance">Discuss an oral appliance</option>
-        <option value="inspire">Discuss Inspire or another nerve-stimulation option</option>
+        <option value="inspire">Discuss hypoglossal nerve stimulation (for example, Inspire or Genio)</option>
         <option value="surgery">Discuss airway surgery</option>
         <option value="non-pap">Discuss non-PAP treatment options</option>
         <option value="precision-onboarding">Established patient joining Precision Sleep</option>
@@ -342,6 +342,10 @@
                 <select name="cpapHelped" class="form-select form-select-sm" style="width:auto;"><option value="">—</option><option>Yes</option><option>No</option><option>Unsure</option></select>
               </div>
               <div class="col-auto">
+                <label class="form-label mb-0">Difficulty now?</label>
+                <select name="cpapDifficulty" class="form-select form-select-sm" style="width:auto;"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select>
+              </div>
+              <div class="col-auto">
                 <label class="form-label mb-0">Retry?</label>
                 <select name="cpapRetry" class="form-select form-select-sm" style="width:auto;"><option value="">—</option><option>Yes</option><option>No</option><option>Maybe</option></select>
               </div>
@@ -398,7 +402,7 @@
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorNasal" id="priorNasal"><label class="form-check-label small" for="priorNasal">Nasal surgery</label></div>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorSinus" id="priorSinus"><label class="form-check-label small" for="priorSinus">Sinus surgery</label></div>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorJaw" id="priorJaw"><label class="form-check-label small" for="priorJaw">Jaw surgery</label></div>
-          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorInspire" id="priorInspire"><label class="form-check-label small" for="priorInspire">Inspire</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorInspire" id="priorInspire"><label class="form-check-label small" for="priorInspire">Hypoglossal nerve stimulator</label></div>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="priorMAD" id="priorMAD"><label class="form-check-label small" for="priorMAD">Oral appliance (MAD)</label></div>
         </fieldset>
       </div>
@@ -407,7 +411,7 @@
           <legend>Preferences</legend>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefAvoidCpap" id="prefAvoidCpap"><label class="form-check-label small" for="prefAvoidCpap">Avoid CPAP if possible</label></div>
           <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefSurgery" id="prefSurgery"><label class="form-check-label small" for="prefSurgery">Open to surgery</label></div>
-          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefInspire" id="prefInspire"><label class="form-check-label small" for="prefInspire">Interested in Inspire</label></div>
+          <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="prefInspire" id="prefInspire"><label class="form-check-label small" for="prefInspire">Interested in nerve stimulation</label></div>
           <div class="mt-2">
             <label class="form-label small mb-1" for="weightLossReadiness">Weight-loss readiness</label>
             <select class="form-select form-select-sm" name="weightLossReadiness" id="weightLossReadiness">
@@ -422,12 +426,43 @@
             <select class="form-select form-select-sm" name="alcoholNearBed" id="alcoholNearBed">
               <option value="">Not documented</option>
               <option value="never">Never</option>
+              <option value="social-only">Occasionally or social events only</option>
               <option value="1-2">1 to 2 nights per week</option>
               <option value="3-4">3 to 4 nights per week</option>
               <option value="5-plus">5 or more nights per week</option>
             </select>
           </div>
         </fieldset>
+      </div>
+      <div class="col-12">
+        <details class="border rounded p-2 mt-1" id="patientReportedHistoryDetails">
+          <summary class="small fw-semibold text-muted text-uppercase">Patient-reported study, treatment outcome, and GLP-1 details</summary>
+          <div class="row g-2 mt-1 align-items-end">
+            <div class="col-md-2">
+              <div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" name="priorSleepStudy" id="priorSleepStudy"><label class="form-check-label small" for="priorSleepStudy">Prior sleep study</label></div>
+              <input type="hidden" name="priorSleepStudyAnswer" value="">
+            </div>
+            <div class="col-md-2"><label class="form-label small mb-1">Study year</label><input type="number" name="priorSleepStudyYear" class="form-control form-control-sm" min="1970" max="2100"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Study location</label><select name="priorSleepStudyType" class="form-select form-select-sm"><option value="">—</option><option value="home">Home</option><option value="lab">Sleep lab</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">MAD helped?</label><select name="madHelped" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">MAD tolerated?</label><select name="madTolerated" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Nerve stimulator helped?</label><select name="hgnsHelped" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Implant year</label><input type="number" name="hgnsImplantYear" class="form-control form-control-sm" min="2014" max="2100"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Throat surgery helped?</label><select name="priorUPPPHelped" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Nasal surgery helped?</label><select name="priorNasalHelped" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Sinus surgery helped?</label><select name="priorSinusHelped" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Jaw surgery helped?</label><select name="priorJawHelped" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">GLP-1 history</label><select name="glp1Status" class="form-select form-select-sm"><option value="">—</option><option value="current">Current</option><option value="previous">Previous</option><option value="never">Never</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1">GLP-1 medication</label><select name="glp1Medication" class="form-select form-select-sm"><option value="">—</option><option value="semaglutide">Semaglutide</option><option value="tirzepatide">Tirzepatide</option><option value="liraglutide">Liraglutide</option><option value="other">Other</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-2"><label class="form-label small mb-1">GLP-1 effective?</label><select name="glp1Effective" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-12 d-flex flex-wrap gap-2 small">
+              <span class="fw-semibold">MAD problems:</span>
+              <label><input type="checkbox" name="madProblemTmj"> TMJ</label><label><input type="checkbox" name="madProblemTeeth"> Teeth</label><label><input type="checkbox" name="madProblemBite"> Bite change</label><label><input type="checkbox" name="madProblemDiscomfort"> Discomfort</label>
+              <span class="fw-semibold ms-md-3">GLP-1 issues:</span>
+              <label><input type="checkbox" name="glp1IssueNone"> None</label><label><input type="checkbox" name="glp1IssueDigestive"> Digestive</label><label><input type="checkbox" name="glp1IssueCost"> Cost</label><label><input type="checkbox" name="glp1IssueOther"> Other</label>
+            </div>
+          </div>
+        </details>
       </div>
       <div class="col-12">
         <div class="border rounded p-2 mt-1">
@@ -437,6 +472,17 @@
           </div>
           <div class="row g-2 align-items-end">
             <input type="hidden" name="lvefFollowupNeeded" id="lvefFollowupNeeded" value="">
+            <div class="col-12 d-flex flex-wrap gap-2 small align-items-center">
+              <span class="fw-semibold">Cardiovascular history:</span>
+              <label><input type="checkbox" name="cvdHypertension"> HTN</label>
+              <label><input type="checkbox" name="cvdCad"> CAD / MI</label>
+              <label><input type="checkbox" name="cvdHeartFailure"> Heart failure / cardiomyopathy</label>
+              <label><input type="checkbox" name="cvdArrhythmia"> AF / arrhythmia</label>
+              <label><input type="checkbox" name="cvdStroke"> Stroke / TIA</label>
+              <label><input type="checkbox" name="cvdValve"> Valve disease</label>
+              <label><input type="checkbox" name="cvdOther"> Other</label>
+              <label><input type="checkbox" name="cvdUnsure"> Unsure</label>
+            </div>
             <div class="col-md-2">
               <label class="form-label small mb-1" for="echoHistory">Prior echo?</label>
               <select class="form-select form-select-sm" name="echoHistory" id="echoHistory">
@@ -1267,7 +1313,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
+    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','priorSleepStudy','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','glp1Status','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],
@@ -1922,19 +1968,21 @@ function applyRuntimeMeta(meta) {
   }
 
   function updateLvefFollowupState() {
-    const cvd = document.getElementById('cvd');
+    const heartFailure = document.querySelector('[name="cvdHeartFailure"]');
+    const echoHistory = document.getElementById('echoHistory');
     const lvef = document.getElementById('lvef');
     const hidden = document.getElementById('lvefFollowupNeeded');
     const alertBox = document.getElementById('lvefFollowupAlert');
-    if (!cvd || !lvef || !hidden || !alertBox) return;
+    if (!lvef || !hidden || !alertBox) return;
     const value = Number(lvef.value);
     const documented = lvef.value !== '' && Number.isFinite(value) && value >= 5 && value <= 90;
-    const needed = cvd.checked && !documented;
+    const needed = (!!heartFailure?.checked || String(echoHistory?.value || '').toLowerCase() === 'yes') && !documented;
     hidden.value = needed ? 'on' : '';
     alertBox.classList.toggle('d-none', !needed);
   }
 
-  document.getElementById('cvd')?.addEventListener('change', updateLvefFollowupState);
+  document.querySelector('[name="cvdHeartFailure"]')?.addEventListener('change', updateLvefFollowupState);
+  document.getElementById('echoHistory')?.addEventListener('change', updateLvefFollowupState);
   document.getElementById('lvef')?.addEventListener('input', updateLvefFollowupState);
   document.getElementById('lvef')?.addEventListener('change', updateLvefFollowupState);
 
@@ -1962,16 +2010,17 @@ function applyRuntimeMeta(meta) {
     snoringReported: 'Snoring',
     prefAvoidCpap: 'Prefers to avoid CPAP',
     prefSurgery: 'Open to surgery',
-    prefInspire: 'Interested in Inspire',
+    prefInspire: 'Interested in hypoglossal nerve stimulation',
     priorUPPP: 'Prior throat surgery',
     priorNasal: 'Prior nasal surgery',
     priorSinus: 'Prior sinus surgery',
     priorJaw: 'Prior jaw surgery',
-    priorInspire: 'Prior Inspire implant',
+    priorInspire: 'Prior hypoglossal nerve stimulator',
     priorMAD: 'Prior oral appliance',
     priorCpap: 'Prior CPAP use',
     cpapCurrent: 'Currently using CPAP',
     cpapHelped: 'CPAP improvement',
+    cpapDifficulty: 'Current PAP difficulty',
     cpapRetry: 'Open to retrying CPAP',
     papMode: 'PAP device mode',
     papMinPressure: 'APAP minimum pressure',
@@ -1990,6 +2039,37 @@ function applyRuntimeMeta(meta) {
     cpapTravel: 'CPAP travel difficulty',
     weightLossReadiness: 'Weight-management interest',
     alcoholNearBed: 'Alcohol near bedtime',
+    priorSleepStudy: 'Prior sleep study',
+    priorSleepStudyAnswer: 'Prior sleep study response',
+    priorSleepStudyYear: 'Approximate prior sleep study year',
+    priorSleepStudyType: 'Prior sleep study location',
+    madHelped: 'Oral appliance improvement',
+    madTolerated: 'Oral appliance tolerance',
+    priorUPPPHelped: 'Throat surgery improvement',
+    priorNasalHelped: 'Nasal surgery improvement',
+    priorSinusHelped: 'Sinus surgery improvement',
+    priorJawHelped: 'Jaw surgery improvement',
+    hgnsHelped: 'Nerve stimulator improvement',
+    hgnsImplantYear: 'Nerve stimulator implant year',
+    glp1Status: 'GLP-1 medication history',
+    glp1Medication: 'GLP-1 medication',
+    glp1Effective: 'GLP-1 effectiveness',
+    cvdHypertension: 'High blood pressure history',
+    cvdCad: 'Coronary artery disease history',
+    cvdHeartFailure: 'Heart failure or cardiomyopathy history',
+    cvdArrhythmia: 'Atrial fibrillation or arrhythmia history',
+    cvdStroke: 'Stroke or TIA history',
+    cvdValve: 'Heart valve disease history',
+    cvdOther: 'Other cardiovascular history',
+    cvdUnsure: 'Cardiovascular condition uncertain',
+    madProblemTmj: 'Oral appliance TMJ problem',
+    madProblemTeeth: 'Oral appliance tooth problem',
+    madProblemBite: 'Oral appliance bite change',
+    madProblemDiscomfort: 'Oral appliance discomfort',
+    glp1IssueNone: 'No significant GLP-1 problem',
+    glp1IssueDigestive: 'GLP-1 digestive problem',
+    glp1IssueCost: 'GLP-1 cost or coverage problem',
+    glp1IssueOther: 'Other GLP-1 problem',
     visitReason: 'Reason for visit',
     visitReasonNote: 'Reason for visit detail',
     planPap: 'PAP selected today',

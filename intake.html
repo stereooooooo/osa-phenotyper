@@ -44,10 +44,10 @@
 
   <!-- Progress Bar -->
   <div class="intake-progress" id="progressBar">
-    <div class="intake-progress__bar-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="7" aria-valuenow="0" aria-valuetext="0 of 7 required sections complete" aria-label="Required sections complete">
+    <div class="intake-progress__bar-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0" aria-valuetext="0 of 8 required sections complete" aria-label="Required sections complete">
       <div class="intake-progress__bar-fill" id="progressFill"></div>
     </div>
-    <div class="intake-progress__label" id="progressLabel">0 of 7 required sections complete</div>
+    <div class="intake-progress__label" id="progressLabel">0 of 8 required sections complete</div>
   </div>
 
   <!-- Privacy Notice -->
@@ -233,7 +233,7 @@
         <div class="intake-section__body">
           <div class="intake-question" style="border-bottom:none;padding-bottom:0;">
             <div class="intake-question__text">
-              Do you or does your bed partner notice snoring?
+              Do you or does your bed partner notice loud, frequent, or bothersome snoring?
             </div>
             <div class="intake-toggle-group">
               <input type="radio" name="snoringReported" value="yes" id="snoringYes" class="intake-radio" required>
@@ -250,6 +250,7 @@
             <select id="alcoholNearBed" name="alcoholNearBed" class="intake-select" style="max-width:320px;">
               <option value="">Prefer not to answer</option>
               <option value="never">Never</option>
+              <option value="social-only">Only occasionally or at social events</option>
               <option value="1-2">1 to 2 nights per week</option>
               <option value="3-4">3 to 4 nights per week</option>
               <option value="5-plus">5 or more nights per week</option>
@@ -279,7 +280,7 @@
             </label>
             <label class="intake-checkbox-wrap">
               <input type="checkbox" name="prefInspire" class="intake-checkbox" value="yes">
-              <span class="intake-checkbox-text">I am interested in learning about Inspire (a small implanted device)</span>
+              <span class="intake-checkbox-text">I am interested in learning about a hypoglossal nerve stimulator (for example, Inspire or Genio), an implanted treatment that moves the tongue forward during sleep</span>
             </label>
           </div>
         </div>
@@ -289,9 +290,43 @@
       <section class="intake-section" data-section="7">
         <div class="intake-section__header">
           <div class="intake-section__step">Step 7 of 9</div>
-          <h2 class="intake-section__title">Previous Sleep Treatments</h2>
+          <h2 class="intake-section__title">Sleep Study and Previous Treatments</h2>
         </div>
         <div class="intake-section__body">
+          <div class="intake-question intake-question--first">
+            <div class="intake-question__text">Have you had a sleep study before?</div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="priorSleepStudy" value="yes" id="priorSleepStudyYes" class="intake-radio" required>
+              <label for="priorSleepStudyYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="priorSleepStudy" value="no" id="priorSleepStudyNo" class="intake-radio">
+              <label for="priorSleepStudyNo" class="intake-radio-label">No</label>
+              <input type="radio" name="priorSleepStudy" value="unsure" id="priorSleepStudyUnsure" class="intake-radio">
+              <label for="priorSleepStudyUnsure" class="intake-radio-label">Not sure</label>
+            </div>
+            <div class="intake-error" id="priorSleepStudyError">Please select an answer.</div>
+          </div>
+
+          <div class="intake-conditional intake-conditional--compact" id="sleepStudyDetails">
+            <div class="intake-conditional__title">Most recent sleep study</div>
+            <div class="intake-field-row intake-field-row--responsive">
+              <div class="intake-field-group">
+                <label for="sleepStudyYear" class="intake-label">Approximate year (optional)</label>
+                <input type="number" id="sleepStudyYear" name="sleepStudyYear" class="intake-input" min="1970" max="2026" inputmode="numeric" placeholder="For example, 2022">
+              </div>
+              <div class="intake-field-group">
+                <div class="intake-question__text intake-question__text--compact">Was it at home or in a sleep lab?</div>
+                <div class="intake-toggle-group">
+                  <input type="radio" name="priorStudyType" value="home" id="priorStudyHome" class="intake-radio">
+                  <label for="priorStudyHome" class="intake-radio-label">At home</label>
+                  <input type="radio" name="priorStudyType" value="lab" id="priorStudyLab" class="intake-radio">
+                  <label for="priorStudyLab" class="intake-radio-label">In a lab</label>
+                  <input type="radio" name="priorStudyType" value="unsure" id="priorStudyUnsure" class="intake-radio">
+                  <label for="priorStudyUnsure" class="intake-radio-label">Not sure</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <p class="intake-section__intro">
             Have you had any of the following treatments for snoring or sleep apnea?
           </p>
@@ -322,31 +357,45 @@
             </label>
             <label class="intake-checkbox-wrap">
               <input type="checkbox" name="priorTx" class="intake-checkbox" value="inspire">
-              <span class="intake-checkbox-text">Inspire implant</span>
+              <span class="intake-checkbox-text">Hypoglossal nerve stimulator implant (for example, Inspire or Genio)</span>
             </label>
             <label class="intake-checkbox-wrap">
               <input type="checkbox" name="priorTx" class="intake-checkbox" value="none" id="priorTxNone">
               <span class="intake-checkbox-text">None of the above</span>
             </label>
           </div>
+          <div class="intake-error" id="priorTreatmentsError">Please select any treatments you have tried, or choose None of the above.</div>
 
           <!-- Conditional CPAP Details -->
           <div class="intake-conditional" id="cpapDetails">
-            <div class="intake-conditional__title">CPAP Details</div>
+            <div class="intake-conditional__title">PAP machine details</div>
 
             <div class="intake-field-group">
-              <div class="intake-question__text" style="font-size:0.9rem;">Are you currently using CPAP?</div>
+              <div class="intake-question__text intake-question__text--compact">Are you currently using a CPAP or BiPAP machine?</div>
               <div class="intake-toggle-group">
                 <input type="radio" name="cpapCurrent" value="yes" id="cpapCurrentYes" class="intake-radio">
                 <label for="cpapCurrentYes" class="intake-radio-label">Yes</label>
                 <input type="radio" name="cpapCurrent" value="no" id="cpapCurrentNo" class="intake-radio">
                 <label for="cpapCurrentNo" class="intake-radio-label">No</label>
               </div>
-              <div class="intake-error" id="cpapCurrentError">Please tell us whether you are currently using CPAP.</div>
+              <div class="intake-error" id="cpapCurrentError">Please tell us whether you are currently using a PAP machine.</div>
+            </div>
+
+            <div class="intake-field-group intake-conditional" id="papDeviceTypeGroup">
+              <div class="intake-question__text intake-question__text--compact">Which type are you using?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="papDeviceType" value="cpap" id="papDeviceCpap" class="intake-radio">
+                <label for="papDeviceCpap" class="intake-radio-label">CPAP or APAP</label>
+                <input type="radio" name="papDeviceType" value="bipap" id="papDeviceBipap" class="intake-radio">
+                <label for="papDeviceBipap" class="intake-radio-label">BiPAP</label>
+                <input type="radio" name="papDeviceType" value="unsure" id="papDeviceUnsure" class="intake-radio">
+                <label for="papDeviceUnsure" class="intake-radio-label">Not sure</label>
+              </div>
+              <div class="intake-error" id="papDeviceTypeError">Please select the machine type or choose Not sure.</div>
             </div>
 
             <div class="intake-field-group">
-              <div class="intake-question__text" style="font-size:0.9rem;">Did you notice improvement with CPAP?</div>
+              <div class="intake-question__text intake-question__text--compact">Did you notice improvement with PAP treatment?</div>
               <div class="intake-toggle-group">
                 <input type="radio" name="cpapImproved" value="yes" id="cpapImprovedYes" class="intake-radio">
                 <label for="cpapImprovedYes" class="intake-radio-label">Yes</label>
@@ -358,7 +407,7 @@
             </div>
 
             <div class="intake-field-group" id="cpapRetryGroup" style="display:none;">
-              <div class="intake-question__text" style="font-size:0.9rem;">Would you be open to trying CPAP again?</div>
+              <div class="intake-question__text intake-question__text--compact">Would you be open to trying PAP treatment again?</div>
               <div class="intake-toggle-group">
                 <input type="radio" name="cpapRetry" value="yes" id="cpapRetryYes" class="intake-radio">
                 <label for="cpapRetryYes" class="intake-radio-label">Yes</label>
@@ -370,13 +419,21 @@
               <div class="intake-error" id="cpapRetryError">Please tell us whether you would be open to trying CPAP again.</div>
             </div>
 
-            <div class="intake-field-group">
-              <label for="cpapPressure" class="intake-label">CPAP pressure setting (optional, cmH2O)</label>
-              <input type="number" id="cpapPressure" name="cpapPressure" class="intake-input" min="4" max="25" inputmode="numeric" style="max-width:150px;">
+            <div class="intake-field-group intake-conditional" id="cpapDifficultyGroup">
+              <div class="intake-question__text intake-question__text--compact">Are you having any difficulty or discomfort with your PAP machine?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="cpapDifficulty" value="yes" id="cpapDifficultyYes" class="intake-radio">
+                <label for="cpapDifficultyYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="cpapDifficulty" value="no" id="cpapDifficultyNo" class="intake-radio">
+                <label for="cpapDifficultyNo" class="intake-radio-label">No</label>
+                <input type="radio" name="cpapDifficulty" value="unsure" id="cpapDifficultyUnsure" class="intake-radio">
+                <label for="cpapDifficultyUnsure" class="intake-radio-label">Not sure</label>
+              </div>
+              <div class="intake-error" id="cpapDifficultyError">Please select an answer.</div>
             </div>
 
-            <div class="intake-field-group">
-              <div class="intake-question__text" style="font-size:0.9rem;margin-bottom:0.5rem;">What were the main reasons you stopped or have difficulty with CPAP?</div>
+            <div class="intake-field-group intake-conditional" id="cpapIssuesGroup">
+              <div class="intake-question__text intake-question__text--compact">Which problems have you noticed? Select all that apply.</div>
               <div class="intake-checkbox-group" id="cpapIssues">
                 <label class="intake-checkbox-wrap">
                   <input type="checkbox" name="cpapIssue" class="intake-checkbox" value="mask-discomfort">
@@ -413,6 +470,61 @@
               </div>
             </div>
           </div>
+
+          <div class="intake-conditional" id="madDetails">
+            <div class="intake-conditional__title">Oral appliance details</div>
+            <div class="intake-field-row intake-field-row--responsive">
+              <div class="intake-field-group">
+                <div class="intake-question__text intake-question__text--compact">Did it improve your sleep or snoring?</div>
+                <div class="intake-toggle-group">
+                  <input type="radio" name="madHelped" value="yes" id="madHelpedYes" class="intake-radio"><label for="madHelpedYes" class="intake-radio-label">Yes</label>
+                  <input type="radio" name="madHelped" value="no" id="madHelpedNo" class="intake-radio"><label for="madHelpedNo" class="intake-radio-label">No</label>
+                  <input type="radio" name="madHelped" value="unsure" id="madHelpedUnsure" class="intake-radio"><label for="madHelpedUnsure" class="intake-radio-label">Not sure</label>
+                </div>
+              </div>
+              <div class="intake-field-group">
+                <div class="intake-question__text intake-question__text--compact">Were you able to tolerate and continue using it?</div>
+                <div class="intake-toggle-group">
+                  <input type="radio" name="madTolerated" value="yes" id="madToleratedYes" class="intake-radio"><label for="madToleratedYes" class="intake-radio-label">Yes</label>
+                  <input type="radio" name="madTolerated" value="no" id="madToleratedNo" class="intake-radio"><label for="madToleratedNo" class="intake-radio-label">No</label>
+                  <input type="radio" name="madTolerated" value="unsure" id="madToleratedUnsure" class="intake-radio"><label for="madToleratedUnsure" class="intake-radio-label">Not sure</label>
+                </div>
+              </div>
+            </div>
+            <div class="intake-conditional intake-conditional--nested" id="madProblemsGroup">
+              <div class="intake-question__text intake-question__text--compact">What made it difficult to use? Select all that apply.</div>
+              <div class="intake-checkbox-group intake-checkbox-group--two-column" id="madProblems">
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="madProblem" class="intake-checkbox" value="tmj"><span class="intake-checkbox-text">Jaw joint (TMJ) pain</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="madProblem" class="intake-checkbox" value="teeth"><span class="intake-checkbox-text">Tooth pain or dental problems</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="madProblem" class="intake-checkbox" value="bite"><span class="intake-checkbox-text">Bite changes</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="madProblem" class="intake-checkbox" value="discomfort"><span class="intake-checkbox-text">General discomfort or poor fit</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="intake-conditional" id="surgeryDetails">
+            <div class="intake-conditional__title">Surgery results</div>
+            <p class="intake-section__intro intake-section__intro--compact">For each surgery you selected, tell us whether it improved your sleep or snoring.</p>
+            <div id="surgeryOutcomeRows"></div>
+          </div>
+
+          <div class="intake-conditional" id="hgnsDetails">
+            <div class="intake-conditional__title">Nerve stimulator details</div>
+            <div class="intake-field-row intake-field-row--responsive">
+              <div class="intake-field-group">
+                <label for="hgnsImplantYear" class="intake-label">Approximate implant year (optional)</label>
+                <input type="number" id="hgnsImplantYear" name="hgnsImplantYear" class="intake-input" min="2014" max="2026" inputmode="numeric" placeholder="For example, 2023">
+              </div>
+              <div class="intake-field-group">
+                <div class="intake-question__text intake-question__text--compact">Has it improved your sleep, snoring, or sleep apnea?</div>
+                <div class="intake-toggle-group">
+                  <input type="radio" name="hgnsHelped" value="yes" id="hgnsHelpedYes" class="intake-radio"><label for="hgnsHelpedYes" class="intake-radio-label">Yes</label>
+                  <input type="radio" name="hgnsHelped" value="no" id="hgnsHelpedNo" class="intake-radio"><label for="hgnsHelpedNo" class="intake-radio-label">No</label>
+                  <input type="radio" name="hgnsHelped" value="unsure" id="hgnsHelpedUnsure" class="intake-radio"><label for="hgnsHelpedUnsure" class="intake-radio-label">Not sure</label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -438,7 +550,22 @@
           </div>
 
           <div class="intake-conditional" id="echoHistoryDetails">
-            <div class="intake-conditional__title">Heart ultrasound history</div>
+            <div class="intake-conditional__title">Heart and blood-vessel history</div>
+            <div class="intake-field-group">
+              <div class="intake-question__text intake-question__text--compact">Which conditions have you been diagnosed with? Select all that apply.</div>
+              <div class="intake-checkbox-group intake-checkbox-group--two-column" id="cvdConditions">
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="hypertension"><span class="intake-checkbox-text">High blood pressure</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="cad"><span class="intake-checkbox-text">Coronary artery disease, heart attack, stent, or bypass surgery</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="heart-failure"><span class="intake-checkbox-text">Heart failure, cardiomyopathy, or weak heart pumping</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="arrhythmia"><span class="intake-checkbox-text">Atrial fibrillation or another heart-rhythm problem</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="stroke"><span class="intake-checkbox-text">Stroke or transient ischemic attack (TIA)</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="valve"><span class="intake-checkbox-text">Heart valve disease</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="other"><span class="intake-checkbox-text">Another heart or blood-vessel condition</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="cvdCondition" class="intake-checkbox" value="unsure"><span class="intake-checkbox-text">Not sure which condition</span></label>
+              </div>
+              <div class="intake-error" id="cvdConditionsError">Please select at least one condition or choose Not sure.</div>
+            </div>
+
             <div class="intake-question">
               <div class="intake-question__text">Have you had an echocardiogram, which is an ultrasound of the heart?</div>
               <div class="intake-toggle-group">
@@ -493,6 +620,55 @@
               <label for="weightNotNow" class="intake-radio-label" style="padding:0.6rem 1.2rem;">Not interested right now</label>
             </div>
             <div class="intake-error" id="weightInterestError">Please select an option.</div>
+          </div>
+
+          <div class="intake-question">
+            <div class="intake-question__text">Are you currently taking, or have you previously taken, a GLP-1 weight medication such as semaglutide (Ozempic or Wegovy) or tirzepatide (Mounjaro or Zepbound)?</div>
+            <div class="intake-radio-group">
+              <input type="radio" name="glp1Status" value="current" id="glp1Current" class="intake-radio">
+              <label for="glp1Current" class="intake-radio-label">Currently taking one</label>
+              <input type="radio" name="glp1Status" value="previous" id="glp1Previous" class="intake-radio">
+              <label for="glp1Previous" class="intake-radio-label">Took one previously</label>
+              <input type="radio" name="glp1Status" value="never" id="glp1Never" class="intake-radio">
+              <label for="glp1Never" class="intake-radio-label">Never</label>
+              <input type="radio" name="glp1Status" value="unsure" id="glp1Unsure" class="intake-radio">
+              <label for="glp1Unsure" class="intake-radio-label">Not sure</label>
+            </div>
+            <div class="intake-error" id="glp1StatusError">Please select an answer.</div>
+          </div>
+
+          <div class="intake-conditional" id="glp1Details">
+            <div class="intake-conditional__title">GLP-1 medication details</div>
+            <div class="intake-field-row intake-field-row--responsive">
+              <div class="intake-field-group">
+                <label for="glp1Medication" class="intake-label">Which medication?</label>
+                <select id="glp1Medication" name="glp1Medication" class="intake-select">
+                  <option value="">Select or choose Not sure</option>
+                  <option value="semaglutide">Semaglutide (Ozempic or Wegovy)</option>
+                  <option value="tirzepatide">Tirzepatide (Mounjaro or Zepbound)</option>
+                  <option value="liraglutide">Liraglutide (Saxenda or Victoza)</option>
+                  <option value="other">Another GLP-1 medication</option>
+                  <option value="unsure">Not sure</option>
+                </select>
+              </div>
+              <div class="intake-field-group">
+                <div class="intake-question__text intake-question__text--compact">Did it help you lose weight?</div>
+                <div class="intake-toggle-group">
+                  <input type="radio" name="glp1Effective" value="yes" id="glp1EffectiveYes" class="intake-radio"><label for="glp1EffectiveYes" class="intake-radio-label">Yes</label>
+                  <input type="radio" name="glp1Effective" value="no" id="glp1EffectiveNo" class="intake-radio"><label for="glp1EffectiveNo" class="intake-radio-label">No</label>
+                  <input type="radio" name="glp1Effective" value="unsure" id="glp1EffectiveUnsure" class="intake-radio"><label for="glp1EffectiveUnsure" class="intake-radio-label">Not sure</label>
+                </div>
+              </div>
+            </div>
+            <div class="intake-field-group">
+              <div class="intake-question__text intake-question__text--compact">Did you have any problems with it? Select all that apply.</div>
+              <div class="intake-checkbox-group intake-checkbox-group--two-column" id="glp1Issues">
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="glp1Issue" class="intake-checkbox" value="none"><span class="intake-checkbox-text">No significant problems</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="glp1Issue" class="intake-checkbox" value="digestive"><span class="intake-checkbox-text">Nausea, vomiting, diarrhea, constipation, or indigestion</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="glp1Issue" class="intake-checkbox" value="cost"><span class="intake-checkbox-text">Cost or insurance coverage</span></label>
+                <label class="intake-checkbox-wrap"><input type="checkbox" name="glp1Issue" class="intake-checkbox" value="other"><span class="intake-checkbox-text">Another problem or side effect</span></label>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -679,8 +855,10 @@
     buildISI();
     buildNOSE();
     setupPriorTreatments();
+    setupSleepStudyHistory();
     setupPreferences();
     setupCardiovascular();
+    setupWeightMedicationHistory();
     attachListeners();
     showState(stateForm);
   }
@@ -890,8 +1068,8 @@
   }
 
   // ── Progress Tracking ──────────────────────────────────────
-  var requiredSections = [1, 2, 3, 4, 5, 8, 9];
-  var optionalSections = [6, 7];
+  var requiredSections = [1, 2, 3, 4, 5, 7, 8, 9];
+  var optionalSections = [6];
 
   function updateProgress() {
     var completedRequired = 0;
@@ -925,11 +1103,15 @@
     document.querySelectorAll('input[name="cpapImproved"]').forEach(function(radio) {
       radio.checked = false;
     });
-    document.getElementById('cpapPressure').value = '';
+    clearRadioGroup('papDeviceType');
+    clearRadioGroup('cpapDifficulty');
     document.querySelectorAll('input[name="cpapIssue"]').forEach(function(cb) {
       cb.checked = false;
     });
     document.getElementById('cpapRetryGroup').style.display = 'none';
+    document.getElementById('papDeviceTypeGroup').classList.remove('intake-conditional--visible');
+    document.getElementById('cpapDifficultyGroup').classList.remove('intake-conditional--visible');
+    document.getElementById('cpapIssuesGroup').classList.remove('intake-conditional--visible');
     updateCheckboxWrapStates(document.getElementById('cpapIssues'));
   }
 
@@ -960,12 +1142,21 @@
       case 6:
         return true; // optional section is excluded from required progress
       case 7:
-        if (!document.querySelector('input[name="priorTx"]:checked')) return true;
-        if (!document.querySelector('input[name="priorTx"][value="cpap"]:checked')) return true;
-        var cpapCurrent = document.querySelector('input[name="cpapCurrent"]:checked');
-        if (!cpapCurrent) return false;
-        if (cpapCurrent.value === 'no' && !document.querySelector('input[name="cpapRetry"]:checked')) return false;
-        return true;
+        if (!document.querySelector('input[name="priorSleepStudy"]:checked')) return false;
+        if (document.querySelector('input[name="priorSleepStudy"]:checked')?.value === 'yes' && !document.querySelector('input[name="priorStudyType"]:checked')) return false;
+        if (!document.querySelector('input[name="priorTx"]:checked')) return false;
+        if (document.querySelector('input[name="priorTx"][value="cpap"]:checked')) {
+          var cpapCurrent = document.querySelector('input[name="cpapCurrent"]:checked');
+          if (!cpapCurrent || !document.querySelector('input[name="cpapImproved"]:checked')) return false;
+          if (cpapCurrent.value === 'yes' && (!document.querySelector('input[name="papDeviceType"]:checked') || !document.querySelector('input[name="cpapDifficulty"]:checked'))) return false;
+          if (cpapCurrent.value === 'no' && !document.querySelector('input[name="cpapRetry"]:checked')) return false;
+        }
+        if (document.querySelector('input[name="priorTx"][value="mad"]:checked') && (!document.querySelector('input[name="madHelped"]:checked') || !document.querySelector('input[name="madTolerated"]:checked'))) return false;
+        if (document.querySelector('input[name="priorTx"][value="inspire"]:checked') && !document.querySelector('input[name="hgnsHelped"]:checked')) return false;
+        var surgeryComplete = ['uppp', 'nasal-surgery', 'sinus-surgery', 'jaw-surgery'].every(function(code) {
+          return !document.querySelector('input[name="priorTx"][value="' + code + '"]:checked') || !!document.querySelector('input[name="' + surgeryOutcomeName(code) + '"]:checked');
+        });
+        return surgeryComplete;
       case 8:
         var cvdHistory = document.querySelector('input[name="cvdHistory"]:checked');
         if (!cvdHistory) return false;
@@ -979,7 +1170,14 @@
         var knownLvef = Number(document.getElementById('knownLvef').value);
         return Number.isFinite(knownLvef) && knownLvef >= 5 && knownLvef <= 90;
       case 9:
-        return !!document.querySelector('input[name="weightInterest"]:checked');
+        var glp1Status = document.querySelector('input[name="glp1Status"]:checked');
+        if (!document.querySelector('input[name="weightInterest"]:checked') || !glp1Status) return false;
+        if (glp1Status.value === 'current' || glp1Status.value === 'previous') {
+          return !!document.getElementById('glp1Medication').value &&
+            !!document.querySelector('input[name="glp1Effective"]:checked') &&
+            !!document.querySelector('input[name="glp1Issue"]:checked');
+        }
+        return true;
       default:
         return false;
     }
@@ -989,19 +1187,144 @@
     switch(num) {
       case 6:
         return !!document.querySelector('.intake-section[data-section="6"] input[type="checkbox"]:checked');
-      case 7:
-        return !!document.querySelector('input[name="priorTx"]:checked');
       default:
         return isSectionComplete(num);
     }
   }
 
   // ── Prior Treatment Logic ──────────────────────────────────
+  var SURGERY_OUTCOMES = {
+    'uppp': { name: 'upppHelped', label: 'Throat surgery' },
+    'nasal-surgery': { name: 'nasalSurgeryHelped', label: 'Nasal surgery' },
+    'sinus-surgery': { name: 'sinusSurgeryHelped', label: 'Sinus surgery' },
+    'jaw-surgery': { name: 'jawSurgeryHelped', label: 'Jaw surgery' }
+  };
+
+  function surgeryOutcomeName(code) {
+    return SURGERY_OUTCOMES[code] ? SURGERY_OUTCOMES[code].name : '';
+  }
+
+  function clearCheckboxGroup(name) {
+    document.querySelectorAll('input[name="' + name + '"]').forEach(function(input) {
+      input.checked = false;
+    });
+  }
+
+  function clearConditionalControls(container) {
+    if (!container) return;
+    container.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(function(input) {
+      input.checked = false;
+    });
+    container.querySelectorAll('input[type="number"], input[type="text"], select').forEach(function(input) {
+      input.value = '';
+    });
+    updateCheckboxWrapStates(container);
+  }
+
+  function buildSurgeryOutcomeRows(selectedCodes) {
+    var container = document.getElementById('surgeryOutcomeRows');
+    var existingValues = {};
+    Object.keys(SURGERY_OUTCOMES).forEach(function(code) {
+      var name = SURGERY_OUTCOMES[code].name;
+      var selected = document.querySelector('input[name="' + name + '"]:checked');
+      existingValues[name] = selected ? selected.value : '';
+    });
+    container.innerHTML = '';
+
+    selectedCodes.forEach(function(code) {
+      var config = SURGERY_OUTCOMES[code];
+      if (!config) return;
+      var row = document.createElement('div');
+      row.className = 'intake-outcome-row';
+      var label = document.createElement('div');
+      label.className = 'intake-outcome-row__label';
+      label.textContent = config.label;
+      row.appendChild(label);
+
+      var choices = document.createElement('div');
+      choices.className = 'intake-toggle-group';
+      [['yes', 'Helped'], ['no', 'Did not help'], ['unsure', 'Not sure']].forEach(function(option) {
+        var id = config.name + '-' + option[0];
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = config.name;
+        input.value = option[0];
+        input.id = id;
+        input.className = 'intake-radio';
+        input.checked = existingValues[config.name] === option[0];
+        var choiceLabel = document.createElement('label');
+        choiceLabel.htmlFor = id;
+        choiceLabel.className = 'intake-radio-label';
+        choiceLabel.textContent = option[1];
+        choices.appendChild(input);
+        choices.appendChild(choiceLabel);
+      });
+      row.appendChild(choices);
+      container.appendChild(row);
+    });
+  }
+
   function setupPriorTreatments() {
     var treatmentGroup = document.getElementById('priorTreatments');
     var cpapDetails = document.getElementById('cpapDetails');
+    var madDetails = document.getElementById('madDetails');
+    var surgeryDetails = document.getElementById('surgeryDetails');
+    var hgnsDetails = document.getElementById('hgnsDetails');
     var noneCheckbox = document.getElementById('priorTxNone');
     var cpapRetryGroup = document.getElementById('cpapRetryGroup');
+    var papDeviceTypeGroup = document.getElementById('papDeviceTypeGroup');
+    var cpapDifficultyGroup = document.getElementById('cpapDifficultyGroup');
+    var cpapIssuesGroup = document.getElementById('cpapIssuesGroup');
+    document.getElementById('hgnsImplantYear').max = String(new Date().getFullYear());
+
+    function selectedTreatmentCodes() {
+      return Array.from(treatmentGroup.querySelectorAll('input[name="priorTx"]:checked')).map(function(input) {
+        return input.value;
+      });
+    }
+
+    function syncTreatmentDetails() {
+      var selected = selectedTreatmentCodes();
+      var hasCpap = selected.indexOf('cpap') !== -1;
+      var hasMad = selected.indexOf('mad') !== -1;
+      var hasHgns = selected.indexOf('inspire') !== -1;
+      var selectedSurgeries = selected.filter(function(code) { return !!SURGERY_OUTCOMES[code]; });
+
+      cpapDetails.classList.toggle('intake-conditional--visible', hasCpap);
+      madDetails.classList.toggle('intake-conditional--visible', hasMad);
+      surgeryDetails.classList.toggle('intake-conditional--visible', selectedSurgeries.length > 0);
+      hgnsDetails.classList.toggle('intake-conditional--visible', hasHgns);
+
+      if (!hasCpap) resetCpapDetails();
+      if (!hasMad) {
+        clearConditionalControls(madDetails);
+        document.getElementById('madProblemsGroup').classList.remove('intake-conditional--visible');
+      }
+      if (!hasHgns) clearConditionalControls(hgnsDetails);
+      buildSurgeryOutcomeRows(selectedSurgeries);
+    }
+
+    function syncCpapBranch() {
+      var current = document.querySelector('input[name="cpapCurrent"]:checked');
+      var isCurrent = current && current.value === 'yes';
+      var isFormer = current && current.value === 'no';
+      var difficulty = document.querySelector('input[name="cpapDifficulty"]:checked');
+
+      papDeviceTypeGroup.classList.toggle('intake-conditional--visible', !!isCurrent);
+      cpapDifficultyGroup.classList.toggle('intake-conditional--visible', !!isCurrent);
+      cpapRetryGroup.style.display = isFormer ? '' : 'none';
+      cpapIssuesGroup.classList.toggle('intake-conditional--visible', !!isFormer || !!(isCurrent && difficulty && difficulty.value === 'yes'));
+
+      if (!isCurrent) {
+        clearRadioGroup('papDeviceType');
+        clearRadioGroup('cpapDifficulty');
+      }
+      if (!isFormer) clearRadioGroup('cpapRetry');
+      if (!(isFormer || (isCurrent && difficulty && difficulty.value === 'yes'))) {
+        clearCheckboxGroup('cpapIssue');
+        updateCheckboxWrapStates(document.getElementById('cpapIssues'));
+      }
+    }
 
     treatmentGroup.addEventListener('change', function(e) {
       if (e.target.type !== 'checkbox') return;
@@ -1018,27 +1341,24 @@
         noneCheckbox.checked = false;
       }
 
-      // Show/hide CPAP details
-      if (cpapCheck.checked) {
-        cpapDetails.classList.add('intake-conditional--visible');
-      } else {
-        cpapDetails.classList.remove('intake-conditional--visible');
-        resetCpapDetails();
-      }
-
       updateCheckboxWrapStates(treatmentGroup);
+      syncTreatmentDetails();
+      syncCpapBranch();
     });
 
-    // Show retry question only when not currently using CPAP
     document.querySelectorAll('input[name="cpapCurrent"]').forEach(function(radio) {
+      radio.addEventListener('change', syncCpapBranch);
+    });
+    document.querySelectorAll('input[name="cpapDifficulty"]').forEach(function(radio) {
+      radio.addEventListener('change', syncCpapBranch);
+    });
+    document.querySelectorAll('input[name="madTolerated"]').forEach(function(radio) {
       radio.addEventListener('change', function() {
-        if (this.value === 'no') {
-          cpapRetryGroup.style.display = '';
-        } else {
-          cpapRetryGroup.style.display = 'none';
-          document.querySelectorAll('input[name="cpapRetry"]').forEach(function(retryRadio) {
-            retryRadio.checked = false;
-          });
+        var showProblems = this.value === 'no';
+        document.getElementById('madProblemsGroup').classList.toggle('intake-conditional--visible', showProblems);
+        if (!showProblems) {
+          clearCheckboxGroup('madProblem');
+          updateCheckboxWrapStates(document.getElementById('madProblems'));
         }
       });
     });
@@ -1048,6 +1368,33 @@
     cpapIssues.addEventListener('change', function() {
       updateCheckboxWrapStates(cpapIssues);
     });
+    document.getElementById('madProblems').addEventListener('change', function() {
+      updateCheckboxWrapStates(this);
+    });
+
+    syncTreatmentDetails();
+    syncCpapBranch();
+  }
+
+  function setupSleepStudyHistory() {
+    var details = document.getElementById('sleepStudyDetails');
+    var year = document.getElementById('sleepStudyYear');
+    year.max = String(new Date().getFullYear());
+
+    function syncSleepStudyHistory() {
+      var answer = document.querySelector('input[name="priorSleepStudy"]:checked');
+      var visible = answer && answer.value === 'yes';
+      details.classList.toggle('intake-conditional--visible', !!visible);
+      if (!visible) {
+        year.value = '';
+        clearRadioGroup('priorStudyType');
+      }
+    }
+
+    document.querySelectorAll('input[name="priorSleepStudy"]').forEach(function(input) {
+      input.addEventListener('change', syncSleepStudyHistory);
+    });
+    syncSleepStudyHistory();
   }
 
   function updateCheckboxWrapStates(container) {
@@ -1086,12 +1433,14 @@
     var echoHistoryDetails = document.getElementById('echoHistoryDetails');
     var echoResultDetails = document.getElementById('echoResultDetails');
     var lvefDetails = document.getElementById('lvefDetails');
+    var cvdConditions = document.getElementById('cvdConditions');
 
     function syncCardiovascularQuestions() {
       var cvd = document.querySelector('input[name="cvdHistory"]:checked');
       var showEchoHistory = cvd && cvd.value === 'yes';
       echoHistoryDetails.classList.toggle('intake-conditional--visible', !!showEchoHistory);
       if (!showEchoHistory) {
+        clearCheckboxGroup('cvdCondition');
         clearRadioGroup('echoHistory');
         clearRadioGroup('echoResultKnowledge');
         document.getElementById('knownLvef').value = '';
@@ -1114,7 +1463,48 @@
     document.querySelectorAll('input[name="cvdHistory"], input[name="echoHistory"], input[name="echoResultKnowledge"]').forEach(function(input) {
       input.addEventListener('change', syncCardiovascularQuestions);
     });
+    cvdConditions.addEventListener('change', function(e) {
+      if (e.target.name !== 'cvdCondition') return;
+      var unsure = cvdConditions.querySelector('input[value="unsure"]');
+      if (e.target === unsure && unsure.checked) {
+        cvdConditions.querySelectorAll('input[name="cvdCondition"]').forEach(function(input) {
+          if (input !== unsure) input.checked = false;
+        });
+      } else if (e.target.checked) {
+        unsure.checked = false;
+      }
+      updateCheckboxWrapStates(cvdConditions);
+    });
     syncCardiovascularQuestions();
+  }
+
+  function setupWeightMedicationHistory() {
+    var details = document.getElementById('glp1Details');
+    var issues = document.getElementById('glp1Issues');
+
+    function syncGlp1History() {
+      var status = document.querySelector('input[name="glp1Status"]:checked');
+      var visible = status && (status.value === 'current' || status.value === 'previous');
+      details.classList.toggle('intake-conditional--visible', !!visible);
+      if (!visible) clearConditionalControls(details);
+    }
+
+    document.querySelectorAll('input[name="glp1Status"]').forEach(function(input) {
+      input.addEventListener('change', syncGlp1History);
+    });
+    issues.addEventListener('change', function(e) {
+      if (e.target.name !== 'glp1Issue') return;
+      var none = issues.querySelector('input[value="none"]');
+      if (e.target === none && none.checked) {
+        issues.querySelectorAll('input[name="glp1Issue"]').forEach(function(input) {
+          if (input !== none) input.checked = false;
+        });
+      } else if (e.target.checked) {
+        none.checked = false;
+      }
+      updateCheckboxWrapStates(issues);
+    });
+    syncGlp1History();
   }
 
   // ── Validation ──────────────────────────────────────────────
@@ -1227,11 +1617,60 @@
       if (!firstErrorEl) firstErrorEl = document.getElementById('snoringYes');
     }
 
+    // Prior sleep study and treatment history
+    var priorSleepStudy = document.querySelector('input[name="priorSleepStudy"]:checked');
+    if (!priorSleepStudy) {
+      showRadioGroupError('priorSleepStudy', 'priorSleepStudyError');
+      errors.push('prior-sleep-study');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('priorSleepStudyYes');
+    } else if (priorSleepStudy.value === 'yes') {
+      if (!document.querySelector('input[name="priorStudyType"]:checked')) {
+        showRadioGroupError('priorStudyType', 'priorSleepStudyError');
+        errors.push('prior-study-type');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('priorStudyHome');
+      }
+      var studyYearRaw = document.getElementById('sleepStudyYear').value;
+      var currentYear = new Date().getFullYear();
+      if (studyYearRaw && (Number(studyYearRaw) < 1970 || Number(studyYearRaw) > currentYear)) {
+        showError('sleepStudyYear', 'priorSleepStudyError');
+        errors.push('prior-study-year');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('sleepStudyYear');
+      }
+    }
+
+    if (!document.querySelector('input[name="priorTx"]:checked')) {
+      document.getElementById('priorTreatmentsError').classList.add('intake-error--visible');
+      errors.push('prior-treatments');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('priorTxNone');
+    }
+
     // Weight management
     if (!document.querySelector('input[name="weightInterest"]:checked')) {
       showRadioGroupError('weightInterest', 'weightInterestError');
       errors.push('weight-interest');
       if (!firstErrorEl) firstErrorEl = document.getElementById('weightReady');
+    }
+
+    var glp1Status = document.querySelector('input[name="glp1Status"]:checked');
+    if (!glp1Status) {
+      showRadioGroupError('glp1Status', 'glp1StatusError');
+      errors.push('glp1-status');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('glp1Current');
+    } else if (glp1Status.value === 'current' || glp1Status.value === 'previous') {
+      if (!document.getElementById('glp1Medication').value) {
+        showError('glp1Medication', 'glp1StatusError');
+        errors.push('glp1-medication');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('glp1Medication');
+      }
+      if (!document.querySelector('input[name="glp1Effective"]:checked')) {
+        showRadioGroupError('glp1Effective', 'glp1StatusError');
+        errors.push('glp1-effectiveness');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('glp1EffectiveYes');
+      }
+      if (!document.querySelector('input[name="glp1Issue"]:checked')) {
+        errors.push('glp1-issues');
+        if (!firstErrorEl) firstErrorEl = document.querySelector('input[name="glp1Issue"]');
+      }
     }
 
     // Cardiovascular history and echocardiogram follow-up cascade
@@ -1241,6 +1680,11 @@
       errors.push('cardiovascular-history');
       if (!firstErrorEl) firstErrorEl = document.getElementById('cvdHistoryYes');
     } else if (cvdHistory.value === 'yes') {
+      if (!document.querySelector('input[name="cvdCondition"]:checked')) {
+        document.getElementById('cvdConditionsError').classList.add('intake-error--visible');
+        errors.push('cardiovascular-conditions');
+        if (!firstErrorEl) firstErrorEl = document.querySelector('input[name="cvdCondition"]');
+      }
       var echoHistory = document.querySelector('input[name="echoHistory"]:checked');
       if (!echoHistory) {
         showRadioGroupError('echoHistory', 'echoHistoryError');
@@ -1270,11 +1714,55 @@
         showRadioGroupError('cpapCurrent', 'cpapCurrentError');
         errors.push('cpap-current');
         if (!firstErrorEl) firstErrorEl = document.getElementById('cpapCurrentYes');
-      } else if (cpapCurrent.value === 'no' && !document.querySelector('input[name="cpapRetry"]:checked')) {
-        showRadioGroupError('cpapRetry', 'cpapRetryError');
-        errors.push('cpap-retry');
-        if (!firstErrorEl) firstErrorEl = document.getElementById('cpapRetryYes');
+      } else if (cpapCurrent.value === 'yes') {
+        if (!document.querySelector('input[name="papDeviceType"]:checked')) {
+          showRadioGroupError('papDeviceType', 'papDeviceTypeError');
+          errors.push('pap-device-type');
+          if (!firstErrorEl) firstErrorEl = document.getElementById('papDeviceCpap');
+        }
+        if (!document.querySelector('input[name="cpapDifficulty"]:checked')) {
+          showRadioGroupError('cpapDifficulty', 'cpapDifficultyError');
+          errors.push('cpap-difficulty');
+          if (!firstErrorEl) firstErrorEl = document.getElementById('cpapDifficultyYes');
+        }
+      } else if (!document.querySelector('input[name="cpapRetry"]:checked')) {
+          showRadioGroupError('cpapRetry', 'cpapRetryError');
+          errors.push('cpap-retry');
+          if (!firstErrorEl) firstErrorEl = document.getElementById('cpapRetryYes');
       }
+      if (!document.querySelector('input[name="cpapImproved"]:checked')) {
+        errors.push('cpap-improvement');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('cpapImprovedYes');
+      }
+    }
+
+    if (document.querySelector('input[name="priorTx"][value="mad"]:checked')) {
+      if (!document.querySelector('input[name="madHelped"]:checked')) {
+        errors.push('mad-helped');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('madHelpedYes');
+      }
+      if (!document.querySelector('input[name="madTolerated"]:checked')) {
+        errors.push('mad-tolerated');
+        if (!firstErrorEl) firstErrorEl = document.getElementById('madToleratedYes');
+      }
+    }
+
+    ['uppp', 'nasal-surgery', 'sinus-surgery', 'jaw-surgery'].forEach(function(code) {
+      if (document.querySelector('input[name="priorTx"][value="' + code + '"]:checked') && !document.querySelector('input[name="' + surgeryOutcomeName(code) + '"]:checked')) {
+        errors.push(code + '-outcome');
+        if (!firstErrorEl) firstErrorEl = document.querySelector('input[name="' + surgeryOutcomeName(code) + '"]');
+      }
+    });
+
+    if (document.querySelector('input[name="priorTx"][value="inspire"]:checked') && !document.querySelector('input[name="hgnsHelped"]:checked')) {
+      errors.push('hgns-helped');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('hgnsHelpedYes');
+    }
+    var hgnsYearRaw = document.getElementById('hgnsImplantYear').value;
+    if (hgnsYearRaw && (Number(hgnsYearRaw) < 2014 || Number(hgnsYearRaw) > new Date().getFullYear())) {
+      showError('hgnsImplantYear', 'priorTreatmentsError');
+      errors.push('hgns-implant-year');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('hgnsImplantYear');
     }
 
     if (errors.length > 0) {
@@ -1304,6 +1792,11 @@
     var radioVal = function(name) {
       var el = document.querySelector('input[name="' + name + '"]:checked');
       return el ? el.value : null;
+    };
+    var checkedValues = function(name) {
+      return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function(input) {
+        return input.value;
+      });
     };
 
     // ESS: object with q1-q8 keys (matches Lambda validation)
@@ -1340,6 +1833,24 @@
       inspire: checkedTx.indexOf('inspire') !== -1,
       mad: checkedTx.indexOf('mad') !== -1
     };
+
+    var treatmentOutcomes = {
+      mad: checkedTx.indexOf('mad') !== -1 ? {
+        helped: radioVal('madHelped'),
+        tolerated: radioVal('madTolerated'),
+        problems: checkedValues('madProblem')
+      } : null,
+      surgeries: {},
+      hgns: checkedTx.indexOf('inspire') !== -1 ? {
+        helped: radioVal('hgnsHelped'),
+        implantYear: document.getElementById('hgnsImplantYear').value ? Number(document.getElementById('hgnsImplantYear').value) : null
+      } : null
+    };
+    Object.keys(SURGERY_OUTCOMES).forEach(function(code) {
+      if (checkedTx.indexOf(code) !== -1) {
+        treatmentOutcomes.surgeries[code] = radioVal(SURGERY_OUTCOMES[code].name);
+      }
+    });
 
     // CPAP reason codes — map HTML values to Lambda's VALID_CPAP_REASONS
     var cpapReasonMap = {
@@ -1390,9 +1901,18 @@
         interestedInInspire: !!document.querySelector('input[name="prefInspire"]:checked')
       },
       priorTreatments: priorTreatments,
+      sleepStudyHistory: {
+        historyAnswer: radioVal('priorSleepStudy'),
+        approximateYear: radioVal('priorSleepStudy') === 'yes' && document.getElementById('sleepStudyYear').value
+          ? Number(document.getElementById('sleepStudyYear').value)
+          : null,
+        studyType: radioVal('priorSleepStudy') === 'yes' ? radioVal('priorStudyType') : null
+      },
+      treatmentOutcomes: treatmentOutcomes,
       cardiovascularHistory: {
         historyAnswer: radioVal('cvdHistory'),
         hasCvd: radioVal('cvdHistory') === 'yes',
+        conditions: radioVal('cvdHistory') === 'yes' ? checkedValues('cvdCondition') : [],
         echoHistory: radioVal('cvdHistory') === 'yes' ? radioVal('echoHistory') : null,
         resultKnowledge: radioVal('cvdHistory') === 'yes' && radioVal('echoHistory') === 'yes'
           ? radioVal('echoResultKnowledge')
@@ -1401,18 +1921,24 @@
           ? Number(document.getElementById('knownLvef').value)
           : null
       },
-      weightLossReadiness: weightLossReadiness
+      weightLossReadiness: weightLossReadiness,
+      glp1History: {
+        status: radioVal('glp1Status'),
+        medication: ['current', 'previous'].indexOf(radioVal('glp1Status')) !== -1 ? document.getElementById('glp1Medication').value : '',
+        effective: ['current', 'previous'].indexOf(radioVal('glp1Status')) !== -1 ? radioVal('glp1Effective') : null,
+        issues: ['current', 'previous'].indexOf(radioVal('glp1Status')) !== -1 ? checkedValues('glp1Issue') : []
+      }
     };
 
     // CPAP history (only if CPAP selected as prior treatment)
     if (checkedTx.indexOf('cpap') !== -1) {
-      var pressureVal = document.getElementById('cpapPressure').value;
       data.cpapHistory = {
         priorCpap: true,
         currentlyUsing: radioVal('cpapCurrent') === 'yes',
+        deviceType: radioVal('cpapCurrent') === 'yes' ? radioVal('papDeviceType') : null,
+        hasDifficulty: radioVal('cpapCurrent') === 'yes' ? radioVal('cpapDifficulty') : 'yes',
         helped: helped,
         retryWilling: retryWilling,
-        pressure: pressureVal ? parseInt(pressureVal, 10) : null,
         reasonsStopped: cpapReasons
       };
     }
@@ -1481,8 +2007,10 @@
       buildISI();
       buildNOSE();
       setupPriorTreatments();
+      setupSleepStudyHistory();
       setupPreferences();
       setupCardiovascular();
+      setupWeightMedicationHistory();
       attachListeners();
 
       showState(stateForm);
@@ -1505,6 +2033,9 @@
         updateProgress();
       }
     });
+
+    updateScores();
+    updateProgress();
 
     // Form submission
     intakeForm.addEventListener('submit', async function(e) {

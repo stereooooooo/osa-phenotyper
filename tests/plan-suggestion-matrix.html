@@ -79,16 +79,18 @@ const SCENARIOS = [
       sex: 'M', bmi: '31.8', neck: '17', tonsils: '1', ftp: 'IV', ess: '11', isi: '8', noseScore: '60',
       pahi: '21.6', tst: '6.2', remPercent: '22', supPahi: '36', nonSupPahi: '9.5', remPahi: '29',
       odi: '18.5', nadir: '84', hbAreaPH: '42', t90: '3.1', papMode: 'APAP', papMinPressure: '7',
-      papMaxPressure: '15', weightLossReadiness: 'considering'
+      papMaxPressure: '15', weightLossReadiness: 'considering', glp1Status: 'previous',
+      glp1Medication: 'semaglutide', glp1Effective: 'yes'
     },
     checks: ['priorCpap', 'cpapCurrent', 'cpapDry'],
+    expectedGlp1: { status: 'previous', medication: 'semaglutide', effective: 'yes' },
     expectedSuggestions: ['PAP management', 'Nasal treatment', 'Positional therapy', 'Weight management'],
     expectedTags: ['CPAP', 'NASAL-OPT', 'POS', 'WEIGHT'],
     clinicianIncludes: ['Currently using APAP'],
     clinicianExcludes: ['Currently using CPAP'],
-    patientIncludes: ['Building on your current APAP therapy', 'prioritize nasal treatment', 'supported weight management'],
+    patientIncludes: ['Building on your current APAP therapy', 'prioritize nasal treatment', 'supported weight management', 'previous trial of semaglutide', 'helped with weight loss'],
     patientExcludes: ['Begin PAP therapy now'],
-    todayPlanIncludes: ["Today's Sleep Plan", 'Make APAP easier to use', 'Improve nasal airflow', 'Choose one sustainable weight or lifestyle step', 'Use a positional aid'],
+    todayPlanIncludes: ["Today's Sleep Plan", 'Make APAP easier to use', 'Improve nasal airflow', 'Choose one sustainable weight or lifestyle step', 'previous trial of semaglutide', 'Use a positional aid'],
     todayPlanExcludes: ['Start CPAP', 'Increase your pressure']
   },
   {
@@ -289,6 +291,11 @@ async function runScenario(win, doc, scenario, index) {
     return latest?.patientName === expectedPatientName ? latest : null;
   }, `${scenario.id} analysis`);
   const recTags = (data.recTags || []).map(rec => rec.tag);
+  if (scenario.expectedGlp1) {
+    assertEqual(data.glp1Status, scenario.expectedGlp1.status, `${scenario.name}: preserves GLP-1 status`);
+    assertEqual(data.glp1Medication, scenario.expectedGlp1.medication, `${scenario.name}: preserves GLP-1 medication`);
+    assertEqual(data.glp1Effective, scenario.expectedGlp1.effective, `${scenario.name}: preserves GLP-1 response`);
+  }
   scenario.expectedTags.forEach(tag => assert(recTags.includes(tag), `${scenario.name}: clinician output includes ${tag}`));
   assertEqual(data.reportDate, localIsoDate(), `${scenario.name}: report uses the local encounter date`);
   assertEqual(
