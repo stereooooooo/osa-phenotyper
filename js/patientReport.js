@@ -36,21 +36,22 @@ var PatientReport = (() => {
   /* ── Helper: symptomatic patient with a normal HOME sleep test ──────────
      A WatchPAT / home study has fewer channels and no EEG, so it can
      under-measure milder or non-obstructive sleep-disordered breathing
-     (false negative). When a symptomatic patient gets a normal home study we
-     must NOT give unqualified reassurance — we mirror the clinician-side
-     "Low AHI with significant symptoms" HST flag and point toward in-lab PSG.
-     Reuses detectUARS for the symptom + AHI logic to avoid threshold drift. */
+     (false negative). The shared diagnostic-boundary rule prevents an
+     unqualified reassurance and points toward in-lab PSG when clinical
+     concern persists after a negative home study (Kapur et al., 2017). */
   function symptomaticNormalHomeTest(data) {
-    const isHomeTest = data.studyType === 'watchpat' || data.studyType === 'both';
-    if (!isHomeTest) return false;
-    const u = OSAReportShared.detectUARS({
+    const signals = OSAReportShared.assessEncounterSignals({
+      studyType: data.studyType,
       ahi: data.primaryAHI,
       rdi: data.patRdi,
       arInd: data.arInd,
       ess: data.ess,
       isi: data.isi,
-    });
-    return u.ahi !== null && u.ahi < 5 && u.symptomatic;
+      tst: data.tst,
+      remPercent: data.remPercent,
+      visitReason: data.visitReason,
+    }, typeof OSA_CONFIG !== 'undefined' ? OSA_CONFIG.thresholds : {});
+    return signals.negativeHstNeedsPsg;
   }
 
   /* ── Helper: HTML-encode a string ────────────────────────────────────── */
@@ -344,6 +345,7 @@ var PatientReport = (() => {
     if (exists(data.primaryAHI) && data.primaryAHI < 5) {
       return recTags.filter(r => [
         'UARS-EVAL',
+        'NEG-HST-PSG',
         'WEIGHT',
         'NASAL-OPT',
         'POS',
@@ -698,6 +700,7 @@ var PatientReport = (() => {
     'MILD-LIFESTYLE': 'Start with the lifestyle changes in your plan; we will recheck in a few months.',
     'SLEEP-STUDY': 'Schedule the sleep study your care team recommended.',
     'UARS-EVAL': 'Talk with your doctor about whether more detailed sleep testing is needed.',
+    'NEG-HST-PSG': 'Schedule the in-lab sleep study recommended after your home test.',
     'CENTRAL-PSG-WORKUP': 'Ask whether the central-breathing signals from your home study should be confirmed with an in-lab sleep study before advanced treatment is chosen.',
   };
 
@@ -1373,6 +1376,7 @@ ${items}`;
     'DHR-TX': null,  // Clinical detail
     'SLEEP-STUDY': `<strong>Sleep Study</strong> — A sleep study measures your breathing, oxygen levels, heart rate, and sleep stages to get a full picture of what's happening while you sleep. Depending on your situation, this may be a home sleep test (a small device you wear overnight at home) or an in-lab study (which captures more detailed data in a monitored sleep center). The results will guide your treatment decisions.`,
     'UARS-EVAL': `<strong>Detailed Sleep Evaluation</strong> — Discuss an in-lab sleep study with your doctor. It can measure sleep disruption more directly and help determine whether partial airway narrowing is causing your symptoms.`,
+    'NEG-HST-PSG': `<strong>Confirm the Negative Home Test in the Sleep Lab</strong> — Your home sleep study did not show obstructive sleep apnea, but it did not fully explain your ongoing symptoms. An in-lab sleep study measures sleep, breathing, and arousals in more detail and is the recommended next diagnostic step before the home result is treated as definitively negative.`,
     'SNORE-ALCOHOL': `<strong>Avoid Alcohol Before Bed</strong> — Alcohol relaxes the muscles in your throat, making snoring worse and increasing the chance of airway collapse during sleep. Avoiding alcohol within 3 hours of bedtime can noticeably reduce snoring and improve sleep quality.`,
     'SNORE-LIFESTYLE': `<strong>Reducing Snoring While We Wait for Results</strong> — There are several things you can start doing now to reduce snoring. <strong>Sleep on your side</strong> — snoring is usually worse on your back because gravity pulls the tongue and soft tissues into the airway. A body pillow or positional device can help. <strong>Avoid alcohol within 3 hours of bedtime</strong> — alcohol relaxes the throat muscles, making snoring louder and more frequent. <strong>Maintain a healthy weight</strong> — even modest weight loss (as little as 5–7 pounds) can noticeably reduce snoring by decreasing tissue bulk around the airway. <strong>Stay active</strong> — regular aerobic exercise may reduce snoring independent of weight loss. <strong>Reduce sedative use</strong> — benzodiazepines and other sedating medications relax the airway and worsen snoring when possible to avoid. These steps form the foundation of snoring management and will also help with any sleep apnea treatment we recommend after your sleep study.`,
     'INSPIRE-EVAL': `<strong>Nerve-Stimulation Candidacy Evaluation</strong> — You expressed interest in an upper-airway stimulation implant. It is considered only after standard treatments have not worked well enough or could not be used. Device labeling and insurance criteria differ, so your ENT must review the complete treatment history, body-size measures, sleep-study results, anatomy, and any device-required airway evaluation before recommending a specific device.`,
@@ -1407,6 +1411,7 @@ ${items}`;
     'NASAL-WORKUP',
     'MAD-WORKUP',
     'MAD-SAFETY-LIMIT',
+    'NEG-HST-PSG',
     'CENTRAL-PSG-WORKUP',
     'ASV-SAFETY',
     'SURGERY-WORKUP',
@@ -1799,6 +1804,9 @@ ${items}`;
     if (tags.has('UARS-EVAL')) {
       add('Arrange a visit to discuss whether an in-lab sleep study should evaluate the sleep disruption in more detail.', 0);
     }
+    if (tags.has('NEG-HST-PSG')) {
+      add('Schedule the recommended in-lab sleep study, then return to review whether it explains the ongoing symptoms.', 0);
+    }
 
     if (tags.has('ASV-CONTRA')) {
       add('Ask your sleep and heart teams which non-ASV options are appropriate because reduced heart function can make ASV unsafe.', -1);
@@ -2062,6 +2070,9 @@ ${items.join('')}`;
 
     if (selected.has('planStudy')) {
       const preStudy = stage === 'pre-study';
+      const confirmNegativeHomeTest = !preStudy && data.negativeHstNeedsPsg;
+      const confirmNondiagnosticHomeTest = !preStudy && data.nondiagnosticHstNeedsPsg;
+      const inLabConfirmation = confirmNegativeHomeTest || confirmNondiagnosticHomeTest;
       const priorStudyReported = preStudy && data.priorSleepStudyAnswer === 'yes';
       const priorStudyType = data.priorSleepStudyType === 'home' ? 'home sleep study' : data.priorSleepStudyType === 'lab' ? 'in-lab sleep study' : 'sleep study';
       const priorStudyWhen = data.priorSleepStudyYear ? ` from around ${data.priorSleepStudyYear}` : '';
@@ -2069,7 +2080,9 @@ ${items.join('')}`;
         ? priorStudyReported
           ? `Ask the care team to obtain and review your prior ${priorStudyType}${priorStudyWhen}. They will decide whether it still answers the current question or whether updated testing is needed.`
           : 'Complete the sleep study, then schedule a follow-up visit so we can review the results and choose treatment together.'
-        : 'Complete the additional sleep testing recommended today, then return to review what it changes about your treatment plan.'];
+        : inLabConfirmation
+          ? 'Schedule the recommended in-lab sleep study, then return to review whether it explains the symptoms and changes the treatment plan.'
+          : 'Complete the additional sleep testing recommended today, then return to review what it changes about your treatment plan.'];
       if (preStudy && data.snoringReported) {
         actions.push('While waiting, try sleeping on your side. A body pillow or positional aid can make back-sleeping less likely.');
       }
@@ -2080,12 +2093,16 @@ ${items.join('')}`;
         id: 'study',
         priority: preStudy ? 0 : 2,
         icon: 'bi-moon-stars',
-        title: preStudy ? 'While we complete your sleep evaluation' : 'Complete the recommended sleep testing',
+        title: preStudy ? 'While we complete your sleep evaluation' : inLabConfirmation ? 'Complete the recommended in-lab sleep study' : 'Complete the recommended sleep testing',
         reason: preStudy
           ? priorStudyReported
             ? 'A previous sleep study may still be useful, but the actual report must be reviewed before it can guide current treatment.'
             : 'Snoring can occur with or without sleep apnea. The sleep study will show whether breathing interruptions are present and how important they are.'
-          : 'Additional testing can answer a question that the current information cannot settle safely.',
+          : confirmNegativeHomeTest
+            ? 'The home study did not show sleep apnea, but it did not fully explain the ongoing symptoms. An in-lab study measures sleep and breathing in more detail.'
+            : confirmNondiagnosticHomeTest
+              ? 'Your clinician recommended a more detailed in-lab study before the diagnosis or treatment plan is finalized.'
+              : 'Additional testing can answer a question that the current information cannot settle safely.',
         actions,
         note: preStudy
           ? priorStudyReported

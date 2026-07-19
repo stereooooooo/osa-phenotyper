@@ -1423,3 +1423,18 @@
 - every patient-facing output retained the no-typographic-dash rule
 - full headless suite passed with 1,148 assertions
 **Finding:** fixed. The new defects were cross-layer safety gaps: treatment eligibility was correct in the analysis engine but not consistently reflected in MA suggestions and encounter handouts. Those layers now share the same guardrails, and no unresolved issue remained after the final rerun.
+
+### Test 184: Normal HST with snoring and persistent fatigue
+**Status:** local executable shared-signal, MA-plan, clinician-report, patient-report, action-plan, syntax, lint, and full regression testing complete
+**Result:** passed after one cross-layer diagnostic-boundary fix ✅
+**Verification:**
+- a symptom-focused visit with snoring, fatigue or unrefreshing sleep, AHI 3, adequate recording time, low Epworth score, and no qualifying RDI/arousal pattern now auto-suggests Diagnostic Testing rather than relying on a clinician-only warning
+- the recommendation uses a dedicated `NEG-HST-PSG` tag and specifies in-lab polysomnography without mislabeling the patient as having UARS or OSA
+- the clinician report identifies a negative home sleep test with persistent symptoms and recommends in-lab PSG
+- the comprehensive patient report explains that the home study did not fully explain the symptoms, while Today's Plan gives a direct in-lab scheduling step
+- fatigue can activate the rule through the symptom-focused visit reason even when Epworth sleep propensity is below 10
+- the existing adequate normal-HST case with isolated bothersome snoring, ESS 8, and no persistent-symptom visit goal remains on nasal, lifestyle, and weight pathways without unnecessary PSG or PAP routing
+- short or otherwise nondiagnostic home-study paths now specify in-lab PSG before diagnosis or treatment is finalized, consistent with the AASM diagnostic-testing guideline
+- patient-facing output remains free of typographic dash characters
+- full headless suite passed with 1,171 assertions
+**Finding:** fixed. The prior implementation communicated concern in portions of the reports but did not reliably convert that concern into the MA's active diagnostic plan. All output layers now consume the same negative-HST follow-up signal.

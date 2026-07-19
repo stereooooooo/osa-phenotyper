@@ -2,7 +2,15 @@
 
 **Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
 
-**Last updated:** 2026-07-18
+**Last updated:** 2026-07-19
+
+---
+
+## Diagnostic Testing and Home-Study Boundaries
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
+| PSG after a negative, inconclusive, or technically inadequate HSAT | Kapur VK, Auckley DH, Chowdhuri S, et al. "Clinical Practice Guideline for Diagnostic Testing for Adult Obstructive Sleep Apnea." *J Clin Sleep Med.* 2017;13(3):479-504. https://doi.org/10.5664/jcsm.6506 | A normal home-study AHI does not close the diagnostic pathway when clinically important symptoms persist. The app recommends in-lab PSG after a negative HST when the visit remains symptom-focused or validated symptom scores remain elevated. A short or technically inadequate HST also routes to in-lab PSG before diagnosis or treatment is finalized. Isolated snoring with an otherwise reassuring study does not automatically trigger PSG. |
 
 ---
 

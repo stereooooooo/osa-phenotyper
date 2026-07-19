@@ -93,6 +93,7 @@
       odi: numberValue('odi'),
       t90: numberValue('t90'),
       nadir: numberValue('nadir'),
+      visitReason: fieldValue('visitReason'),
     }, thresholds);
   }
 
@@ -164,8 +165,16 @@
       addSuggestion(
         suggestions,
         'planStudy',
-        `The home study recorded ${numberValue('tst')} hours, so treatment should not be finalized without confirming study reliability.`,
-        'repeat or confirm the sleep study before finalizing treatment',
+        `The home study recorded ${numberValue('tst')} hours, so it is not sufficiently reliable for final diagnostic or treatment decisions.`,
+        'arrange an in-lab sleep study before finalizing the diagnosis or treatment plan',
+        5
+      );
+    } else if (signals.negativeHstNeedsPsg) {
+      addSuggestion(
+        suggestions,
+        'planStudy',
+        `The home study AHI is ${study.ahi}, but the patient's persistent symptoms keep clinical concern for sleep-disordered breathing high.`,
+        'arrange an in-lab sleep study after the negative home study',
         5
       );
     }

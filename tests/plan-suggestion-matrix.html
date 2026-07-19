@@ -304,7 +304,7 @@ const SCENARIOS = [
     checks: [],
     expectedSuggestions: ['Diagnostic testing'],
     expectedTags: ['UARS-EVAL'],
-    clinicianIncludes: ['Low AHI with significant symptoms', 'UARS'],
+    clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'UARS'],
     clinicianExcludes: [],
     patientIncludes: ['upper airway resistance syndrome', 'in-lab sleep study'],
     patientExcludes: ['Begin PAP therapy now'],
@@ -548,6 +548,26 @@ const SCENARIOS = [
     patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
     todayPlanIncludes: ['Complete the recommended sleep testing', 'Complete the additional sleep testing recommended today', 'You reported no current difficulty with BiPAP', 'Bring or upload the compliance report'],
     todayPlanExcludes: ['request the latest echo']
+  },
+  {
+    id: 'negative-hst-persistent-fatigue',
+    name: 'Normal home study with snoring and persistent fatigue despite a low Epworth score',
+    visitReason: 'symptoms',
+    fields: {
+      sex: 'M', bmi: '25', neck: '15', tonsils: '1', ftp: 'II', ess: '7', isi: '6', noseScore: '10',
+      pahi: '3', patRdi: '4', tst: '6.5', remPercent: '22', supPahi: '4', nonSupPahi: '2.5',
+      remPahi: '4', nremPahi: '2.7', odi: '3', nadir: '91', hbAreaPH: '8', t90: '0'
+    },
+    checks: ['snoringReported'],
+    expectedSuggestions: ['Diagnostic testing'],
+    expectedTags: ['NEG-HST-PSG'],
+    excludedTags: ['UARS-EVAL', 'CPAP'],
+    clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'In-lab PSG is recommended'],
+    clinicianExcludes: ['Start CPAP/APAP'],
+    patientIncludes: ['did not fully explain your ongoing symptoms', 'in-lab sleep study'],
+    patientExcludes: ['upper airway resistance syndrome', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'did not fully explain the ongoing symptoms', 'Schedule the recommended in-lab sleep study'],
+    todayPlanExcludes: ['Start PAP']
   },
   {
     id: 'mad-severe-tmj-limited-dentition',

@@ -51,6 +51,7 @@ var OSAReportShared = (() => {
     odi,
     t90,
     nadir,
+    visitReason,
   } = {}, thresholds = {}) {
     const numberOrNull = value => (value !== '' && value !== null && value !== undefined && Number.isFinite(+value)) ? +value : null;
     const ahiVal = numberOrNull(ahi);
@@ -68,6 +69,7 @@ var OSAReportShared = (() => {
     const hb = thresholds.hypoxicBurden || {};
     const loopGain = thresholds.loopGain || {};
     const isHomeStudy = studyType === 'watchpat' || studyType === 'both';
+    const isHomeStudyOnly = studyType === 'watchpat';
     const remMinutes = tstVal !== null && remPercentVal !== null
       ? tstVal * 60 * (remPercentVal / 100)
       : null;
@@ -82,6 +84,17 @@ var OSAReportShared = (() => {
       (csrVal !== null && csrVal >= (loopGain.csr ?? 15))
     );
     const hasPsgCentralConfirmation = studyType === 'psg' || (studyType === 'both' && caiVal !== null);
+    const uars = detectUARS({ ahi: ahiVal, rdi, arInd, ess, isi });
+    const normalHomeStudy = isHomeStudyOnly && ahiVal !== null && ahiVal < 5;
+    // Fatigue is not interchangeable with sleep propensity, so the clinician's
+    // symptom-focused visit selection also counts as persistent concern even
+    // when the Epworth score is below 10. Isolated snoring does not.
+    const persistentClinicalConcern = uars.symptomatic || visitReason === 'symptoms';
+    // AASM diagnostic-testing guideline: after one negative, inconclusive, or
+    // technically inadequate HSAT, obtain PSG when OSA concern remains rather
+    // than treating another home result as definitive (Kapur et al., 2017).
+    const negativeHstNeedsPsg = normalHomeStudy && persistentClinicalConcern;
+    const nondiagnosticHstNeedsPsg = isHomeStudyOnly && shortRecording;
     const highHypoxicBurden =
       (hbVal !== null && hbVal >= (hb.hbPerHourHigh ?? 73)) ||
       (odiVal !== null && odiVal > (hb.odiSevere ?? 50)) ||
@@ -90,12 +103,16 @@ var OSAReportShared = (() => {
       (hb90Val !== null && hb90Val > (hb.areaUnder90Severe ?? 10));
 
     return {
-      uars: detectUARS({ ahi: ahiVal, rdi, arInd, ess, isi }),
+      uars,
       isHomeStudy,
+      normalHomeStudy,
+      persistentClinicalConcern,
       remMinutes,
       shortRecording,
       inadequateRecording,
       limitedRemSampling,
+      negativeHstNeedsPsg,
+      nondiagnosticHstNeedsPsg,
       centralPercent,
       centralSignal,
       centralConfirmationNeeded: centralSignal && !hasPsgCentralConfirmation,

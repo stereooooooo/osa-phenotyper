@@ -64,6 +64,7 @@ const CPAP_ISSUE_LABELS = {
    get a mid priority; any *-WORKUP tag sorts last. (Clinical review 2026-06.) */
 const REC_PRIORITY = {
   'SLEEP-STUDY': 2,
+  'NEG-HST-PSG': 3,
   'CBTI': 5, 'COMISA-PAP': 6, 'COMISA-SRT-CAUTION': 7,
   'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11,
   'TONSIL': 15, 'SOFT-TISSUE-STRONG': 16, 'FRIEDMAN-III-ALT': 17,
@@ -108,7 +109,7 @@ const PLAN_FIELD_TO_TAGS = {
   planInspire: ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'],
   planSurgery: ['SURG', 'SURGALT', 'SURG-PREF', 'TONSIL', 'SOFT-TISSUE-REVISION', 'SOFT-TISSUE-STRONG', 'SOFT-TISSUE-CONSIDER', 'SOFT-TISSUE-GENERAL', 'FRIEDMAN-III-ALT', 'COMBI-PRIOR'],
   planCbti: ['CBTI'],
-  planStudy: ['SLEEP-STUDY', 'UARS-EVAL'],
+  planStudy: ['SLEEP-STUDY', 'UARS-EVAL', 'NEG-HST-PSG'],
 };
 
 const PLAN_FIELD_LABELS = {
@@ -1082,8 +1083,10 @@ function detectPhenotypes(m, T){
 function buildHstFlags(m, T){
   const HST = T.hstValidity;
   const flags = [];
+  if (m.studyType === 'psg') return flags;
   const signals = OSAReportShared.assessEncounterSignals({
-    studyType: 'watchpat', ahi: m.ahi, rdi: m.patRdi, ess: m.ess,
+    studyType: m.studyType || 'watchpat', ahi: m.ahi, rdi: m.patRdi, ess: m.ess,
+    isi: m.isi, visitReason: m.visitReason,
     tst: m.tst, remPercent: m.remPercent, centralIndex: m.pahic3,
     csr: m.csr, hbPerHour: m.hbPH, hbAreaUnder90: m.hb90PH,
     odi: m.odi, t90: m.t90, nadir: m.nadir,
@@ -1092,9 +1095,9 @@ function buildHstFlags(m, T){
   // 1. Total sleep time assessment
   if (exists(m.tst)) {
     if (signals.inadequateRecording) {
-      flags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${m.tst} hrs is critically short (<2 hrs). AHI is likely unreliable. <strong>Recommend repeat HST or in-lab PSG.</strong>` });
+      flags.push({ severity: 'danger', flag: 'Inadequate recording time', detail: `TST ${m.tst} hrs is critically short (<2 hrs). Treat this home study as nondiagnostic and <strong>obtain in-lab PSG before finalizing the diagnosis or treatment plan.</strong>` });
     } else if (signals.shortRecording) {
-      flags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${m.tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. AHI may underestimate true severity — consider repeat HST or in-lab PSG, especially if clinical suspicion is high.` });
+      flags.push({ severity: 'warning', flag: 'Short recording time', detail: `TST ${m.tst} hrs is below the 4-hour minimum recommended for reliable HST interpretation. This home study should be treated as nondiagnostic; in-lab PSG is recommended before the diagnosis or treatment plan is finalized.` });
     }
   }
 
@@ -1128,8 +1131,11 @@ function buildHstFlags(m, T){
   }
 
   // 4. Low AHI despite high symptom burden — possible false negative
-  if (exists(m.ahi) && m.ahi < HST.ahiLowSymptom && exists(m.ess) && m.ess >= HST.essSignificant) {
-    flags.push({ severity: 'warning', flag: 'Low AHI with significant symptoms', detail: `AHI ${m.ahi} is normal/minimal despite ESS ${m.ess} (significant sleepiness). HSTs can underestimate AHI due to limited channels and no EEG. Consider in-lab PSG to evaluate for UARS (upper airway resistance syndrome) or first-night effect.` });
+  if (signals.negativeHstNeedsPsg) {
+    const symptomContext = exists(m.ess) && m.ess >= HST.essSignificant
+      ? `ESS ${m.ess} indicates ongoing sleepiness`
+      : 'the symptom-focused visit indicates ongoing fatigue, unrefreshing sleep, or other clinical concern';
+    flags.push({ severity: 'warning', flag: 'Negative home sleep test with persistent symptoms', detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. In-lab PSG is recommended rather than treating this result as definitively reassuring.` });
   }
 
   // 5. High central apnea component — confirm with lab PSG
@@ -1168,6 +1174,7 @@ function mapTreatments(f, m, T){
   const {
     phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    negativeHstNeedsPsg,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty, papMode,
     prefAvoidCpap, prefSurgery, prefInspire,
     priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated, madProblems,
@@ -1452,6 +1459,8 @@ function mapTreatments(f, m, T){
 
     if (uars.isUARS) {
       pushRec(recs,'Possible UARS (upper airway resistance syndrome) — consider in-lab polysomnography with esophageal pressure monitoring for definitive evaluation.','UARS-EVAL');
+    } else if (negativeHstNeedsPsg) {
+      pushRec(recs,'Negative home sleep apnea test with persistent symptoms or clinical concern: obtain in-lab polysomnography before treating the home result as definitively negative.','NEG-HST-PSG');
     }
     if (hasSnoring || (exists(n(f.get('snoringReported'))) || yes(f,'snoringReported'))) {
       /* Snoring-specific recommendations */
@@ -1619,8 +1628,11 @@ function buildClinicianReport(f, m, T){
 
   /* ─── HST Validity Assessment ────────────────────────────── */
   const hstFlags = buildHstFlags({
+    studyType,
     tst: n(f.get('tst')), patRdi: n(f.get('patRdi')),
-    ahi, remAhi, nremAhi, remPercent, remMinutes, ess, pahic3, csr, sup, nons
+    ahi, remAhi, nremAhi, remPercent, remMinutes, ess, isi, pahic3, csr, sup, nons,
+    visitReason: encounter.visitReason,
+    snoringReported: yes(f, 'snoringReported'),
   }, T);
 
   // Build HST validity HTML
@@ -2456,9 +2468,13 @@ document.getElementById('form').addEventListener('submit', e => {
   /* Genuinely-HIGH hypoxic burden (CPAP CV-benefit / severe range). Urgency and CV-risk
      framing are reserved for this tier; a single MODERATE metric flags the phenotype as
      supportive context only. Thresholds are population-derived (see config.js). */
-  const hbHighTier = OSAReportShared.assessEncounterSignals({
-    studyType, ahi, hbPerHour: hbPH, hbAreaUnder90: hb90PH, odi, t90, nadir,
-  }, T).highHypoxicBurden;
+  const diagnosticSignals = OSAReportShared.assessEncounterSignals({
+    studyType, ahi, rdi: n(f.get('patRdi')), arInd, ess, isi,
+    tst: n(f.get('tst')), remPercent, centralIndex: pahic3, csr, cai,
+    hbPerHour: hbPH, hbAreaUnder90: hb90PH, odi, t90, nadir,
+    visitReason,
+  }, T);
+  const hbHighTier = diagnosticSignals.highHypoxicBurden;
 
   /* Central / periodic-breathing signal count → qualitative loop-gain flag. */
   const loopGainSupportCount =
@@ -2492,6 +2508,7 @@ document.getElementById('form').addEventListener('submit', e => {
     phen: out.phen,
     sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
+    negativeHstNeedsPsg: diagnosticSignals.negativeHstNeedsPsg,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty,
     papMode: f.get('papMode') || '',
     prefAvoidCpap, prefSurgery, prefInspire,
@@ -2603,6 +2620,8 @@ document.getElementById('form').addEventListener('submit', e => {
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
     lowHypoxicBurden: oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden'),
     oxygenMetricsAvailable,
+    negativeHstNeedsPsg: diagnosticSignals.negativeHstNeedsPsg,
+    nondiagnosticHstNeedsPsg: diagnosticSignals.nondiagnosticHstNeedsPsg,
     insufficientDataDomains,
     treatmentSafetyChecks,
     apneaIndex,

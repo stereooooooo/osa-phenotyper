@@ -354,3 +354,8 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 181 | Normal AHI with snoring, nasal obstruction, alcohol, and weight readiness | AHI below 5 should remain outside the OSA treatment pathway while producing a clearly labeled snoring pathway with nasal, alcohol, and supported-weight actions |
 | 182 | COMISA in a stable current APAP user | Severe insomnia plus moderate OSA should add CBT-I while continuing APAP and requesting objective compliance data, without new-PAP or re-fitting language |
 | 183 | Central home-study signals with heart failure and unknown LVEF | Current BiPAP should continue while central findings receive in-lab confirmation; the clinician report and patient action plan should surface the missing echocardiogram without declaring ASV contraindicated before LVEF is known |
+
+### Group 41: Negative Home-Study Follow-up
+| # | Name | Key Features |
+|---|------|-------------|
+| 184 | Normal HST with snoring and persistent fatigue | A normal AHI after a technically adequate home study should still route to in-lab PSG when the encounter remains symptom-focused, even if the Epworth score is low and RDI/arousal data do not meet the more specific UARS rule; an uncomplicated normal-study snoring case should remain outside that pathway |
