@@ -12,6 +12,8 @@
 - Intake responses are cleared from the browser and the token is removed from the address bar after successful submission.
 - Closed all four guided-plan gaps from the prior audit: probable UARS now suggests diagnostic testing, home-test central signals add PSG confirmation, short/limited-REM WatchPAT results draft diagnostic confirmation instead of definitive new treatment, and severe hypoxemia adds prompt oxygen-control follow-up to the MA summary.
 - Full headless regression suite: **593 assertions passed**, including the scoped-link workflow, cardiovascular cascade, unknown-result path, persistent chart/search flag, resolution after numeric LVEF documentation, and handed-device cleanup.
+- Deployed clinical-pilot release `31df11f`. CloudFront serves the versioned clinician and intake assets. The invalid-token edge route returns the generic `403` response, while the direct API Gateway hostname returns `403 Forbidden` without the CloudFront origin secret.
+- Verified the new intake token table is active with KMS encryption, point-in-time recovery, TTL, deletion protection, and its patient-index GSI. The restricted intake Lambda has the expected patient table, token table, and origin-secret configuration; the stack finished `UPDATE_COMPLETE`.
 
 ---
 
