@@ -775,7 +775,9 @@ var PatientReport = (() => {
     const ahi = data.primaryAHI;
     let finding, meaning = '';
     if (stage === 'pre-study') {
-      finding = 'We are recommending a sleep study to get a clear picture of how you breathe overnight.';
+      finding = data.priorSleepStudyAnswer === 'yes'
+        ? 'We need to review your previous sleep-study report before deciding whether updated testing is necessary.'
+        : 'We are recommending a sleep study to get a clear picture of how you breathe overnight.';
     } else if (exists(ahi) && ahi < 5) {
       finding = 'Your sleep study did not find obstructive sleep apnea — your breathing was in the normal range.';
       if (symptomaticNormalHomeTest(data)) meaning = 'Because you have been having symptoms, we still want to take a closer look (see below).';
@@ -834,6 +836,7 @@ var PatientReport = (() => {
     /* Keep returning-patient context concise. The AHI result already appears
        immediately above; this block explains why the current plan is different. */
     const txParts = [];
+    let treatmentHistoryGuidance = '';
     if (data.cpapCurrent) {
       const difficulty = data.cpapDifficulty === 'yes' ? ' and reported some difficulty' : data.cpapDifficulty === 'no' ? ' without current difficulty' : '';
       txParts.push(`You are currently using ${papDeviceLabel(data)}${difficulty}`);
@@ -844,6 +847,9 @@ var PatientReport = (() => {
       const problemLabels = { madProblemTmj: 'jaw-joint pain', madProblemTeeth: 'dental problems', madProblemBite: 'bite changes', madProblemDiscomfort: 'discomfort or poor fit' };
       const problems = (data.madProblems || []).map(problem => problemLabels[problem] || '').filter(Boolean);
       txParts.push(`You tried an oral appliance but had trouble tolerating it${problems.length ? ` because of ${problems.join(', ')}` : ''}`);
+      treatmentHistoryGuidance = problems.length
+        ? `Your care team should address ${problems.join(', ')} before asking you to try a similar appliance again. A sleep dentist can help decide whether a safer redesign or another treatment makes more sense.`
+        : 'A sleep dentist should review why the appliance was difficult to tolerate before asking you to try a similar appliance again.';
     }
     else if (data.priorMAD && data.madHelped === 'no') txParts.push('You tried an oral appliance without clear improvement');
     else if (data.priorMAD) txParts.push('You tried an oral appliance');
@@ -858,6 +864,7 @@ var PatientReport = (() => {
 <div class="care-summary-card">
   <div class="care-summary-title">Where You Are</div>
   <p>${txParts.join('. ')}. This report focuses on what comes next in your care plan.</p>
+  ${treatmentHistoryGuidance ? `<p>${treatmentHistoryGuidance}</p>` : ''}
 </div>`;
   }
 
@@ -2077,7 +2084,9 @@ ${items.join('')}`;
           : 'Additional testing can answer a question that the current information cannot settle safely.',
         actions,
         note: preStudy
-          ? 'These steps may reduce snoring, but they do not replace the sleep study or prove that sleep apnea is absent.'
+          ? priorStudyReported
+            ? 'Reviewing the prior report does not automatically mean another study is needed. Your clinician will decide after comparing it with your current symptoms and health history.'
+            : 'These steps may reduce snoring, but they do not replace the sleep study or prove that sleep apnea is absent.'
           : 'Keep using any current treatment unless your clinician told you to stop.',
         shortAction: preStudy ? priorStudyReported ? 'Obtain the prior sleep-study report and decide whether updated testing is needed.' : 'Complete the sleep study and schedule the results visit.' : 'Complete the recommended testing and return for review.',
       });
@@ -2138,6 +2147,9 @@ ${items.join('')}`;
       ];
       if (data.cpapCurrent) {
         nasalActions.push('Track whether nasal breathing, dry mouth, mask comfort, and PAP use improve. Pressure should be changed only after clinician review.');
+      }
+      if (data.priorNasal && data.priorNasalHelped === 'no') {
+        nasalActions.unshift('Because prior nasal surgery did not clearly improve sleep or snoring, reassess the current source of blockage rather than assuming another nasal procedure will treat the sleep apnea.');
       }
       modules.push({
         id: 'nasal',
@@ -2237,19 +2249,40 @@ ${items.join('')}`;
       if (text && !actions.includes(text)) actions.push(text);
     };
     if (selected.has('planCbti')) add('Begin cognitive behavioral therapy for insomnia using the referral or validated program discussed today.');
-    if (selected.has('planMad')) add('Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
+    if (selected.has('planMad')) {
+      const madProblemLabels = {
+        madProblemTmj: 'jaw-joint pain',
+        madProblemTeeth: 'dental or tooth problems',
+        madProblemBite: 'bite changes',
+        madProblemDiscomfort: 'discomfort or poor fit'
+      };
+      const madBarriers = (data.madProblems || []).map(problem => madProblemLabels[problem] || problem);
+      add(data.priorMAD && data.madTolerated === 'no'
+        ? `Before trying another oral appliance, ask the sleep dentist to address the prior ${madBarriers.length ? madBarriers.join(', ') : 'tolerance problem'} and decide whether a safer redesign or another treatment makes more sense.`
+        : data.priorMAD && data.madHelped === 'yes' && data.madTolerated === 'yes'
+          ? 'Because the prior oral appliance helped and was tolerable, review its fit and adjustment, continue or retitrate it as appropriate, and arrange an on-treatment sleep study to confirm control.'
+          : 'Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
+    }
     if (selected.has('planInspire')) {
       if (data.priorInspire) {
         add(data.hgnsHelped === 'no'
           ? 'Because the existing nerve stimulator has not clearly helped, confirm activation and use, review programming, and arrange objective on-therapy testing before changing treatment.'
           : data.hgnsHelped === 'yes'
-            ? 'Continue the existing nerve stimulator and confirm current settings, nightly use, and objective treatment efficacy.'
+            ? 'Because the existing nerve stimulator has helped, continue it and confirm current settings, nightly use, and objective treatment efficacy.'
             : 'Review activation, nightly use, settings, and objective treatment efficacy for the existing nerve stimulator.');
       } else {
         add('Continue the device-specific nerve-stimulation evaluation discussed with your ENT.');
       }
     }
-    if (selected.has('planSurgery')) add('Continue the airway-surgery evaluation discussed today; the procedure should match your anatomy and goals.');
+    if (selected.has('planSurgery')) {
+      add(data.priorUPPP
+        ? data.priorUPPPHelped === 'no'
+          ? 'Because prior throat surgery did not clearly help, review the operative report and current airway anatomy before considering revision or a different surgical target.'
+          : data.priorUPPPHelped === 'yes'
+            ? 'Because prior throat surgery helped before symptoms or apnea returned, review the operative report and current airway anatomy for recurrent or untreated obstruction.'
+            : 'Clarify the response to prior throat surgery and review the operative report and current airway anatomy before choosing another procedure.'
+        : 'Continue the airway-surgery evaluation discussed today; the procedure should match your anatomy and goals.');
+    }
     if (selected.has('planWeight')) add(glpHistorySupport(data));
     if (data.planObserve) add('Continue observation and return at the interval chosen with your clinician, or sooner if symptoms worsen.');
     return actions;
@@ -2271,7 +2304,9 @@ ${items.join('')}`;
     const preStudy = getReportStage(data) === 'pre-study';
     const papSelected = selectedPlanSet(data).has('planPap');
     const followUp = preStudy
-      ? 'Schedule your follow-up after the sleep study so the results can be reviewed with you.'
+      ? data.priorSleepStudyAnswer === 'yes'
+        ? 'Schedule follow-up after the prior report is reviewed. If updated testing is ordered, return after that result is available.'
+        : 'Schedule your follow-up after the sleep study so the results can be reviewed with you.'
       : papSelected
         ? 'Bring or upload your PAP compliance report at follow-up, along with any mask, dryness, pressure, or nasal concerns.'
         : 'Return at the interval discussed today so your response and next treatment decision can be reviewed.';

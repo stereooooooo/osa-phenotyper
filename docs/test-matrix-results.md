@@ -1379,3 +1379,20 @@
 - patient-reported history remains decision context and a routing input; objective study, exam, and safety findings still control phenotype and treatment eligibility logic
 - full headless suite passed with 697 assertions
 **Finding:** fixed. Newly collected history now has bounded clinical consequences throughout the app, and the intake layout no longer leaves the paired controls visually unbalanced.
+
+### Tests 165-173: Treatment-history outcome and chart-state guardrails
+**Status:** local executable clinical-routing, report-content, state-isolation, syntax, and regression testing complete
+**Result:** passed after three personalization fixes ✅
+**Verification:**
+- new-chart reset clears hidden derived PAP pressure, prior-study answer, and LVEF follow-up state before every scenario
+- prior MAD intolerance now appears as a clinical limitation rather than being obscured by a favorable physiologic profile score; the patient report names the documented barrier before another trial
+- failed throat surgery now produces outcome-aware operative-report, current-anatomy, and DISE guidance instead of generic surgical workup language or an automatic revision recommendation
+- prior-study retrieval in a heart-failure patient preserves the Echo/LVEF Needed flag and does not assume that another sleep study is automatically required
+- a fresh five-scenario batch covered stable current CPAP with a prior GLP-1 cost barrier, successful prior MAD, successful prior throat surgery with recurrence, helpful existing HGNS, and an unavailable prior lab study with isolated hypertension
+- stable CPAP stayed in continuation and objective-efficacy review without comfort-troubleshooting language; the prior tirzepatide benefit and cost barrier remained visible in weight counseling
+- successful MAD produced continue-or-retitrate guidance and on-treatment verification; successful prior throat surgery preserved its historical benefit while retaining safe re-evaluation before another target
+- helpful existing HGNS stayed in the existing-device optimization pathway and excluded new-device candidacy staging and DISE language
+- isolated hypertension appeared as cardiovascular context without an Echo/LVEF Needed flag
+- patient handouts and action plans in all scenarios remained free of typographic dash characters
+- full headless suite passed with 889 assertions
+**Finding:** fixed. Treatment history now changes routing in both directions: failure creates barrier-specific reassessment, while benefit creates continuation and efficacy-verification guidance. No additional clinical or report-personalization errors were found in the fresh five-scenario batch.

@@ -286,7 +286,10 @@ function buildInsufficientDataAssessment(ctx) {
   }
 
   const hnsReferenced = (!ctx.planConfirmed && ctx.prefInspire) || (Array.isArray(ctx.recTags) && ctx.recTags.some(rec => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT'].includes(rec.tag)));
-  if (hnsReferenced && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
+  // An already implanted patient needs device optimization and objective
+  // on-therapy assessment, not a new-implant candidacy workup. DISE is only
+  // reintroduced if the clinician later pursues revision or a different device.
+  if (hnsReferenced && !ctx.priorInspire && (!ctx.hasDISEData || ctx.hnsStage?.insufficient)) {
     const hnsMissing = [];
     if (!ctx.hasDISEData) hnsMissing.push('DISE');
     if (ctx.hnsStage?.insufficient) hnsMissing.push(...(ctx.hnsStage.missing || []));
@@ -400,10 +403,20 @@ function buildTreatmentSafetyAssessment(ctx) {
   ].some(tag => tags.has(tag));
   const clearTonsillarSurgery = ctx.friedmanStage === 'I' && exists(ctx.tons) && ctx.tons >= T.anatomical.tonsils && exists(ctx.bmi) && ctx.bmi < T.anatomical.bmi;
   if (surgeryReferenced && !ctx.hasDISEData && !clearTonsillarSurgery) {
+    const priorSurgeryDidNotHelp = ctx.priorUPPP && ctx.priorUPPPHelped === 'no';
+    const priorSurgeryHelped = ctx.priorUPPP && ctx.priorUPPPHelped === 'yes';
     alerts.push({
       key: 'surgery-workup',
-      clinician: 'Before finalizing site-directed airway surgery, complete DISE to map the collapse pattern and target levels.',
-      patient: 'If surgery is being considered, a sleep endoscopy (DISE) may still be needed to show exactly where your airway collapses before choosing the procedure.',
+      clinician: priorSurgeryDidNotHelp
+        ? 'Prior throat surgery did not clearly improve sleep or snoring. Before selecting revision surgery or a different airway target, review the operative report and current anatomy and complete DISE-guided collapse mapping. Avoid assuming that revision alone will improve OSA.'
+        : priorSurgeryHelped
+          ? 'Prior throat surgery helped, but symptoms or OSA may have recurred. Review the operative report and current anatomy and complete DISE-guided collapse mapping before selecting revision surgery or a different airway target.'
+        : 'Before finalizing site-directed airway surgery, complete DISE to map the collapse pattern and target levels.',
+      patient: priorSurgeryDidNotHelp
+        ? 'Because prior throat surgery did not clearly help, your care team should review what was done and reassess your current airway before choosing another procedure. A sleep endoscopy (DISE) may be needed to map where the airway now collapses.'
+        : priorSurgeryHelped
+          ? 'Because prior throat surgery helped before symptoms or sleep apnea returned, your care team should review what was done and reassess your current airway before choosing another procedure. A sleep endoscopy (DISE) may be needed to map where the airway now collapses.'
+        : 'If surgery is being considered, a sleep endoscopy (DISE) may still be needed to show exactly where your airway collapses before choosing the procedure.',
     });
   }
 
@@ -586,8 +599,9 @@ function applyTreatmentSafetyGuardrails(recEntries, safetyAlerts) {
       'FRIEDMAN-III-ALT',
     ].forEach(tag => suppressedTags.add(tag));
 
+    const surgeryAlert = safetyAlerts.find(alert => alert?.key === 'surgery-workup');
     prependedEntries.push({
-      text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.',
+      text: surgeryAlert?.clinician || 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.',
       tag: 'SURGERY-WORKUP',
     });
   }
@@ -1334,15 +1348,15 @@ function mapTreatments(f, m, T){
   /* Soft-tissue surgery: tonsillectomy +/- expansion pharyngoplasty (adult) */
   const ftpIorII = (mall==='I' || mall==='II');
   const highAnat = out.phen.includes('High Anatomical Contribution');
-  if(exists(tons) && tons >= T.anatomical.tonsils){
-    if(priorUPPP) {
-      const response = priorUPPPHelped === 'yes'
-        ? 'Prior throat surgery helped, but symptoms or OSA may have recurred.'
-        : priorUPPPHelped === 'no'
-          ? 'Prior throat surgery did not clearly improve sleep or snoring.'
-          : 'The response to prior throat surgery is uncertain.';
-      pushRec(recs,`${response} Review the operative history and current anatomy before considering revision pharyngoplasty or alternative DISE-directed targets.`,'SOFT-TISSUE-REVISION');
-    } else if(friedmanStage === 'I'){
+  if (priorUPPP) {
+    const response = priorUPPPHelped === 'yes'
+      ? 'Prior throat surgery helped, but symptoms or OSA may have recurred.'
+      : priorUPPPHelped === 'no'
+        ? 'Prior throat surgery did not clearly improve sleep or snoring.'
+        : 'The response to prior throat surgery is uncertain.';
+    pushRec(recs,`${response} Review the operative report and current anatomy before considering revision pharyngoplasty or alternative DISE-directed targets.`,'SOFT-TISSUE-REVISION');
+  } else if(exists(tons) && tons >= T.anatomical.tonsils){
+    if(friedmanStage === 'I'){
       pushRec(recs,`Strongly consider tonsillectomy +/- expansion pharyngoplasty (Friedman Stage I: FTP ${mall}, Tonsils ${tons}, BMI ${bmi?.toFixed(1)} — ~80% UPPP success rate).`,'SOFT-TISSUE-STRONG');
     } else if(friedmanStage === 'II' && ftpIorII){
       pushRec(recs,`Consider tonsillectomy +/- expansion pharyngoplasty as part of multilevel plan (Friedman Stage II — intermediate success rate ~37-74%).`,'SOFT-TISSUE-CONSIDER');
@@ -1566,7 +1580,7 @@ function buildClinicianReport(f, m, T){
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP, priorNasal, priorSinus,
     madHelped, madTolerated, madProblems, priorUPPPHelped, priorNasalHelped, priorSinusHelped, priorJawHelped,
     hgnsHelped, hgnsImplantYear, priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType,
-    cvdConditions, glp1Status, glp1Medication, glp1Effective, glp1Issues,
+    cvdConditions, lvefFollowupNeeded, glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
     encounter,
   } = m;
@@ -1748,6 +1762,7 @@ function buildClinicianReport(f, m, T){
     prefSurgery,
     planConfirmed: encounter.planConfirmed,
     recTags,
+    priorInspire,
     hasDISEData,
     hnsStage,
     studyType,
@@ -1779,6 +1794,8 @@ function buildClinicianReport(f, m, T){
     madTmj,
     madTolerated,
     madProblems,
+    priorUPPP,
+    priorUPPPHelped,
   });
   const treatmentSafetyHTML = treatmentSafetyChecks.length ? `
     <div class="alert alert-warning mt-2 mb-3">
@@ -1809,6 +1826,11 @@ function buildClinicianReport(f, m, T){
       mall ? `Friedman tongue position ${mall}` : null,
       exists(tons) ? `Tonsils ${tons}` : null,
       priorSleepStudyAnswer === 'yes' ? `Prior sleep study reported${priorSleepStudyType === 'home' ? ', home study' : priorSleepStudyType === 'lab' ? ', in-lab study' : ''}${priorSleepStudyYear ? `, approximately ${priorSleepStudyYear}` : ''}` : null,
+      cvdConditions.length ? `Cardiovascular history: ${cvdConditions.map(condition => ({
+        cvdHypertension: 'hypertension', cvdCad: 'coronary disease or prior MI', cvdHeartFailure: 'heart failure or cardiomyopathy',
+        cvdArrhythmia: 'atrial fibrillation or arrhythmia', cvdStroke: 'stroke or TIA', cvdValve: 'valve disease',
+        cvdOther: 'other cardiovascular disease', cvdUnsure: 'diagnosis uncertain'
+      })[condition] || condition).join(', ')}` : null,
     ].filter(Boolean);
     const preStudyPlan = guardedRecTexts.length
       ? guardedRecTexts.map((text, index) => `<div class="osa-clin-rec${index === 0 ? ' osa-rec-priority' : ''}"><span class="osa-clin-rec-num">${index + 1}</span><span>${text}</span></div>`).join('')
@@ -1825,6 +1847,7 @@ function buildClinicianReport(f, m, T){
         ${encounter.planSummary ? `<div><strong>Most important next step:</strong> ${escapeHtml(encounter.planSummary)}</div>` : ''}
       </div>
       <div class="alert alert-secondary py-2 px-3 mb-3"><strong>Diagnostic boundary:</strong> OSA is not yet confirmed. Keep PAP, oral appliance, nerve stimulation, and airway surgery outside the active plan until diagnostic results are reviewed, unless another established diagnosis provides a separate indication.</div>
+      ${lvefFollowupNeeded ? '<div class="alert alert-warning py-2 px-3 mb-3"><strong>Echo/LVEF Needed:</strong> Heart failure/cardiomyopathy or a prior echocardiogram was reported without a documented left ventricular ejection fraction. Request the latest echocardiogram before advanced PAP or cardiopulmonary treatment decisions that depend on systolic function.</div>' : ''}
       <h5 class="mb-2">Plan Before Diagnosis</h5>
       ${preStudyPlan}
       <div class="osa-clin-section mt-3">
@@ -2113,7 +2136,7 @@ function buildClinicianReport(f, m, T){
   const txCandidacyParts = [];
   if (friedmanStage)
     txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
-  if (hnsStage) {
+  if (hnsStage && !priorInspire) {
     const cccBadge = hasConcentricCollapse ? ' <span class="badge bg-warning text-dark">DISE: CCC — Inspire contraindicated; Genio evidence/labeling not established for CCC</span>' : '';
     const bmiBadge = exists(bmi) && bmi > T.hgns.bmiMax ? ' <span class="badge bg-danger">BMI >40 — above current Capital ENT HGNS referral guardrail</span>' : '';
     if (hnsStage.insufficient) {
@@ -2122,7 +2145,18 @@ function buildClinicianReport(f, m, T){
       txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HGNS response tier — Stage ${hnsStage.stage}: ${hnsStage.favorability}</strong>${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all factors favorable)'}<br><small class="text-muted">Qualitative tier adapted from Ji 2026 (single-center, n=119, C=0.68; needs external validation). This is not device eligibility; confirm with DISE and current device-specific labeling.</small>${cccBadge}${bmiBadge}</div>`);
     }
   }
-  txCandidacyParts.push(`<div class="alert alert-${priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>MAD Candidacy: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMAD ? ' — <em>Prior MAD trial; score reflects profile suitability only</em>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
+  const madBarrierLabels = { madProblemTmj: 'TMJ pain', madProblemTeeth: 'dental problems', madProblemBite: 'bite changes', madProblemDiscomfort: 'discomfort or poor fit' };
+  const madBarrierText = madProblems.map(problem => madBarrierLabels[problem] || problem).join(', ');
+  const priorMadStatus = priorMAD
+    ? madTolerated === 'no'
+      ? ` <span class="badge bg-warning text-dark">Clinically limited by prior intolerance${madBarrierText ? `: ${escapeHtml(madBarrierText)}` : ''}</span>`
+      : madHelped === 'no'
+        ? ' <span class="badge bg-secondary">No clear prior benefit</span>'
+        : madHelped === 'yes' && madTolerated === 'yes'
+          ? ' <span class="badge bg-success">Prior benefit and tolerance reported</span>'
+          : ' <span class="badge bg-secondary">Prior response incomplete</span>'
+    : '';
+  txCandidacyParts.push(`<div class="alert alert-${priorMAD && madTolerated === 'no' ? 'warning' : priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>${priorMAD ? 'MAD Physiologic Profile Match' : 'MAD Candidacy'}: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMadStatus}${priorMAD ? '<br><small class="text-muted">The score describes anatomy and OSA profile only. Prior effectiveness, tolerance, dental effects, and titration determine whether another trial is clinically appropriate.</small>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
   if (surgHelper) txCandidacyParts.push(surgHelper);
   if (hgnsHTML) txCandidacyParts.push(`<div class="mt-2">${hgnsHTML}</div>`);
 
@@ -2136,8 +2170,8 @@ function buildClinicianReport(f, m, T){
 
   const candidacyBadges = [
     friedmanStage ? `Friedman ${friedmanStage}` : null,
-    priorMAD ? `MAD: ${madScore.tier} (prior trial)` : `MAD: ${madScore.tier}`,
-    hnsStage && !hnsStage.insufficient ? `Inspire: Stage ${hnsStage.stage} (${hnsStage.favorability})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
+    priorMAD ? `MAD profile: ${madScore.tier}${madTolerated === 'no' ? ' (prior intolerance)' : ' (prior trial)'}` : `MAD: ${madScore.tier}`,
+    priorInspire ? 'HGNS: existing device' : hnsStage && !hnsStage.insufficient ? `Inspire: Stage ${hnsStage.stage} (${hnsStage.favorability})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
   ].filter(Boolean);
 
   let cHTML = `
@@ -2299,6 +2333,8 @@ document.getElementById('form').addEventListener('submit', e => {
   const glp1Issues = ['glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther'].filter(key => yes(f, key));
   const cvdConditions = ['cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther','cvdUnsure'].filter(key => yes(f, key));
   const lvef = n(f.get('lvef'));
+  const lvefFollowupNeeded = yes(f, 'lvefFollowupNeeded') ||
+    ((cvdConditions.includes('cvdHeartFailure') || (f.get('echoHistory') || '').toLowerCase() === 'yes') && !exists(lvef));
   const madDentition = f.get('madDentition') || '';
   const madProtrusion = f.get('madProtrusion') || '';
   const madTmj = f.get('madTmj') || '';
@@ -2466,7 +2502,7 @@ document.getElementById('form').addEventListener('submit', e => {
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
     priorNasal, priorSinus, cpapDifficulty, madHelped, madTolerated, madProblems,
     priorUPPPHelped, priorNasalHelped, priorSinusHelped, priorJawHelped, hgnsHelped, hgnsImplantYear,
-    priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType, cvdConditions,
+    priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType, cvdConditions, lvefFollowupNeeded,
     glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
     encounter,
@@ -2568,6 +2604,7 @@ document.getElementById('form').addEventListener('submit', e => {
     glp1Effective,
     glp1Issues,
     cvdConditions,
+    lvefFollowupNeeded,
     alcoholNearBed: f.get('alcoholNearBed') || '',
     age: n(f.get('age')),
     visitReason: encounter.visitReason,

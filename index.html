@@ -1165,8 +1165,34 @@ syncPapSettings();
 syncNasalObstructionFallback();
 
 /* ── New Patient / Clear Form ─────────────────────────────────── */
+function clearDerivedHiddenFields(form) {
+  if (!form) return;
+  ['cpapPressure', 'priorSleepStudyAnswer', 'lvefFollowupNeeded'].forEach(name => {
+    const input = form.querySelector(`[name="${name}"]`);
+    if (input) input.value = '';
+  });
+  document.getElementById('lvefFollowupAlert')?.classList.add('d-none');
+}
+
+function resetClinicalForm(form = document.getElementById('form')) {
+  if (!form) return;
+  form.reset();
+  // Hidden inputs use value-mode semantics and can retain a value assigned by
+  // script across form.reset(). Clear them explicitly so chart context cannot
+  // carry into the next patient, then recompute every derived control.
+  clearDerivedHiddenFields(form);
+  syncAgeFromDob();
+  syncPapSettings();
+  syncNasalObstructionFallback();
+}
+
+window.OSAFormState = Object.freeze({
+  reset: resetClinicalForm,
+  clearDerivedHiddenFields,
+});
+
 function resetWorkspaceUiState() {
-  document.getElementById('form').reset();
+  resetClinicalForm();
   document.getElementById('patientSummary').innerHTML = '';
   document.getElementById('precisionSleepProfile').innerHTML = '';
   document.getElementById('clinicianReport').innerHTML = '';
@@ -1888,7 +1914,7 @@ function applyRuntimeMeta(meta) {
     currentPatientRecord = patient;
 
     const form = document.getElementById('form');
-    form.reset();
+    resetClinicalForm(form);
     if (patient.formData) {
       OSADatabase.populateForm(form, patient.formData);
     }

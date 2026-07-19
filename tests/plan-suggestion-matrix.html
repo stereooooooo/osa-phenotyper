@@ -53,7 +53,7 @@ function setId(win, id, value) {
   el.dispatchEvent(new win.Event('change', { bubbles: true }));
 }
 function setCheck(win, id, checked = true) {
-  const el = win.document.getElementById(id);
+  const el = win.document.getElementById(id) || win.document.querySelector(`[name="${id}"]`);
   if (!el) throw new Error(`Missing checkbox ${id}`);
   el.checked = checked;
   el.dispatchEvent(new win.Event('change', { bubbles: true }));
@@ -156,11 +156,72 @@ const SCENARIOS = [
     checks: ['priorInspire'],
     expectedSuggestions: ['Nerve stimulation'],
     expectedTags: ['INSPIRE-OPT'],
+    excludedTags: ['HNS-WORKUP'],
     clinicianIncludes: ['Hypoglossal nerve stimulator already in place (implanted approximately 2022)', 'reports no clear benefit', 'obtain on-therapy testing'],
-    clinicianExcludes: ['Complete a device-specific candidacy evaluation'],
+    clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'Inspire/HGNS workup is incomplete', 'HGNS response tier'],
     patientIncludes: ['hypoglossal nerve stimulator implanted around 2022 without clear improvement'],
-    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation'],
+    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE'],
     todayPlanIncludes: ['existing nerve stimulator has not clearly helped', 'objective on-therapy testing']
+  },
+  {
+    id: 'prior-mad-barriers',
+    name: 'Prior oral appliance intolerance with TMJ pain and bite change',
+    visitReason: 'oral-appliance',
+    fields: {
+      sex: 'F', bmi: '25', neck: '13.5', tonsils: '1', ftp: 'II', ess: '10', isi: '7', noseScore: '10',
+      pahi: '13', tst: '6.7', remPercent: '21', supPahi: '15', nonSupPahi: '11', remPahi: '15',
+      nremPahi: '12', odi: '11', nadir: '88', hbAreaPH: '20', t90: '1', cpapHelped: 'No', cpapRetry: 'No',
+      madHelped: 'no', madTolerated: 'no'
+    },
+    checks: ['priorCpap', 'priorMAD', 'madProblemTmj', 'madProblemBite'],
+    expectedSuggestions: ['Oral appliance'],
+    expectedTags: ['MAD'],
+    clinicianIncludes: ['Prior oral appliance: benefit no, tolerance no, barriers: TMJ pain, bite change', 'MAD Physiologic Profile Match: Favorable', 'Clinically limited by prior intolerance', 'Do not repeat the same pathway without sleep-dentist review'],
+    clinicianExcludes: ['MAD Candidacy: Favorable'],
+    patientIncludes: ['jaw-joint pain', 'bite changes', 'before asking you to try a similar appliance again'],
+    patientExcludes: ['favorable candidate'],
+    todayPlanIncludes: ['address the prior jaw-joint pain, bite changes', 'safer redesign or another treatment'],
+    todayPlanExcludes: ['Begin PAP therapy now']
+  },
+  {
+    id: 'failed-prior-airway-surgery',
+    name: 'Persistent OSA after throat and nasal surgery without reported benefit',
+    visitReason: 'surgery',
+    fields: {
+      sex: 'M', bmi: '30', neck: '17', tonsils: '3', ftp: 'III', ess: '14', isi: '7', noseScore: '55',
+      pahi: '27', tst: '6.3', remPercent: '18', supPahi: '31', nonSupPahi: '23', remPahi: '30',
+      nremPahi: '26', odi: '24', nadir: '82', hbAreaPH: '46', t90: '4', cpapHelped: 'No', cpapRetry: 'No',
+      priorUPPPHelped: 'no', priorNasalHelped: 'no'
+    },
+    checks: ['priorCpap', 'priorUPPP', 'priorNasal', 'prefSurgery', 'nasalObs'],
+    expectedSuggestions: ['Nasal treatment', 'Airway surgery'],
+    expectedTags: ['NASAL-OPT', 'SURGERY-WORKUP'],
+    clinicianIncludes: ['throat surgery: no', 'nasal surgery: no', 'Prior throat surgery did not clearly improve sleep or snoring', 'review the operative report and current anatomy', 'avoid assuming revision alone will improve OSA'],
+    clinicianExcludes: ['Favorable UPPP candidate'],
+    patientIncludes: ['throat surgery without clear sleep or snoring improvement', 'nasal surgery without clear sleep or snoring improvement'],
+    patientExcludes: ['strong candidate for palate surgery'],
+    todayPlanIncludes: ['prior nasal surgery did not clearly improve', 'prior throat surgery did not clearly help', 'review the operative report and current airway anatomy'],
+    todayPlanExcludes: ['Begin PAP therapy now']
+  },
+  {
+    id: 'prior-study-heart-failure',
+    name: 'Unavailable prior home study with heart failure and unknown LVEF',
+    visitReason: 'symptoms',
+    fields: {
+      sex: 'M', bmi: '32', neck: '17', tonsils: '1', ftp: 'III', ess: '16', isi: '9', noseScore: '20',
+      priorSleepStudyAnswer: 'yes', priorSleepStudyYear: '2019', priorSleepStudyType: 'home',
+      echoHistory: 'yes', echoResultKnowledge: 'unknown'
+    },
+    checks: ['priorSleepStudy', 'cvd', 'cvdHeartFailure'],
+    expectedSuggestions: ['Diagnostic testing'],
+    expectedTags: ['SLEEP-STUDY'],
+    expectedInputState: { lvefFollowupNeeded: true },
+    clinicianIncludes: ['Prior sleep study reported, home study, approximately 2019', 'Cardiovascular history: heart failure or cardiomyopathy', 'Echo/LVEF Needed'],
+    clinicianExcludes: ['Start CPAP/APAP'],
+    patientIncludes: ['review your previous sleep-study report before deciding whether updated testing is necessary', 'Why We Need to Review Your Prior Sleep Study', 'previous home sleep study from around 2019'],
+    patientExcludes: ['Begin PAP therapy now', 'We are recommending a sleep study'],
+    todayPlanIncludes: ['obtain and review your prior home sleep study from around 2019', 'Reviewing the prior report does not automatically mean another study is needed', 'Schedule follow-up after the prior report is reviewed'],
+    todayPlanExcludes: ['complete the sleep study', 'Schedule your follow-up after the sleep study']
   },
   {
     id: 'pre-study',
@@ -285,11 +346,114 @@ const SCENARIOS = [
     patientIncludes: ['central-breathing', 'ASV', 'unsafe'],
     patientExcludes: ['Begin PAP therapy now'],
     expectedAnalysisFlags: { centralWorkupMissingFromPlanSuggestions: false }
+  },
+  {
+    id: 'current-cpap-no-difficulty-glp-cost',
+    name: 'Current CPAP without difficulty and prior effective GLP-1 stopped for cost',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'F', bmi: '34', neck: '15', tonsils: '1', ftp: 'III', ess: '8', isi: '5', noseScore: '10',
+      pahi: '20', tst: '6.8', remPercent: '23', supPahi: '23', nonSupPahi: '17', remPahi: '24',
+      nremPahi: '19', odi: '17', nadir: '86', hbAreaPH: '31', t90: '2', papMode: 'CPAP',
+      papCpapPressure: '10', cpapDifficulty: 'no', weightLossReadiness: 'ready', glp1Status: 'previous',
+      glp1Medication: 'tirzepatide', glp1Effective: 'yes'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'glp1IssueCost'],
+    expectedSuggestions: ['PAP management', 'Weight management'],
+    expectedTags: ['CPAP', 'WEIGHT'],
+    clinicianIncludes: ['Currently using CPAP', 'no current difficulty reported'],
+    clinicianExcludes: [],
+    patientIncludes: ['Building on your current CPAP therapy', 'previous trial of tirzepatide', 'helped with weight loss', 'cost or insurance coverage'],
+    patientExcludes: ['Begin PAP therapy now', 'PAP comfort problems'],
+    todayPlanIncludes: ['Continue CPAP', 'previous trial of tirzepatide', 'cost or insurance coverage'],
+    todayPlanExcludes: ['Make CPAP easier to use']
+  },
+  {
+    id: 'prior-mad-success',
+    name: 'Prior oral appliance was helpful and tolerable',
+    visitReason: 'oral-appliance',
+    fields: {
+      sex: 'F', bmi: '24', neck: '13', tonsils: '1', ftp: 'II', ess: '7', isi: '5', noseScore: '5',
+      pahi: '11', tst: '7', remPercent: '22', supPahi: '14', nonSupPahi: '8', remPahi: '13',
+      nremPahi: '10', odi: '9', nadir: '89', hbAreaPH: '16', t90: '0.5', madHelped: 'yes', madTolerated: 'yes'
+    },
+    checks: ['priorMAD', 'prefAvoidCpap'],
+    expectedSuggestions: ['Oral appliance'],
+    expectedTags: ['MAD'],
+    clinicianIncludes: ['Prior oral appliance: benefit yes, tolerance yes', 'MAD Physiologic Profile Match'],
+    clinicianExcludes: ['Clinically limited by prior intolerance', 'Do not repeat the same pathway'],
+    patientIncludes: ['prior oral appliance helped and was tolerable'],
+    patientExcludes: ['before asking you to try a similar appliance again', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['prior oral appliance helped and was tolerable', 'continue or retitrate it', 'on-treatment sleep study'],
+    todayPlanExcludes: ['address the prior jaw-joint pain']
+  },
+  {
+    id: 'prior-throat-surgery-helped-recurrence',
+    name: 'Prior throat surgery helped but symptoms and OSA have recurred',
+    visitReason: 'surgery',
+    fields: {
+      sex: 'M', bmi: '29', neck: '16', tonsils: '1', ftp: 'III', ess: '12', isi: '6', noseScore: '20',
+      pahi: '23', tst: '6.4', remPercent: '20', supPahi: '27', nonSupPahi: '19', remPahi: '26',
+      nremPahi: '22', odi: '20', nadir: '84', hbAreaPH: '39', t90: '3', cpapHelped: 'No', cpapRetry: 'No',
+      priorUPPPHelped: 'yes'
+    },
+    checks: ['priorCpap', 'priorUPPP', 'prefSurgery'],
+    expectedSuggestions: ['Airway surgery'],
+    expectedTags: ['SURGERY-WORKUP'],
+    clinicianIncludes: ['throat surgery: yes', 'Prior throat surgery helped, but symptoms or OSA may have recurred'],
+    clinicianExcludes: ['Prior throat surgery did not clearly improve', 'Favorable UPPP candidate'],
+    patientIncludes: ['throat surgery that helped'],
+    patientExcludes: ['throat surgery without clear sleep or snoring improvement', 'strong candidate for palate surgery'],
+    todayPlanIncludes: ['prior throat surgery helped before symptoms or apnea returned', 'review the operative report and current airway anatomy'],
+    todayPlanExcludes: ['prior throat surgery did not clearly help']
+  },
+  {
+    id: 'existing-hgns-helped',
+    name: 'Existing hypoglossal nerve stimulator with reported benefit',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '28', neck: '16', tonsils: '1', ftp: 'III', ess: '7', isi: '5', noseScore: '10',
+      pahi: '18', tst: '6.7', remPercent: '21', supPahi: '21', nonSupPahi: '15', remPahi: '20',
+      nremPahi: '17', odi: '14', nadir: '87', hbAreaPH: '24', t90: '1', hgnsHelped: 'yes', hgnsImplantYear: '2024'
+    },
+    checks: ['priorInspire'],
+    expectedSuggestions: ['Nerve stimulation'],
+    expectedTags: ['INSPIRE-OPT'],
+    excludedTags: ['HNS-WORKUP'],
+    clinicianIncludes: ['Hypoglossal nerve stimulator already in place (implanted approximately 2024)', 'reports benefit'],
+    clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'HGNS response tier'],
+    patientIncludes: ['hypoglossal nerve stimulator implanted around 2024 that has helped'],
+    patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE'],
+    todayPlanIncludes: ['existing nerve stimulator has helped', 'confirm current settings'],
+    todayPlanExcludes: ['complete the nerve-stimulation evaluation']
+  },
+  {
+    id: 'prior-study-hypertension-only',
+    name: 'Prior lab study with hypertension but no heart-failure history',
+    visitReason: 'symptoms',
+    fields: {
+      sex: 'F', bmi: '28', neck: '14', tonsils: '1', ftp: 'II', ess: '13', isi: '8', noseScore: '15',
+      priorSleepStudyAnswer: 'yes', priorSleepStudyYear: '2021', priorSleepStudyType: 'lab', echoHistory: 'no'
+    },
+    checks: ['priorSleepStudy', 'cvd', 'cvdHypertension'],
+    expectedSuggestions: ['Diagnostic testing'],
+    expectedTags: ['SLEEP-STUDY'],
+    expectedInputState: { lvefFollowupNeeded: false },
+    clinicianIncludes: ['Prior sleep study reported, in-lab study, approximately 2021', 'Cardiovascular history: hypertension'],
+    clinicianExcludes: ['Echo/LVEF Needed', 'heart failure or cardiomyopathy'],
+    patientIncludes: ['review your previous sleep-study report before deciding whether updated testing is necessary'],
+    patientExcludes: ['We are recommending a sleep study', 'heart-pumping function'],
+    todayPlanIncludes: ['obtain and review your prior in-lab sleep study from around 2021'],
+    todayPlanExcludes: ['request the latest echo']
   }
 ];
 
 async function runScenario(win, doc, scenario, index) {
-  doc.getElementById('form').reset();
+  win.OSAFormState.reset(doc.getElementById('form'));
+  assert(
+    ['cpapPressure', 'priorSleepStudyAnswer', 'lvefFollowupNeeded'].every(name => doc.querySelector(`[name="${name}"]`)?.value === ''),
+    `${scenario.name}: new-chart reset clears hidden derived values`
+  );
   await wait(0);
   setId(win, 'patientName', `SYNTHETIC PLAN ${index + 1}, Test`);
   setId(win, 'patientDob', '1975-01-15');
@@ -333,6 +497,10 @@ async function runScenario(win, doc, scenario, index) {
     assertEqual(data.glp1Effective, scenario.expectedGlp1.effective, `${scenario.name}: preserves GLP-1 response`);
   }
   scenario.expectedTags.forEach(tag => assert(recTags.includes(tag), `${scenario.name}: clinician output includes ${tag}`));
+  (scenario.excludedTags || []).forEach(tag => assert(!recTags.includes(tag), `${scenario.name}: clinician output excludes ${tag}`));
+  if (Object.prototype.hasOwnProperty.call(scenario.expectedInputState || {}, 'lvefFollowupNeeded')) {
+    assertEqual(data.lvefFollowupNeeded, scenario.expectedInputState.lvefFollowupNeeded, `${scenario.name}: preserves the expected Echo/LVEF Needed state in report data`);
+  }
   assertEqual(data.reportDate, localIsoDate(), `${scenario.name}: report uses the local encounter date`);
   assertEqual(
     JSON.stringify([...data.selectedPlanFields].sort()),

@@ -323,3 +323,16 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 162 | Nerve-stimulator detail alignment | The benefit question and answer controls should align as one compact row, with the optional implant-year field bounded below and all controls retaining touch-friendly sizing |
 | 163 | Patient-reported treatment history routing | PAP difficulty, MAD barriers, prior surgery outcomes, and existing nerve-stimulator outcome/year should alter clinician recommendations, safety context, plan suggestions, and patient wording without independently changing objective phenotype or eligibility rules |
 | 164 | Prior-study and GLP-1 context routing | A reported prior sleep study should prompt report retrieval before automatic repeat testing, while specific GLP-1 problems should appear in clinically relevant counseling and the patient action plan |
+
+### Group 38: Treatment-History Outcome And Chart-State Guardrails
+| # | Name | Key Features |
+|---|------|-------------|
+| 165 | New-chart hidden-state reset | Starting or hydrating a chart clears derived hidden PAP pressure, prior-study answer, and LVEF follow-up values so one patient's state cannot affect the next analysis |
+| 166 | Prior MAD intolerance routing | Prior jaw-joint pain, bite change, dental problems, or poor fit should limit the clinical appropriateness of another oral appliance trial even when the physiologic profile match is favorable |
+| 167 | Failed prior throat and nasal surgery | A prior operation without benefit should prompt operative-report review, current-anatomy reassessment, and DISE-guided target mapping rather than an automatic revision recommendation |
+| 168 | Prior-study retrieval with unknown LVEF | A patient with heart failure, a prior echo, and no documented LVEF should retain an Echo/LVEF Needed flag while the unavailable prior sleep-study report is requested |
+| 169 | Stable current CPAP with prior GLP-1 cost barrier | Current CPAP without comfort difficulty should remain a continuation and efficacy-review pathway, while an effective prior GLP-1 trial stopped for cost receives specific coverage-aware weight counseling |
+| 170 | Successful prior MAD | A helpful, tolerable prior oral appliance should prompt continuation or retitration and on-treatment verification, without intolerance warnings or generic new-device language |
+| 171 | Successful prior throat surgery with recurrence | Prior benefit followed by recurrent symptoms or OSA should be acknowledged while operative-report review, current anatomy, and DISE still precede selection of another surgical target |
+| 172 | Helpful existing HGNS | An existing helpful hypoglossal nerve stimulator should remain in an optimization and objective-efficacy pathway without new-device candidacy staging or DISE prerequisites |
+| 173 | Hypertension-only cardiac history | Isolated hypertension without heart failure or a prior echo should appear as clinical context but should not create an unnecessary LVEF-record request |
