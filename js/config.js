@@ -187,16 +187,17 @@ const OSA_CONFIG = {
 
     // Clinician-only PAP download interpretation. These are review triggers,
     // not autonomous setting-change rules. Device-reported event indices and
-    // leak definitions vary by manufacturer. ATS 2013; AASM 2021 longitudinal
-    // testing guidance; Reiter 2016.
+    // leak definitions vary by manufacturer. A P95 leak above a reference is a
+    // screening signal, not proof of sustained major leak. ATS 2013; ResMed
+    // AirSense 11 user guide; AASM 2021 longitudinal testing guidance; Reiter 2016.
     papCompliance: {
       deviceAhiContext: 5,       // 5-<10: interpret with symptoms, leak, event type, and nightly coverage
       deviceAhiReview: 10,       // >=10: clinician review trigger after leak/data-quality assessment
       centralIndexReview: 5,     // possible central-event signal; device estimate requires clinical context
       insuranceFourHourPct: 70,  // common CMS coverage metric, not a biologic efficacy threshold
       partialNightGapHours: 1,   // local workflow flag when average PAP use trails reported sleep by >=1 hour
-      resmedLeakP95Nasal: 24,    // L/min, unintentional leak, 95th percentile; ATS 2013 manufacturer table
-      resmedLeakP95FullFace: 36, // L/min, unintentional leak, 95th percentile; ATS 2013 manufacturer table
+      resmedLeakP95Nasal: 24,    // L/min P95 screening reference, not a sustained-leak diagnosis; ATS 2013
+      resmedLeakP95FullFace: 36, // L/min P95 screening reference, not a sustained-leak diagnosis; ATS 2013
       treatmentEmergentWindowDays: 90 // context window only; never delays urgent evaluation
     }
   },

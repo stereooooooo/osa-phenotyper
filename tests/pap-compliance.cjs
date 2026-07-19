@@ -40,11 +40,12 @@ const leakFirst = assistant.analyze({
   papNightsFourHours: 29, papAverageUseHours: 7, papUsualSleepHours: 7.2,
   papDeviceAhi: 12, papDeviceCai: 0.5, papDeviceOai: 10,
   papLeakValue: 42, papLeakMetric: 'p95', papMaskType: 'full-face',
+  papLargeLeakFlag: 'yes',
   papPersistentSymptoms: 'yes',
 }, {}, thresholds);
-assert(leakFirst.derived.leakState === 'concern', 'High ResMed full-face leak should be flagged.');
+assert(leakFirst.derived.leakState === 'concern', 'A source report large-leak flag should be treated as confirmed concern.');
 assert(includes(leakFirst.recommendations, 'address mask seal'), 'Leak correction should be recommended first.');
-assert(includes(leakFirst.recommendations, 'after leak correction'), 'Elevated events should be reassessed after leak correction.');
+assert(includes(leakFirst.recommendations, 'after correcting the confirmed major leak'), 'Symptoms should be reassessed after confirmed major leak correction.');
 
 // 3. Device looks effective while treatment covers only part of the sleep period.
 const partialNight = assistant.analyze({
@@ -62,11 +63,24 @@ const discordant = assistant.analyze({
   papManufacturer: 'resmed', papReportDays: 30, papNightsUsed: 30,
   papNightsFourHours: 30, papAverageUseHours: 7.4, papUsualSleepHours: 7.5,
   papDeviceAhi: 2.1, papLeakValue: 4, papLeakMetric: 'p95', papMaskType: 'nasal',
-  papPersistentSymptoms: 'yes',
+  papPersistentSymptoms: 'yes', papSymptomSleepiness: true, papSymptomUnrefreshed: true,
 }, {}, thresholds);
 assert(discordant.status === 'review', 'Persistent symptoms should override a falsely reassuring device index.');
-assert(discordant.classifications.some(item => item.state === 'discordant'), 'Symptom-download discordance should be explicit.');
-assert(includes(discordant.recommendations, 'independent on-therapy assessment'), 'Independent assessment should be considered, not automatically ordered.');
+assert(discordant.classifications.some(item => item.key === 'events' && item.state === 'reassuring'), 'Low event indices should remain a separate reassuring card.');
+assert(discordant.classifications.filter(item => item.key === 'symptom-discordance').length === 1, 'Symptom-download discordance should appear once.');
+assert(includes(discordant.classifications.map(item => item.detail), 'daytime sleepiness'), 'The discordance card should name the current symptom trigger.');
+assert(includes(discordant.recommendations, 'only if symptoms remain unexplained'), 'Follow-up testing should remain conditional.');
+
+// Historical sleepiness or a prior report that CPAP did not help is not proof
+// of current symptoms during the PAP download period.
+const historicalSymptomsOnly = assistant.analyze({
+  papManufacturer: 'resmed', papReportDays: 30, papNightsUsed: 30,
+  papNightsFourHours: 30, papAverageUseHours: 7.2,
+  papDeviceAhi: 1.5, papDeviceCai: 0.1,
+  papLeakValue: 6, papLeakMetric: 'p95', papMaskType: 'nasal',
+}, { ess: 18, cpapNoImprove: true }, thresholds);
+assert(historicalSymptomsOnly.derived.persistentSymptoms === false, 'ESS and historical CPAP response should not infer current PAP symptoms.');
+assert(!historicalSymptomsOnly.classifications.some(item => item.key === 'symptom-discordance'), 'No discordance card should appear without explicit current symptoms.');
 
 // 5. Early central-event signal with heart failure and missing LVEF.
 const central = assistant.analyze({
@@ -88,7 +102,8 @@ const otherVendor = assistant.analyze({
 }, {}, thresholds);
 assert(otherVendor.derived.leakState === 'unknown', 'Non-ResMed leak should remain vendor-specific without a report flag.');
 
-// Real-world AirView pattern: excellent use and low event index, but leak above the report threshold.
+// Real-world AirView pattern: excellent use and low event index, with an
+// elevated P95 leak signal that does not prove sustained major leak.
 const airViewExample = assistant.analyze({
   papManufacturer: 'resmed', papReportDays: 30, papNightsUsed: 30,
   papNightsFourHours: 30, papAverageUseHours: 7.8,
@@ -97,10 +112,13 @@ const airViewExample = assistant.analyze({
   papLeakValue: 42, papLeakThreshold: 24, papLeakMetric: 'p95',
   papPeriodicBreathingPct: 0,
 }, {}, thresholds);
-assert(airViewExample.status === 'review', 'Leak above the source threshold should require review despite low device AHI.');
-assert(airViewExample.derived.leakState === 'concern', 'The report-provided leak threshold should take priority over an inferred mask threshold.');
+assert(airViewExample.status === 'stable', 'P95 leak alone should not force clinical escalation when use and device indices are reassuring.');
+assert(airViewExample.derived.leakState === 'screening', 'P95 above the report reference should be contextual screening, not confirmed major leak.');
+assert(includes(airViewExample.recommendations, 'does not prove sustained major leak'), 'P95 guidance should require pattern review before treatment.');
+assert(!includes(airViewExample.recommendations, 'address mask seal'), 'P95 alone should not automatically prescribe leak correction.');
 assert(airViewExample.classifications.some(item => item.key === 'events' && item.state === 'reassuring'), 'Low device event index should remain visible as reassuring context.');
-assert(airViewExample.classifications.some(item => item.key === 'pressure' && item.detail.includes('13-17')), 'Configured APAP range should appear in pressure context.');
+assert(airViewExample.classifications.some(item => item.key === 'pressure' && item.label.includes('below configured upper limit')), 'Pressure card should explain that P95 is not near the maximum.');
+assert(airViewExample.classifications.some(item => item.key === 'pressure' && item.detail.includes('2.6 cm H2O below')), 'Pressure card should quantify the gap from the maximum.');
 
 // Initial ResMed AirView parser fixture.
 const parsed = parser.parseText(`

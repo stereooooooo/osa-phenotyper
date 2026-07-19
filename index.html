@@ -601,8 +601,23 @@
             <div class="col-md-3"><label class="form-label small mb-1" for="papLargeLeakFlag">Report flags large leak?</label><select class="form-select form-select-sm" name="papLargeLeakFlag" id="papLargeLeakFlag"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select></div>
             <div class="col-md-3"><label class="form-label small mb-1" for="papPeriodicBreathingPct">Periodic breathing, %</label><input type="number" step="0.1" class="form-control form-control-sm" name="papPeriodicBreathingPct" id="papPeriodicBreathingPct" min="0" max="100"></div>
             <div class="col-md-3"><label class="form-label small mb-1" for="papTherapyStartDate">PAP start date</label><input type="date" class="form-control form-control-sm" name="papTherapyStartDate" id="papTherapyStartDate"></div>
-            <div class="col-md-3"><label class="form-label small mb-1" for="papPersistentSymptoms">Symptoms persist?</label><select class="form-select form-select-sm" name="papPersistentSymptoms" id="papPersistentSymptoms"><option value="">Not documented</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papPersistentSymptoms">Current symptoms despite PAP?</label><select class="form-select form-select-sm" name="papPersistentSymptoms" id="papPersistentSymptoms"><option value="">Not documented</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
             <div class="col-md-3"><label class="form-label small mb-1" for="papNewCvdEvent">New cardiovascular event?</label><select class="form-select form-select-sm" name="papNewCvdEvent" id="papNewCvdEvent"><option value="">Not documented</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-12 d-none" id="papPersistentSymptomDetails">
+              <div class="border rounded p-2 bg-light">
+                <div class="small fw-semibold mb-2">Which symptoms are currently present despite PAP?</div>
+                <div class="d-flex flex-wrap gap-3 small">
+                  <label for="papSymptomSleepiness"><input type="checkbox" name="papSymptomSleepiness" id="papSymptomSleepiness"> Daytime sleepiness</label>
+                  <label for="papSymptomUnrefreshed"><input type="checkbox" name="papSymptomUnrefreshed" id="papSymptomUnrefreshed"> Fatigue or unrefreshing sleep</label>
+                  <label for="papSymptomBreathing"><input type="checkbox" name="papSymptomBreathing" id="papSymptomBreathing"> Snoring, gasping, or witnessed pauses</label>
+                  <label for="papSymptomFragmented"><input type="checkbox" name="papSymptomFragmented" id="papSymptomFragmented"> Insomnia or fragmented sleep</label>
+                  <label for="papSymptomHeadache"><input type="checkbox" name="papSymptomHeadache" id="papSymptomHeadache"> Morning headaches</label>
+                  <label for="papSymptomOther"><input type="checkbox" name="papSymptomOther" id="papSymptomOther"> Other current concern</label>
+                </div>
+                <label class="form-label small mt-2 mb-1" for="papSymptomOtherText">Optional detail</label>
+                <input type="text" class="form-control form-control-sm" name="papSymptomOtherText" id="papSymptomOtherText" maxlength="160" placeholder="Describe another current symptom or concern">
+              </div>
+            </div>
           </div>
         </div>
       </div>

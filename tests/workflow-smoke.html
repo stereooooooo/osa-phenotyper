@@ -139,11 +139,14 @@ async function run() {
   setValue(win, '#papLeakValue', '42');
   setValue(win, '#papLeakMetric', 'p95');
   setValue(win, '#papMaskType', 'full-face');
+  setValue(win, '#papLargeLeakFlag', 'yes');
   setValue(win, '#papPersistentSymptoms', 'yes');
+  click(win, '#papSymptomSleepiness');
   click(win, '#papValuesVerified');
   await waitFor(() => !doc.getElementById('papComplianceGuidance').classList.contains('d-none'), 'verified PAP guidance');
   assert(doc.getElementById('papComplianceGuidance').textContent.includes('Leak concern'), 'PAP guidance identifies manufacturer-aware high leak');
-  assert(doc.getElementById('papComplianceGuidance').textContent.includes('Reassess the device event index after leak improves'), 'PAP guidance prioritizes leak before residual-event interpretation');
+  assert(doc.getElementById('papComplianceGuidance').textContent.includes('then reassess the device event index'), 'PAP guidance prioritizes confirmed major leak before residual-event interpretation');
+  assert(doc.getElementById('papComplianceGuidance').textContent.includes('daytime sleepiness'), 'PAP guidance names the explicit current symptom trigger');
   assert(!doc.getElementById('papComplianceGuidance').textContent.includes('set pressure to'), 'PAP guidance never prescribes an autonomous pressure setting');
 
   click(win, '#btnSavePatient');

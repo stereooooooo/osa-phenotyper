@@ -17,14 +17,29 @@
     treatmentEmergentWindowDays: 90,
   };
 
-  const SOURCE_FIELDS = [
+  const REPORT_FIELDS = [
     'papManufacturer', 'papReportModel', 'papReportEndDate', 'papReportDays',
-    'papNightsUsed', 'papNightsFourHours', 'papAverageUseHours', 'papUsualSleepHours',
+    'papNightsUsed', 'papNightsFourHours', 'papAverageUseHours',
     'papMinPressure', 'papMaxPressure',
     'papDeviceAhi', 'papDeviceCai', 'papDeviceOai', 'papPressure95', 'papLeakValue',
-    'papLeakThreshold', 'papLeakMetric', 'papMaskType', 'papLargeLeakFlag', 'papPeriodicBreathingPct',
-    'papTherapyStartDate', 'papPersistentSymptoms', 'papNewCvdEvent',
+    'papLeakThreshold', 'papLeakMetric', 'papPeriodicBreathingPct',
   ];
+
+  const CLINICAL_CONTEXT_FIELDS = [
+    'papUsualSleepHours', 'papMaskType', 'papLargeLeakFlag', 'papTherapyStartDate',
+    'papPersistentSymptoms', 'papSymptomSleepiness', 'papSymptomUnrefreshed',
+    'papSymptomBreathing', 'papSymptomFragmented', 'papSymptomHeadache',
+    'papSymptomOther', 'papSymptomOtherText', 'papNewCvdEvent',
+  ];
+
+  const CURRENT_SYMPTOM_LABELS = Object.freeze({
+    papSymptomSleepiness: 'daytime sleepiness',
+    papSymptomUnrefreshed: 'fatigue or unrefreshing sleep',
+    papSymptomBreathing: 'snoring, gasping, or witnessed pauses',
+    papSymptomFragmented: 'insomnia or fragmented sleep',
+    papSymptomHeadache: 'morning headaches',
+    papSymptomOther: 'another current concern',
+  });
 
   function numberOrNull(value) {
     if (value === '' || value === null || value === undefined) return null;
@@ -47,6 +62,17 @@
     return Math.round((numerator / denominator) * 100);
   }
 
+  function currentSymptomLabels(data) {
+    if (data.papPersistentSymptoms !== 'yes') return [];
+    const labels = Object.entries(CURRENT_SYMPTOM_LABELS)
+      .filter(([field]) => field !== 'papSymptomOther')
+      .filter(([field]) => yes(data[field]))
+      .map(([, label]) => label);
+    const other = String(data.papSymptomOtherText || '').trim();
+    if (yes(data.papSymptomOther) || other) labels.push(other || CURRENT_SYMPTOM_LABELS.papSymptomOther);
+    return labels;
+  }
+
   function leakAssessment(data, thresholds) {
     const value = numberOrNull(data.papLeakValue);
     const reportThreshold = numberOrNull(data.papLeakThreshold);
@@ -61,7 +87,7 @@
     }
     if (reportThreshold !== null && metric === 'p95') {
       return value > reportThreshold
-        ? { state: 'concern', label: 'Leak concern', detail: `The 95th percentile leak is ${value} L/min, above the source report threshold of ${reportThreshold} L/min.` }
+        ? { state: 'screening', label: 'Elevated P95 leak signal', detail: `The 95th percentile leak is ${value} L/min, above the source report reference of ${reportThreshold} L/min. P95 alone does not show whether leak was sustained.` }
         : { state: 'acceptable', label: 'Leak below report threshold', detail: `The 95th percentile leak is ${value} L/min, below the source report threshold of ${reportThreshold} L/min.` };
     }
     if (manufacturer !== 'resmed' || metric !== 'p95') {
@@ -75,16 +101,16 @@
     const fullFaceThreshold = thresholds.resmedLeakP95FullFace;
     if (mask === 'full-face') {
       return value > fullFaceThreshold
-        ? { state: 'concern', label: 'Leak concern', detail: `ResMed 95th percentile leak ${value} L/min exceeds the ${fullFaceThreshold} L/min full-face-mask reference.` }
+        ? { state: 'screening', label: 'Elevated P95 leak signal', detail: `ResMed 95th percentile leak ${value} L/min exceeds the ${fullFaceThreshold} L/min full-face-mask reference. P95 alone does not establish sustained major leak.` }
         : { state: 'acceptable', label: 'Leak below reference', detail: `ResMed 95th percentile leak ${value} L/min is below the ${fullFaceThreshold} L/min full-face-mask reference.` };
     }
     if (mask === 'nasal' || mask === 'pillows') {
       return value > nasalThreshold
-        ? { state: 'concern', label: 'Leak concern', detail: `ResMed 95th percentile leak ${value} L/min exceeds the ${nasalThreshold} L/min nasal-interface reference.` }
+        ? { state: 'screening', label: 'Elevated P95 leak signal', detail: `ResMed 95th percentile leak ${value} L/min exceeds the ${nasalThreshold} L/min nasal-interface reference. P95 alone does not establish sustained major leak.` }
         : { state: 'acceptable', label: 'Leak below reference', detail: `ResMed 95th percentile leak ${value} L/min is below the ${nasalThreshold} L/min nasal-interface reference.` };
     }
     if (value > fullFaceThreshold) {
-      return { state: 'concern', label: 'Leak concern', detail: `ResMed 95th percentile leak ${value} L/min exceeds both mask-type references. Confirm the interface and address leak.` };
+      return { state: 'screening', label: 'Elevated P95 leak signal', detail: `ResMed 95th percentile leak ${value} L/min exceeds both mask-type references. Confirm the interface and review the leak pattern before deciding whether treatment is needed.` };
     }
     if (value > nasalThreshold) {
       return { state: 'mask-needed', label: 'Leak interpretation needs mask type', detail: `ResMed 95th percentile leak ${value} L/min is above the nasal reference but below the full-face reference.` };
@@ -109,10 +135,15 @@
     const usedPct = roundPercent(nightsUsed, reportDays);
     const fourHourPct = roundPercent(nightsFourHours, reportDays);
     const partialNight = averageUse !== null && usualSleep !== null && usualSleep - averageUse >= thresholds.partialNightGapHours;
-    const persistentSymptoms = input.papPersistentSymptoms === 'yes' || yes(context.cpapNoImprove) ||
-      (numberOrNull(context.ess) !== null && numberOrNull(context.ess) >= 10 && input.papPersistentSymptoms !== 'no');
+    // Discordance requires an explicit current-on-PAP symptom assessment. A
+    // historical ESS or prior "CPAP did not help" response is not enough to
+    // establish that symptoms persist during the report period. AASM 2021.
+    const persistentSymptoms = input.papPersistentSymptoms === 'yes';
+    const symptomLabels = currentSymptomLabels(input);
     const centralConcern = deviceCai !== null && deviceCai >= thresholds.centralIndexReview;
     const leak = leakAssessment(input, thresholds);
+    const confirmedMajorLeak = leak.state === 'concern';
+    const elevatedP95Leak = leak.state === 'screening';
     const earlyTherapyDays = daysSince(input.papTherapyStartDate, context.now);
     const earlyTherapy = earlyTherapyDays !== null && earlyTherapyDays <= thresholds.treatmentEmergentWindowDays;
     const highBaselineOxygenRisk = yes(context.highBaselineOxygenRisk);
@@ -144,9 +175,12 @@
     }
 
     classifications.push({ key: 'leak', ...leak });
-    if (leak.state === 'concern') {
-      recommendations.push('Address mask seal, interface condition, mouth leak, dryness, and nasal obstruction first. Reassess the device event index after leak improves.');
+    if (confirmedMajorLeak) {
+      recommendations.push('The source report explicitly identifies major leak. Address mask seal, interface condition, mouth leak, dryness, and nasal obstruction, then reassess the device event index.');
       cautions.push('High leak can impair pressure delivery and make the device-reported event index less reliable.');
+    } else if (elevatedP95Leak) {
+      recommendations.push('Review the nightly leak graph or time in large leak, mask type, and leak-related symptoms. An elevated P95 value alone can reflect intermittent leak or mask adjustment and does not prove sustained major leak.');
+      cautions.push('A P95 leak value summarizes the upper tail of the leak distribution. It does not report the duration or continuity of large leak.');
     } else if (leak.state === 'mask-needed') {
       recommendations.push('Confirm whether the patient uses a nasal or full-face interface before classifying the ResMed leak value.');
     } else if (leak.state === 'unknown') {
@@ -160,13 +194,22 @@
       else if (setMaxPressure !== null) pressureDetails.push(`configured maximum ${setMaxPressure} cm H2O`);
       if (pressure95 !== null) pressureDetails.push(`95th percentile ${pressure95} cm H2O`);
       const nearUpperLimit = setMaxPressure !== null && pressure95 !== null && pressure95 >= setMaxPressure - 0.5;
+      let pressureLabel = 'Pressure context';
+      let pressureDetail = pressureDetails.join('; ');
+      if (setMaxPressure !== null && pressure95 !== null) {
+        const gap = Math.max(0, setMaxPressure - pressure95);
+        pressureLabel = nearUpperLimit ? 'Pressure near configured upper limit' : 'Pressure below configured upper limit';
+        pressureDetail = nearUpperLimit
+          ? `${pressureDetails.join('; ')}. This percentile is near the configured maximum and requires clinical context.`
+          : `${pressureDetails.join('; ')}. The P95 pressure is ${gap.toFixed(1)} cm H2O below the maximum, so this percentile alone does not suggest that the upper limit is constraining therapy.`;
+      }
       classifications.push({
         key: 'pressure',
         state: nearUpperLimit && deviceAhi !== null && deviceAhi >= thresholds.deviceAhiReview && !centralConcern ? 'attention' : 'context',
-        label: nearUpperLimit ? 'Pressure near configured upper limit' : 'Pressure context',
-        detail: pressureDetails.join('; '),
+        label: pressureLabel,
+        detail: pressureDetail,
       });
-      if (nearUpperLimit && deviceAhi !== null && deviceAhi >= thresholds.deviceAhiReview && !centralConcern && leak.state !== 'concern') {
+      if (nearUpperLimit && deviceAhi !== null && deviceAhi >= thresholds.deviceAhiReview && !centralConcern && !confirmedMajorLeak) {
         recommendations.push('Residual obstructive events are elevated while the 95th percentile pressure is near the configured maximum. After confirming leak and nightly coverage, review whether the pressure range is constraining therapy or whether formal titration is preferable.');
       }
     }
@@ -177,8 +220,10 @@
       classifications.push({ key: 'events', state: 'attention', label: 'Residual-event review needed', detail: `Device-reported event index is ${deviceAhi.toFixed(1)} per hour.` });
       if (centralConcern) {
         recommendations.push('Do not reflexively increase pressure. Review the central-event signal, leak, treatment timing, heart failure, opioid exposure, altitude, and other contributors; use formal testing when the pattern persists or remains unexplained.');
-      } else if (leak.state === 'concern') {
-        recommendations.push('Repeat the efficacy review after leak correction before deciding whether pressure or modality changes are appropriate.');
+      } else if (confirmedMajorLeak) {
+        recommendations.push('Repeat the efficacy review after correcting the confirmed major leak before deciding whether pressure or modality changes are appropriate.');
+      } else if (elevatedP95Leak) {
+        recommendations.push('Before changing pressure or modality, determine whether the elevated P95 leak represents sustained or recurrent clinically important leak.');
       } else if (deviceOai !== null && (deviceCai === null || deviceOai > deviceCai)) {
         recommendations.push('The available event breakdown is predominantly obstructive. After confirming nightly coverage and leak, review the current mode, pressure range, mask, position, and weight; consider clinician-directed optimization or formal titration if needed.');
       } else {
@@ -186,12 +231,31 @@
       }
     } else if (deviceAhi >= thresholds.deviceAhiContext) {
       classifications.push({ key: 'events', state: persistentSymptoms ? 'attention' : 'context', label: 'Intermediate residual-event range', detail: `Device-reported event index is ${deviceAhi.toFixed(1)} per hour and requires clinical context.` });
-      recommendations.push(persistentSymptoms
-        ? 'Because symptoms persist, confirm all-night use and leak, review event type, and consider clinician-directed optimization or follow-up testing if the discrepancy remains.'
-        : 'If the patient feels well and leak and nightly coverage are acceptable, monitor rather than treating this value as an automatic setting-change threshold.');
+      if (!persistentSymptoms) recommendations.push('If the patient feels well and leak and nightly coverage are acceptable, monitor rather than treating this value as an automatic setting-change threshold.');
     } else {
-      classifications.push({ key: 'events', state: persistentSymptoms ? 'discordant' : 'reassuring', label: persistentSymptoms ? 'Symptoms and download do not agree' : 'Low device-reported event index', detail: `Device-reported event index is ${deviceAhi.toFixed(1)} per hour.` });
-      if (persistentSymptoms) recommendations.push('A low device-reported event index does not exclude residual breathing events, hypoxemia, insufficient nightly coverage, insomnia, or another sleep disorder. Consider independent on-therapy assessment, such as overnight oximetry or formal follow-up sleep testing, based on the clinical question.');
+      const eventDetails = [`device-reported event index ${deviceAhi.toFixed(1)} per hour`];
+      if (deviceCai !== null) eventDetails.push(`central index ${deviceCai.toFixed(1)}`);
+      if (deviceOai !== null) eventDetails.push(`obstructive index ${deviceOai.toFixed(1)}`);
+      classifications.push({ key: 'events', state: 'reassuring', label: 'Low device-reported event indices', detail: `${eventDetails.join('; ')}. These are reassuring device estimates, not PSG measurements.` });
+    }
+
+    if (persistentSymptoms) {
+      const symptomDetail = symptomLabels.length
+        ? `Explicitly documented current symptoms: ${symptomLabels.join(', ')}.`
+        : 'Current symptoms despite PAP were explicitly documented, but the symptom type was not selected.';
+      classifications.push({
+        key: 'symptom-discordance',
+        state: deviceAhi !== null && deviceAhi < thresholds.deviceAhiContext ? 'discordant' : 'attention',
+        label: deviceAhi !== null && deviceAhi < thresholds.deviceAhiContext ? 'Symptoms and download are discordant' : 'Current symptoms despite PAP',
+        detail: symptomDetail,
+      });
+      if (confirmedMajorLeak) {
+        recommendations.push('Reassess the documented symptoms after correcting the confirmed major leak. If symptoms remain unexplained and the result would change management, consider clinician-selected overnight oximetry or formal follow-up sleep testing.');
+      } else if (elevatedP95Leak) {
+        recommendations.push('First determine whether the elevated P95 leak represents sustained clinically important leak. Address it if confirmed, then reassess the documented symptoms. Consider overnight oximetry or formal follow-up testing only if symptoms remain unexplained and the result would change management.');
+      } else {
+        recommendations.push('Confirm all-night PAP use and reassess the documented symptoms and other possible causes. Consider overnight oximetry or formal follow-up sleep testing only if symptoms remain unexplained and the result would change management.');
+      }
     }
 
     if (centralConcern || (periodicBreathing !== null && periodicBreathing > 0)) {
@@ -205,7 +269,6 @@
       if (numberOrNull(context.lvef) !== null && numberOrNull(context.lvef) <= 45) cautions.push('Documented LVEF is 45% or lower. ASV safety restrictions apply in the relevant systolic heart-failure population.');
     }
 
-    if (persistentSymptoms) classifications.push({ key: 'symptoms', state: 'attention', label: 'Persistent symptoms', detail: 'Symptoms remain clinically important even when device metrics look reassuring.' });
     if (newCvdEvent) {
       classifications.push({ key: 'cvd', state: 'attention', label: 'New cardiovascular event', detail: 'Follow-up sleep testing may be appropriate if it would change management.' });
       recommendations.push('Reassess PAP efficacy and consider follow-up PSG or HSAT after the new cardiovascular event. Prefer PSG when device data are unexplained or central events are suspected.');
@@ -223,7 +286,7 @@
       classifications,
       recommendations: [...new Set(recommendations)],
       cautions: [...new Set(cautions)],
-      derived: { usedPct, fourHourPct, partialNight, persistentSymptoms, centralConcern, leakState: leak.state },
+      derived: { usedPct, fourHourPct, partialNight, persistentSymptoms, symptomLabels, centralConcern, leakState: leak.state },
     };
   }
 
@@ -240,6 +303,8 @@
     const modeReview = document.getElementById('papReviewMode');
     const minPressureReview = document.getElementById('papReviewMinPressure');
     const maxPressureReview = document.getElementById('papReviewMaxPressure');
+    const persistentSymptoms = document.getElementById('papPersistentSymptoms');
+    const symptomDetails = document.getElementById('papPersistentSymptomDetails');
     if (!form || !panel || !verify || !analyzeButton || !fileInput || !dropZone) return;
 
     let parsedFields = [];
@@ -263,8 +328,6 @@
       const ahi = numberOrNull(data.ahi);
       const baselineAhi = pahi ?? ahi;
       return {
-        ess: data.ess,
-        cpapNoImprove: data.cpapNoImprove,
         heartFailure: data.cvdHeartFailure,
         lvef: data.lvef,
         highBaselineOxygenRisk: numberOrNull(data.hbAreaPH) >= 73 || numberOrNull(data.odi) >= 50 ||
@@ -276,7 +339,12 @@
     function stateClass(state) {
       if (['attention', 'discordant', 'concern'].includes(state)) return 'text-bg-warning';
       if (['acceptable', 'reassuring'].includes(state)) return 'text-bg-success';
+      if (state === 'screening') return 'text-bg-info';
       return 'text-bg-secondary';
+    }
+
+    function updateSymptomDetails() {
+      symptomDetails?.classList.toggle('d-none', persistentSymptoms?.value !== 'yes');
     }
 
     function render() {
@@ -356,7 +424,7 @@
       }
     }
 
-    SOURCE_FIELDS.forEach(name => {
+    REPORT_FIELDS.forEach(name => {
       const control = form.elements.namedItem(name);
       control?.addEventListener('input', event => {
         if (name === 'papMinPressure' || name === 'papMaxPressure') syncReviewMode();
@@ -365,6 +433,17 @@
       control?.addEventListener('change', event => {
         if (name === 'papMinPressure' || name === 'papMaxPressure') syncReviewMode();
         if (event.isTrusted) clearVerification();
+      });
+    });
+    CLINICAL_CONTEXT_FIELDS.forEach(name => {
+      const control = form.elements.namedItem(name);
+      control?.addEventListener('input', () => {
+        if (name === 'papPersistentSymptoms') updateSymptomDetails();
+        if (verify.checked) render();
+      });
+      control?.addEventListener('change', () => {
+        if (name === 'papPersistentSymptoms') updateSymptomDetails();
+        if (verify.checked) render();
       });
     });
     form.elements.namedItem('papMode')?.addEventListener('change', event => {
@@ -414,13 +493,15 @@
 
     form.addEventListener('reset', () => setTimeout(() => {
       syncReviewMode();
+      updateSymptomDetails();
       panel.classList.add('d-none');
       panel.innerHTML = '';
       status.textContent = '';
       analyzeButton.disabled = true;
     }, 0));
-    document.addEventListener('osa:patient-updated', () => setTimeout(() => { syncReviewMode(); render(); }, 0));
+    document.addEventListener('osa:patient-updated', () => setTimeout(() => { syncReviewMode(); updateSymptomDetails(); render(); }, 0));
     syncReviewMode();
+    updateSymptomDetails();
     render();
   }
 

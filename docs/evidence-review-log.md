@@ -25,7 +25,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 | ER-2026-07-19-SNORING | 2026-07-19 | 2026-07-19 | Isolated nasal surgery and the adult primary-snoring pathway | AAO-HNS septoplasty consensus statement 2015; AAO-HNS rhinoplasty guideline 2017; Australasian Sleep Association primary-snoring position statement 2023; AASM/AADSM oral-appliance guideline 2015; Yamasaki et al. 2020; Virkkula et al. 2006 | Subjective snoring-related quality of life may improve after functional nasal surgery, but objective acoustic evidence is mixed and AAO-HNS did not reach consensus that septoplasty reliably reduces primary snoring. Nasal treatment remains adjunctive; no automatic surgery rule was added. | PH-08, TX-06 | Clinician counseling tooltip and cautious nasal-recommendation wording added; patient treatment ranking unchanged |
 | ER-2026-07-19-WATCHPAT | 2026-07-19 | 2026-07-19 | WatchPAT diagnostic accuracy, severity classification, REM and positional phenotyping, central-event signals, negative HSAT workflow, and multi-night testing | AASM diagnostic guideline 2017; Iftikhar et al. 2022; Ioachimescu et al. 2020; Massie et al. 2022; Pillar et al. 2020; Punjabi et al. 2020; Roeder et al. 2020; Fricke et al. 2026 | WatchPAT remains appropriate for many uncomplicated patients, but mild/moderate severity needs clinician-visible uncertainty. Routine multi-night testing and automatic PSG for every negative study are not supported. PSG remains the standard after a negative/inadequate HSAT when OSA suspicion persists and is preferred for guideline-defined complicated patients. | DX-01, DX-02, DX-03, PH-05, PH-06, SAF-02 | Clinician-only flags, guided PSG draft for captured complicated diagnostic cases, and phenotype-confidence caps shipped in build `d4fdd89`; patient technical warnings remain suppressed |
 | ER-2026-07-19-NEXT-TEST | 2026-07-19 | 2026-07-19 | Operationalizing repeat HST versus in-lab PSG guidance | AASM diagnostic guideline 2017; Iftikhar et al. 2022; Ioachimescu et al. 2020; Punjabi et al. 2020; Roeder et al. 2020; Fricke et al. 2026 | Added the missing AASM complicating-condition inputs and a clinician-only four-state next-test hierarchy. Selective multi-night HST requires an explicit clinician variability concern and remains subordinate to PSG escalation rules. | DX-01, DX-02, DX-03, DX-04, SAF-02 | Draft guidance is visible to clinicians and MAs, remains editable, and reaches the patient only after Diagnostic Testing is selected and confirmed |
-| ER-2026-07-19-PAP | 2026-07-19 | 2026-07-19 | PAP compliance downloads, residual device-reported events, leak, adherence, central signals, and follow-up testing | ATS PAP tracking statement 2013; AASM PAP guideline 2019; AASM longitudinal testing guidance 2021; Reiter et al. 2016; Midelet et al. 2021; May et al. 2023; Malhotra et al. 2026 accepted manuscript | Added a clinician-only, verification-gated PAP download assistant. Usage and leak are reviewed before efficacy; device event indices remain manufacturer-specific estimates; symptoms and central signals prevent false reassurance; no pressure is selected or changed automatically. | PAP-01, PAP-02, PAP-03, SAF-01 | New structured input, ResMed AirView-oriented parser, editable clinician guidance, and regression scenarios; no unconfirmed guidance is sent to patients |
+| ER-2026-07-19-PAP | 2026-07-19 | 2026-07-19 | PAP compliance downloads, residual device-reported events, leak, adherence, central signals, and follow-up testing | ATS PAP tracking statement 2013; ResMed AirSense 11 user guide; AASM PAP guideline 2019; AASM longitudinal testing guidance 2021; Reiter et al. 2016; Midelet et al. 2021; May et al. 2023; Malhotra et al. 2026 accepted manuscript | Added a clinician-only, verification-gated PAP download assistant. Usage and leak are reviewed before efficacy; P95 leak alone remains contextual; device event indices remain manufacturer-specific estimates; explicitly confirmed current symptoms and central signals prevent false reassurance; no pressure is selected or changed automatically. | PAP-01, PAP-02, PAP-03, SAF-01 | New structured input, ResMed AirView-oriented parser, editable clinician guidance, and regression scenarios; no unconfirmed guidance is sent to patients |
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 
@@ -212,7 +212,8 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   efficacy comparisons, manufacturer-comparison studies, central-event natural history, and current
   guidance on longitudinal PSG or HSAT. Pediatric-only interpretation papers were not used for adult
   decision thresholds.
-- **Key studies or documents added:** Schwab et al. 2013 ATS statement; Patil et al. 2019 AASM PAP
+- **Key studies or documents added:** Schwab et al. 2013 ATS statement; ResMed AirSense 11 user
+  guide; Patil et al. 2019 AASM PAP
   guideline; Caples et al. 2021 AASM longitudinal testing guidance; Reiter et al. 2016; Midelet et al.
   2021; May et al. 2023 ATS policy statement; and Malhotra et al. 2026 accepted manuscript
 - **Key studies considered but not used, with reason:** The supplied summary's absolute rule to
@@ -230,15 +231,20 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   justify delaying urgent evaluation in a clinically unstable patient.
 - **Conclusion:** Logic and safety-context change. The assistant must verify all extracted values,
   assess all-night coverage and leak before efficacy, treat device AHI as contextual, avoid reflex
-  pressure escalation with central signals, and consider independent testing when symptoms or oxygen
-  risk disagree with apparently reassuring data. It never selects a pressure or changes a setting.
+  pressure escalation with central signals, and consider independent testing when explicitly confirmed
+  current symptoms or oxygen risk disagree with apparently reassuring data. An elevated P95 leak alone
+  is an upper-tail screening signal, not proof of sustained major leak. It never selects a pressure or
+  changes a setting.
 - **Code and patient-report effect:** Added structured PAP download inputs, an initial ResMed AirView
   parser, manufacturer-aware leak context, clinician classifications, suggested review steps, and a
-  clinician disposition/note. Nothing reaches the patient report without later clinician-confirmed
-  plan integration.
-- **Regression scenarios added or updated:** Five PAP download scenarios cover stable therapy, high
-  leak with misleading residual events, partial-night use, persistent symptoms despite a low device
-  index, and a central-event signal with reduced or missing LVEF context.
+  clinician disposition/note. P95 leak above a reference remains contextual unless corroborated by an
+  explicit large-leak flag or clinical pattern. Symptom discordance requires a current-on-PAP answer,
+  names the selected symptoms, and cannot be inferred from a historical ESS or prior treatment response.
+  Nothing reaches the patient report without later clinician-confirmed plan integration.
+- **Regression scenarios added or updated:** PAP download scenarios cover stable therapy, explicitly
+  confirmed major leak, elevated P95 leak without sustained-leak evidence, partial-night use, explicit
+  current symptoms despite a low device index, historical symptoms that must not create discordance,
+  and a central-event signal with reduced or missing LVEF context.
 - **Clinician reviewer and decision:** Raymond Brown, MD, review pending
 - **Commit:** `525c740`
 - **Deployed build:** `c7b1ab3`
