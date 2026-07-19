@@ -183,6 +183,21 @@ const OSA_CONFIG = {
       centralPctWarning: 25,  // central % >25 → warning (significant central)
       csrElevated:      15,   // CSR >15% …
       centralPctLow:    15    // … with central % <15 → CSR-artifact info flag
+    },
+
+    // Clinician-only PAP download interpretation. These are review triggers,
+    // not autonomous setting-change rules. Device-reported event indices and
+    // leak definitions vary by manufacturer. ATS 2013; AASM 2021 longitudinal
+    // testing guidance; Reiter 2016.
+    papCompliance: {
+      deviceAhiContext: 5,       // 5-<10: interpret with symptoms, leak, event type, and nightly coverage
+      deviceAhiReview: 10,       // >=10: clinician review trigger after leak/data-quality assessment
+      centralIndexReview: 5,     // possible central-event signal; device estimate requires clinical context
+      insuranceFourHourPct: 70,  // common CMS coverage metric, not a biologic efficacy threshold
+      partialNightGapHours: 1,   // local workflow flag when average PAP use trails reported sleep by >=1 hour
+      resmedLeakP95Nasal: 24,    // L/min, unintentional leak, 95th percentile; ATS 2013 manufacturer table
+      resmedLeakP95FullFace: 36, // L/min, unintentional leak, 95th percentile; ATS 2013 manufacturer table
+      treatmentEmergentWindowDays: 90 // context window only; never delays urgent evaluation
     }
   },
 
@@ -225,6 +240,17 @@ const OSA_CONFIG = {
       papCpapPressure:{ min: 4, max: 25,  warnMax: 20  },
       papEpapPressure:{ min: 4, max: 25,  warnMax: 20  },
       papIpapPressure:{ min: 4, max: 30,  warnMax: 25  },
+      papReportDays:{ min: 1, max: 365 },
+      papNightsUsed:{ min: 0, max: 365 },
+      papNightsFourHours:{ min: 0, max: 365 },
+      papAverageUseHours:{ min: 0, max: 24 },
+      papUsualSleepHours:{ min: 0, max: 24 },
+      papDeviceAhi:{ min: 0, max: 100, warnMax: 50 },
+      papDeviceCai:{ min: 0, max: 100, warnMax: 30 },
+      papDeviceOai:{ min: 0, max: 100, warnMax: 50 },
+      papLeakValue:{ min: 0, max: 250, warnMax: 150 },
+      papPressure95:{ min: 0, max: 30, warnMax: 25 },
+      papPeriodicBreathingPct:{ min: 0, max: 100, warnMax: 30 },
       dhr:        { min: 0,   max: 60,   warnMax: 40  },
       dhrPsg:     { min: 0,   max: 60,   warnMax: 40  },
       noseScore:  { min: 0,   max: 100 },
@@ -288,6 +314,24 @@ const OSA_CONFIG = {
         fields: ['papEpapPressure', 'papIpapPressure'],
         check: (vals) => vals.papEpapPressure >= vals.papIpapPressure,
         message: 'BiPAP EPAP must be lower than IPAP.'
+      },
+      {
+        id: 'pap_used_gt_report_days',
+        fields: ['papNightsUsed', 'papReportDays'],
+        check: (vals) => vals.papNightsUsed > vals.papReportDays,
+        message: 'PAP nights used cannot exceed the number of report days.'
+      },
+      {
+        id: 'pap_four_hours_gt_used',
+        fields: ['papNightsFourHours', 'papNightsUsed'],
+        check: (vals) => vals.papNightsFourHours > vals.papNightsUsed,
+        message: 'PAP nights with at least 4 hours cannot exceed nights used.'
+      },
+      {
+        id: 'pap_event_components_gt_total',
+        fields: ['papDeviceCai', 'papDeviceOai', 'papDeviceAhi'],
+        check: (vals) => vals.papDeviceCai + vals.papDeviceOai > vals.papDeviceAhi + 1,
+        message: 'PAP central plus obstructive indices exceed the total device event index. Verify the report fields and units.'
       }
     ]
   }

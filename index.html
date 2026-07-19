@@ -160,6 +160,7 @@
 <div class="osa-progress-track no-print" id="progressTrack" role="navigation" aria-label="Clinician form sections">
   <button type="button" class="osa-progress-step" data-section="demographics" data-target="#cardDemographics">Demographics</button>
   <button type="button" class="osa-progress-step" data-section="treatment" data-target="#cardTreatment">Treatment Hx</button>
+  <button type="button" class="osa-progress-step" data-section="pap-review" data-target="#cardPapCompliance">PAP Review</button>
   <button type="button" class="osa-progress-step" data-section="exam" data-target="#cardPhysicalExam">Exam</button>
   <button type="button" class="osa-progress-step" data-section="imaging" data-target="#cardImaging">DISE</button>
   <button type="button" class="osa-progress-step" data-section="questionnaires" data-target="#cardQuestionnaires">Questionnaires</button>
@@ -553,6 +554,69 @@
 </div>
 </div>
 
+<!-- ===== Clinician PAP Download Review ===== -->
+<div class="card mt-3" id="cardPapCompliance">
+  <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapsePapCompliance" aria-expanded="false" aria-controls="collapsePapCompliance">
+    <i class="bi bi-cpu"></i> PAP Compliance Review
+    <span class="badge text-bg-secondary ms-2">Clinician only</span>
+    <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
+  </button>
+  <div class="collapse" id="collapsePapCompliance">
+    <div class="card-body">
+      <div class="alert alert-light border small mb-3">
+        <strong>Interpretation boundary:</strong> Device-reported breathing events and leak are manufacturer-specific estimates. Verify imported values and interpret them with symptoms, nightly coverage, mask leak, and the baseline sleep study. This assistant provides guidance only and never changes device settings.
+      </div>
+      <div class="row g-3 align-items-stretch">
+        <div class="col-lg-4">
+          <div id="papReportDropZone" class="drop-zone h-100 d-flex flex-column justify-content-center">
+            <i class="bi bi-file-earmark-medical"></i>
+            <p class="mb-1"><strong>Drop a PAP compliance PDF</strong></p>
+            <p class="small text-muted mb-2">ResMed AirView is supported first. Other reports can be entered manually.</p>
+            <label for="papReportFileInput" class="btn btn-outline-primary btn-sm" role="button">Browse for PDF</label>
+            <input type="file" id="papReportFileInput" accept=".pdf" class="d-none">
+            <div id="papReportStatus" class="small mt-2" role="status"></div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3"><label class="form-label small mb-1" for="papManufacturer">Manufacturer</label><select class="form-select form-select-sm" name="papManufacturer" id="papManufacturer"><option value="">Select</option><option value="resmed">ResMed</option><option value="philips">Philips Respironics</option><option value="fisher-paykel">Fisher &amp; Paykel</option><option value="lowenstein">Löwenstein</option><option value="devilbiss">DeVilbiss</option><option value="other">Other / unknown</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papReportModel">Device / model</label><input type="text" class="form-control form-control-sm" name="papReportModel" id="papReportModel" maxlength="80" placeholder="Example: AirSense 11 AutoSet"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papReviewMode">PAP mode</label><select class="form-select form-select-sm" id="papReviewMode"><option value="">Unknown</option><option value="APAP">APAP</option><option value="CPAP">CPAP</option><option value="BiPAP">BiPAP</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papReportEndDate">Report end date</label><input type="date" class="form-control form-control-sm" name="papReportEndDate" id="papReportEndDate"></div>
+            <div class="col-md-2"><label class="form-label small mb-1" for="papReportDays">Report days</label><input type="number" class="form-control form-control-sm" name="papReportDays" id="papReportDays" min="1" max="365"></div>
+            <div class="col-md-2"><label class="form-label small mb-1" for="papNightsUsed">Nights used</label><input type="number" class="form-control form-control-sm" name="papNightsUsed" id="papNightsUsed" min="0" max="365"></div>
+            <div class="col-md-2"><label class="form-label small mb-1" for="papNightsFourHours">Nights at least 4 h</label><input type="number" class="form-control form-control-sm" name="papNightsFourHours" id="papNightsFourHours" min="0" max="365"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papAverageUseHours">Average use, hours</label><input type="number" step="0.1" class="form-control form-control-sm" name="papAverageUseHours" id="papAverageUseHours" min="0" max="24"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papUsualSleepHours">Usual sleep, hours</label><input type="number" step="0.1" class="form-control form-control-sm" name="papUsualSleepHours" id="papUsualSleepHours" min="0" max="24" placeholder="Patient report"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papDeviceAhi">Device event index <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="This is a proprietary flow-based estimate, not a PSG-measured AHI."></i></label><input type="number" step="0.1" class="form-control form-control-sm" name="papDeviceAhi" id="papDeviceAhi" min="0" max="100"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papDeviceCai">Device central index</label><input type="number" step="0.1" class="form-control form-control-sm" name="papDeviceCai" id="papDeviceCai" min="0" max="100"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papDeviceOai">Device obstructive index</label><input type="number" step="0.1" class="form-control form-control-sm" name="papDeviceOai" id="papDeviceOai" min="0" max="100"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papPressure95">95th percentile pressure</label><input type="number" step="0.1" class="form-control form-control-sm" name="papPressure95" id="papPressure95" min="0" max="30"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papLeakValue">Leak value, L/min</label><input type="number" step="0.1" class="form-control form-control-sm" name="papLeakValue" id="papLeakValue" min="0" max="250"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papLeakMetric">Leak metric</label><select class="form-select form-select-sm" name="papLeakMetric" id="papLeakMetric"><option value="">Unknown</option><option value="p95">95th percentile</option><option value="median">Median</option><option value="maximum">Maximum</option><option value="time-large-leak">Time in large leak</option><option value="other">Other</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papMaskType">Mask type</label><select class="form-select form-select-sm" name="papMaskType" id="papMaskType"><option value="">Unknown</option><option value="nasal">Nasal</option><option value="pillows">Nasal pillows</option><option value="full-face">Full face / oronasal</option><option value="other">Other</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papLargeLeakFlag">Report flags large leak?</label><select class="form-select form-select-sm" name="papLargeLeakFlag" id="papLargeLeakFlag"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papPeriodicBreathingPct">Periodic breathing, %</label><input type="number" step="0.1" class="form-control form-control-sm" name="papPeriodicBreathingPct" id="papPeriodicBreathingPct" min="0" max="100"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papTherapyStartDate">PAP start date</label><input type="date" class="form-control form-control-sm" name="papTherapyStartDate" id="papTherapyStartDate"></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papPersistentSymptoms">Symptoms persist?</label><select class="form-select form-select-sm" name="papPersistentSymptoms" id="papPersistentSymptoms"><option value="">Not documented</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+            <div class="col-md-3"><label class="form-label small mb-1" for="papNewCvdEvent">New cardiovascular event?</label><select class="form-select form-select-sm" name="papNewCvdEvent" id="papNewCvdEvent"><option value="">Not documented</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+        <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" name="papValuesVerified" id="papValuesVerified"><label class="form-check-label fw-semibold" for="papValuesVerified">Values reviewed against source report</label></div>
+        <button type="button" class="btn btn-primary btn-sm" id="btnAnalyzePap" disabled><i class="bi bi-clipboard2-pulse"></i> Review Guidance</button>
+        <span class="small text-muted">Editing a source value clears verification.</span>
+      </div>
+      <div class="pap-guidance-panel mt-3 d-none" id="papComplianceGuidance" aria-live="polite"></div>
+      <div class="row g-2 mt-3">
+        <div class="col-md-4"><label class="form-label small mb-1" for="papReviewDecision">Clinician disposition</label><select class="form-select form-select-sm" name="papReviewDecision" id="papReviewDecision"><option value="">Not finalized</option><option value="continue">Continue current therapy</option><option value="troubleshoot">Address adherence, comfort, or leak</option><option value="settings-review">Clinician settings review</option><option value="oximetry">Overnight oximetry on PAP</option><option value="formal-testing">Formal follow-up sleep testing / titration</option><option value="alternative">Discuss another treatment pathway</option></select></div>
+        <div class="col-md-8"><label class="form-label small mb-1" for="papClinicianNote">Clinician note</label><textarea class="form-control form-control-sm" name="papClinicianNote" id="papClinicianNote" rows="2" maxlength="1200" placeholder="Document the confirmed interpretation, action, and reason for any override."></textarea></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Physical Exam & DISE (side by side) ===== -->
 <div class="row g-3 mt-2">
   <div class="col-md-4">
@@ -806,6 +870,30 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-primary" id="btnApplyPdf"><i class="bi bi-check-lg"></i> Apply Selected</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAP Compliance PDF Review Modal -->
+<div class="modal fade" id="papReportReviewModal" tabindex="-1" aria-labelledby="papReportReviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="papReportReviewLabel"><i class="bi bi-file-earmark-check"></i> Verify PAP Report Values</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning py-2 small">Confirm every selected value against the source PDF. Manufacturer algorithms and report layouts can change.</div>
+        <table class="table table-sm align-middle" id="papReportReviewTable">
+          <thead><tr><th>Use</th><th>Field</th><th>Extracted value</th><th>Confidence</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="papReportNotFound" class="text-muted small mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btnApplyPapReport"><i class="bi bi-check-lg"></i> Apply Verified Values</button>
       </div>
     </div>
   </div>
@@ -1089,10 +1177,12 @@ window.OSALibs = (function () {
 <script src="js/db.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/workflow-test-app.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/pdf-parser.js?v=__OSA_BUILD_ID__"></script>
+<script src="js/pap-report-parser.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/questionnaire-parser.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/pdf-export.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/patientReport.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/plan-suggestions.js?v=__OSA_BUILD_ID__"></script>
+<script src="js/pap-compliance.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/app.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/home.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/precision-sleep.js?v=__OSA_BUILD_ID__"></script>

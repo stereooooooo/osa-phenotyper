@@ -552,6 +552,34 @@ fieldset legend {
   text-decoration: none;
 }
 
+/* Clinician PAP download guidance */
+.pap-guidance-panel {
+  border: 1px solid #cbd8e6;
+  border-left: 4px solid var(--osa-navy, #173b63);
+  border-radius: 0.65rem;
+  background: #f8fbfe;
+  padding: 1rem;
+}
+.pap-guidance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.65rem;
+}
+.pap-guidance-item {
+  border: 1px solid #dce5ee;
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.7rem;
+}
+#cardPapCompliance .drop-zone { min-height: 100%; }
+#cardPapCompliance .form-label {
+  color: #294868;
+  font-weight: 600;
+}
+@media (max-width: 991.98px) {
+  #cardPapCompliance .drop-zone { min-height: 180px; }
+}
+
 /* Green flash animation for PDF-imported fields */
 @keyframes pdf-import-flash {
   0%   { background-color: rgba(25, 135, 84, 0.2); }

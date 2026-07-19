@@ -126,6 +126,26 @@ async function run() {
   setValue(win, '#echoResultKnowledge', 'unknown');
   assert(!doc.getElementById('lvefFollowupAlert').classList.contains('d-none'), 'Missing numeric LVEF produces an MA-facing record request');
 
+  assert(doc.getElementById('btnAnalyzePap').disabled, 'PAP guidance is locked until source values are verified');
+  setValue(win, '#papManufacturer', 'resmed');
+  setValue(win, '#papReportDays', '30');
+  setValue(win, '#papNightsUsed', '30');
+  setValue(win, '#papNightsFourHours', '29');
+  setValue(win, '#papAverageUseHours', '7');
+  setValue(win, '#papUsualSleepHours', '7.5');
+  setValue(win, '#papDeviceAhi', '12');
+  setValue(win, '#papDeviceCai', '0.4');
+  setValue(win, '#papDeviceOai', '10');
+  setValue(win, '#papLeakValue', '42');
+  setValue(win, '#papLeakMetric', 'p95');
+  setValue(win, '#papMaskType', 'full-face');
+  setValue(win, '#papPersistentSymptoms', 'yes');
+  click(win, '#papValuesVerified');
+  await waitFor(() => !doc.getElementById('papComplianceGuidance').classList.contains('d-none'), 'verified PAP guidance');
+  assert(doc.getElementById('papComplianceGuidance').textContent.includes('Leak concern'), 'PAP guidance identifies manufacturer-aware high leak');
+  assert(doc.getElementById('papComplianceGuidance').textContent.includes('Reassess the device event index after leak improves'), 'PAP guidance prioritizes leak before residual-event interpretation');
+  assert(!doc.getElementById('papComplianceGuidance').textContent.includes('set pressure to'), 'PAP guidance never prescribes an autonomous pressure setting');
+
   click(win, '#btnSavePatient');
   await waitFor(() => doc.getElementById('patientNameDisplay').textContent.trim() === 'Workflow QA Patient', 'chart saved');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false).length, 1, 'Chart saves through the clinician UI');
@@ -200,6 +220,8 @@ async function run() {
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'chart loaded');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Selected chart rehydrates identity fields');
   assertEqual(doc.querySelector('[name="remPercent"]').value, '23.1', 'Imported REM percentage persists when the chart is reopened');
+  assertEqual(doc.querySelector('[name="papDeviceAhi"]').value, '12', 'Verified PAP download values persist when the chart is reopened');
+  assert(doc.getElementById('papValuesVerified').checked, 'PAP source-verification status persists with the chart');
   setValue(win, '#lvef', '55');
   await waitFor(() => !doc.getElementById('btnSavePatient').disabled, 'save button ready for LVEF resolution');
   click(win, '#btnSavePatient');

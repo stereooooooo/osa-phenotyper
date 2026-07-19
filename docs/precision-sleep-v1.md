@@ -45,6 +45,8 @@ Only the one or two highest-priority modules are expanded. Other confirmed actio
 
 Add a clinician-only workflow for uploading a PAP compliance PDF and receiving evidence-based, reviewable decision support. Begin with the single report format most commonly used by Capital ENT, then add vendors only after real deidentified examples demonstrate reliable extraction.
 
+**Implementation status (2026-07-19):** Initial clinician-only workflow started. It supports structured manual entry, a verification-gated ResMed AirView-oriented PDF parser, manufacturer-aware leak context, symptom-download discordance, central-event safety context, and editable clinician disposition. Expansion to other vendors and patient education remains gated on deidentified report examples and clinician validation.
+
 The first release should:
 
 - Extract device, mode, pressure settings, usage, residual device-reported AHI, leak, pressure percentiles, and central-event or periodic-breathing fields when present.
@@ -54,7 +56,7 @@ The first release should:
 - Produce clinician suggestions and patient education only after clinician confirmation.
 - Never change PAP settings automatically or treat manufacturer-reported residual AHI and leak values as interchangeable across vendors.
 
-For the initial low-cost architecture, the source PDF should be uploaded to encrypted, access-controlled AWS storage, parsed without PHI in logs, and automatically deleted after verification unless the clinician intentionally retains it. Structured verified values can then be stored with the chart and audit metadata.
+For the initial low-cost architecture, the source PDF is parsed locally in the authenticated clinician's browser and discarded when review is complete. It is not uploaded to AWS or retained by the app. Only clinician-verified structured values and review metadata are stored with the chart. If source-report retention is added later, it will require a separate encrypted, access-controlled AWS workflow with explicit retention and deletion rules.
 
 Later phases may add longitudinal comparisons, additional report formats, and vendor integrations. Direct device-cloud integrations are intentionally deferred because they add cost, security review, vendor contracts, and operational complexity.
 
