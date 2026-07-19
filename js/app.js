@@ -178,6 +178,13 @@ function ahiSeverity(ahi) {
   return 'Mild';
 }
 
+function localIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function buildInsufficientDataAssessment(ctx) {
   if (!ctx || !ctx.osaConfirmed) return [];
 
@@ -1184,7 +1191,7 @@ function mapTreatments(f, m, T){
           pushRec(recs,'Optimize CPAP comfort (humidification, auto-ramp, mask fit, desensitization).','CPAP-OPT');
         }
         if(exists(isi) && isi >= 15) {
-          pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Untreated insomnia is the strongest predictor of CPAP non-adherence (Sweetman 2019). Consider sleep psychology referral or FDA-cleared digital CBT-I (e.g., Pear Somryst).','CBTI');
+          pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Untreated insomnia is the strongest predictor of CPAP non-adherence (Sweetman 2019). Consider a sleep psychology referral or a validated digital CBT-I program when appropriate and available.','CBTI');
         }
         break;
       case 'High Loop Gain':
@@ -1716,6 +1723,41 @@ function buildClinicianReport(f, m, T){
   guardedRecEntries.sort((a, b) => recPriority(a.tag) - recPriority(b.tag));
   const guardedRecTexts = guardedRecEntries.map(entry => entry.text);
 
+  if (!exists(ahi)) {
+    const selectedPlanLabels = encounter.selectedPlanFields.map(field => PLAN_FIELD_LABELS[field]).filter(Boolean);
+    if (encounter.planObserve) selectedPlanLabels.push('observe / follow up');
+    const contextItems = [
+      exists(ess) ? `ESS ${ess}${ess >= 15 ? ', significant daytime sleepiness' : ''}` : null,
+      exists(isi) ? `ISI ${isi}${isi >= 15 ? ', clinically meaningful insomnia symptoms' : ''}` : null,
+      exists(noseScore) ? `NOSE ${noseScore}${noseScore >= 30 ? ', meaningful nasal obstruction' : ''}` : nasalObs ? 'Nasal obstruction reported' : null,
+      exists(bmi) ? `BMI ${bmi.toFixed(1)}` : null,
+      mall ? `Friedman tongue position ${mall}` : null,
+      exists(tons) ? `Tonsils ${tons}` : null,
+    ].filter(Boolean);
+    const preStudyPlan = guardedRecTexts.length
+      ? guardedRecTexts.map((text, index) => `<div class="osa-clin-rec${index === 0 ? ' osa-rec-priority' : ''}"><span class="osa-clin-rec-num">${index + 1}</span><span>${text}</span></div>`).join('')
+      : '<p class="text-muted mb-0">No active pre-study pathway is selected.</p>';
+    const cHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <h2 class="h4 osa-section-title mb-0">Clinician Decision Support</h2>
+        <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+      </div>
+      <div class="osa-care-summary mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>Pre-study evaluation${contextItems.length ? ` · ${contextItems.join(' · ')}` : ''}</div>
+      <div class="alert ${encounter.planConfirmed ? 'alert-success' : 'alert-info'} py-2 px-3 mb-3">
+        <div><strong>Visit goal:</strong> ${escapeHtml(encounter.visitReasonLabel)}${encounter.visitReasonNote ? `, ${escapeHtml(encounter.visitReasonNote)}` : ''}</div>
+        <div><strong>${encounter.planConfirmed ? 'Confirmed plan' : 'Planning status'}:</strong> ${encounter.planConfirmed ? escapeHtml(selectedPlanLabels.join(', ') || 'No active pathway selected') : 'Pre-visit decision support. Confirm today\'s plan before generating the patient handout.'}</div>
+        ${encounter.planSummary ? `<div><strong>Most important next step:</strong> ${escapeHtml(encounter.planSummary)}</div>` : ''}
+      </div>
+      <div class="alert alert-secondary py-2 px-3 mb-3"><strong>Diagnostic boundary:</strong> OSA is not yet confirmed. Keep PAP, oral appliance, nerve stimulation, and airway surgery outside the active plan until diagnostic results are reviewed, unless another established diagnosis provides a separate indication.</div>
+      <h5 class="mb-2">Plan Before Diagnosis</h5>
+      ${preStudyPlan}
+      <div class="osa-clin-section mt-3">
+        <div class="osa-clin-section-header" aria-expanded="true"><span><i class="bi bi-calendar-check me-2"></i>Follow-up Plan</span></div>
+        <div class="osa-clin-section-body"><ul class="mb-0"><li>Review the sleep-study result with the patient.</li><li>Update phenotype, treatment candidacy, and the confirmed plan only after diagnostic data are available.</li></ul></div>
+      </div>`;
+    return { cHTML, subtype, guardedRecTexts, guardedRecEntries, insufficientDataDomains, treatmentSafetyChecks };
+  }
+
   /* ── Key numbers with color coding ─────────────────────────── */
   const keyNumItems = [];
 
@@ -1896,7 +1938,7 @@ function buildClinicianReport(f, m, T){
   const hasTxHistory = cpapCurrent || cpapFailed || prefAvoidCpap || priorMAD || priorUPPP || priorInspire;
   const careSummaryParts = [];
   if ((milestones.length || hasTxHistory) && exists(ahi)) careSummaryParts.push(`AHI ${ahi} (${sevLabel || 'normal'})`);
-  if (cpapCurrent) careSummaryParts.push('Current CPAP user');
+  if (cpapCurrent) careSummaryParts.push(`Current ${papMode || 'PAP'} user`);
   else if (cpapFailed) careSummaryParts.push(`CPAP tried (${cpapWillRetry ? 'will retry' : 'discontinued'})`);
   else if (prefAvoidCpap) careSummaryParts.push('Prefers to avoid CPAP');
   if (priorMAD) careSummaryParts.push('Prior MAD');
@@ -1985,7 +2027,7 @@ function buildClinicianReport(f, m, T){
     ${careSummaryHTML}
     ${encounterPlanHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
-    ${cpapFailed ? `<p class="mb-2"><strong>CPAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? '<p class="mb-2"><strong>CPAP History:</strong> Currently using CPAP</p>' : ''}
+    ${cpapFailed ? `<p class="mb-2"><strong>PAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? `<p class="mb-2"><strong>PAP History:</strong> Currently using ${papMode || 'PAP'}</p>` : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
     ${insufficientDataHTML}
@@ -2110,9 +2152,10 @@ document.getElementById('form').addEventListener('submit', e => {
   const priorJaw      = yes(f,'priorJaw');
   const priorInspire  = yes(f,'priorInspire');
   const priorMAD      = yes(f,'priorMAD');
+  const visitReason   = f.get('visitReason') || '';
   const prefAvoidCpap = yes(f,'prefAvoidCpap');
-  const prefSurgery   = yes(f,'prefSurgery');
-  const prefInspire   = yes(f,'prefInspire');
+  const prefSurgery   = yes(f,'prefSurgery') || visitReason === 'surgery';
+  const prefInspire   = yes(f,'prefInspire') || visitReason === 'inspire';
   const weightLossReadiness = f.get('weightLossReadiness') || '';
   const lvef = n(f.get('lvef'));
   const madDentition = f.get('madDentition') || '';
@@ -2346,7 +2389,7 @@ document.getElementById('form').addEventListener('submit', e => {
     primaryAHI: ahi,
     patRdi: n(f.get('patRdi')),
     patientName: (document.getElementById('patientName')?.value || '').trim(),
-    reportDate: new Date().toISOString().split('T')[0],
+    reportDate: localIsoDate(),
     snoringReported: yes(f, 'snoringReported') || (n(f.get('snoreIdx')) != null && n(f.get('snoreIdx')) > 0),
     lowHypoxicBurden: oxygenCompositeSufficient && !out.phen.includes('High Hypoxic Burden'),
     oxygenMetricsAvailable,
@@ -2382,24 +2425,18 @@ document.getElementById('form').addEventListener('submit', e => {
   if (triggerEl) triggerEl.style.display = '';
 
   /* Render */
-  const isPreStudy = ahi == null;
   const clinEl = document.getElementById('clinicianReport');
-  if (isPreStudy) {
-    // Pre-study patients: no sleep data → skip clinician report, show only patient report trigger
-    clinEl.innerHTML = '';
-  } else {
-    clinEl.innerHTML = cHTML;
-    /* Wire clinician PDF download button */
-    const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
-    if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
-  }
+  clinEl.innerHTML = cHTML;
+  /* Wire clinician PDF download button */
+  const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
+  if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
 
   document.dispatchEvent(new CustomEvent('osa:analysis-complete', {
     detail: { analysisData: lastAnalysisData },
   }));
 
   /* Smooth scroll to results area */
-  const scrollTarget = isPreStudy ? triggerEl : clinEl;
+  const scrollTarget = clinEl;
   if (scrollTarget) window.scrollTo({ top: scrollTarget.offsetTop - 80, behavior:'smooth' });
 });
 
