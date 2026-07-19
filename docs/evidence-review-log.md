@@ -118,8 +118,8 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   alcohol, and weight-readiness scenario now verifies the adjunctive-surgery counseling boundary
   and cautious snoring wording.
 - **Clinician reviewer and decision:** Raymond Brown, MD, review pending
-- **Commit:** Pending
-- **Deployed build:** Pending
+- **Commit:** `cec0e50`
+- **Deployed build:** `cec0e50`
 - **Next review trigger or due date:** Updated AAO-HNS or AASM guidance, a randomized trial of
   isolated nasal surgery with a prespecified primary-snoring endpoint, or standardized objective
   acoustic-response evidence
