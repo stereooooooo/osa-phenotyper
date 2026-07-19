@@ -457,9 +457,9 @@
             <div class="col-md-2"><label class="form-label small mb-1">GLP-1 effective?</label><select name="glp1Effective" class="form-select form-select-sm"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select></div>
             <div class="col-12 d-flex flex-wrap gap-2 small">
               <span class="fw-semibold">MAD problems:</span>
-              <label><input type="checkbox" name="madProblemTmj"> TMJ</label><label><input type="checkbox" name="madProblemTeeth"> Teeth</label><label><input type="checkbox" name="madProblemBite"> Bite change</label><label><input type="checkbox" name="madProblemDiscomfort"> Discomfort</label>
+              <label for="madProblemTmj"><input type="checkbox" name="madProblemTmj" id="madProblemTmj"> TMJ</label><label for="madProblemTeeth"><input type="checkbox" name="madProblemTeeth" id="madProblemTeeth"> Teeth</label><label for="madProblemBite"><input type="checkbox" name="madProblemBite" id="madProblemBite"> Bite change</label><label for="madProblemDiscomfort"><input type="checkbox" name="madProblemDiscomfort" id="madProblemDiscomfort"> Discomfort</label>
               <span class="fw-semibold ms-md-3">GLP-1 issues:</span>
-              <label><input type="checkbox" name="glp1IssueNone"> None</label><label><input type="checkbox" name="glp1IssueDigestive"> Digestive</label><label><input type="checkbox" name="glp1IssueCost"> Cost</label><label><input type="checkbox" name="glp1IssueOther"> Other</label>
+              <label for="glp1IssueNone"><input type="checkbox" name="glp1IssueNone" id="glp1IssueNone"> None</label><label for="glp1IssueDigestive"><input type="checkbox" name="glp1IssueDigestive" id="glp1IssueDigestive"> Digestive</label><label for="glp1IssueCost"><input type="checkbox" name="glp1IssueCost" id="glp1IssueCost"> Cost</label><label for="glp1IssueOther"><input type="checkbox" name="glp1IssueOther" id="glp1IssueOther"> Other</label>
             </div>
           </div>
         </details>
@@ -1313,7 +1313,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
 (function initProgressTrack() {
   const sectionFields = {
     demographics: ['age','sex','bmi','neck','cvd'],
-    treatment:    ['visitReason','priorCpap','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','priorSleepStudy','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','glp1Status','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
+    treatment:    ['visitReason','priorCpap','cpapDifficulty','priorUPPP','priorNasal','priorSinus','priorJaw','priorInspire','priorMAD','priorSleepStudy','priorSleepStudyAnswer','priorSleepStudyYear','priorSleepStudyType','madHelped','madTolerated','madProblemTmj','madProblemTeeth','madProblemBite','madProblemDiscomfort','priorUPPPHelped','priorNasalHelped','priorSinusHelped','priorJawHelped','hgnsHelped','hgnsImplantYear','prefAvoidCpap','prefSurgery','prefInspire','weightLossReadiness','alcoholNearBed','glp1Status','glp1Medication','glp1Effective','glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther','papMode','papCpapPressure','papMinPressure','papMaxPressure','papEpapPressure','papIpapPressure','cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther','cvdUnsure','echoHistory','echoResultKnowledge','lvef','lvefFollowupNeeded','madDentition','madProtrusion','madTmj'],
     exam:         ['tonsils','ftp','retrognathia'],
     imaging:      ['vDeg','oDeg','tDeg','eDeg'],
     questionnaires:['ess','isi','noseScore','nasalObs'],

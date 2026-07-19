@@ -85,21 +85,21 @@
         </div>
         <div class="intake-section__body">
 
-          <div class="intake-field-group">
-            <label for="sex" class="intake-label intake-label--required">Sex</label>
-            <select id="sex" name="sex" class="intake-select" required style="max-width:200px;">
-              <option value="">Select&hellip;</option>
-              <option value="M">Male</option>
-              <option value="F">Female</option>
-            </select>
-            <div class="intake-error" id="sexError">Please select your sex.</div>
-          </div>
+          <div class="intake-demographics-grid">
+            <div class="intake-field-group">
+              <label for="sex" class="intake-label intake-label--required">Sex</label>
+              <select id="sex" name="sex" class="intake-select" required>
+                <option value="">Select&hellip;</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+              </select>
+              <div class="intake-error" id="sexError">Please select your sex.</div>
+            </div>
 
-          <div class="intake-field-group">
-            <label class="intake-label intake-label--required">Height</label>
-            <div class="intake-field-row" style="max-width:260px;">
-              <div class="intake-field-group">
-                <select id="heightFeet" name="heightFeet" class="intake-select" required>
+            <div class="intake-field-group">
+              <label class="intake-label intake-label--required" id="heightLabel">Height</label>
+              <div class="intake-height-control" role="group" aria-labelledby="heightLabel">
+                <select id="heightFeet" name="heightFeet" class="intake-select" required aria-label="Height in feet">
                   <option value="">Feet</option>
                   <option value="3">3 ft</option>
                   <option value="4">4 ft</option>
@@ -107,9 +107,7 @@
                   <option value="6">6 ft</option>
                   <option value="7">7 ft</option>
                 </select>
-              </div>
-              <div class="intake-field-group">
-                <select id="heightInches" name="heightInches" class="intake-select" required>
+                <select id="heightInches" name="heightInches" class="intake-select" required aria-label="Additional height in inches">
                   <option value="">Inches</option>
                   <option value="0">0 in</option>
                   <option value="1">1 in</option>
@@ -125,14 +123,14 @@
                   <option value="11">11 in</option>
                 </select>
               </div>
+              <div class="intake-error" id="heightError">Please enter your height.</div>
             </div>
-            <div class="intake-error" id="heightError">Please enter your height.</div>
-          </div>
 
-          <div class="intake-field-group">
-            <label for="weight" class="intake-label intake-label--required">Weight (lbs)</label>
-            <input type="number" id="weight" name="weight" class="intake-input" min="50" max="600" inputmode="numeric" required autocomplete="off" style="max-width:150px;">
-            <div class="intake-error" id="weightError">Please enter your weight (50-600 lbs).</div>
+            <div class="intake-field-group">
+              <label for="weight" class="intake-label intake-label--required">Weight (lbs)</label>
+              <input type="number" id="weight" name="weight" class="intake-input" min="50" max="600" inputmode="numeric" required autocomplete="off">
+              <div class="intake-error" id="weightError">Please enter your weight (50-600 lbs).</div>
+            </div>
           </div>
 
         </div>
@@ -510,19 +508,17 @@
 
           <div class="intake-conditional" id="hgnsDetails">
             <div class="intake-conditional__title">Nerve stimulator details</div>
-            <div class="intake-field-row intake-field-row--responsive">
-              <div class="intake-field-group">
-                <label for="hgnsImplantYear" class="intake-label">Approximate implant year (optional)</label>
-                <input type="number" id="hgnsImplantYear" name="hgnsImplantYear" class="intake-input" min="2014" max="2026" inputmode="numeric" placeholder="For example, 2023">
+            <div class="intake-hgns-outcome">
+              <div class="intake-question__text intake-question__text--compact">Has it improved your sleep, snoring, or sleep apnea?</div>
+              <div class="intake-toggle-group">
+                <input type="radio" name="hgnsHelped" value="yes" id="hgnsHelpedYes" class="intake-radio"><label for="hgnsHelpedYes" class="intake-radio-label">Yes</label>
+                <input type="radio" name="hgnsHelped" value="no" id="hgnsHelpedNo" class="intake-radio"><label for="hgnsHelpedNo" class="intake-radio-label">No</label>
+                <input type="radio" name="hgnsHelped" value="unsure" id="hgnsHelpedUnsure" class="intake-radio"><label for="hgnsHelpedUnsure" class="intake-radio-label">Not sure</label>
               </div>
-              <div class="intake-field-group">
-                <div class="intake-question__text intake-question__text--compact">Has it improved your sleep, snoring, or sleep apnea?</div>
-                <div class="intake-toggle-group">
-                  <input type="radio" name="hgnsHelped" value="yes" id="hgnsHelpedYes" class="intake-radio"><label for="hgnsHelpedYes" class="intake-radio-label">Yes</label>
-                  <input type="radio" name="hgnsHelped" value="no" id="hgnsHelpedNo" class="intake-radio"><label for="hgnsHelpedNo" class="intake-radio-label">No</label>
-                  <input type="radio" name="hgnsHelped" value="unsure" id="hgnsHelpedUnsure" class="intake-radio"><label for="hgnsHelpedUnsure" class="intake-radio-label">Not sure</label>
-                </div>
-              </div>
+            </div>
+            <div class="intake-field-group intake-hgns-year">
+              <label for="hgnsImplantYear" class="intake-label">Approximate implant year (optional)</label>
+              <input type="number" id="hgnsImplantYear" name="hgnsImplantYear" class="intake-input" min="2014" max="2026" inputmode="numeric" placeholder="For example, 2023">
             </div>
           </div>
         </div>

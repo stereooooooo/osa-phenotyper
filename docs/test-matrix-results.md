@@ -1363,3 +1363,19 @@
 - local visual rendering confirms tighter header, section, field, and conditional-panel spacing without shrinking touch targets
 - full headless suite passed with 655 assertions
 **Finding:** none. The questionnaire is more comprehensive for complex patients while the uncomplicated history path remains deliberately short.
+
+### Tests 161-164: Intake layout and clinical-use integration
+**Status:** local executable layout, clinical-routing, content, syntax, and regression testing complete
+**Result:** passed ✅
+**Verification:**
+- the About You controls now use a compact responsive grid; sex, feet, inches, and weight share a baseline at tablet and desktop widths, and the two height selectors have equal dimensions
+- the nerve-stimulator outcome prompt and answer controls align in one compact row, while implant year remains a bounded optional field below it; both sections stack cleanly on narrow screens
+- current PAP difficulty changes troubleshooting and objective-data review guidance even when the patient does not select a specific barrier
+- MAD adverse effects and tolerance history now feed the clinician recommendation and treatment-safety context when a retrial is considered
+- prior throat, nasal, sinus, and jaw surgery outcomes change reassessment or revision-planning language rather than merely appearing as historical facts
+- existing nerve-stimulator benefit and implant year change optimization, interrogation, and on-therapy testing guidance rather than triggering a new-device candidacy pathway
+- a reported prior sleep study changes the pre-study pathway to obtain and review the actual report before deciding whether repeat testing is needed
+- structured GLP-1 barriers now appear in relevant clinician context and patient counseling
+- patient-reported history remains decision context and a routing input; objective study, exam, and safety findings still control phenotype and treatment eligibility logic
+- full headless suite passed with 697 assertions
+**Finding:** fixed. Newly collected history now has bounded clinical consequences throughout the app, and the intake layout no longer leaves the paired controls visually unbalanced.

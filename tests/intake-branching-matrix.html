@@ -70,6 +70,23 @@ async function run() {
   assert(doc.querySelector('#alcoholNearBed option[value="social-only"]').textContent.includes('social events'), 'Alcohol frequency includes occasional social use');
   assert(!doc.querySelector('#cpapDetails input[name="cpapPressure"]'), 'Patient questionnaire does not request PAP pressure');
   assert(doc.querySelector('[name="prefInspire"]').closest('label').textContent.includes('hypoglossal nerve stimulator'), 'Treatment preference uses general nerve-stimulation terminology');
+
+  const sexRect = doc.getElementById('sex').getBoundingClientRect();
+  const feetRect = doc.getElementById('heightFeet').getBoundingClientRect();
+  const inchesRect = doc.getElementById('heightInches').getBoundingClientRect();
+  const weightRect = doc.getElementById('weight').getBoundingClientRect();
+  assert(Math.max(sexRect.top, feetRect.top, inchesRect.top, weightRect.top) - Math.min(sexRect.top, feetRect.top, inchesRect.top, weightRect.top) < 3, 'Demographic controls share one clean baseline at tablet width');
+  assert(Math.abs(feetRect.width - inchesRect.width) < 3 && Math.abs(feetRect.height - inchesRect.height) < 3, 'Feet and inches controls use equal sizing');
+
+  click(win, 'input[name="priorTx"][value="inspire"]');
+  await wait(0);
+  const hgnsQuestionRect = doc.querySelector('#hgnsDetails .intake-question__text').getBoundingClientRect();
+  const hgnsToggleRect = doc.querySelector('#hgnsDetails .intake-toggle-group').getBoundingClientRect();
+  const hgnsYearRect = doc.getElementById('hgnsImplantYear').getBoundingClientRect();
+  const questionCenter = hgnsQuestionRect.top + hgnsQuestionRect.height / 2;
+  const toggleCenter = hgnsToggleRect.top + hgnsToggleRect.height / 2;
+  assert(Math.abs(questionCenter - toggleCenter) < 4, 'Nerve-stimulator outcome question and choices align vertically');
+  assert(hgnsYearRect.width <= 225, 'Optional nerve-stimulator implant year stays compact');
 }
 
 function render() {

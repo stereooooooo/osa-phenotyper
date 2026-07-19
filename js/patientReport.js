@@ -298,8 +298,16 @@ var PatientReport = (() => {
   function glpHistorySupport(data) {
     if (!data) return '';
     const medication = glpMedicationLabel(data.glp1Medication);
+    const issues = new Set(Array.isArray(data.glp1Issues) ? data.glp1Issues : []);
+    const issueParts = [];
+    if (issues.has('glp1IssueDigestive')) issueParts.push('digestive side effects');
+    if (issues.has('glp1IssueCost')) issueParts.push('cost or insurance coverage');
+    if (issues.has('glp1IssueOther')) issueParts.push('another reported problem');
+    const issueReview = issueParts.length
+      ? `At follow-up, specifically review ${issueParts.join(' and ')} before changing or restarting medication.`
+      : 'Review your weight response and any side effects or access problems at follow-up.';
     if (data.glp1Status === 'current') {
-      return `You reported that you currently take ${medication}. Continue it only as directed by the prescribing clinician, and review your weight response and any side effects or access problems at follow-up.`;
+      return `You reported that you currently take ${medication}. Continue it only as directed by the prescribing clinician. ${issueReview}`;
     }
     if (data.glp1Status === 'previous') {
       const response = data.glp1Effective === 'yes'
@@ -307,7 +315,7 @@ var PatientReport = (() => {
         : data.glp1Effective === 'no'
           ? 'You did not report a clear weight-loss benefit.'
           : 'The amount of benefit was uncertain.';
-      return `You reported a previous trial of ${medication}. ${response} Review any side effects, cost, or coverage barriers before deciding whether another medication plan makes sense.`;
+      return `You reported a previous trial of ${medication}. ${response} ${issueReview}`;
     }
     return '';
   }
@@ -541,7 +549,7 @@ var PatientReport = (() => {
   function getVisitContext(data) {
     const ms = Array.isArray(data.milestones) ? data.milestones : [];
     const hasStudy = data.primaryAHI !== null && data.primaryAHI !== undefined;
-    const hasTreatmentHistory = data.cpapCurrent || data.cpapFailed || data.priorMAD || data.priorUPPP || data.priorInspire;
+    const hasTreatmentHistory = data.cpapCurrent || data.cpapFailed || data.priorMAD || data.priorUPPP || data.priorNasal || data.priorSinus || data.priorJaw || data.priorInspire;
 
     if (!hasStudy) return { stage: 'pre-study', isFirstVisit: true, label: 'Initial Evaluation' };
 
@@ -696,7 +704,11 @@ var PatientReport = (() => {
   function summaryNextStep(data) {
     if (String(data.planSummary || '').trim()) return esc(String(data.planSummary).trim());
     const stage = getReportStage(data);
-    if (stage === 'pre-study') return 'Schedule the sleep study your care team recommended.';
+    if (stage === 'pre-study') {
+      return data.priorSleepStudyAnswer === 'yes'
+        ? 'Ask the care team to obtain and review your prior sleep-study report, then decide whether updated testing is needed.'
+        : 'Schedule the sleep study your care team recommended.';
+    }
     const ahi = data.primaryAHI;
     if (exists(ahi) && ahi < 5) {
       return symptomaticNormalHomeTest(data)
@@ -822,14 +834,24 @@ var PatientReport = (() => {
     /* Keep returning-patient context concise. The AHI result already appears
        immediately above; this block explains why the current plan is different. */
     const txParts = [];
-    if (data.cpapCurrent) txParts.push(`You are currently using ${papDeviceLabel(data)}`);
+    if (data.cpapCurrent) {
+      const difficulty = data.cpapDifficulty === 'yes' ? ' and reported some difficulty' : data.cpapDifficulty === 'no' ? ' without current difficulty' : '';
+      txParts.push(`You are currently using ${papDeviceLabel(data)}${difficulty}`);
+    }
     else if (data.cpapFailed) txParts.push(data.cpapWillRetry ? 'You tried CPAP and are willing to retry it' : 'You tried CPAP and discontinued it');
     if (data.priorMAD && data.madHelped === 'yes' && data.madTolerated === 'yes') txParts.push('Your prior oral appliance helped and was tolerable');
-    else if (data.priorMAD && data.madTolerated === 'no') txParts.push('You tried an oral appliance but had trouble tolerating it');
+    else if (data.priorMAD && data.madTolerated === 'no') {
+      const problemLabels = { madProblemTmj: 'jaw-joint pain', madProblemTeeth: 'dental problems', madProblemBite: 'bite changes', madProblemDiscomfort: 'discomfort or poor fit' };
+      const problems = (data.madProblems || []).map(problem => problemLabels[problem] || '').filter(Boolean);
+      txParts.push(`You tried an oral appliance but had trouble tolerating it${problems.length ? ` because of ${problems.join(', ')}` : ''}`);
+    }
     else if (data.priorMAD && data.madHelped === 'no') txParts.push('You tried an oral appliance without clear improvement');
     else if (data.priorMAD) txParts.push('You tried an oral appliance');
-    if (data.priorUPPP) txParts.push('You had UPPP surgery');
-    if (data.priorInspire) txParts.push('You have a hypoglossal nerve stimulator implant');
+    if (data.priorUPPP) txParts.push(`You had throat surgery${data.priorUPPPHelped === 'yes' ? ' that helped' : data.priorUPPPHelped === 'no' ? ' without clear sleep or snoring improvement' : ''}`);
+    if (data.priorNasal) txParts.push(`You had nasal surgery${data.priorNasalHelped === 'yes' ? ' that helped' : data.priorNasalHelped === 'no' ? ' without clear sleep or snoring improvement' : ''}`);
+    if (data.priorSinus) txParts.push(`You had sinus surgery${data.priorSinusHelped === 'yes' ? ' that helped' : data.priorSinusHelped === 'no' ? ' without clear sleep or snoring improvement' : ''}`);
+    if (data.priorJaw) txParts.push(`You had jaw surgery${data.priorJawHelped === 'yes' ? ' that helped' : data.priorJawHelped === 'no' ? ' without clear sleep or snoring improvement' : ''}`);
+    if (data.priorInspire) txParts.push(`You have a hypoglossal nerve stimulator${data.hgnsImplantYear ? ` implanted around ${data.hgnsImplantYear}` : ''}${data.hgnsHelped === 'yes' ? ' that has helped' : data.hgnsHelped === 'no' ? ' without clear improvement' : ''}`);
     if (!txParts.length) return '';
 
     return `
@@ -954,10 +976,18 @@ ${examParts.join('')}`);
 <p>Snoring happens when air squeezes through a partially blocked airway during sleep, causing the tissues in your throat to vibrate. While snoring alone is not always serious, it is one of the most common signs of obstructive sleep apnea — a condition where the airway fully or partially closes during sleep, causing your body to work overtime just to breathe. A sleep study is the only reliable way to know whether snoring is a harmless habit or a sign of something that needs treatment.</p>`);
     }
 
-    /* — Why we're recommending a sleep study — */
-    parts.push(`
+    /* — Why we need usable sleep-study information — */
+    if (data.priorSleepStudyAnswer === 'yes') {
+      const studyType = data.priorSleepStudyType === 'home' ? 'home sleep study' : data.priorSleepStudyType === 'lab' ? 'in-lab sleep study' : 'sleep study';
+      const studyYear = data.priorSleepStudyYear ? ` from around ${data.priorSleepStudyYear}` : '';
+      parts.push(`
+<h3 style="font-size:1rem;font-weight:700;color:#1F3A5C;margin-top:1.25rem;margin-bottom:0.5rem;">Why We Need to Review Your Prior Sleep Study</h3>
+<p>You reported a previous ${studyType}${studyYear}. We need the actual report before relying on its diagnosis or severity. Your clinician will review whether it still answers the current question or whether updated testing is needed because symptoms, weight, health, or treatment history can change over time.</p>`);
+    } else {
+      parts.push(`
 <h3 style="font-size:1rem;font-weight:700;color:#1F3A5C;margin-top:1.25rem;margin-bottom:0.5rem;">Why We're Recommending a Sleep Study</h3>
-<p>Based on your symptoms, questionnaire scores, and physical exam, we recommend a sleep study to find out whether obstructive sleep apnea (OSA) is the cause of your sleep problems. A sleep study measures your breathing, oxygen levels, and heart rate while you sleep — usually from the comfort of your own home with a small wrist or chest device. The results will help us create a personalized plan to improve your sleep and protect your long-term health.</p>`);
+<p>Based on your symptoms, questionnaire scores, and physical exam, we recommend a sleep study to find out whether obstructive sleep apnea (OSA) is the cause of your sleep problems. A sleep study measures your breathing, oxygen levels, and heart rate while you sleep, usually from the comfort of your own home with a small wrist or chest device. The results will help us create a personalized plan to improve your sleep and protect your long-term health.</p>`);
+    }
 
     if (parts.length === 0) return '';
 
@@ -2021,8 +2051,13 @@ ${items.join('')}`;
 
     if (selected.has('planStudy')) {
       const preStudy = stage === 'pre-study';
+      const priorStudyReported = preStudy && data.priorSleepStudyAnswer === 'yes';
+      const priorStudyType = data.priorSleepStudyType === 'home' ? 'home sleep study' : data.priorSleepStudyType === 'lab' ? 'in-lab sleep study' : 'sleep study';
+      const priorStudyWhen = data.priorSleepStudyYear ? ` from around ${data.priorSleepStudyYear}` : '';
       const actions = [preStudy
-        ? 'Complete the sleep study, then schedule a follow-up visit so we can review the results and choose treatment together.'
+        ? priorStudyReported
+          ? `Ask the care team to obtain and review your prior ${priorStudyType}${priorStudyWhen}. They will decide whether it still answers the current question or whether updated testing is needed.`
+          : 'Complete the sleep study, then schedule a follow-up visit so we can review the results and choose treatment together.'
         : 'Complete the additional sleep testing recommended today, then return to review what it changes about your treatment plan.'];
       if (preStudy && data.snoringReported) {
         actions.push('While waiting, try sleeping on your side. A body pillow or positional aid can make back-sleeping less likely.');
@@ -2036,13 +2071,15 @@ ${items.join('')}`;
         icon: 'bi-moon-stars',
         title: preStudy ? 'While we complete your sleep evaluation' : 'Complete the recommended sleep testing',
         reason: preStudy
-          ? 'Snoring can occur with or without sleep apnea. The sleep study will show whether breathing interruptions are present and how important they are.'
+          ? priorStudyReported
+            ? 'A previous sleep study may still be useful, but the actual report must be reviewed before it can guide current treatment.'
+            : 'Snoring can occur with or without sleep apnea. The sleep study will show whether breathing interruptions are present and how important they are.'
           : 'Additional testing can answer a question that the current information cannot settle safely.',
         actions,
         note: preStudy
           ? 'These steps may reduce snoring, but they do not replace the sleep study or prove that sleep apnea is absent.'
           : 'Keep using any current treatment unless your clinician told you to stop.',
-        shortAction: preStudy ? 'Complete the sleep study and schedule the results visit.' : 'Complete the recommended testing and return for review.',
+        shortAction: preStudy ? priorStudyReported ? 'Obtain the prior sleep-study report and decide whether updated testing is needed.' : 'Complete the sleep study and schedule the results visit.' : 'Complete the recommended testing and return for review.',
       });
     }
 
@@ -2050,17 +2087,40 @@ ${items.join('')}`;
       const barriers = patientCpapBarrierText(data);
       const hasDocumentedBarriers = Array.isArray(data.cpapReasons) && data.cpapReasons.length > 0;
       const currentOrRetry = data.cpapCurrent || data.cpapWillRetry;
+      const currentWithoutDifficulty = data.cpapCurrent && data.cpapDifficulty === 'no' && !hasDocumentedBarriers;
+      const currentDifficultyUncertain = data.cpapCurrent && data.cpapDifficulty === 'unsure' && !hasDocumentedBarriers;
+      const papActions = currentWithoutDifficulty
+        ? [
+            `Continue ${device} whenever you sleep, including naps.`,
+            'Bring or upload the compliance report so your clinician can confirm nightly use, leak, residual breathing events, and pressure behavior.'
+          ]
+        : currentDifficultyUncertain
+          ? [
+              `Continue ${device} while the care team reviews how consistently it is being used and whether leak, residual events, or comfort need attention.`,
+              'Bring or upload the compliance report and tell the care team about any mask, dryness, pressure, or sleep concerns that become apparent.'
+            ]
+          : papComfortActions(data);
       modules.push({
         id: 'pap',
         priority: currentOrRetry && hasDocumentedBarriers ? 0.5 : 4,
         icon: 'bi-lungs',
-        title: data.cpapCurrent ? `Make ${device} easier to use` : data.cpapWillRetry ? `Prepare for a better ${device} retry` : `Start ${device} with support`,
+        title: currentWithoutDifficulty ? `Continue ${device} and confirm results` : currentDifficultyUncertain ? `Review how ${device} is working` : data.cpapCurrent ? `Make ${device} easier to use` : data.cpapWillRetry ? `Prepare for a better ${device} retry` : `Start ${device} with support`,
         reason: hasDocumentedBarriers
           ? `You reported ${barriers}. The goal is to fix the specific barriers rather than asking you to simply try harder.`
-          : `${device} works best when the setup is comfortable enough to use whenever you sleep.`,
-        actions: papComfortActions(data),
+          : currentWithoutDifficulty
+            ? `You reported no current difficulty with ${device}. The next step is to confirm that it is controlling breathing events and being used consistently.`
+            : currentDifficultyUncertain
+              ? `You were not sure whether ${device} is causing difficulty. Device data and a focused comfort review can clarify whether anything needs adjustment.`
+              : `${device} works best when the setup is comfortable enough to use whenever you sleep.`,
+        actions: papActions,
         note: 'Machine-reported breathing events and leak values need clinical context. A compliance report can help your clinician decide whether comfort, leak, pressure, testing, or another treatment needs attention.',
-        shortAction: data.cpapCurrent ? `Continue ${device} and address the documented comfort barriers.` : `Complete the ${device} setup or re-fitting.`
+        shortAction: currentWithoutDifficulty
+          ? `Continue ${device} and review the compliance report.`
+          : currentDifficultyUncertain
+            ? `Continue ${device} and clarify comfort and efficacy.`
+            : data.cpapCurrent
+              ? `Continue ${device} and address the documented comfort barriers.`
+              : `Complete the ${device} setup or re-fitting.`
       });
     }
 
@@ -2178,7 +2238,17 @@ ${items.join('')}`;
     };
     if (selected.has('planCbti')) add('Begin cognitive behavioral therapy for insomnia using the referral or validated program discussed today.');
     if (selected.has('planMad')) add('Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
-    if (selected.has('planInspire')) add('Continue the device-specific nerve-stimulation evaluation discussed with your ENT.');
+    if (selected.has('planInspire')) {
+      if (data.priorInspire) {
+        add(data.hgnsHelped === 'no'
+          ? 'Because the existing nerve stimulator has not clearly helped, confirm activation and use, review programming, and arrange objective on-therapy testing before changing treatment.'
+          : data.hgnsHelped === 'yes'
+            ? 'Continue the existing nerve stimulator and confirm current settings, nightly use, and objective treatment efficacy.'
+            : 'Review activation, nightly use, settings, and objective treatment efficacy for the existing nerve stimulator.');
+      } else {
+        add('Continue the device-specific nerve-stimulation evaluation discussed with your ENT.');
+      }
+    }
     if (selected.has('planSurgery')) add('Continue the airway-surgery evaluation discussed today; the procedure should match your anatomy and goals.');
     if (selected.has('planWeight')) add(glpHistorySupport(data));
     if (data.planObserve) add('Continue observation and return at the interval chosen with your clinician, or sooner if symptoms worsen.');

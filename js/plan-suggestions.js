@@ -118,6 +118,7 @@
     const currentPap = checked('cpapCurrent');
     const priorPap = checked('priorCpap');
     const retryPap = fieldValue('cpapRetry');
+    const papDifficulty = fieldValue('cpapDifficulty');
     const avoidsPap = checked('prefAvoidCpap');
     const comfortIssues = Object.entries(PAP_COMFORT_FIELDS)
       .filter(([field]) => checked(field))
@@ -126,11 +127,19 @@
     const needsDiagnosticStudy = study.ahi === null &&
       ['snoring', 'symptoms', 'new-diagnosis'].includes(visitReason);
     if (needsDiagnosticStudy) {
+      const priorStudyReported = fieldValue('priorSleepStudyAnswer') === 'yes' || checked('priorSleepStudy');
+      const priorStudyType = fieldValue('priorSleepStudyType');
+      const priorStudyYear = fieldValue('priorSleepStudyYear');
+      const studyLabel = priorStudyType === 'home' ? 'home sleep study' : priorStudyType === 'lab' ? 'in-lab sleep study' : 'prior sleep study';
       addSuggestion(
         suggestions,
         'planStudy',
-        'No diagnostic AHI is entered for this evaluation.',
-        'complete diagnostic sleep testing',
+        priorStudyReported
+          ? `No diagnostic AHI is entered, but the patient reports a ${studyLabel}${priorStudyYear ? ` from approximately ${priorStudyYear}` : ''}.`
+          : 'No diagnostic AHI is entered for this evaluation.',
+        priorStudyReported
+          ? 'obtain and review the prior sleep-study report, then decide whether updated testing is needed'
+          : 'complete diagnostic sleep testing',
         5
       );
     }
@@ -172,8 +181,10 @@
         papGoal ? 'PAP care is the primary visit goal' :
         `New OSA diagnosis, AHI ${study.ahi}`;
       if (comfortIssues.length) reason += `; reported ${comfortIssues.slice(0, 2).join(' and ')}`;
+      else if (currentPap && papDifficulty === 'yes') reason += '; patient reports difficulty but has not identified the specific barrier';
+      else if (currentPap && papDifficulty === 'no') reason += '; no current difficulty reported';
       let action = currentPap
-        ? `continue ${papMode}${comfortIssues.length ? ' and address comfort barriers' : ''}`
+        ? `continue ${papMode}${comfortIssues.length || papDifficulty === 'yes' ? ' and address comfort barriers' : papDifficulty === 'no' ? ' and review objective efficacy' : ' and clarify comfort and efficacy'}`
         : visitReason === 'restart-pap' || willingToRetry
           ? `restart ${papMode}`
           : `begin ${papMode} management`;
@@ -254,7 +265,21 @@
       addSuggestion(suggestions, 'planMad', 'An oral appliance is the primary visit goal.', 'complete oral-appliance evaluation', 25);
     }
     if (visitReason === 'inspire') {
-      addSuggestion(suggestions, 'planInspire', 'Nerve stimulation is the primary visit goal.', 'continue nerve-stimulation evaluation', 25);
+      const priorHgns = checked('priorInspire');
+      const hgnsHelped = fieldValue('hgnsHelped');
+      addSuggestion(
+        suggestions,
+        'planInspire',
+        priorHgns
+          ? `An existing nerve stimulator is in place; patient-reported benefit is ${hgnsHelped || 'uncertain'}.`
+          : 'Nerve stimulation is the primary visit goal.',
+        priorHgns
+          ? hgnsHelped === 'no'
+            ? 'interrogate and optimize the existing device and arrange objective on-therapy testing'
+            : 'review use, programming, and objective efficacy of the existing device'
+          : 'continue nerve-stimulation evaluation',
+        25
+      );
     }
     if (visitReason === 'surgery') {
       addSuggestion(suggestions, 'planSurgery', 'Airway surgery is the primary visit goal.', 'continue airway-surgery evaluation', 25);

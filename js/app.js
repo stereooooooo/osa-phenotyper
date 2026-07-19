@@ -336,6 +336,19 @@ function buildTreatmentSafetyAssessment(ctx) {
         patient: 'If an oral appliance is being considered, a sleep-dentist exam is still needed to confirm that your teeth, jaw movement, and jaw joints make it a safe fit.',
       });
     }
+  } else if (madReferenced && ctx.priorMAD && ctx.madTolerated === 'no' && Array.isArray(ctx.madProblems) && ctx.madProblems.length) {
+    const problemLabels = {
+      madProblemTmj: 'TMJ pain',
+      madProblemTeeth: 'tooth or dental problems',
+      madProblemBite: 'bite changes',
+      madProblemDiscomfort: 'general discomfort or poor fit',
+    };
+    const barriers = ctx.madProblems.map(problem => problemLabels[problem] || problem);
+    alerts.push({
+      key: 'mad-prior-barrier',
+      clinician: `A prior oral appliance was not tolerated because of ${barriers.join(', ')}. Do not repeat the same pathway without sleep-dentist review and a plan to address the specific barrier.`,
+      patient: `Your previous oral appliance caused ${barriers.join(', ')}. Your care team should address that specific problem before asking you to try a similar appliance again.`,
+    });
   }
 
   // ASV requires preserved or documented-safe systolic function (SERVE-HF guardrail).
@@ -629,7 +642,7 @@ function buildHGNSAssessment(ctx) {
   };
 
   const {
-    ahi, bmi, sex, sup, nons, cpapFailed, prefAvoidCpap, priorInspire,
+    ahi, bmi, sex, sup, nons, cpapFailed, prefAvoidCpap, priorInspire, hgnsHelped, hgnsImplantYear,
     vDeg, vPat, oDeg, oPat, tDeg, tPat,
     pahic3, pahic4, csr, cai, cpapPressure,
     phenotypes, hasDISEData
@@ -638,8 +651,13 @@ function buildHGNSAssessment(ctx) {
   // ── Prior Inspire shortcut ──
   if (priorInspire) {
     result.priorInspire = true;
-    result.assessment = 'Prior Inspire — optimize existing device';
-    result.assessmentDetail = 'Patient already has an Inspire implant. Focus on verifying activation, optimizing voltage and timing settings, and ensuring adequate adherence. Re-evaluate with a sleep study on-therapy if symptoms persist.';
+    const implantTiming = hgnsImplantYear ? `, implanted approximately ${hgnsImplantYear}` : '';
+    result.assessment = 'Existing HGNS device: assess and optimize';
+    result.assessmentDetail = hgnsHelped === 'yes'
+      ? `Patient reports benefit from the existing hypoglossal nerve stimulator${implantTiming}. Verify current settings, nightly use, and objective on-therapy efficacy.`
+      : hgnsHelped === 'no'
+        ? `Patient reports no clear benefit from the existing hypoglossal nerve stimulator${implantTiming}. Confirm activation and nightly use, interrogate and optimize settings, and obtain on-therapy testing before abandoning the device pathway.`
+        : `Benefit from the existing hypoglossal nerve stimulator${implantTiming} is uncertain. Confirm activation, nightly use, settings, and objective on-therapy efficacy.`;
     return result;
   }
 
@@ -1135,9 +1153,11 @@ function mapTreatments(f, m, T){
   const {
     phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
-    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, papMode,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty, papMode,
     prefAvoidCpap, prefSurgery, prefInspire,
-    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated, madProblems,
+    priorUPPPHelped, priorNasalHelped, priorSinusHelped, hgnsHelped, hgnsImplantYear,
+    priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType,
   } = m;
   const out = { phen };
   const recs = [];
@@ -1155,7 +1175,14 @@ function mapTreatments(f, m, T){
   function cpapRec() {
     if (cpapCurrent) {
       const device = papMode === 'BiPAP' ? 'BiPAP' : papMode === 'APAP' ? 'APAP' : papMode === 'CPAP' ? 'CPAP' : 'PAP';
-      pushRec(recs,`Continue current ${device} therapy; optimize settings and comfort based on the active care plan.`,'CPAP');
+      if (cpapDifficulty === 'yes') {
+        const issues = cpapReasons.map(r => CPAP_ISSUE_LABELS[r] || r).join(', ');
+        pushRec(recs,`Continue current ${device} therapy and address reported difficulty${issues ? `: ${issues}` : ' with focused troubleshooting'}. Review adherence, leak, residual AHI, and comfort before changing treatment modality.`,'CPAP');
+      } else if (cpapDifficulty === 'unsure') {
+        pushRec(recs,`Continue current ${device} therapy while clarifying comfort, adherence, leak, and residual AHI from the compliance report.`,'CPAP');
+      } else {
+        pushRec(recs,`Continue current ${device} therapy; review objective efficacy and adherence at follow-up.`,'CPAP');
+      }
     } else if (cpapFailed && cpapRefused) {
       pushRec(recs,'Prior CPAP trial unsuccessful — prioritize appropriate alternatives such as a mandibular-advancement device, site-directed surgery, or a device-specific nerve-stimulation evaluation when criteria are met.','CPAP-ALT');
     } else if (cpapWillRetry) {
@@ -1240,10 +1267,20 @@ function mapTreatments(f, m, T){
           pushRec(recs,'Imaging confirms structural nasal obstruction. Consider septoplasty and/or turbinate reduction.','NASAL-SURG');
         }
         if(priorNasal) {
-          pushRec(recs,'Prior nasal surgery noted \u2014 reassess for residual obstruction or consider revision.','NASAL-PRIOR');
+          const outcome = priorNasalHelped === 'yes'
+            ? 'It previously helped, so assess for recurrent or residual obstruction.'
+            : priorNasalHelped === 'no'
+              ? 'The patient reports no sleep or snoring benefit, so reassess the current obstruction site and avoid assuming revision alone will improve OSA.'
+              : 'Clarify the prior response and reassess for residual obstruction.';
+          pushRec(recs,`Prior nasal surgery noted. ${outcome}`,'NASAL-PRIOR');
         }
         if(priorSinus) {
-          pushRec(recs,'Prior sinus surgery noted \u2014 evaluate for recurrent sinusitis or persistent inflammation contributing to nasal obstruction.','NASAL-SINUS-PRIOR');
+          const outcome = priorSinusHelped === 'yes'
+            ? 'It previously helped, so evaluate for recurrent inflammation or obstruction.'
+            : priorSinusHelped === 'no'
+              ? 'The patient reports no sleep or snoring benefit, so separate persistent nasal symptoms from OSA treatment expectations.'
+              : 'Clarify the prior response and evaluate for recurrent inflammation or obstruction.';
+          pushRec(recs,`Prior sinus surgery noted. ${outcome}`,'NASAL-SINUS-PRIOR');
         }
         break;
       case 'Elevated Delta Heart Rate':
@@ -1299,7 +1336,12 @@ function mapTreatments(f, m, T){
   const highAnat = out.phen.includes('High Anatomical Contribution');
   if(exists(tons) && tons >= T.anatomical.tonsils){
     if(priorUPPP) {
-      pushRec(recs,'Prior UPPP noted \u2014 consider revision pharyngoplasty or alternative surgical targets based on DISE findings.','SOFT-TISSUE-REVISION');
+      const response = priorUPPPHelped === 'yes'
+        ? 'Prior throat surgery helped, but symptoms or OSA may have recurred.'
+        : priorUPPPHelped === 'no'
+          ? 'Prior throat surgery did not clearly improve sleep or snoring.'
+          : 'The response to prior throat surgery is uncertain.';
+      pushRec(recs,`${response} Review the operative history and current anatomy before considering revision pharyngoplasty or alternative DISE-directed targets.`,'SOFT-TISSUE-REVISION');
     } else if(friedmanStage === 'I'){
       pushRec(recs,`Strongly consider tonsillectomy +/- expansion pharyngoplasty (Friedman Stage I: FTP ${mall}, Tonsils ${tons}, BMI ${bmi?.toFixed(1)} — ~80% UPPP success rate).`,'SOFT-TISSUE-STRONG');
     } else if(friedmanStage === 'II' && ftpIorII){
@@ -1315,7 +1357,13 @@ function mapTreatments(f, m, T){
 
   /* Prior treatment-aware Inspire recommendation */
   if(priorInspire) {
-    pushRec(recs,'Inspire\u00AE already in place \u2014 verify activation and optimize settings.','INSPIRE-OPT');
+    const implantTiming = hgnsImplantYear ? ` (implanted approximately ${hgnsImplantYear})` : '';
+    const response = hgnsHelped === 'yes'
+      ? 'The patient reports benefit. Continue the existing device pathway and verify current efficacy, nightly use, and settings.'
+      : hgnsHelped === 'no'
+        ? 'The patient reports no clear benefit. Confirm activation and nightly use, interrogate and optimize the device, and obtain on-therapy testing before moving to another modality.'
+        : 'Benefit is uncertain. Confirm activation, nightly use, settings, and objective on-therapy efficacy.';
+    pushRec(recs,`Hypoglossal nerve stimulator already in place${implantTiming}. ${response}`,'INSPIRE-OPT');
   } else if(prefInspire && !priorInspire && cpapFailed && exists(ahi) && ahi >= T.hgns.ahiMin && ahi <= T.hgns.ahiMax && !(exists(bmi) && bmi > T.hgns.bmiMax)) {
     /* Device-specific evaluation only. CCC contraindicates unilateral Inspire;
        current US Genio labeling does not establish safety/effectiveness in CCC. */
@@ -1368,7 +1416,13 @@ function mapTreatments(f, m, T){
   /* ─── STAGE-AWARE CORE RECOMMENDATIONS ───────────────────── */
   if (ahi == null) {
     /* PRE-STUDY: Only recommend sleep study + CBT-I if insomnia */
-    pushRec(recs,'Schedule a sleep study to evaluate for obstructive sleep apnea.','SLEEP-STUDY');
+    if (priorSleepStudyAnswer === 'yes') {
+      const studyWhere = priorSleepStudyType === 'home' ? 'home sleep study' : priorSleepStudyType === 'lab' ? 'in-lab sleep study' : 'prior sleep study';
+      const studyWhen = priorSleepStudyYear ? ` from approximately ${priorSleepStudyYear}` : '';
+      pushRec(recs,`Obtain and review the ${studyWhere}${studyWhen}. Decide whether updated testing is needed based on the prior results, current symptoms, treatment history, and interval health or weight changes.`,'SLEEP-STUDY');
+    } else {
+      pushRec(recs,'Schedule a sleep study to evaluate for obstructive sleep apnea.','SLEEP-STUDY');
+    }
     if (exists(isi) && isi >= 15) {
       pushRec(recs,'Initiate CBT-I for insomnia symptoms while awaiting sleep study results.','CBTI');
     }
@@ -1438,7 +1492,9 @@ function mapTreatments(f, m, T){
     if(priorMAD && madHelped === 'yes' && madTolerated === 'yes') {
       pushRec(recs,'Prior oral appliance was helpful and tolerated. Consider continuing or retitrating it, and verify control with an on-treatment sleep study.','MAD');
     } else if(priorMAD && madTolerated === 'no') {
-      pushRec(recs,'Prior oral appliance was not tolerated. Address the documented dental or TMJ barrier before reconsidering it, and prioritize appropriate alternatives.','MAD');
+      const barrierLabels = { madProblemTmj: 'TMJ pain', madProblemTeeth: 'tooth or dental problems', madProblemBite: 'bite changes', madProblemDiscomfort: 'general discomfort or poor fit' };
+      const barriers = madProblems.map(problem => barrierLabels[problem] || problem);
+      pushRec(recs,`Prior oral appliance was not tolerated${barriers.length ? ` because of ${barriers.join(', ')}` : ''}. Address the documented dental or TMJ barrier before reconsidering it, and prioritize appropriate alternatives.`,'MAD');
     } else if(priorMAD && madHelped === 'no') {
       pushRec(recs,'Prior oral appliance did not provide a clear benefit. Verify whether it was adequately fitted and titrated before repeating it, and consider other treatment pathways.','MAD');
     } else if(priorMAD) {
@@ -1501,13 +1557,16 @@ function mapTreatments(f, m, T){
    clinicianHtml diff in tests/phenotype-matrix.html. ── */
 function buildClinicianReport(f, m, T){
   const {
-    ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons,
+    ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons, cpapDifficulty,
     cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
     friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbHighTier, hbPH, hnsStage,
     isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
-    prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
+    prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP, priorNasal, priorSinus,
+    madHelped, madTolerated, madProblems, priorUPPPHelped, priorNasalHelped, priorSinusHelped, priorJawHelped,
+    hgnsHelped, hgnsImplantYear, priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType,
+    cvdConditions, glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
     encounter,
   } = m;
@@ -1653,7 +1712,7 @@ function buildClinicianReport(f, m, T){
   const cpapPressure = papMode === 'CPAP' ? n(f.get('papCpapPressure')) : n(f.get('cpapPressure'));
   const hgnsCtx = {
     ahi, bmi, sex, sup, nons,
-    cpapFailed, prefAvoidCpap, priorInspire,
+    cpapFailed, prefAvoidCpap, priorInspire, hgnsHelped, hgnsImplantYear,
     vDeg: f.get('vDeg'), vPat: f.get('vPat'),
     oDeg: f.get('oDeg'), oPat: f.get('oPat'),
     tDeg: f.get('tDeg'), tPat: f.get('tPat'),
@@ -1718,6 +1777,8 @@ function buildClinicianReport(f, m, T){
     madDentition,
     madProtrusion,
     madTmj,
+    madTolerated,
+    madProblems,
   });
   const treatmentSafetyHTML = treatmentSafetyChecks.length ? `
     <div class="alert alert-warning mt-2 mb-3">
@@ -1747,6 +1808,7 @@ function buildClinicianReport(f, m, T){
       exists(bmi) ? `BMI ${bmi.toFixed(1)}` : null,
       mall ? `Friedman tongue position ${mall}` : null,
       exists(tons) ? `Tonsils ${tons}` : null,
+      priorSleepStudyAnswer === 'yes' ? `Prior sleep study reported${priorSleepStudyType === 'home' ? ', home study' : priorSleepStudyType === 'lab' ? ', in-lab study' : ''}${priorSleepStudyYear ? `, approximately ${priorSleepStudyYear}` : ''}` : null,
     ].filter(Boolean);
     const preStudyPlan = guardedRecTexts.length
       ? guardedRecTexts.map((text, index) => `<div class="osa-clin-rec${index === 0 ? ' osa-rec-priority' : ''}"><span class="osa-clin-rec-num">${index + 1}</span><span>${text}</span></div>`).join('')
@@ -1767,7 +1829,7 @@ function buildClinicianReport(f, m, T){
       ${preStudyPlan}
       <div class="osa-clin-section mt-3">
         <div class="osa-clin-section-header" aria-expanded="true"><span><i class="bi bi-calendar-check me-2"></i>Follow-up Plan</span></div>
-        <div class="osa-clin-section-body"><ul class="mb-0"><li>Review the sleep-study result with the patient.</li><li>Update phenotype, treatment candidacy, and the confirmed plan only after diagnostic data are available.</li></ul></div>
+        <div class="osa-clin-section-body"><ul class="mb-0"><li>${priorSleepStudyAnswer === 'yes' ? 'Obtain and review the actual prior sleep-study report, then decide whether updated testing is needed.' : 'Review the sleep-study result with the patient.'}</li><li>Update phenotype, treatment candidacy, and the confirmed plan only after diagnostic data are available.</li></ul></div>
       </div>`;
     return { cHTML, subtype, guardedRecTexts, guardedRecEntries, insufficientDataDomains, treatmentSafetyChecks };
   }
@@ -1949,15 +2011,18 @@ function buildClinicianReport(f, m, T){
 
   /* ── Care Summary Card (clinician report) ────────────── */
   // Only show when there's meaningful context (milestones or treatment history)
-  const hasTxHistory = cpapCurrent || cpapFailed || prefAvoidCpap || priorMAD || priorUPPP || priorInspire;
+  const hasTxHistory = cpapCurrent || cpapFailed || prefAvoidCpap || priorMAD || priorUPPP || priorNasal || priorSinus || priorJaw || priorInspire;
   const careSummaryParts = [];
   if ((milestones.length || hasTxHistory) && exists(ahi)) careSummaryParts.push(`AHI ${ahi} (${sevLabel || 'normal'})`);
   if (cpapCurrent) careSummaryParts.push(`Current ${papMode || 'PAP'} user`);
   else if (cpapFailed) careSummaryParts.push(`CPAP tried (${cpapWillRetry ? 'will retry' : 'discontinued'})`);
   else if (prefAvoidCpap) careSummaryParts.push('Prefers to avoid CPAP');
   if (priorMAD) careSummaryParts.push('Prior MAD');
-  if (priorUPPP) careSummaryParts.push('Prior UPPP');
-  if (priorInspire) careSummaryParts.push('Prior Inspire');
+  if (priorUPPP) careSummaryParts.push('Prior throat surgery');
+  if (priorNasal) careSummaryParts.push('Prior nasal surgery');
+  if (priorSinus) careSummaryParts.push('Prior sinus surgery');
+  if (priorJaw) careSummaryParts.push('Prior jaw surgery');
+  if (priorInspire) careSummaryParts.push('Existing nerve stimulator');
   if (weightLossReadiness === 'ready') careSummaryParts.push('Ready for weight management');
   else if (weightLossReadiness === 'considering') careSummaryParts.push('Considering weight management');
   else if (weightLossReadiness === 'not-ready') careSummaryParts.push('Not ready for weight management');
@@ -1965,6 +2030,49 @@ function buildClinicianReport(f, m, T){
   if (milestones.length) careSummaryParts.push(`Stage: ${milestones[milestones.length - 1]}`);
 
   const careSummaryHTML = careSummaryParts.length ? `<div class="osa-care-summary mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>${careSummaryParts.join(' · ')}</div>` : '';
+  const historyContextParts = [];
+  if (priorSleepStudyAnswer === 'yes') {
+    const type = priorSleepStudyType === 'home' ? 'home study' : priorSleepStudyType === 'lab' ? 'in-lab study' : 'study type unknown';
+    historyContextParts.push(`Prior sleep study reported: ${type}${priorSleepStudyYear ? `, approximately ${priorSleepStudyYear}` : ''}. Review the actual report before relying on its diagnosis or severity.`);
+  }
+  if (cpapCurrent) {
+    const difficulty = cpapDifficulty === 'yes'
+      ? `difficulty reported${cpapReasons.length ? ` (${cpapReasons.map(reason => CPAP_ISSUE_LABELS[reason] || reason).join(', ')})` : ''}`
+      : cpapDifficulty === 'no' ? 'no current difficulty reported' : 'current difficulty uncertain';
+    historyContextParts.push(`Current ${papMode || 'PAP'}: ${difficulty}.`);
+  }
+  if (priorMAD) {
+    const problemLabels = { madProblemTmj: 'TMJ pain', madProblemTeeth: 'dental problems', madProblemBite: 'bite change', madProblemDiscomfort: 'discomfort or poor fit' };
+    const barriers = madProblems.map(problem => problemLabels[problem] || problem);
+    historyContextParts.push(`Prior oral appliance: benefit ${madHelped || 'unknown'}, tolerance ${madTolerated || 'unknown'}${barriers.length ? `, barriers: ${barriers.join(', ')}` : ''}.`);
+  }
+  const surgeryHistory = [
+    priorUPPP ? ['throat surgery', priorUPPPHelped] : null,
+    priorNasal ? ['nasal surgery', priorNasalHelped] : null,
+    priorSinus ? ['sinus surgery', priorSinusHelped] : null,
+    priorJaw ? ['jaw surgery', priorJawHelped] : null,
+  ].filter(Boolean).map(([label, helped]) => `${label}: ${helped || 'response unknown'}`);
+  if (surgeryHistory.length) historyContextParts.push(`Prior surgery response: ${surgeryHistory.join('; ')}.`);
+  if (priorInspire) {
+    historyContextParts.push(`Existing hypoglossal nerve stimulator${hgnsImplantYear ? `, implanted approximately ${hgnsImplantYear}` : ''}: benefit ${hgnsHelped || 'unknown'}.`);
+  }
+  if (cvdConditions.length) {
+    const conditionLabels = {
+      cvdHypertension: 'hypertension', cvdCad: 'coronary disease or prior MI', cvdHeartFailure: 'heart failure or cardiomyopathy',
+      cvdArrhythmia: 'atrial fibrillation or arrhythmia', cvdStroke: 'stroke or TIA', cvdValve: 'valve disease', cvdOther: 'other cardiovascular disease', cvdUnsure: 'diagnosis uncertain'
+    };
+    historyContextParts.push(`Cardiovascular history: ${cvdConditions.map(condition => conditionLabels[condition] || condition).join(', ')}.`);
+  }
+  if (glp1Status === 'current' || glp1Status === 'previous') {
+    const medicationLabels = { semaglutide: 'semaglutide', tirzepatide: 'tirzepatide', liraglutide: 'liraglutide', other: 'other GLP-1 medication', unsure: 'GLP-1 medication unknown' };
+    const issueLabels = { glp1IssueNone: 'no significant problems', glp1IssueDigestive: 'digestive side effects', glp1IssueCost: 'cost or coverage', glp1IssueOther: 'other issue' };
+    historyContextParts.push(`GLP-1 history: ${glp1Status}, ${medicationLabels[glp1Medication] || 'medication unknown'}, weight benefit ${glp1Effective || 'unknown'}${glp1Issues.length ? `, ${glp1Issues.map(issue => issueLabels[issue] || issue).join(', ')}` : ''}.`);
+  }
+  const historyContextHTML = historyContextParts.length ? `
+    <div class="alert alert-light border py-2 px-3 mb-3">
+      <strong>Patient-reported treatment history and decision context</strong>
+      <ul class="mb-0 mt-1">${historyContextParts.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+    </div>` : '';
   const selectedPlanLabels = encounter.selectedPlanFields.map(field => PLAN_FIELD_LABELS[field]).filter(Boolean);
   if (encounter.planObserve) selectedPlanLabels.push('observe / follow up');
   const encounterPlanHTML = `
@@ -2040,6 +2148,7 @@ function buildClinicianReport(f, m, T){
     ${pathwayHTML}
     ${careSummaryHTML}
     ${encounterPlanHTML}
+    ${historyContextHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
     ${cpapFailed ? `<p class="mb-2"><strong>PAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? `<p class="mb-2"><strong>PAP History:</strong> Currently using ${papMode || 'PAP'}</p>` : ''}
     ${keyNumsGrid}
@@ -2152,13 +2261,14 @@ document.getElementById('form').addEventListener('submit', e => {
   const pahic3  = n(f.get('pahic')) ?? n(f.get('pahic3'));
   const pahic4  = n(f.get('pahic4'));
   const cai     = n(f.get('cai'));
-  const cvd     = yes(f,'cvd');
+  const cvd     = yes(f,'cvd') || ['cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther'].some(key => yes(f, key));
 
   /* ─── TREATMENT HISTORY & PREFERENCES ─────────────────────── */
   const priorCpap     = yes(f,'priorCpap');
   const cpapCurrent   = yes(f,'cpapCurrent');
   const cpapHelped    = f.get('cpapHelped') || '';   // Yes/No/Unsure/''
   const cpapRetry     = f.get('cpapRetry')  || '';   // Yes/No/Maybe/''
+  const cpapDifficulty = (f.get('cpapDifficulty') || '').toLowerCase();
   const cpapReasons   = ['cpapMask','cpapClaustro','cpapDry','cpapLeaks','cpapSleep','cpapSkin','cpapNoImprove','cpapTravel'].filter(k => yes(f,k));
   const priorUPPP     = yes(f,'priorUPPP');
   const priorNasal    = yes(f,'priorNasal');
@@ -2168,6 +2278,16 @@ document.getElementById('form').addEventListener('submit', e => {
   const priorMAD      = yes(f,'priorMAD');
   const madHelped     = (f.get('madHelped') || '').toLowerCase();
   const madTolerated  = (f.get('madTolerated') || '').toLowerCase();
+  const madProblems   = ['madProblemTmj','madProblemTeeth','madProblemBite','madProblemDiscomfort'].filter(key => yes(f, key));
+  const priorUPPPHelped = (f.get('priorUPPPHelped') || '').toLowerCase();
+  const priorNasalHelped = (f.get('priorNasalHelped') || '').toLowerCase();
+  const priorSinusHelped = (f.get('priorSinusHelped') || '').toLowerCase();
+  const priorJawHelped = (f.get('priorJawHelped') || '').toLowerCase();
+  const hgnsHelped = (f.get('hgnsHelped') || '').toLowerCase();
+  const hgnsImplantYear = n(f.get('hgnsImplantYear'));
+  const priorSleepStudyAnswer = (f.get('priorSleepStudyAnswer') || '').toLowerCase();
+  const priorSleepStudyYear = n(f.get('priorSleepStudyYear'));
+  const priorSleepStudyType = (f.get('priorSleepStudyType') || '').toLowerCase();
   const visitReason   = f.get('visitReason') || '';
   const prefAvoidCpap = yes(f,'prefAvoidCpap');
   const prefSurgery   = yes(f,'prefSurgery') || visitReason === 'surgery';
@@ -2177,6 +2297,7 @@ document.getElementById('form').addEventListener('submit', e => {
   const glp1Medication = f.get('glp1Medication') || '';
   const glp1Effective = f.get('glp1Effective') || '';
   const glp1Issues = ['glp1IssueNone','glp1IssueDigestive','glp1IssueCost','glp1IssueOther'].filter(key => yes(f, key));
+  const cvdConditions = ['cvdHypertension','cvdCad','cvdHeartFailure','cvdArrhythmia','cvdStroke','cvdValve','cvdOther','cvdUnsure'].filter(key => yes(f, key));
   const lvef = n(f.get('lvef'));
   const madDentition = f.get('madDentition') || '';
   const madProtrusion = f.get('madProtrusion') || '';
@@ -2320,10 +2441,12 @@ document.getElementById('form').addEventListener('submit', e => {
     phen: out.phen,
     sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, hbHighTier,
-    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons,
+    priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty,
     papMode: f.get('papMode') || '',
     prefAvoidCpap, prefSurgery, prefInspire,
-    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated,
+    priorUPPP, priorNasal, priorSinus, priorJaw, priorMAD, priorInspire, madHelped, madTolerated, madProblems,
+    priorUPPPHelped, priorNasalHelped, priorSinusHelped, hgnsHelped, hgnsImplantYear,
+    priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType,
   }, T);
   const recTags = filterRecommendationsForEncounter(generatedRecTags, encounter);
   const recTexts = recTags.map(entry => entry.text);
@@ -2341,6 +2464,10 @@ document.getElementById('form').addEventListener('submit', e => {
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
+    priorNasal, priorSinus, cpapDifficulty, madHelped, madTolerated, madProblems,
+    priorUPPPHelped, priorNasalHelped, priorSinusHelped, priorJawHelped, hgnsHelped, hgnsImplantYear,
+    priorSleepStudyAnswer, priorSleepStudyYear, priorSleepStudyType, cvdConditions,
+    glp1Status, glp1Medication, glp1Effective, glp1Issues,
     recTags, remAhi, remMinutes, remPercent, sex, sleepyCOMISA, sup, t90, tons, weightLossReadiness,
     encounter,
   }, T);
@@ -2384,14 +2511,27 @@ document.getElementById('form').addEventListener('submit', e => {
     cpapFailed,
     cpapWillRetry,
     cpapHelped,
+    cpapDifficulty,
     cpapReasons,
     prefAvoidCpap,
     priorMAD,
     madHelped,
     madTolerated,
+    madProblems,
     priorJaw,
+    priorJawHelped,
     priorInspire,
+    hgnsHelped,
+    hgnsImplantYear,
     priorUPPP,
+    priorUPPPHelped,
+    priorNasal,
+    priorNasalHelped,
+    priorSinus,
+    priorSinusHelped,
+    priorSleepStudyAnswer,
+    priorSleepStudyYear,
+    priorSleepStudyType,
     prefSurgery,
     hasCOMISA,
     lvef,
@@ -2427,6 +2567,7 @@ document.getElementById('form').addEventListener('submit', e => {
     glp1Medication,
     glp1Effective,
     glp1Issues,
+    cvdConditions,
     alcoholNearBed: f.get('alcoholNearBed') || '',
     age: n(f.get('age')),
     visitReason: encounter.visitReason,

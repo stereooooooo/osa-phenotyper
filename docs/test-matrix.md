@@ -315,3 +315,11 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 158 | Cardiovascular differentiation and LVEF flag | Cardiovascular history should distinguish hypertension from heart failure, arrhythmia, coronary disease, stroke, and valve disease; an LVEF-record flag should be limited to heart-failure history or a known prior echo without a documented numeric result |
 | 159 | GLP-1 medication history | Current or prior GLP-1 use should reveal medication, weight response, and structured problem choices while never/unsure responses stay on the short path |
 | 160 | Intake-to-chart persistence | New study, PAP mode, treatment outcome, cardiovascular subtype, and GLP-1 fields should survive validation and map to named clinician-chart fields with provenance-compatible values |
+
+### Group 37: Intake Layout And Clinical-Use Integration
+| # | Name | Key Features |
+|---|------|-------------|
+| 161 | Demographic control alignment | Sex, feet, inches, and weight controls should share a consistent baseline at tablet and desktop widths; the paired height controls should have equal dimensions and preserve full-width mobile stacking |
+| 162 | Nerve-stimulator detail alignment | The benefit question and answer controls should align as one compact row, with the optional implant-year field bounded below and all controls retaining touch-friendly sizing |
+| 163 | Patient-reported treatment history routing | PAP difficulty, MAD barriers, prior surgery outcomes, and existing nerve-stimulator outcome/year should alter clinician recommendations, safety context, plan suggestions, and patient wording without independently changing objective phenotype or eligibility rules |
+| 164 | Prior-study and GLP-1 context routing | A reported prior sleep study should prompt report retrieval before automatic repeat testing, while specific GLP-1 problems should appear in clinically relevant counseling and the patient action plan |
