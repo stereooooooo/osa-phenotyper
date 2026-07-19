@@ -54,6 +54,18 @@ var PatientReport = (() => {
     return signals.negativeHstNeedsPsg;
   }
 
+  function confirmedPlanIncludes(data, field) {
+    return Boolean(
+      data?.planConfirmed &&
+      Array.isArray(data.selectedPlanFields) &&
+      data.selectedPlanFields.includes(field)
+    );
+  }
+
+  function negativeHstLabStudySelected(data) {
+    return symptomaticNormalHomeTest(data) && confirmedPlanIncludes(data, 'planStudy');
+  }
+
   /* ── Helper: HTML-encode a string ────────────────────────────────────── */
   function esc(str) {
     if (str === null || str === undefined) return '';
@@ -354,7 +366,7 @@ var PatientReport = (() => {
         'SNORE-LIFESTYLE',
         'CBTI',
         'SLEEP-STUDY'
-      ].includes(r.tag));
+      ].includes(r.tag) && (r.tag !== 'NEG-HST-PSG' || negativeHstLabStudySelected(data)));
     }
     return recTags;
   }
@@ -487,13 +499,24 @@ var PatientReport = (() => {
     const scoreText = severity
       ? `Your NOSE symptom score is ${score}/100, which is in the ${severity} range. `
       : '';
+    const structuralText = data?.ctSeptum
+      ? 'Your nasal exam shows a deviated nasal septum. '
+      : data?.ctTurbs
+        ? 'Your nasal exam shows enlarged nasal turbinates. '
+        : '';
     const dryMouthText = Array.isArray(data?.cpapReasons) && data.cpapReasons.includes('cpapDry')
       ? 'Nasal blockage may promote mouth breathing and contribute to the dry mouth you reported. '
       : '';
-    const papText = data?.cpapCurrent
+    const normalStudy = exists(data?.primaryAHI) && Number(data.primaryAHI) < 5;
+    const treatmentText = data?.cpapCurrent
       ? 'Treating it may improve PAP comfort and, in selected patients, allow a lower needed pressure. '
-      : 'Treating it may improve airflow and make PAP or an oral appliance easier to tolerate. ';
-    return `${scoreText}${dryMouthText}${papText}Nasal care usually supports, rather than replaces, treatment for sleep apnea itself.`;
+      : normalStudy
+        ? 'Treating structural nasal blockage can improve nasal breathing and may improve snoring or sleep quality. '
+        : 'Treating it may improve airflow and make PAP or an oral appliance easier to tolerate. ';
+    const boundaryText = normalStudy
+      ? 'Improvement in nasal symptoms is more predictable than a change in sleep-study breathing measurements. '
+      : 'Nasal care usually supports, rather than replaces, treatment for sleep apnea itself. ';
+    return `${scoreText}${structuralText}${dryMouthText}${treatmentText}${boundaryText}`.trim();
   }
 
   function anatomyContributorDescription(data) {
@@ -714,9 +737,11 @@ var PatientReport = (() => {
     }
     const ahi = data.primaryAHI;
     if (exists(ahi) && ahi < 5) {
-      return symptomaticNormalHomeTest(data)
-        ? 'Talk with your doctor about whether a more detailed in-lab sleep study is the right next step.'
-        : 'Review these results with your doctor and keep an eye on how you are sleeping.';
+      return negativeHstLabStudySelected(data)
+        ? 'Schedule the in-lab sleep study selected with your clinician.'
+        : symptomaticNormalHomeTest(data)
+          ? 'Follow the plan selected today. If sleep concerns persist, ask whether an in-lab sleep study would add useful information.'
+          : 'Review these results with your doctor and keep an eye on how you are sleeping.';
     }
     const entries = canonicalizePatientRecEntries(data);
     const hasPAPPlan = entries.some(e => e.tag === 'CPAP' || e.tag.startsWith('CPAP-'));
@@ -783,7 +808,11 @@ var PatientReport = (() => {
         : 'We are recommending a sleep study to get a clear picture of how you breathe overnight.';
     } else if (exists(ahi) && ahi < 5) {
       finding = 'Your sleep study did not find obstructive sleep apnea — your breathing was in the normal range.';
-      if (symptomaticNormalHomeTest(data)) meaning = 'Because you have been having symptoms, we still want to take a closer look (see below).';
+      if (negativeHstLabStudySelected(data)) {
+        meaning = 'Because symptoms continue, you and your clinician selected a more detailed in-lab study as the next step.';
+      } else if (symptomaticNormalHomeTest(data)) {
+        meaning = 'If symptoms continue after the plan selected today, your clinician may consider a more detailed in-lab study later.';
+      }
     } else {
       const sev = ahiSeverityLabel(ahi);  // mild | moderate | severe
       finding = `Your sleep study shows <strong>${sev} sleep apnea</strong>.`;
@@ -964,10 +993,10 @@ ${questParts.join('')}`);
       examParts.push(`<p>Your exam showed signs of nasal obstruction — a physical narrowing or blockage inside the nose. When the nose is blocked, the body works harder to pull air through, which can worsen sleep-related breathing problems.</p>`);
     }
     if (data.ctSeptum) {
-      examParts.push(`<p>Imaging shows a deviated nasal septum — the wall dividing your two nostrils is off-center, reducing airflow on one side.</p>`);
+      examParts.push(`<p>Your nasal exam shows a deviated nasal septum — the wall dividing your two nostrils is off-center, reducing airflow on one side.</p>`);
     }
     if (data.ctTurbs) {
-      examParts.push(`<p>Imaging shows enlarged nasal turbinates — the small bony ridges inside the nose appear swollen, further narrowing the nasal passage.</p>`);
+      examParts.push(`<p>Your nasal exam shows enlarged nasal turbinates — the small ridges inside the nose are swollen or enlarged, further narrowing the nasal passage.</p>`);
     }
     const neckThreshold = (data.sex === 'F') ? 15 : 17;
     if (data.neck !== null && data.neck !== undefined && +data.neck >= neckThreshold) {
@@ -1114,6 +1143,7 @@ ${renderSectionG(data)}`;
 
     const parts = [];
     const symptomaticHst = symptomaticNormalHomeTest(data);
+    const labStudySelected = negativeHstLabStudySelected(data);
 
     /* UARS / symptom detection (computed up front so the opening framing can react) */
     const uars = OSAReportShared.detectUARS({
@@ -1149,21 +1179,26 @@ ${renderSectionG(data)}`;
       findings.forEach(f => parts.push(`<p>${f}</p>`));
     }
 
-    /* Further-evaluation guidance. Prefer the specific UARS callout; otherwise, for a
-       symptomatic normal home test, show a general "worth a closer look" caveat. Both
-       point the patient toward discussing an in-lab study so a false-negative home test
-       does not leave a symptomatic patient falsely reassured. */
+    /* Further-evaluation guidance. The clinician sees the negative-HST flag in all
+       symptomatic cases. The patient receives a definite lab-study action only when
+       Diagnostic Testing was selected and the plan was confirmed. */
     if (uars.isUARS) {
       parts.push(`
 <div class="comisa-callout">
   <strong>Possible Upper Airway Resistance Syndrome (UARS)</strong>
   <p style="margin:0.4rem 0 0;">Although your AHI is normal, your symptoms and some patterns in your study suggest a possible condition called <strong>upper airway resistance syndrome (UARS)</strong>. In UARS, the airway narrows during sleep enough to disrupt sleep quality — causing daytime tiredness, difficulty concentrating, or poor sleep — without fully blocking airflow the way sleep apnea does. Home sleep tests can sometimes miss UARS because it requires more detailed monitoring to detect. Your doctor may recommend an in-lab sleep study for a more thorough evaluation.${uars.rdiElevated ? ` Notably, your RDI (${Math.round(uars.rdi)}) is significantly higher than your AHI (${Math.round(data.primaryAHI)}), which suggests your airway was causing partial breathing disruptions that did not meet the threshold for apnea.` : ''}</p>
 </div>`);
+    } else if (symptomaticHst && labStudySelected) {
+      parts.push(`
+<div class="comisa-callout">
+  <strong>Your clinician selected a more detailed sleep study</strong>
+  <p style="margin:0.4rem 0 0;">You came in with symptoms that can point to a sleep problem, and a home sleep test can sometimes miss milder or different kinds of sleep-disordered breathing. You and your clinician selected an <strong>in-lab sleep study</strong> as the next diagnostic step.</p>
+</div>`);
     } else if (symptomaticHst) {
       parts.push(`
 <div class="comisa-callout">
-  <strong>Because you've been having symptoms, this is worth a closer look</strong>
-  <p style="margin:0.4rem 0 0;">You came in with symptoms that can point to a sleep problem, and a home sleep test is a simpler study that can sometimes miss milder or different kinds of sleep-disordered breathing. A normal home test does not always rule everything out. We'd like to talk with you about whether a more detailed <strong>in-lab sleep study</strong> would help make sure nothing is being missed.</p>
+  <strong>What happens if sleep concerns continue?</strong>
+  <p style="margin:0.4rem 0 0;">Your home study was reassuring for obstructive sleep apnea, and today's plan focuses on the treatment steps selected with your clinician. If snoring, fatigue, disrupted sleep, or other concerns continue after that treatment, your clinician may consider a more detailed <strong>in-lab sleep study</strong>. This is a possible later step, not a test ordered by this handout.</p>
 </div>`);
     }
 

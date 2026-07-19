@@ -359,3 +359,4 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | # | Name | Key Features |
 |---|------|-------------|
 | 184 | Normal HST with snoring and persistent fatigue | A normal AHI after a technically adequate home study should still route to in-lab PSG when the encounter remains symptom-focused, even if the Epworth score is low and RDI/arousal data do not meet the more specific UARS rule; an uncomplicated normal-study snoring case should remain outside that pathway |
+| 185 | Normal HST with severe nasal obstruction and a clinician-confirmed nasal-first plan | The clinician view should retain the negative-HST diagnostic flag and PSG draft suggestion, but a patient handout should not order or schedule PSG when the clinician confirms nasal treatment without Diagnostic Testing; it should describe in-lab testing only as a possible later step if symptoms persist |

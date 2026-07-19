@@ -562,12 +562,35 @@ const SCENARIOS = [
     expectedSuggestions: ['Diagnostic testing'],
     expectedTags: ['NEG-HST-PSG'],
     excludedTags: ['UARS-EVAL', 'CPAP'],
-    clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'In-lab PSG is recommended'],
+    clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'AASM guidance supports in-lab PSG'],
     clinicianExcludes: ['Start CPAP/APAP'],
     patientIncludes: ['did not fully explain your ongoing symptoms', 'in-lab sleep study'],
     patientExcludes: ['upper airway resistance syndrome', 'Begin PAP therapy now'],
     todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'did not fully explain the ongoing symptoms', 'Schedule the recommended in-lab sleep study'],
     todayPlanExcludes: ['Start PAP']
+  },
+  {
+    id: 'negative-hst-nasal-plan-first',
+    name: 'Normal home study with persistent symptoms and severe structural nasal obstruction, nasal plan selected first',
+    visitReason: 'symptoms',
+    fields: {
+      sex: 'M', bmi: '24', neck: '15', tonsils: '1', ftp: 'II', ess: '7', isi: '7', noseScore: '65',
+      pahi: '2.8', patRdi: '4', tst: '6.8', remPercent: '23', supPahi: '3.2', nonSupPahi: '2.4',
+      remPahi: '3.5', nremPahi: '2.6', odi: '2.5', nadir: '92', hbAreaPH: '6', t90: '0'
+    },
+    checks: ['snoringReported', 'nasalObs', 'ctDev'],
+    expectedSuggestions: ['Diagnostic testing', 'Nasal treatment'],
+    confirmedPlanFields: ['planNasal'],
+    manualSummary: 'Begin the clinician-selected nasal treatment plan, then reassess snoring, fatigue, and sleep quality.',
+    expectedTags: ['NASAL-OPT'],
+    excludedTags: ['NEG-HST-PSG', 'UARS-EVAL', 'CPAP'],
+    expectedInputState: { ctSeptum: true },
+    clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'AASM guidance supports in-lab PSG', 'Nasal exam: deviated septum', 'Confirmed plan: nasal treatment'],
+    clinicianExcludes: ['Start CPAP/APAP'],
+    patientIncludes: ['deviated nasal septum', 'may improve snoring or sleep quality', 'possible later step, not a test ordered by this handout'],
+    patientExcludes: ['Confirm the Negative Home Test in the Sleep Lab', 'Schedule the in-lab sleep study recommended', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Improve nasal airflow', 'Use the saline spray or rinse recommended by your clinician'],
+    todayPlanExcludes: ['Complete the recommended in-lab sleep study', 'Schedule the recommended in-lab sleep study']
   },
   {
     id: 'mad-severe-tmj-limited-dentition',
@@ -701,7 +724,10 @@ async function runScenario(win, doc, scenario, index) {
   assert(suggestions.every(item => item.reason && item.reason.length > 10), `${scenario.name}: every suggestion explains why it appeared`);
   assert(scenario.expectedSuggestions.every(label => !doc.querySelector(`[data-plan-option] input:checked`)), `${scenario.name}: suggestions remain unapplied initially`);
 
-  if (suggestions.length) {
+  if (Array.isArray(scenario.confirmedPlanFields)) {
+    scenario.confirmedPlanFields.forEach(id => setCheck(win, id));
+    setId(win, 'planSummary', scenario.manualSummary || 'Continue the clinician-selected plan and reassess the response.');
+  } else if (suggestions.length) {
     win.OSAPlanSuggestions.apply();
   } else {
     (scenario.manualPlanFields || []).forEach(id => setCheck(win, id));
@@ -727,13 +753,13 @@ async function runScenario(win, doc, scenario, index) {
   }
   scenario.expectedTags.forEach(tag => assert(recTags.includes(tag), `${scenario.name}: clinician output includes ${tag}`));
   (scenario.excludedTags || []).forEach(tag => assert(!recTags.includes(tag), `${scenario.name}: clinician output excludes ${tag}`));
-  if (Object.prototype.hasOwnProperty.call(scenario.expectedInputState || {}, 'lvefFollowupNeeded')) {
-    assertEqual(data.lvefFollowupNeeded, scenario.expectedInputState.lvefFollowupNeeded, `${scenario.name}: preserves the expected Echo/LVEF Needed state in report data`);
-  }
+  Object.entries(scenario.expectedInputState || {}).forEach(([field, expected]) => {
+    assertEqual(data[field], expected, `${scenario.name}: preserves expected report-data field ${field}`);
+  });
   assertEqual(data.reportDate, localIsoDate(), `${scenario.name}: report uses the local encounter date`);
   assertEqual(
     JSON.stringify([...data.selectedPlanFields].sort()),
-    JSON.stringify((scenario.manualPlanFields || suggestions.map(item => item.field)).sort()),
+    JSON.stringify((scenario.confirmedPlanFields || scenario.manualPlanFields || suggestions.map(item => item.field)).sort()),
     `${scenario.name}: confirmed plan matches applied suggestions`
   );
 

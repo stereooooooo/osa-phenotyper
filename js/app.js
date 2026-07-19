@@ -1060,8 +1060,8 @@ function detectPhenotypes(m, T){
     add('Nasal-Resistance Contributor',[
       m.noseScore ? `NOSE score ${m.noseScore}/100` : '',
       m.nasalObs ? 'Patient-reported nasal obstruction' : '',
-      m.ctSeptum ? 'CT: deviated septum' : '',
-      m.ctTurbs ? 'CT: turbinate hypertrophy' : ''
+      m.ctSeptum ? 'Exam: deviated septum' : '',
+      m.ctTurbs ? 'Exam: turbinate hypertrophy' : ''
     ]);
   }
 
@@ -1135,7 +1135,7 @@ function buildHstFlags(m, T){
     const symptomContext = exists(m.ess) && m.ess >= HST.essSignificant
       ? `ESS ${m.ess} indicates ongoing sleepiness`
       : 'the symptom-focused visit indicates ongoing fatigue, unrefreshing sleep, or other clinical concern';
-    flags.push({ severity: 'warning', flag: 'Negative home sleep test with persistent symptoms', detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. In-lab PSG is recommended rather than treating this result as definitively reassuring.` });
+    flags.push({ severity: 'warning', flag: 'Negative home sleep test with persistent symptoms', detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. If clinical suspicion remains after the full evaluation, AASM guidance supports in-lab PSG; the clinician should decide whether to test now or reassess after treating another plausible contributor.` });
   }
 
   // 5. High central apnea component — confirm with lab PSG
@@ -1286,7 +1286,7 @@ function mapTreatments(f, m, T){
       case 'Nasal-Resistance Contributor':
         pushRec(recs,'Nasal optimization (saline rinse, intranasal steroid, ENT evaluation) can improve airflow and CPAP/MAD tolerance.','NASAL-OPT');
         if(ctSeptum || ctTurbs){
-          pushRec(recs,'Imaging confirms structural nasal obstruction. Consider septoplasty and/or turbinate reduction.','NASAL-SURG');
+          pushRec(recs,'Nasal exam confirms structural obstruction. Consider septoplasty and/or turbinate reduction.','NASAL-SURG');
         }
         if(priorNasal) {
           const outcome = priorNasalHelped === 'yes'
@@ -1460,7 +1460,7 @@ function mapTreatments(f, m, T){
     if (uars.isUARS) {
       pushRec(recs,'Possible UARS (upper airway resistance syndrome) — consider in-lab polysomnography with esophageal pressure monitoring for definitive evaluation.','UARS-EVAL');
     } else if (negativeHstNeedsPsg) {
-      pushRec(recs,'Negative home sleep apnea test with persistent symptoms or clinical concern: obtain in-lab polysomnography before treating the home result as definitively negative.','NEG-HST-PSG');
+      pushRec(recs,'Negative home sleep apnea test with persistent symptoms or clinical concern: consider in-lab polysomnography if suspicion remains. The clinician may test now or first treat another plausible contributor and reassess persistent symptoms.','NEG-HST-PSG');
     }
     if (hasSnoring || (exists(n(f.get('snoringReported'))) || yes(f,'snoringReported'))) {
       /* Snoring-specific recommendations */
@@ -2114,6 +2114,10 @@ function buildClinicianReport(f, m, T){
     </div>` : '';
   const selectedPlanLabels = encounter.selectedPlanFields.map(field => PLAN_FIELD_LABELS[field]).filter(Boolean);
   if (encounter.planObserve) selectedPlanLabels.push('observe / follow up');
+  const nasalExamFindings = [
+    ctSeptum ? 'deviated septum' : '',
+    ctTurbs ? 'turbinate hypertrophy' : '',
+  ].filter(Boolean);
   const encounterPlanHTML = `
     <div class="alert ${encounter.planConfirmed ? 'alert-success' : 'alert-info'} py-2 px-3 mb-3">
       <div><strong>Visit goal:</strong> ${escapeHtml(encounter.visitReasonLabel)}${encounter.visitReasonNote ? `, ${escapeHtml(encounter.visitReasonNote)}` : ''}</div>
@@ -2124,6 +2128,7 @@ function buildClinicianReport(f, m, T){
     <div class="alert alert-success py-2 px-3 mb-3">
       <strong>Normal study by AHI:</strong> The AHI of ${ahi} is below the diagnostic threshold for obstructive sleep apnea.
       ${encounter.visitReason === 'snoring' || yes(f, 'snoringReported') ? '<div><strong>Snoring pathway:</strong> Address nasal airflow, sleep position, alcohol near bedtime, weight when relevant, and other symptom drivers without activating an OSA treatment pathway.</div>' : ''}
+      ${nasalExamFindings.length ? `<div><strong>Nasal exam:</strong> ${escapeHtml(nasalExamFindings.join(', '))}.</div>` : ''}
     </div>` : '';
   const lvefFollowupHTML = lvefFollowupNeeded ? `
     <div class="alert alert-warning py-2 px-3 mb-3">

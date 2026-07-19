@@ -174,7 +174,7 @@
         suggestions,
         'planStudy',
         `The home study AHI is ${study.ahi}, but the patient's persistent symptoms keep clinical concern for sleep-disordered breathing high.`,
-        'arrange an in-lab sleep study after the negative home study',
+        'decide whether to obtain an in-lab sleep study now or reassess persistent symptoms after treating another plausible contributor',
         5
       );
     }

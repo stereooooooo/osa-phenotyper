@@ -1438,3 +1438,19 @@
 - patient-facing output remains free of typographic dash characters
 - full headless suite passed with 1,171 assertions
 **Finding:** fixed. The prior implementation communicated concern in portions of the reports but did not reliably convert that concern into the MA's active diagnostic plan. All output layers now consume the same negative-HST follow-up signal.
+
+### Test 185: Normal HST with structural nasal obstruction and a clinician-confirmed nasal-first plan
+**Status:** local clinician-plan, patient-report, action-plan, syntax, lint, and full regression testing complete
+**Result:** passed after adding an explicit patient-handout sign-off boundary ✅
+**Verification:**
+- a symptom-focused normal HST with severe nasal obstruction and a deviated septum continues to show the clinician-side negative-HST alert and a draft Diagnostic Testing suggestion
+- the physical-exam UI now exposes the existing deviated-septum and turbinate-hypertrophy inputs so structural nasal findings can actually reach the analysis engine
+- when the clinician confirms Nasal Treatment without Diagnostic Testing, `NEG-HST-PSG` is excluded from the confirmed patient recommendations
+- the patient report does not say that an in-lab study was ordered or instruct the patient to schedule one
+- the patient report instead says that an in-lab study may be considered later if snoring, fatigue, disrupted sleep, or other concerns persist after the selected treatment
+- the report identifies the deviated septum and explains that nasal treatment can improve nasal breathing and may improve snoring or subjective sleep quality, while improvement in sleep-study breathing measurements is less predictable
+- Today's Plan contains the clinician-selected nasal actions and no lab-study module
+- when Diagnostic Testing is selected and confirmed in the companion negative-HST scenario, the active in-lab study instructions remain present
+- patient-facing output remains free of typographic dash characters
+- full headless suite passed with 1,200 assertions
+**Finding:** fixed. Diagnostic concern remains visible to the clinical team, but the patient-facing plan now follows the clinician's confirmed pathway and clearly distinguishes an active lab-study decision from a possible later step.
