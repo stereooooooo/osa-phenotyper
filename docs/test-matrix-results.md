@@ -1,6 +1,18 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 18, 2026
-**Latest app version:** clinical-pilot build `15c3f28` (`feat: guide clinician encounter plans`)
+**Latest app version:** clinical-pilot build `37a9906` (`fix: align guided plans across encounter outputs`)
+
+---
+
+## July 18, 2026 Guided-Plan Output Reliability Fixes
+
+- Headless regression suite: **501 assertions passed**, including all five full guided-plan encounters.
+- Replaced UTC-derived report dates with the local encounter date. The regression matrix now checks this in every guided-plan scenario, including runs after midnight UTC while the clinic remains on the prior Central calendar date.
+- Made the explicit `Discuss Inspire` visit goal sufficient to activate nerve-stimulation intent. When DISE or staging is incomplete, the clinician and patient outputs now show the required HNS workup rather than leaving the treatment plan empty or prematurely calling the patient a candidate.
+- Added a focused pre-study clinician report with the confirmed diagnostic plan, questionnaire and exam context, diagnostic boundary, ranked pre-diagnosis actions, and follow-up plan. It intentionally omits post-diagnosis treatment candidacy.
+- Updated clinician PAP history and care-summary wording to preserve the documented APAP, CPAP, or BiPAP mode.
+- Removed the hard-coded Pear Somryst example. Clinician guidance now recommends sleep psychology or a validated, currently available digital CBT-I program, supported by the AASM Emerging Technology Committee review recorded in `docs/citations.md`.
+- Deployed clinical-pilot release `37a9906`. CloudFront serves the matching build identifier, and the live `app.js` SHA-256 checksum matches the tested local file.
 
 ---
 
