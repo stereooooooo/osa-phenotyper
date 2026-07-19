@@ -277,3 +277,12 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 | 137 | Adaptive patient-PDF pagination | Semantic contributor units and bounded compact styling should remove sparse third pages when a report fits safely on two, while genuinely content-rich reports retain additional pages |
 | 138 | HST-to-PSG stage-data isolation | When a chart switches to PSG or combined testing, stale hidden HST REM percentage and duration values must not suppress valid PSG REM/NREM indices |
 | 139 | Second five-scenario safety and PDF matrix | Adequate REM-predominant OSA, home-study central signals with reduced LVEF, very severe hypoxic OSA above BMI 40 after PAP failure, current PAP with nasal obstruction, and pre-study insomnia/snoring should all preserve their distinct safety, staging, terminology, and treatment-plan behavior; the central-safety PDF should remain a balanced two-page report |
+
+### Group 33: Guided-Plan Edge-Case Audit
+| # | Name | Key Features |
+|---|------|-------------|
+| 140 | Severe hypoxemia with PAP retry | Severe OSA, major oxygen burden, PAP comfort barriers, nasal obstruction, and weight readiness should produce a focused PAP-retry plan while preserving the urgent oxygen-risk recommendation in both clinician and patient outputs |
+| 141 | Favorable tonsillar surgery pathway | A non-obese, Friedman Stage I patient with 4+ tonsils and PAP intolerance who requests surgery should receive an airway-surgery draft and tonsil/palate counseling without an unrelated HNS or universal DISE prerequisite |
+| 142 | Probable UARS plan suggestion | Normal pAHI with marked symptoms and PAT RDI elevation should surface diagnostic testing in the MA suggestion layer, not only after the clinician manually selects a plan and runs the analysis |
+| 143 | Limited WatchPAT plan restraint | A three-hour study with very little REM should keep quality flags clinician-facing, suppress REM phenotyping, and make the chart-aware plan draft reflect the need for caution before presenting treatment pathways as definitive |
+| 144 | BiPAP central-safety plan integration | Current BiPAP use with substantial WatchPAT central signals and LVEF at or below 45% should add PSG confirmation to the MA draft, retain BiPAP wording, and suppress unsafe ASV routing |

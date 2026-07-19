@@ -4,6 +4,18 @@
 
 ---
 
+## July 18, 2026 Second Five-Scenario Guided-Plan Audit
+
+- Added five full encounter simulations covering severe hypoxemic OSA with PAP retry, a favorable tonsillar surgical pattern, probable UARS despite normal pAHI, a short WatchPAT study with limited REM sampling, and a current BiPAP user with home-test central signals plus reduced LVEF.
+- The expanded guided-plan matrix passes **149 assertions**. The complete headless suite passes **581 assertions** with no unexpected failures.
+- The tonsillar surgery pathway was coherent across the MA suggestions, clinician report, and patient handout. It preserved the favorable Friedman/UPPP finding, discussed tonsil and palate surgery, and did not add an unnecessary DISE or nerve-stimulation prerequisite.
+- The central-breathing safety layer also behaved correctly after analysis: the clinician and patient outputs required PSG confirmation, retained the documented BiPAP mode, and warned that ASV is unsafe with the documented LVEF. However, the MA suggestion layer proposed only `PAP management`, so the required diagnostic pathway was absent from the draft plan.
+- Three other plan-drafting gaps were identified. Probable UARS generated no chart-aware suggestion even though the final engine recommended an in-lab study; severe hypoxemia produced an urgent `HB-URG` recommendation but the draft next-step summary did not mention oxygen control or prompt follow-up; and the limited-quality WatchPAT case suggested PAP plus positional therapy without reflecting the short recording and limited REM evidence in the draft.
+- The limited-study disclosure boundary worked as intended: quality limitations were visible to the clinician, REM phenotyping was suppressed, and the patient handout did not label the study as bad or expose the technical quality warnings.
+- No runtime clinical behavior was changed or deployed during this diagnostic audit.
+
+---
+
 ## July 18, 2026 Guided-Plan Output Reliability Fixes
 
 - Headless regression suite: **501 assertions passed**, including all five full guided-plan encounters.

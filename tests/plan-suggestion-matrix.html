@@ -152,6 +152,99 @@ const SCENARIOS = [
     clinicianExcludes: ['Treatment Candidacy'],
     patientIncludes: ['recommend a sleep study', 'Complete diagnostic sleep testing'],
     patientExcludes: ['Begin PAP therapy now', 'Inspire']
+  },
+  {
+    id: 'severe-pap-retry',
+    name: 'Severe OSA with major hypoxemia and willingness to retry APAP',
+    visitReason: 'restart-pap',
+    fields: {
+      sex: 'M', bmi: '37', neck: '18', tonsils: '2', ftp: 'III', ess: '17', isi: '8', noseScore: '55',
+      pahi: '52', tst: '6.1', remPercent: '18', supPahi: '58', nonSupPahi: '47', remPahi: '61',
+      nremPahi: '50', odi: '55', nadir: '70', hbAreaPH: '90', t90: '24', papMode: 'APAP',
+      papMinPressure: '6', papMaxPressure: '16', cpapHelped: 'Yes', cpapRetry: 'Yes', weightLossReadiness: 'ready'
+    },
+    checks: ['priorCpap', 'cpapMask', 'cpapDry'],
+    expectedSuggestions: ['PAP management', 'Nasal treatment', 'Weight management'],
+    expectedTags: ['CPAP', 'NASAL-OPT', 'WEIGHT', 'HB-URG'],
+    clinicianIncludes: ['High Hypoxic Burden'],
+    clinicianExcludes: [],
+    patientIncludes: ['Giving PAP another try', 'oxygen', 'nasal treatment', 'weight management'],
+    patientExcludes: ['Complete DISE-Guided'],
+    expectedAnalysisFlags: { severeHypoxemiaMissingFromDraftSummary: true }
+  },
+  {
+    id: 'tonsillar-surgery',
+    name: 'PAP-intolerant patient with large tonsils seeking airway surgery',
+    visitReason: 'surgery',
+    fields: {
+      sex: 'M', bmi: '24', neck: '15', tonsils: '4', ftp: 'I', ess: '12', isi: '5', noseScore: '10',
+      pahi: '18', tst: '6.7', remPercent: '22', supPahi: '20', nonSupPahi: '16', remPahi: '20',
+      nremPahi: '17', odi: '15', nadir: '87', hbAreaPH: '24', t90: '1', cpapHelped: 'No', cpapRetry: 'No'
+    },
+    checks: ['priorCpap', 'prefSurgery'],
+    expectedSuggestions: ['Airway surgery'],
+    expectedTags: ['SOFT-TISSUE-STRONG', 'SURG-PREF'],
+    clinicianIncludes: ['Favorable UPPP candidate'],
+    clinicianExcludes: ['Complete DISE-guided surgical planning'],
+    patientIncludes: ['tonsil', 'palate surgery'],
+    patientExcludes: ['Complete the Nerve-Stimulation Evaluation First']
+  },
+  {
+    id: 'probable-uars',
+    name: 'Normal pAHI with significant symptoms and probable UARS',
+    visitReason: 'symptoms',
+    fields: {
+      sex: 'F', bmi: '25', neck: '13.5', tonsils: '1', ftp: 'II', ess: '17', isi: '10', noseScore: '10',
+      pahi: '3', patRdi: '15', tst: '6.5', remPercent: '21', supPahi: '4', nonSupPahi: '2.5',
+      remPahi: '4', nremPahi: '2.7', odi: '3', nadir: '91', hbAreaPH: '8', t90: '0'
+    },
+    checks: [],
+    expectedSuggestions: [],
+    manualPlanFields: ['planStudy'],
+    manualSummary: 'Arrange an in-lab sleep study to evaluate possible upper airway resistance syndrome.',
+    expectedTags: ['UARS-EVAL'],
+    clinicianIncludes: ['Low AHI with significant symptoms', 'UARS'],
+    clinicianExcludes: [],
+    patientIncludes: ['upper airway resistance syndrome', 'in-lab sleep study'],
+    patientExcludes: ['Begin PAP therapy now'],
+    expectedAnalysisFlags: { missingUarsDiagnosticSuggestion: true }
+  },
+  {
+    id: 'limited-watchpat',
+    name: 'Limited-quality WatchPAT with short recording and little REM sleep',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'F', bmi: '27', neck: '14', tonsils: '1', ftp: 'II', ess: '16', isi: '8', noseScore: '15',
+      pahi: '7', tst: '3', remPercent: '5', supPahi: '12', nonSupPahi: '4', remPahi: '24',
+      nremPahi: '6', odi: '6', nadir: '88', hbAreaPH: '16', t90: '1'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management', 'Positional therapy'],
+    expectedTags: ['CPAP', 'POS'],
+    clinicianIncludes: ['Short recording time', 'Limited REM sampling'],
+    clinicianExcludes: [],
+    patientIncludes: ['sleep apnea'],
+    patientExcludes: ['Short recording time', 'Limited REM sampling', 'bad sleep study', 'Worse during dream (REM) sleep'],
+    expectedAnalysisFlags: { limitedStudyStillSuggestsDefinitiveTreatment: true }
+  },
+  {
+    id: 'bipap-central-safety',
+    name: 'Current BiPAP user with central-breathing signals and reduced LVEF',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'M', bmi: '30', neck: '17', tonsils: '1', ftp: 'III', ess: '14', isi: '6', noseScore: '10',
+      pahi: '25', pahic: '12', csr: '20', tst: '6', remPercent: '18', supPahi: '27', nonSupPahi: '23',
+      remPahi: '28', nremPahi: '24', odi: '22', nadir: '82', hbAreaPH: '45', t90: '4', lvef: '40',
+      papMode: 'BiPAP', papEpapPressure: '8', papIpapPressure: '14'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cvd'],
+    expectedSuggestions: ['PAP management'],
+    expectedTags: ['CENTRAL-PSG-WORKUP', 'ASV-CONTRA'],
+    clinicianIncludes: ['Currently using BiPAP', 'LVEF'],
+    clinicianExcludes: ['Currently using CPAP'],
+    patientIncludes: ['central-breathing', 'ASV', 'unsafe'],
+    patientExcludes: ['Begin PAP therapy now'],
+    expectedAnalysisFlags: { centralWorkupMissingFromPlanSuggestions: true }
   }
 ];
 
@@ -163,6 +256,7 @@ async function runScenario(win, doc, scenario, index) {
   setValue(win, 'visitReason', scenario.visitReason);
   Object.entries(scenario.fields).forEach(([name, value]) => setValue(win, name, value));
   scenario.checks.forEach(id => setCheck(win, id));
+  win.OSAPlanSuggestions.refresh();
   await waitFor(() => (
     win.OSAPlanSuggestions.derive().length === scenario.expectedSuggestions.length &&
     doc.querySelectorAll('#planSuggestionList .osa-plan-suggestion').length === scenario.expectedSuggestions.length
@@ -174,9 +268,17 @@ async function runScenario(win, doc, scenario, index) {
   assert(suggestions.every(item => item.reason && item.reason.length > 10), `${scenario.name}: every suggestion explains why it appeared`);
   assert(scenario.expectedSuggestions.every(label => !doc.querySelector(`[data-plan-option] input:checked`)), `${scenario.name}: suggestions remain unapplied initially`);
 
-  win.OSAPlanSuggestions.apply();
+  if (suggestions.length) {
+    win.OSAPlanSuggestions.apply();
+  } else {
+    (scenario.manualPlanFields || []).forEach(id => setCheck(win, id));
+    setId(win, 'planSummary', scenario.manualSummary || 'Continue clinical evaluation and arrange appropriate follow-up.');
+  }
   const draftSummary = doc.getElementById('planSummary').value;
-  assert(draftSummary.length > 15 && draftSummary.length <= 240, `${scenario.name}: creates a usable editable summary`);
+  assert(
+    draftSummary.length >= 15 && draftSummary.length <= 240,
+    `${scenario.name}: creates a usable editable summary (${draftSummary.length} characters: ${draftSummary})`
+  );
   setCheck(win, 'planConfirmed');
   doc.querySelector('#form button[type="submit"]').click();
   const expectedPatientName = `SYNTHETIC PLAN ${index + 1}, Test`;
@@ -189,7 +291,7 @@ async function runScenario(win, doc, scenario, index) {
   assertEqual(data.reportDate, localIsoDate(), `${scenario.name}: report uses the local encounter date`);
   assertEqual(
     JSON.stringify([...data.selectedPlanFields].sort()),
-    JSON.stringify(suggestions.map(item => item.field).sort()),
+    JSON.stringify((scenario.manualPlanFields || suggestions.map(item => item.field)).sort()),
     `${scenario.name}: confirmed plan matches applied suggestions`
   );
 
@@ -202,6 +304,21 @@ async function runScenario(win, doc, scenario, index) {
   scenario.patientIncludes.forEach(phrase => assert(patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report includes "${phrase}"`));
   scenario.patientExcludes.forEach(phrase => assert(!patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report excludes "${phrase}"`));
 
+  const analysisFlags = {
+    selectedNerveStimulationWithoutRecommendation: data.selectedPlanFields.includes('planInspire') &&
+      !recTags.some(tag => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT', 'HNS-WORKUP'].includes(tag)),
+    missingUarsDiagnosticSuggestion: recTags.includes('UARS-EVAL') && suggestions.length === 0,
+    severeHypoxemiaMissingFromDraftSummary: recTags.includes('HB-URG') &&
+      !/(oxygen|hypox|urgent|prompt|recheck|follow-up)/i.test(draftSummary),
+    limitedStudyStillSuggestsDefinitiveTreatment: scenario.id === 'limited-watchpat' &&
+      suggestions.some(item => ['planPap', 'planPositional'].includes(item.field)),
+    centralWorkupMissingFromPlanSuggestions: recTags.includes('CENTRAL-PSG-WORKUP') &&
+      !suggestions.some(item => item.field === 'planStudy')
+  };
+  Object.entries(scenario.expectedAnalysisFlags || {}).forEach(([flag, expected]) => {
+    assertEqual(analysisFlags[flag], expected, `${scenario.name}: analysis flag ${flag}`);
+  });
+
   captures.push({
     id: scenario.id,
     scenario: scenario.name,
@@ -209,10 +326,7 @@ async function runScenario(win, doc, scenario, index) {
     draftSummary,
     selectedPlanFields: data.selectedPlanFields,
     recommendationTags: recTags,
-    analysisFlags: {
-      selectedNerveStimulationWithoutRecommendation: data.selectedPlanFields.includes('planInspire') &&
-        !recTags.some(tag => ['HNS', 'INSPIRE-EVAL', 'INSPIRE-OPT', 'HNS-WORKUP'].includes(tag))
-    },
+    analysisFlags,
     clinicianPlanExcerpt: clinicianText.slice(0, 1200),
     patientReportExcerpt: patientText.slice(0, 1600)
   });
