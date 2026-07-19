@@ -20,6 +20,21 @@ For a clinic iPad, staff open a newly generated intake link on the iPad and hand
 
 See [docs/clinician-only-architecture.md](docs/clinician-only-architecture.md) for the architecture, operational controls, and production checklist.
 
+## Clinical evidence and future validation
+
+The clinical evidence system is intentionally separate from the software change log:
+
+- [Clinical Evidence Basis and Validation Register](docs/evidence-basis.md) states each core claim,
+  evidence level, implementation status, limitation, and candidate validation endpoint.
+- [Evidence Citation Library](docs/citations.md) contains the detailed primary sources and explains
+  exactly how each source is used.
+- [Evidence Review Log](docs/evidence-review-log.md) records literature searches, no-change
+  decisions, logic changes, affected rule IDs, commits, and deployed builds.
+
+The app is decision support and has not yet been formally clinically validated. Any research study
+should freeze the app build, evidence-register version, output templates, and analysis plan before
+enrollment.
+
 ## Local development
 
 Serve the repository on localhost and open `index.html`. The project is vanilla JavaScript and has no build step.

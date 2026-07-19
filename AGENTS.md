@@ -40,16 +40,16 @@ High Anatomical Contribution, Low Arousal Threshold, High Loop Gain, Poor Muscle
 ## Clinical Logic — Key Rules
 - **Delta Heart Rate** is manual entry only. WatchPAT does NOT calculate it. Do NOT derive from pulse rate Max-Mean.
 - **CVD alone does NOT trigger High Loop Gain** — only boosts confidence (Low → Moderate).
-- **Hypoxic Burden uses composite tiering**: worst of HB area/hr, ODI, T90, nadir SpO₂. Thresholds: HB <30/30-60/>60, ODI <20/20-50/>50, T90 <5%/5-20%/>20%, nadir only severe at <75%.
+- **Hypoxic Burden uses composite tiering**: worst available HB, ODI, T90, and nadir tier. HB 30 is an exploratory elevated-signal boundary; HB 73 and 87 are cohort-derived high/very-high research thresholds. Moderate signals provide context only and do not independently create treatment urgency.
 - **Friedman Stage** auto-calculated from FTP + tonsils + BMI. Stage I → strong UPPP candidate. Stage III → suppress UPPP, recommend tongue base/HNS/MMA.
 - **MAD candidacy scoring** based on severity, BMI, sex, neck, positional, retrognathia, loop gain, HB. Three tiers: favorable/standard/poor.
-- **HNS (Inspire) staging** per Ji 2026: neck + BMI + AHI → response prediction (91%→38%). DISE concentric collapse = contraindication.
-- **COMISA** (ISI ≥15 + AHI ≥5): CBT-I prioritized before CPAP (Sweetman 2019).
+- **HNS staging** per Ji 2026 is qualitative response context, not a validated probability or device-eligibility rule. Complete concentric collapse contraindicates unilateral Inspire; do not automatically route it to Genio.
+- **COMISA** (ISI ≥15 + AHI ≥5): offer CBT-I early. PAP may start concurrently or sequentially based on severity, oxygen burden, sleepiness, access, and preference; do not automatically delay urgent OSA treatment.
 - **Pre-study patients** (no sleep study): only get sleep study rec + CBT-I if insomnia + nasal if obstruction. No OSA treatment recs.
 - **Normal AHI (<5)**: phenotypes suppressed. Snoring pathway + UARS detection if symptomatic.
-- **UARS detection**: AHI <5 + symptoms + (RDI > 1.5×AHI ≥10 OR arousal index ≥15) → recommend in-lab PSG.
+- **UARS detection**: AHI <5 + symptoms + (RDI > 1.5×AHI ≥10 OR arousal index ≥15) → recommend in-lab PSG with arousal-based scoring.
 - **Weight management** recs include GLP-1 agonists (Zepbound/tirzepatide). Only for BMI ≥30 (weight loss what-if shows at BMI ≥27).
-- **Inspire BMI >40**: still mention Inspire but note BMI must get under 40 + insurance payer variation.
+- **HGNS BMI >40**: suppress an automatic patient-facing nerve-stimulation pathway under the current Capital ENT referral guardrail. This is local governance, not a universal device contraindication; device labeling and payer criteria remain separate.
 
 ## Patient Report Structure
 Conditional sections based on data presence:
@@ -97,10 +97,20 @@ Recommendations use tags (e.g., `CPAP`, `MAD-FAVORABLE`, `HNS`, `CBTI`) that map
 - **Token table**: `osa-intake-tokens-*` with DynamoDB TTL auto-cleanup, KMS encryption, PITR
 
 ## Evidence & Citations
-All clinical evidence is tracked in `docs/citations.md`. When adding new clinical logic:
-1. Add citation to `docs/citations.md` with "How Used" column
-2. Reference in code comments
-3. Update thresholds in `js/config.js` with citation notes
+The evidence system has three linked documents:
+- `docs/evidence-basis.md`: manuscript-oriented clinical-logic register, evidence level, limitations, and validation targets
+- `docs/citations.md`: detailed primary-source library and exact "How Used" descriptions
+- `docs/evidence-review-log.md`: reproducible literature-review and decision history
+
+When adding or changing clinical logic:
+1. Identify or create the Logic ID in `docs/evidence-basis.md`.
+2. Verify the primary publication, guideline, or regulatory source; an AI summary is not evidence.
+3. Add or update `docs/citations.md`, including exact use and limitations.
+4. Classify the logic as guideline aligned, evidence informed, exploratory, local governance, or inactive/future.
+5. Reference the evidence in code comments and update `js/config.js` threshold notes.
+6. Add a regression scenario and a plausible counterexample.
+7. Record the review and conclusion, including no-change reviews, in `docs/evidence-review-log.md`.
+8. Require clinician review before deploying any change that can alter diagnosis, treatment ranking, safety messaging, or patient instructions.
 
 ## Git
 - Remote: `https://github.com/stereooooooo/osa-phenotyper.git`

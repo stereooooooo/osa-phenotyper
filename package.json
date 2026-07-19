@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "lint": "eslint js"
+    "lint": "eslint js",
+    "check:evidence": "node tests/evidence-documentation.cjs"
   },
   "dependencies": {
     "pdfjs-dist": "^3.11.174"

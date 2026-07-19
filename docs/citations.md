@@ -1,8 +1,20 @@
-# OSA Phenotyper — Evidence Citations
+# OSA Phenotyper Evidence Citation Library
 
-**Purpose:** Track all clinical evidence used in the phenotyping logic, treatment recommendations, and decision-support algorithms. This document should be updated whenever new evidence is incorporated.
+**Purpose:** Primary-source library for the phenotyping logic, treatment recommendations, safety
+guardrails, and patient education. The manuscript-oriented summary of claims, evidence strength,
+limitations, and validation targets is maintained in [`evidence-basis.md`](evidence-basis.md).
 
-**Last updated:** 2026-07-19
+| Field | Current value |
+|---|---|
+| Last updated | 2026-07-19 |
+| Last comprehensive review | 2026-06-11 |
+| Last targeted review | 2026-07-19 |
+| Review history | [`evidence-review-log.md`](evidence-review-log.md) |
+
+This library is not a flat endorsement of every cited claim. Evidence strength and applicability are
+assigned to the app's specific use in `evidence-basis.md`. Population thresholds, surrogate
+phenotypes, composite scores, local workflow choices, and device-specific rules must remain clearly
+distinguished.
 
 ---
 
@@ -97,7 +109,7 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 
 | Feature | Citation | How Used |
 |---------|----------|----------|
-| Ji 2026 clinical severity staging (neck + BMI + AHI) | Ji J, et al. "Clinical Severity Staging System and Response to HNS." *JAMA Otolaryngol.* 2026;:2844563. | HNS Stage I-IV with response rate prediction (91%→38%) |
+| Ji 2026 clinical severity staging (neck + BMI + AHI) | Ji J, et al. "Clinical Severity Staging System and Response to HNS." *JAMA Otolaryngol.* 2026;:2844563. | Source for qualitative HNS response context only. The app does not display the model's exact response percentages because it was a single-center model with modest discrimination, needs external validation, and includes a comorbidity-burden variable the app does not fully capture. |
 | Current FDA Inspire indication expansion (AHI 15-100, BMI ≤40, PAP/BiPAP intolerance required) | U.S. Food and Drug Administration. "Inspire Upper Airway Stimulation – P130008/S090." Approved June 8, 2023. | Inspire-specific gating: AHI 15-100, BMI ≤40, documented PAP failure/intolerance, and no complete concentric collapse (CCC) at the soft palate. Other devices require separate label review. |
 | Concentric palatal collapse contraindicates the **unilateral** Inspire device | U.S. Food and Drug Administration. "Inspire Upper Airway Stimulation – P130008/S090"; Strollo PJ, et al. "Upper-Airway Stimulation for OSA." *N Engl J Med.* 2014;370(2):139-49. | Device-specific evaluation: velar CCC contraindicates Inspire. The app does **not** automatically route CCC to another HGNS system or assume that every HGNS pathway uses identical testing; it requires current device-specific review. |
 | **Genio is FDA-approved for selected adults with moderate-to-severe OSA (AHI 15–65) after standard treatments failed, were not tolerated, or were not appropriate** | U.S. Food and Drug Administration. "Genio System 2.1 — P240024." Decision Aug 8, 2025; FDA Patient Information, P240024C; FDA Summary of Safety and Effectiveness Data, P240024B. | Genio/HGNS remains a conditional, device-specific option after standard treatments. Current US labeling states that safety and effectiveness have **not been established for BMI >32 or for complete concentric collapse**; the SSED states evidence was insufficient to establish the indication in CCC. |
@@ -139,12 +151,22 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 | Feature | Citation | How Used |
 |---------|----------|----------|
 | PAP cardiovascular outcome evidence is adherence-sensitive and not a categorical four-hour guarantee | McEvoy RD, et al. "CPAP for Prevention of Cardiovascular Events in Obstructive Sleep Apnea." *N Engl J Med.* 2016;375:919-931 (SAVE); Sánchez-de-la-Torre M, et al. "Adherence to CPAP Treatment and the Risk of Recurrent Cardiovascular Events: A Meta-Analysis." *JAMA.* 2023;330(13):1255-1265. PMID 37787793. | Replaces “4+ hours provides significant health protection” with “use PAP whenever you sleep; benefits generally increase with nightly duration” |
+
+## Nasal Obstruction and Treatment
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
 | Isolated nasal surgery improves symptoms, nasal resistance, and PAP use more consistently than it changes AHI | Correa EJ, et al. "Role of Nasal Surgery in Adult Obstructive Sleep Apnea: A Systematic Review." *Int Arch Otorhinolaryngol.* 2024;28(3):e310-e321. PMID 39268344. | Nasal treatment is described as an adjunct that improves airflow and treatment tolerance, not as a stand-alone OSA cure |
 | Septoplasty improves nasal-obstruction symptoms more reliably than medical therapy in appropriately selected adults | Carrie S, O'Hara J, Fouweather T, et al. "Clinical Effectiveness of Septoplasty Versus Medical Management for Nasal Airways Obstruction: Multicentre, Open Label, Randomised Controlled Trial." *BMJ.* 2023;383:e075445. https://doi.org/10.1136/bmj-2023-075445 | When a normal home study coexists with clinically meaningful obstruction and structural septal deviation, a clinician-confirmed nasal-first plan can be presented as a reasonable active pathway. The report does not claim that septoplasty treats occult OSA or guarantees resolution of fatigue or snoring. |
 | NOSE symptom severity bands and clinically meaningful obstruction threshold | Lipan MJ, Most SP. "Development of a Severity Classification System for Subjective Nasal Obstruction." *JAMA Facial Plast Surg.* 2013;15(5):358-361. PMID 23846399. | NOSE is the primary symptom signal when completed: 5-25 mild, 30-50 moderate, 55-75 severe, 80-100 extreme. The yes/no nasal-obstruction item is a fallback only when NOSE is unavailable. |
 | Nasal surgery can improve PAP use and may reduce required pressure in selected patients with obstruction | Camacho M, Riaz M, Capasso R, et al. "The Effect of Nasal Surgery on Continuous Positive Airway Pressure Device Use and Therapeutic Treatment Pressures: A Systematic Review and Meta-Analysis." *Sleep.* 2015;38(2):279-286. https://doi.org/10.5665/sleep.4414; Poirier J, et al. *Laryngoscope.* 2014;124(1):317-319. PMID 23575772; Kim SD, et al. *Sci Rep.* 2023. PMID 36928588. | For a current PAP user with meaningful nasal obstruction, nasal treatment is prioritized for comfort and adherence. The report says pressure may decrease in selected patients, not that it will decrease for every patient. |
 | Safe nasal irrigation requires distilled, sterile, or previously boiled and cooled water | U.S. Food and Drug Administration. "Is Rinsing Your Sinuses With Neti Pots Safe?" Content current Apr 28, 2025. | Adds a safe-water instruction wherever the patient checklist recommends saline irrigation |
 | Intranasal steroid treatment can improve nasal resistance and symptoms in selected adults with rhinitis, but is not a guaranteed snoring or stand-alone OSA treatment | Kiely JL, Nolan P, McNicholas WT. "Intranasal Corticosteroid Therapy for Obstructive Sleep Apnoea in Patients With Co-existing Rhinitis." *Thorax.* 2004;59(1):50-55. PMID 14694248. | The nasal action module conditions steroid-spray guidance on clinician recommendation, emphasizes consistent technique, and does not promise that nasal medication will cure snoring or OSA |
+
+## Patient Behavior and PAP Counseling
+
+| Feature | Citation | How Used |
+|---------|----------|----------|
 | Moderate alcohol exposure can worsen obstructive breathing during sleep in susceptible adults | Scanlan MF, Roebuck T, Little PJ, Redman JR, Naughton MT. "Effect of Moderate Alcohol Upon Obstructive Sleep Apnoea." *Eur Respir J.* 2000;16(5):909-913. PMID 11153591. | When frequent alcohol use near bedtime is documented and the lifestyle pathway is confirmed, the action plan recommends reducing or avoiding alcohol near bedtime without promising a uniform response |
 | PAP education, behavioral support, troubleshooting, and telemonitoring-guided intervention are evidence-based components of PAP care | Patil SP, Ayappa IA, Caples SM, Kimoff RJ, Patel SR, Harrod CG. "Treatment of Adult Obstructive Sleep Apnea With Positive Airway Pressure: An American Academy of Sleep Medicine Clinical Practice Guideline." *J Clin Sleep Med.* 2019;15(2):335-343. PMID 30736887. | The PAP comfort module maps documented mask, leak, dryness, pressure, acclimation, skin, symptom-response, and travel barriers to specific troubleshooting steps instead of generic adherence language |
 | PAP usage is reliably measured, but manufacturer-reported residual events and leak are not standardized and intermediate values are difficult to interpret in isolation | Schwab RJ, et al. "An Official American Thoracic Society Statement: Continuous Positive Airway Pressure Adherence Tracking Systems." *Am J Respir Crit Care Med.* 2013;188(5):613-620. PMID 23992588. | The patient plan recommends clinician review of compliance data rather than autonomous setting changes; the PAP compliance roadmap requires vendor-aware interpretation and staff verification |
@@ -266,7 +288,12 @@ re-calibrated to match the strength of evidence (features kept; confidence right
 ## Adding New Citations
 
 When incorporating new clinical evidence:
-1. Add the citation to the appropriate section above
-2. Note the specific feature/threshold it supports in "How Used"
-3. Reference the citation in code comments where the logic is implemented
-4. Update the "Last updated" date at the top of this document
+1. Identify or create the affected Logic ID in [`evidence-basis.md`](evidence-basis.md).
+2. Verify the primary publication, guideline, or regulatory document. Do not cite an AI summary as evidence.
+3. Add the citation to the appropriate section above.
+4. State the exact feature, threshold, wording, or safety boundary supported in "How Used."
+5. State important population, device, outcome, and indirectness limitations in the evidence register.
+6. Reference the citation in code comments and `js/config.js` threshold notes where applicable.
+7. Add a regression case and a clinically plausible counterexample.
+8. Record the search and decision in [`evidence-review-log.md`](evidence-review-log.md), including reviews that result in no change.
+9. Update the review dates and the frozen build identifier after clinician review and verification.

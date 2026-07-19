@@ -161,6 +161,9 @@ run_today_plan_pdf_suite() {
 
 TOTAL_PASSED=0
 
+EVIDENCE_PASSED="$(node "${REPO_ROOT}/tests/evidence-documentation.cjs")"
+TOTAL_PASSED=$((TOTAL_PASSED + EVIDENCE_PASSED))
+
 PARSER_PASSED="$(node "${REPO_ROOT}/tests/watchpat-parser-integration.cjs")"
 TOTAL_PASSED=$((TOTAL_PASSED + PARSER_PASSED))
 
