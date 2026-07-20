@@ -1618,4 +1618,4 @@
 - workspace preference is stored per authenticated staff email, and every interactive form control has a programmatic accessible name
 - a 1440-pixel populated MA view confirmed clear readiness hierarchy, compact state labels, usable spacing, and a persistent save action without obscuring the form
 - the complete headless suite passed **1,899 assertions**
-**Finding:** fixed locally. MA preparation now ends in a trustworthy saved handoff, clinician corrections no longer require navigating the entire chart, and report generation cannot silently outrun chart persistence. No phenotype, threshold, diagnostic-routing, treatment-ranking, or patient-report logic changed. Deployment remains pending final verification.
+**Finding:** fixed and deployed in clinical-pilot build `dfca26e`. MA preparation now ends in a trustworthy saved handoff, clinician corrections no longer require navigating the entire chart, and report generation cannot silently outrun chart persistence. No phenotype, threshold, diagnostic-routing, treatment-ranking, or patient-report logic changed.

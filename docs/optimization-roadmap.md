@@ -24,8 +24,10 @@ formal clinical validation.
   Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,899
   assertions. One report-specificity defect was fixed in the first batch: an unspecified PAP mode
   now remains generic in Today's Sleep Plan. The second batch found no clinical-routing defect.
-- [ ] If approved, update the evidence-review decision and reviewed build, deploy the hosted frontend,
-  invalidate CloudFront, and verify the signed-in build identifier and all five encounters.
+- [x] Deploy the role-workflow build, invalidate CloudFront, and verify build `dfca26e` plus the MA
+  handoff, focused correction, and persistent chart-state controls at the hosted pilot URL.
+- [ ] Complete formal evidence-register sign-off for the already implemented non-PAP response and
+  COMISA calibration before changing the current NO GO decision for routine real-PHI use.
 - [ ] Begin a limited pilot with synthetic data, then a small number of current sleep patients only
   after Dr. Brown confirms the clinical output and MA workflow.
 

@@ -3,11 +3,11 @@
 **Current decision:** NO GO for real PHI until the remaining human and synthetic-workflow gates below are complete.  
 **Environment:** Isolated clinician-only clinical pilot  
 **Pilot URL:** https://d3fgk3yvbi0jvr.cloudfront.net  
-**Latest deployed code candidate:** `674f414`
+**Latest deployed code candidate:** `dfca26e`
 **Stack:** `osa-phenotyper-capital-ent-precision-sleep-pilot`  
 **AWS region:** `us-east-2` (CloudFront WAF resources in `us-east-1`)  
 **Initial administrator:** `drbrown@capitalent.com`  
-**Deployment date:** 2026-07-16
+**Latest deployment date:** 2026-07-20
 
 This record documents technical verification. It is not a declaration of HIPAA compliance and does not replace Capital ENT's organizational risk analysis, policies, training, or approval.
 
@@ -79,6 +79,17 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 - PAP compliance and DISE modules surface when visit context or existing data makes them relevant and remain accessible on demand at other visits.
 - The complete local regression suite passed 1,879 assertions; lint and evidence-documentation integrity checks passed.
 - Live CloudFront verification confirmed build `674f414`, the role switch controls, and the versioned workspace script at the pilot URL.
+
+### MA handoff and P1 workflow update, 2026-07-20
+
+- Build `dfca26e` adds an explicit saved MA readiness and clinician-handoff state with preparer and timestamp provenance.
+- Required preparation and clinician-owned decisions are separate. Plan confirmation does not block MA completion, and later Prep source-data edits invalidate the prior handoff until it is reviewed and saved again.
+- Clinician briefing corrections open only the selected questionnaire, sleep-study, or treatment-history source section and support Save and return or Return without saving.
+- A persistent chart-state bar distinguishes unsaved, saving, saved, and failed states. Persisted charts cannot generate a report from unsaved data and warn before chart switches, sign-out, or page exit.
+- Workspace preference is scoped to the authenticated staff email, and all interactive controls now have programmatic accessible names.
+- No clinical threshold, phenotype, diagnostic route, treatment ranking, or patient-report rule changed.
+- The complete local regression suite passed 1,899 assertions; syntax, lint, evidence-integrity, and diff checks passed.
+- Live CloudFront verification confirmed build `dfca26e` and the MA handoff, focused correction, and persistent chart-state controls at the pilot URL.
 
 ## Required synthetic rehearsal
 

@@ -107,9 +107,11 @@ single-use intake link and receive clinician-approved reports rather than access
   appears when the mode is documented.
 
 ### Deployment status
-- The clinical pilot and hypoxic-burden separation are deployed and verified on AWS.
-- Commits `1c1c6cf` and `063d108` are pushed but intentionally **not deployed** pending clinician
-  review of non-PAP response and COMISA calibration.
+- Build `dfca26e` is deployed and verified on the existing clinician-only AWS clinical pilot. It
+  includes the role workspaces, saved MA handoff, focused clinician corrections, and persistence
+  safeguards described above.
+- The non-PAP response and COMISA code is present in the pilot testing build, but formal
+  evidence-register sign-off remains open before routine real-PHI use.
 - The patient portal and autonomous PAP-setting concepts remain out of scope for this clinician-only
   pilot.
 
