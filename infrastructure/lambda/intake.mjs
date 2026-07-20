@@ -404,6 +404,17 @@ function validateIntakeData(body) {
   const errors = [];
   const data = {};
 
+  // TX-09: patient-stated visit goal is local workflow context, not a diagnosis
+  // or autonomous treatment selection. The clinician remains the decision-maker.
+  const visitReasons = new Set([
+    'snoring', 'symptoms', 'new-diagnosis', 'transfer-pap', 'pap-troubleshoot',
+    'restart-pap', 'oral-appliance', 'inspire', 'surgery', 'non-pap',
+    'precision-onboarding', 'follow-up'
+  ]);
+  const visitReason = stripHtml(String(body.visitReason || ''));
+  if (!visitReasons.has(visitReason)) errors.push('visitReason');
+  else data.visitReason = visitReason;
+
   // ── Demographics (required) ──────────────────────────────
   if (body.sex !== 'M' && body.sex !== 'F') {
     errors.push('sex');
@@ -818,7 +829,7 @@ function validateIntakeData(body) {
 
   // ── Reject unexpected top-level fields ───────────────────
   const allowedKeys = new Set([
-    'sex', 'heightInches', 'weightLbs',
+    'visitReason', 'sex', 'heightInches', 'weightLbs',
     'ess', 'isi', 'nose',
     'nasalObs', 'snoringReported', 'alcoholNearBed',
     'preferences', 'priorTreatments', 'sleepStudyHistory', 'treatmentOutcomes',
@@ -868,6 +879,7 @@ function computeScores(data) {
  */
 function mapToFormData(data, scores) {
   const formData = {
+    visitReason:      data.visitReason,
     sex:              data.sex,
     bmi:              scores.bmi,
     ess:              scores.essTotal,

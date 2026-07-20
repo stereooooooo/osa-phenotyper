@@ -1619,3 +1619,17 @@
 - a 1440-pixel populated MA view confirmed clear readiness hierarchy, compact state labels, usable spacing, and a persistent save action without obscuring the form
 - the complete headless suite passed **1,899 assertions**
 **Finding:** fixed and deployed in clinical-pilot build `dfca26e`. MA preparation now ends in a trustworthy saved handoff, clinician corrections no longer require navigating the entire chart, and report generation cannot silently outrun chart persistence. No phenotype, threshold, diagnostic-routing, treatment-ranking, or patient-report logic changed.
+
+### Tests 230-234: Actionable readiness and scan-friendly briefing
+**Status:** local workflow, intake-mapping, clinician-control, accessibility, syntax, lint, and full regression testing complete
+**Result:** passed after the clinician and MA workflow refinement ✅
+**Verification:**
+- Clinician Review has one readiness surface in Visit Briefing; the duplicate top-level item count is confined to MA / Nurse Prep
+- vague pending labels were replaced by the exact missing action, and every task opens or focuses the control required to resolve it
+- questionnaire, sleep-study, and treatment-history summaries use compact metrics and labeled rows for faster review while retaining focused source correction
+- PAP compliance and DISE launchers use identical typography and remain available without crowding unrelated visits
+- initial patient intake now asks a required, plain-language main reason for the visit; the MA can correct the mapped chart value
+- the patient-stated reason can influence visit emphasis or draft suggestions but cannot select or confirm treatment
+- all clinical thresholds and phenotype logic remain unchanged
+- the complete headless suite passed **1,910 assertions**
+**Finding:** fixed locally. The change reduces duplicate status messaging, turns readiness into an actionable checklist, and moves visit context upstream to the patient without surrendering MA correction or clinician plan ownership. Clinician approval and deployment remain pending.

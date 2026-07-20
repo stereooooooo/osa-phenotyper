@@ -461,3 +461,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 227 | Focused clinician correction | Edit data from the briefing shows only the relevant questionnaire, sleep-study, or treatment-history source section, preserves dirty state, and returns to the prior clinician context after save or explicit return. |
 | 228 | Persistent save-state and report guard | Chart edits show Unsaved, save activity shows Saving, success shows Saved, and failures remain actionable. Existing charts cannot generate a report from unsaved data and warn before chart switching, sign-out, or page exit. |
 | 229 | Account-scoped preference and accessible controls | Workspace mode is stored by authenticated staff email, not globally. Every interactive form control has a programmatic accessible name, and the workflow-only changes preserve clinical-output behavior. |
+
+### Group 51: Actionable Readiness And Scan-Friendly Briefing
+| # | Name | Key Features |
+|---|---|---|
+| 230 | Single clinician readiness surface | Clinician Review shows readiness once inside Visit Briefing. The separate MA handoff panel remains available in Prep without duplicating the same item count on the clinician page. |
+| 231 | Action-specific pending-task navigation | Pending work uses concrete labels such as Add reason for visit, Review questionnaire, Review sleep study, and Confirm imported information. Each item is a keyboard-accessible button that opens or focuses the exact completion control. |
+| 232 | Scan-friendly clinician briefing | Symptoms, questionnaire scores, sleep-study severity and quality measures, treatment status, PAP download status, and safety context use compact metrics plus labeled rows rather than sentence-heavy summaries. Focused Edit data access remains available. |
+| 233 | Consistent optional-tool launchers | Add PAP compliance report and Open DISE fields use the same type size, weight, line height, and control hierarchy while remaining contextual optional tools. |
+| 234 | Patient-stated initial visit reason and counterexample | Initial intake requires a plain-language reason for the visit and maps it to chart context for MA correction. The answer may guide emphasis or draft suggestions but cannot select or confirm treatment, which provides the counterexample to treating a patient request as a clinical plan. |

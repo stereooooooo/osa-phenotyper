@@ -82,6 +82,7 @@ async function run() {
   assertEqual(win.OSAWorkspaceView.getMode(), 'clinician', 'Clinician review is the default chart workspace');
   assertEqual(doc.querySelector('[data-workspace-mode-button="clinician"]').getAttribute('aria-pressed'), 'true', 'Active workspace is announced to assistive technology');
   assert(!doc.getElementById('clinicianBriefing').hidden, 'Clinician review starts with a concise visit briefing');
+  assert(doc.getElementById('prepHandoffPanel').hidden, 'Clinician review shows readiness once instead of repeating the MA handoff panel');
   assert(doc.getElementById('cardPatientInfo').hidden, 'Clinician review hides raw staff-preparation controls');
   assert(doc.getElementById('cardPapCompliance').hidden, 'PAP compliance fields stay hidden when the visit has no PAP context');
   assert(!doc.getElementById('btnOpenPapReview').hidden, 'PAP compliance review remains available as an optional tool');
@@ -106,8 +107,14 @@ async function run() {
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'home-created chart opens');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Home-created chart opens with its identity data');
   assertEqual(doc.querySelector('[name="age"]').value, '42', 'Age is calculated automatically from date of birth');
-  setValue(win, '#patientMrn', 'WF-001');
+  const reasonTask = Array.from(doc.querySelectorAll('#clinicianBriefingContent [data-readiness-task]')).find(button => button.textContent.includes('Add reason for visit'));
+  assert(!!reasonTask, 'Clinician readiness names the missing task in plain language');
+  reasonTask.click();
+  assert(!doc.getElementById('cardVisitContext').hidden, 'Clicking the missing visit-reason task opens the exact field that needs completion');
   setValue(win, '[name="visitReason"]', 'new-diagnosis');
+  click(win, '#btnFocusedEditReturn');
+  await waitFor(() => win.OSAWorkspaceView.getMode() === 'clinician', 'visit-reason edit return');
+  setValue(win, '#patientMrn', 'WF-001');
   setValue(win, '[name="sex"]', 'M');
   setValue(win, '[name="bmi"]', '32');
   setValue(win, '[name="neck"]', '17');
@@ -130,6 +137,11 @@ async function run() {
   click(win, '[data-workspace-mode-button="prep"]');
   assertEqual(doc.querySelector('.osa-progress-step[data-section="demographics"]').dataset.readinessState, 'ready', 'Progress track marks demographics ready only after core fields are complete');
   assertEqual(doc.querySelector('.osa-progress-step[data-section="treatment"]').dataset.readinessState, 'in-progress', 'A partially reviewed treatment history is shown as in progress rather than complete');
+  const sourceTask = Array.from(doc.querySelectorAll('#prepReadinessList [data-readiness-task]')).find(button => button.textContent.includes('Confirm imported information'));
+  assert(!!sourceTask, 'MA readiness uses a specific source-confirmation task label');
+  sourceTask.click();
+  await wait(50);
+  assertEqual(doc.activeElement, doc.getElementById('maSourceReviewToggle'), 'Clicking source confirmation moves focus to its completion control');
   click(win, '#maSourceReviewToggle');
   await waitFor(() => !doc.getElementById('btnMarkPrepReady').disabled, `MA readiness checks complete (${JSON.stringify(win.OSAReadiness.getReadiness())})`);
   assert(!doc.getElementById('planConfirmed').checked, 'MA readiness does not require clinician plan confirmation');
@@ -145,8 +157,10 @@ async function run() {
   win.OSAWorkspaceView.refresh();
   await wait(100);
   const briefingText = doc.getElementById('clinicianBriefingContent').textContent;
-  assert(briefingText.includes('WatchPAT pAHI 28'), `Clinician briefing refreshes from current chart values${briefingText.includes('pAHI') ? '' : ` (got ${briefingText.trim().slice(0, 240)})`}`);
-  assert(briefingText.includes('NOSE 60'), 'Clinician briefing summarizes questionnaire findings without exposing raw controls');
+  assert(briefingText.includes('pAHI') && briefingText.includes('28'), `Clinician briefing refreshes from current chart values${briefingText.includes('pAHI') ? '' : ` (got ${briefingText.trim().slice(0, 240)})`}`);
+  const noseMetric = Array.from(doc.querySelectorAll('#clinicianBriefingContent .osa-briefing-metric')).find(metric => metric.querySelector('dt')?.textContent === 'NOSE');
+  assertEqual(noseMetric?.querySelector('dd')?.textContent.trim(), '60', 'Clinician briefing summarizes questionnaire findings without exposing raw controls');
+  assertEqual(doc.querySelectorAll('#clinicianBriefingContent .osa-briefing-metric').length >= 4, true, 'Clinician briefing presents available questionnaire and sleep-study values as scan-friendly metrics');
   assert(briefingText.includes('Currently using APAP'), 'Clinician briefing summarizes current treatment status');
   assert(briefingText.includes('MA preparation handed off'), 'Clinician briefing separates saved MA preparation from clinician decisions');
   const questionnaireEdit = doc.querySelector('[data-workspace-edit-target="#cardQuestionnaires"]');
@@ -163,6 +177,7 @@ async function run() {
   assertEqual(doc.querySelector('[name="alcoholNearBed"]').value, 'social-only', 'Focused correction saves the edited source value');
   assert(doc.getElementById('focusedEditBar').hidden, 'Save and return restores clinician review after persistence succeeds');
   assert(doc.getElementById('cardPapCompliance').hidden, 'Current PAP history alone does not force the large compliance module into an unrelated visit');
+  assertEqual(win.getComputedStyle(doc.getElementById('btnOpenPapReview')).fontSize, win.getComputedStyle(doc.getElementById('btnOpenDise')).fontSize, 'Optional PAP and DISE buttons use the same text size');
   click(win, '#btnOpenPapReview');
   assert(!doc.getElementById('cardPapCompliance').hidden, 'Optional PAP launcher reveals the compliance module for a patient who brings a report');
   await waitFor(() => doc.getElementById('collapsePapCompliance').classList.contains('show'), 'PAP compliance module expansion');
@@ -328,6 +343,8 @@ async function run() {
   await waitFor(() => intakeFrame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'patient intake form');
   const intakeWin = intakeFrame.contentWindow;
   const intakeDoc = intakeFrame.contentDocument;
+  assert(intakeDoc.querySelector('#visitReason option[value="pap-troubleshoot"]').textContent.includes('I use PAP'), 'New-patient visit reasons use patient-facing language');
+  setValue(intakeWin, '#visitReason', 'pap-troubleshoot');
   setValue(intakeWin, '#sex', 'F');
   setValue(intakeWin, '#heightFeet', '5');
   setValue(intakeWin, '#heightInches', '6');
@@ -381,6 +398,8 @@ async function run() {
   click(intakeWin, '#submitBtn');
   await waitFor(() => intakeDoc.getElementById('stateThankYou').classList.contains('intake-state--active'), 'patient intake submitted');
   const intakeSubmission = intakeWin.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();
+  assertEqual(intakeSubmission.payload.visitReason, 'pap-troubleshoot', 'Patient-stated visit reason is included in the structured intake submission');
+  assert(!Object.keys(intakeSubmission.payload).some(key => key.startsWith('plan')), 'Patient-stated visit reason cannot select or confirm a treatment plan');
   assert(intakeSubmission.payload.cardiovascularHistory.hasCvd, 'Intake records cardiovascular disease history');
   assertEqual(intakeSubmission.payload.cardiovascularHistory.echoHistory, 'yes', 'Intake records prior echocardiogram');
   assertEqual(intakeSubmission.payload.cardiovascularHistory.resultKnowledge, 'unknown', 'Intake accepts an unknown echo result without asking the patient to guess LVEF');

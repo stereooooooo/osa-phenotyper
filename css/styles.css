@@ -1343,19 +1343,25 @@ fieldset legend {
   font-weight: 600;
 }
 .osa-attention-chip {
+  border: 0;
   background: #fff7ed;
   color: #8a3e12;
+  text-align: left;
 }
-.osa-attention-chip i { font-size: 0.35rem; }
+.osa-attention-chip:hover { background: #ffedd5; color: #71360f; }
+.osa-attention-chip i { font-size: 0.72rem; }
 .osa-attention-clear {
   background: #ecfdf3;
   color: #17663a;
 }
 .osa-clinician-task-chip {
+  border: 0;
   background: #eef4fb;
   color: #214f7c;
+  text-align: left;
 }
-.osa-clinician-task-chip i { font-size: 0.55rem; }
+.osa-clinician-task-chip:hover { background: #ddeaf7; color: #173d64; }
+.osa-clinician-task-chip i { font-size: 0.72rem; }
 .osa-briefing-sections {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1389,33 +1395,74 @@ fieldset legend {
   font-weight: 650;
 }
 .osa-briefing-edit:hover { color: var(--osa-crimson); }
-.osa-briefing-sections ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.osa-briefing-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0 0 0.65rem;
 }
-.osa-briefing-fact {
-  padding: 0.4rem 0;
+.osa-briefing-metric {
+  min-width: 0;
+  padding: 0.42rem 0.48rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+.osa-briefing-metric dt {
+  color: #718096;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.osa-briefing-metric dd {
+  margin: 0.12rem 0 0;
+  color: var(--osa-navy);
+  font-size: 0.96rem;
+  font-weight: 750;
+  line-height: 1.1;
+}
+.osa-briefing-metric dd small {
+  margin-left: 0.1rem;
+  color: #526174;
+  font-size: 0.64rem;
+  font-weight: 600;
+}
+.osa-briefing-details { margin: 0; }
+.osa-briefing-detail {
+  display: grid;
+  grid-template-columns: minmax(5.6rem, 0.38fr) minmax(0, 1fr);
+  gap: 0.55rem;
+  padding: 0.38rem 0;
   border-top: 1px solid #eef1f5;
 }
-.osa-briefing-fact:first-child { border-top: 0; }
-.osa-briefing-fact > span {
-  display: block;
-  margin-bottom: 0.08rem;
+.osa-briefing-detail dt {
   color: #718096;
-  font-size: 0.75rem;
+  font-size: 0.69rem;
   font-weight: 650;
 }
-.osa-briefing-fact > strong {
-  display: block;
+.osa-briefing-detail dd {
+  margin: 0;
   color: #334155;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 560;
-  line-height: 1.42;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
-.osa-briefing-fact--attention > strong { color: #8a3e12; }
-.osa-briefing-fact--info > strong { color: #214f7c; }
+.osa-briefing-detail--attention dd { color: #8a3e12; }
+.osa-briefing-detail--info dd { color: #214f7c; }
+.osa-briefing-study-type {
+  margin: -0.05rem 0 0.45rem;
+  color: #526174;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+.osa-briefing-empty {
+  margin: 0 0 0.55rem;
+  color: #718096;
+  font-size: 0.72rem;
+}
 .osa-briefing-handoff {
   display: flex;
   align-items: center;
@@ -1464,6 +1511,22 @@ fieldset legend {
   color: #526174;
   font-size: 0.72rem;
 }
+.osa-context-tools .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.osa-context-tools .btn span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
 
 .osa-prep-handoff {
   margin-bottom: 1rem;
@@ -1511,12 +1574,17 @@ fieldset legend {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.45rem;
+  width: 100%;
   min-width: 0;
   padding: 0.55rem 0.65rem;
   border: 1px solid #dfe5ec;
   border-radius: 7px;
   background: #f9fbfd;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
+.osa-prep-readiness-item:hover { border-color: #b9c8d8; background: #f3f7fb; }
 .osa-prep-readiness-item__icon { color: #9a5b10; }
 .osa-prep-readiness-item--ready .osa-prep-readiness-item__icon { color: #248451; }
 .osa-prep-readiness-item strong,
@@ -1596,6 +1664,8 @@ fieldset legend {
 .osa-focused-edit-bar button:focus-visible,
 .osa-chart-state-bar button:focus-visible,
 .osa-prep-handoff button:focus-visible,
+.osa-attention-chip:focus-visible,
+.osa-clinician-task-chip:focus-visible,
 .osa-source-review-check input:focus-visible {
   outline: 2px solid var(--osa-crimson);
   outline-offset: 2px;

@@ -21,8 +21,9 @@ formal clinical validation.
   change (`063d108`). Both are pushed and tested but not deployed.
 - [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
   clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
-  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,899
-  assertions. One report-specificity defect was fixed in the first batch: an unspecified PAP mode
+  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,910
+  assertions.
+  One report-specificity defect was fixed in the first batch: an unspecified PAP mode
   now remains generic in Today's Sleep Plan. The second batch found no clinical-routing defect.
 - [x] Deploy the role-workflow build, invalidate CloudFront, and verify build `dfca26e` plus the MA
   handoff, focused correction, and persistent chart-state controls at the hosted pilot URL.
@@ -32,6 +33,12 @@ formal clinical validation.
   after Dr. Brown confirms the clinical output and MA workflow.
 
 ### Near-term clinical and MA experience
+- [x] Remove duplicate clinician readiness messaging, replace vague pending categories with precise
+  navigable tasks, and convert the clinician briefing from sentence-heavy summaries to compact
+  metrics and labeled rows. Keep the full handoff checklist in MA / Nurse Prep.
+- [x] Move the initial reason for visit into the patient questionnaire using plain-language choices,
+  preserve MA correction, and prevent that answer from selecting or confirming treatment.
+- [x] Normalize optional PAP compliance and DISE launcher typography.
 - [x] Replace the monolithic chart with role-optimized `MA / Nurse Prep`, `Clinician Review`, and
   `Full Chart` workspaces. Clinician Review now opens to a concise briefing and clinician-owned
   exam and plan tasks. Prep emphasizes source-data entry and verification. PAP and DISE tools surface

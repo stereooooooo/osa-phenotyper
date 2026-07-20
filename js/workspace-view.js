@@ -13,6 +13,7 @@
   const papLauncher = document.getElementById('btnOpenPapReview');
   const papLauncherLabel = document.getElementById('btnOpenPapReviewLabel');
   const diseLauncher = document.getElementById('btnOpenDise');
+  const diseLauncherLabel = document.getElementById('btnOpenDiseLabel');
   const diseColumn = document.getElementById('diseColumn');
   const physicalExamColumn = document.getElementById('physicalExamColumn');
   const prepReadinessList = document.getElementById('prepReadinessList');
@@ -166,29 +167,36 @@
 
   function getReadiness() {
     const tasks = [];
-    const addTask = (id, label, state, detail) => tasks.push({ id, label, state, detail });
+    const addTask = (id, label, state, detail, action = {}) => tasks.push({ id, label, state, detail, ...action });
     const identityMissing = [];
     if (!document.getElementById('patientName')?.value.trim()) identityMissing.push('patient name');
     if (!document.getElementById('patientDob')?.value) identityMissing.push('date of birth');
     if (!value('visitReason')) identityMissing.push('reason for visit');
-    addTask('identity', 'Patient and visit', identityMissing.length ? 'blocked' : 'ready', identityMissing.length ? `Missing ${identityMissing.join(', ')}` : 'Identity and visit goal documented');
+    const identityLabel = identityMissing.length === 1 && identityMissing[0] === 'reason for visit'
+      ? 'Add reason for visit'
+      : identityMissing.length
+        ? 'Complete patient details'
+        : 'Patient and visit complete';
+    addTask('identity', identityLabel, identityMissing.length ? 'blocked' : 'ready', identityMissing.length ? `Missing ${identityMissing.join(', ')}` : 'Identity and visit goal documented', {
+      target: identityMissing.includes('patient name') || identityMissing.includes('date of birth') ? '#cardPatientInfo' : '#cardVisitContext'
+    });
 
     const demographicsMissing = [];
     if (!value('sex')) demographicsMissing.push('sex');
     if (!value('bmi')) demographicsMissing.push('BMI');
-    addTask('demographics', 'Core demographics', demographicsMissing.length ? 'blocked' : 'ready', demographicsMissing.length ? `Missing ${demographicsMissing.join(', ')}` : 'Sex, BMI, and derived age available');
+    addTask('demographics', demographicsMissing.length ? 'Complete core demographics' : 'Core demographics complete', demographicsMissing.length ? 'blocked' : 'ready', demographicsMissing.length ? `Missing ${demographicsMissing.join(', ')}` : 'Sex, BMI, and derived age available', { target: '#cardDemographics' });
 
     const questionnaireReady = hasValue('ess') || sourceReviewComplete();
-    addTask('questionnaire', 'Questionnaire review', questionnaireReady ? 'ready' : 'blocked', questionnaireReady ? (hasValue('ess') ? 'ESS documented' : 'Blank scores verified as intentional') : 'ESS not entered or verified as intentionally unavailable');
+    addTask('questionnaire', questionnaireReady ? 'Questionnaire reviewed' : 'Review questionnaire', questionnaireReady ? 'ready' : 'blocked', questionnaireReady ? (hasValue('ess') ? 'ESS documented' : 'Blank scores verified as intentional') : 'ESS not entered or verified as intentionally unavailable', { target: '#cardQuestionnaires' });
 
     const studyState = getSectionStatus('sleep-study');
-    addTask('study', 'Sleep-study source', ['ready', 'not-required'].includes(studyState.state) ? 'ready' : 'blocked', studyState.state === 'not-required' ? 'No study expected for this pre-study visit' : studyState.state === 'ready' ? 'Primary study metric documented' : 'Primary AHI or pAHI is missing');
+    addTask('study', ['ready', 'not-required'].includes(studyState.state) ? 'Sleep study reviewed' : 'Review sleep study', ['ready', 'not-required'].includes(studyState.state) ? 'ready' : 'blocked', studyState.state === 'not-required' ? 'No study expected for this pre-study visit' : studyState.state === 'ready' ? 'Primary study metric documented' : 'Primary AHI or pAHI is missing', { target: '#studyTypeSelector' });
 
-    addTask('source', 'Source review', sourceReviewComplete() ? 'ready' : 'blocked', sourceReviewComplete() ? 'Questionnaire, history, and imported values reviewed' : 'Confirm that remaining blanks are intentional');
+    addTask('source', sourceReviewComplete() ? 'Imported information confirmed' : 'Confirm imported information', sourceReviewComplete() ? 'ready' : 'blocked', sourceReviewComplete() ? 'Questionnaire, history, and imported values reviewed' : 'Review imported values and confirm that remaining blanks are intentional', { action: 'source-review' });
 
     const intakeConflict = !document.getElementById('btnReviewIntake')?.classList.contains('d-none');
     const followupPending = !document.getElementById('followupReviewBadge')?.classList.contains('d-none');
-    addTask('conflicts', 'Pending source conflicts', intakeConflict || followupPending ? 'blocked' : 'ready', intakeConflict ? 'Patient intake changes need review' : followupPending ? 'Follow-up questionnaire needs review' : 'No unresolved intake or follow-up conflicts');
+    addTask('conflicts', intakeConflict ? 'Review patient questionnaire changes' : followupPending ? 'Review follow-up questionnaire' : 'Questionnaire changes resolved', intakeConflict || followupPending ? 'blocked' : 'ready', intakeConflict ? 'Patient intake changes need review' : followupPending ? 'Follow-up questionnaire needs review' : 'No unresolved intake or follow-up conflicts', { action: intakeConflict ? 'review-intake' : followupPending ? 'review-followup' : '' });
 
     const warnings = [];
     if (!document.getElementById('lvefNeededBadge')?.classList.contains('d-none') || value('lvefFollowupNeeded') === 'on') warnings.push('Echo or LVEF remains a clinician-visible follow-up item');
@@ -225,10 +233,10 @@
       : '<i class="bi bi-exclamation-circle" aria-hidden="true"></i>';
 
     prepReadinessList.innerHTML = readiness.tasks.map(task => `
-      <div class="osa-prep-readiness-item osa-prep-readiness-item--${task.state}">
+      <button type="button" class="osa-prep-readiness-item osa-prep-readiness-item--${task.state}" data-readiness-task="${escapeHtml(task.id)}">
         <span class="osa-prep-readiness-item__icon">${stateIcon(task.state)}</span>
         <span><strong>${escapeHtml(task.label)}</strong><small>${escapeHtml(task.detail)}</small></span>
-      </div>`).join('');
+      </button>`).join('');
 
     if (handoffReady) {
       prepHandoffStatus.textContent = 'Ready for clinician';
@@ -259,10 +267,14 @@
       : readiness.warnings.join(' ');
   }
 
-  function fact(label, detail, options = {}) {
-    const tone = options.tone ? ` osa-briefing-fact--${options.tone}` : '';
-    const detailHtml = options.html ? detail : escapeHtml(detail);
-    return `<li class="osa-briefing-fact${tone}"><span>${escapeHtml(label)}</span><strong>${detailHtml}</strong></li>`;
+  function metric(label, detail, unit = '') {
+    if (detail === '') return '';
+    return `<div class="osa-briefing-metric"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(detail)}${unit ? `<small>${escapeHtml(unit)}</small>` : ''}</dd></div>`;
+  }
+
+  function detailRow(label, detail, options = {}) {
+    const tone = options.tone ? ` osa-briefing-detail--${options.tone}` : '';
+    return `<div class="osa-briefing-detail${tone}"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(detail)}</dd></div>`;
   }
 
   function joinOrFallback(items, fallback) {
@@ -303,9 +315,7 @@
     physicalExamColumn.classList.toggle('col-md-4', showDise);
     physicalExamColumn.classList.toggle('col-md-12', !showDise);
     if (diseLauncher) {
-      diseLauncher.innerHTML = hasDiseData()
-        ? '<i class="bi bi-images"></i> Review DISE findings'
-        : '<i class="bi bi-images"></i> Open DISE fields';
+      if (diseLauncherLabel) diseLauncherLabel.textContent = hasDiseData() ? 'Review DISE findings' : 'Open DISE fields';
       diseLauncher.classList.toggle('btn-outline-primary', hasDiseData() || isDiseVisit());
       diseLauncher.classList.toggle('btn-outline-secondary', !hasDiseData() && !isDiseVisit());
     }
@@ -347,39 +357,25 @@
     if (bmi) identity.push(`BMI ${bmi}`);
     if (neck) identity.push(`Neck ${neck} in`);
 
-    const questionnaireFacts = [];
-    if (value('ess')) questionnaireFacts.push(`ESS ${value('ess')}`);
-    if (value('isi')) questionnaireFacts.push(`ISI ${value('isi')}`);
-    if (value('noseScore')) questionnaireFacts.push(`NOSE ${value('noseScore')}`);
-    if (checked('snoringReported')) questionnaireFacts.push('Loud or bothersome snoring reported');
-    if (checked('nasalObs')) questionnaireFacts.push('Nasal obstruction reported');
+    const symptomFacts = [];
+    if (checked('snoringReported')) symptomFacts.push('Loud or bothersome snoring');
+    if (checked('nasalObs')) symptomFacts.push('Nasal obstruction');
 
     const studyType = selectedStudyType();
-    const studyFacts = [];
-    if (studyType === 'watchpat' || studyType === 'both') {
-      if (value('pahi')) studyFacts.push(`WatchPAT pAHI ${value('pahi')}`);
-      if (value('odi')) studyFacts.push(`ODI ${value('odi')}`);
-      if (value('nadir')) studyFacts.push(`oxygen nadir ${value('nadir')}%`);
-      if (value('tst')) studyFacts.push(`recorded sleep ${value('tst')} h`);
-      if (value('remPercent')) studyFacts.push(`REM ${value('remPercent')}%`);
-    }
-    if (studyType === 'psg' || studyType === 'both') {
-      if (value('ahi')) studyFacts.push(`Lab AHI ${value('ahi')}`);
-      if (value('odiPsg')) studyFacts.push(`lab ODI ${value('odiPsg')}`);
-      if (value('nadirPsg')) studyFacts.push(`lab oxygen nadir ${value('nadirPsg')}%`);
-      if (value('cai')) studyFacts.push(`central index ${value('cai')}`);
-    }
+    const watchpatStudy = studyType === 'watchpat' || studyType === 'both';
+    const psgStudy = studyType === 'psg' || studyType === 'both';
+    const studyHasMetrics = watchpatStudy
+      ? anyValue(['pahi', 'odi', 'nadir', 'tst', 'remPercent'])
+      : anyValue(['ahi', 'odiPsg', 'nadirPsg', 'cai']);
 
     const papMode = value('papMode') || value('papReviewMode') || 'PAP';
-    const treatmentFacts = [];
+    let papStatus = 'No prior PAP documented';
     if (checked('cpapCurrent')) {
-      treatmentFacts.push(`Currently using ${papMode}`);
+      papStatus = `Currently using ${papMode}`;
     } else if (checked('priorCpap')) {
-      treatmentFacts.push('Prior PAP trial, not currently using');
-    } else {
-      treatmentFacts.push('No prior PAP documented');
+      papStatus = 'Prior PAP trial, not currently using';
     }
-    if (value('cpapDifficulty') === 'yes') treatmentFacts.push('Current PAP difficulty reported');
+    if (value('cpapDifficulty') === 'yes') papStatus += ', difficulty reported';
 
     const priorTreatmentMap = [
       ['priorMAD', 'oral appliance'],
@@ -390,8 +386,6 @@
       ['priorInspire', 'nerve stimulator']
     ];
     const priorTreatments = priorTreatmentMap.filter(([name]) => checked(name)).map(([, label]) => label);
-    if (priorTreatments.length) treatmentFacts.push(`Prior: ${priorTreatments.join(', ')}`);
-
     const preferenceFacts = [];
     if (checked('prefAvoidCpap')) preferenceFacts.push('prefers to avoid PAP');
     if (checked('prefSurgery')) preferenceFacts.push('open to surgery');
@@ -433,13 +427,13 @@
     }
 
     const readiness = getReadiness();
-    const prepIssues = readiness.blockers.map(item => item.label);
+    const prepIssues = readiness.blockers;
     const clinicianTasks = [];
     if (!value('tonsils') || !value('ftp')) clinicianTasks.push('Complete physical exam');
     if (!checked('planConfirmed')) clinicianTasks.push('Confirm today\'s plan');
     if (!document.getElementById('lvefNeededBadge')?.classList.contains('d-none') || value('lvefFollowupNeeded') === 'on') clinicianTasks.push('Resolve echo or LVEF follow-up');
 
-    const hasPreparedData = Boolean(visitReason || questionnaireFacts.length || studyFacts.length || checked('priorCpap'));
+    const hasPreparedData = Boolean(visitReason || symptomFacts.length || studyHasMetrics || checked('priorCpap'));
     const handoffReady = handoffIsCurrent();
     briefingStatus.textContent = handoffReady
       ? 'MA handoff complete'
@@ -453,12 +447,15 @@
     const visitHeading = visitReason || 'Reason for visit not yet entered';
     const visitSubheading = visitDetail || joinOrFallback(identity, 'Demographics not yet complete');
     const prepHtml = prepIssues.length
-      ? prepIssues.slice(0, 6).map(item => `<span class="osa-attention-chip"><i class="bi bi-circle-fill"></i>${escapeHtml(item)}</span>`).join('')
+      ? prepIssues.slice(0, 6).map(item => `<button type="button" class="osa-attention-chip" data-readiness-task="${escapeHtml(item.id)}"><i class="bi bi-arrow-right-circle"></i>${escapeHtml(item.label)}</button>`).join('')
       : handoffReady
         ? '<span class="osa-attention-clear"><i class="bi bi-check-circle"></i> MA preparation handed off</span>'
         : '<span class="osa-attention-chip"><i class="bi bi-circle-fill"></i> Handoff not yet saved</span>';
     const clinicianTaskHtml = clinicianTasks.length
-      ? clinicianTasks.map(item => `<span class="osa-clinician-task-chip"><i class="bi bi-circle"></i>${escapeHtml(item)}</span>`).join('')
+      ? clinicianTasks.map(item => {
+          const target = item === 'Complete physical exam' ? '#cardPhysicalExam' : item === 'Confirm today\'s plan' ? '#cardVisitPlan' : '#cardTreatment';
+          return `<button type="button" class="osa-clinician-task-chip" data-jump-target="${target}"><i class="bi bi-arrow-right-circle"></i>${escapeHtml(item)}</button>`;
+        }).join('')
       : '<span class="osa-attention-clear"><i class="bi bi-check-circle"></i> No remaining clinician tasks</span>';
     const handoffMeta = value('maPrepPreparedBy') && value('maPrepReadyAt')
       ? `Prepared by ${value('maPrepPreparedBy')}, ${formatTimestamp(value('maPrepReadyAt'))}`
@@ -482,31 +479,46 @@
             <h3>Symptoms and questionnaire</h3>
             <button type="button" class="osa-briefing-edit" data-workspace-edit-target="#cardQuestionnaires">Edit data</button>
           </div>
-          <ul>
-            ${fact('Patient report', joinOrFallback(questionnaireFacts, 'No questionnaire findings entered'))}
-            ${fact('Preferences', joinOrFallback(preferenceFacts, 'No treatment preferences documented'))}
-          </ul>
+          <dl class="osa-briefing-metrics">
+            ${metric('ESS', value('ess'))}
+            ${metric('ISI', value('isi'))}
+            ${metric('NOSE', value('noseScore'))}
+          </dl>
+          <dl class="osa-briefing-details">
+            ${detailRow('Symptoms', joinOrFallback(symptomFacts, 'None documented'))}
+            ${detailRow('Preferences', joinOrFallback(preferenceFacts, 'None documented'))}
+          </dl>
         </section>
         <section>
           <div class="osa-briefing-section-title">
             <h3>Sleep study</h3>
             <button type="button" class="osa-briefing-edit" data-workspace-edit-target="#studyTypeSelector">Edit data</button>
           </div>
-          <ul>
-            ${fact('Study findings', joinOrFallback(studyFacts, 'No sleep study metrics entered'))}
-            ${fact('Testing context', joinOrFallback(safetyFlags, 'No special sleep-test selection risks documented'), { tone: safetyFlags.length ? 'attention' : '' })}
-          </ul>
+          <div class="osa-briefing-study-type">${escapeHtml(studyType === 'watchpat' ? 'WatchPAT home study' : studyType === 'psg' ? 'In-lab sleep study' : 'Home and in-lab studies')}</div>
+          <dl class="osa-briefing-metrics">
+            ${metric(watchpatStudy ? 'pAHI' : 'AHI', watchpatStudy ? value('pahi') : value('ahi'))}
+            ${metric('ODI', watchpatStudy ? value('odi') : value('odiPsg'))}
+            ${metric('Oxygen nadir', watchpatStudy ? value('nadir') : value('nadirPsg'), '%')}
+            ${metric('Sleep time', watchpatStudy ? value('tst') : '', ' h')}
+            ${metric('REM sleep', watchpatStudy ? value('remPercent') : '', '%')}
+            ${metric('Central index', psgStudy ? value('cai') : '')}
+          </dl>
+          ${studyHasMetrics ? '' : '<p class="osa-briefing-empty">No sleep study metrics entered</p>'}
+          <dl class="osa-briefing-details">
+            ${detailRow('Testing context', joinOrFallback(safetyFlags, 'No special selection risks documented'), { tone: safetyFlags.length ? 'attention' : '' })}
+          </dl>
         </section>
         <section>
           <div class="osa-briefing-section-title">
             <h3>Treatment history</h3>
             <button type="button" class="osa-briefing-edit" data-workspace-edit-target="#cardTreatment">Edit data</button>
           </div>
-          <ul>
-            ${fact('Treatment', treatmentFacts.join('; '))}
-            ${fact('PAP download', papFacts.length ? papFacts.join('; ') : 'No compliance report entered', { tone: papFacts.length ? 'info' : '' })}
-            ${fact('Safety history', cardiovascular.length ? cardiovascular.join(', ') : 'No cardiovascular condition selected')}
-          </ul>
+          <dl class="osa-briefing-details osa-briefing-details--treatment">
+            ${detailRow('PAP status', papStatus)}
+            ${detailRow('Other prior treatment', priorTreatments.length ? priorTreatments.join(', ') : 'None documented')}
+            ${detailRow('PAP download', papFacts.length ? papFacts.join(', ') : 'Not entered', { tone: papFacts.length ? 'info' : '' })}
+            ${detailRow('Safety history', cardiovascular.length ? cardiovascular.join(', ') : 'No cardiovascular condition selected')}
+          </dl>
         </section>
       </div>
       <div class="osa-briefing-handoff">
@@ -518,6 +530,18 @@
   }
 
   const focusedEditGroups = {
+    '#cardPatientInfo': {
+      title: 'Complete patient details',
+      selectors: ['#cardPatientInfo'],
+    },
+    '#cardVisitContext': {
+      title: 'Add reason for visit',
+      selectors: ['#cardVisitContext'],
+    },
+    '#cardDemographics': {
+      title: 'Complete core demographics',
+      selectors: ['#cardDemographics'],
+    },
     '#cardQuestionnaires': {
       title: 'Correct questionnaire data',
       selectors: ['#cardQuestionnaires'],
@@ -529,6 +553,14 @@
     '#cardTreatment': {
       title: 'Correct treatment history',
       selectors: ['#cardTreatment'],
+    },
+    '#cardPhysicalExam': {
+      title: 'Complete physical exam',
+      selectors: ['#clinicalEntrySection'],
+    },
+    '#cardVisitPlan': {
+      title: 'Confirm today\'s plan',
+      selectors: ['#cardVisitPlan'],
     },
   };
 
@@ -758,6 +790,35 @@
     window.requestAnimationFrame(() => document.getElementById('cardImaging')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }));
   }
 
+  function activateReadinessTask(taskId, trigger) {
+    const task = getReadiness().tasks.find(item => item.id === taskId);
+    if (!task) return;
+    if (task.action === 'source-review') {
+      setMode('prep');
+      expandAndScroll('#prepHandoffPanel');
+      window.requestAnimationFrame(() => sourceReviewToggle?.focus({ preventScroll: true }));
+      return;
+    }
+    if (task.action === 'review-intake') {
+      document.getElementById('btnReviewIntake')?.click();
+      return;
+    }
+    if (task.action === 'review-followup') {
+      document.getElementById('btnFollowups')?.click();
+      return;
+    }
+    if (task.target) startFocusedEdit(task.target, trigger);
+  }
+
+  function openClinicianTask(targetSelector, trigger) {
+    if (focusedEditGroups[targetSelector]) {
+      startFocusedEdit(targetSelector, trigger);
+      return;
+    }
+    setMode('full', { skipPersist: true });
+    expandAndScroll(targetSelector);
+  }
+
   function queueRender() {
     if (renderQueued) return;
     renderQueued = true;
@@ -776,10 +837,24 @@
   });
   papLauncher?.addEventListener('click', openPapReview);
   diseLauncher?.addEventListener('click', openDise);
+  prepReadinessList?.addEventListener('click', event => {
+    const taskButton = event.target.closest('[data-readiness-task]');
+    if (taskButton) activateReadinessTask(taskButton.dataset.readinessTask, taskButton);
+  });
   briefingContent?.addEventListener('click', event => {
     const papButton = event.target.closest('[data-open-pap-review]');
     if (papButton) {
       openPapReview();
+      return;
+    }
+    const readinessButton = event.target.closest('[data-readiness-task]');
+    if (readinessButton) {
+      activateReadinessTask(readinessButton.dataset.readinessTask, readinessButton);
+      return;
+    }
+    const clinicianTask = event.target.closest('[data-jump-target]');
+    if (clinicianTask) {
+      openClinicianTask(clinicianTask.dataset.jumpTarget, clinicianTask);
       return;
     }
     const editButton = event.target.closest('[data-workspace-edit-target]');

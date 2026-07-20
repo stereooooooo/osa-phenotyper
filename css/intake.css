@@ -311,6 +311,22 @@ body {
   margin-bottom: 0;
 }
 
+.intake-visit-reason {
+  max-width: 760px;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--intake-gray-border);
+}
+
+.intake-visit-reason .intake-select { width: 100%; }
+
+.intake-field-help {
+  margin: 0.25rem 0 0.65rem;
+  color: var(--intake-gray-body);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .intake-demographics-grid {
   display: grid;
   grid-template-columns: 190px 280px 150px;

@@ -209,7 +209,7 @@
 </div>
 
 <!-- ===== MA preparation and clinician handoff ===== -->
-<section class="osa-prep-handoff" id="prepHandoffPanel" data-workspace-modes="prep,clinician" aria-labelledby="prepHandoffTitle">
+<section class="osa-prep-handoff" id="prepHandoffPanel" data-workspace-modes="prep" aria-labelledby="prepHandoffTitle">
   <div class="osa-prep-handoff__header">
     <div>
       <h2 id="prepHandoffTitle">Visit preparation</h2>
@@ -355,18 +355,18 @@
       <label class="form-label required mb-1" for="visitReason">Primary reason</label>
       <select class="form-select form-select-sm" name="visitReason" id="visitReason" required data-label="Reason for visit">
         <option value="">Select the patient's main goal...</option>
-        <option value="snoring">Snoring concern</option>
-        <option value="symptoms">Tired, unrefreshed, or snoring; evaluate for sleep apnea</option>
-        <option value="new-diagnosis">Review a new sleep apnea diagnosis or sleep study</option>
-        <option value="transfer-pap">Transfer or establish PAP care here</option>
-        <option value="pap-troubleshoot">Improve PAP comfort, dryness, mask fit, or results</option>
-        <option value="restart-pap">Restart PAP after prior use</option>
-        <option value="oral-appliance">Discuss an oral appliance</option>
-        <option value="inspire">Discuss hypoglossal nerve stimulation (for example, Inspire or Genio)</option>
-        <option value="surgery">Discuss airway surgery</option>
-        <option value="non-pap">Discuss non-PAP treatment options</option>
-        <option value="precision-onboarding">Established patient joining Precision Sleep</option>
-        <option value="follow-up">Sleep apnea follow-up or other goal</option>
+        <option value="snoring">Help with loud or bothersome snoring</option>
+        <option value="symptoms">Evaluate tiredness, poor sleep, snoring, or possible sleep apnea</option>
+        <option value="new-diagnosis">Review a new sleep study or sleep apnea diagnosis</option>
+        <option value="transfer-pap">Transfer or continue PAP care at Capital ENT</option>
+        <option value="pap-troubleshoot">Get help with PAP comfort, dryness, mask fit, or results</option>
+        <option value="restart-pap">Restart PAP after using it in the past</option>
+        <option value="oral-appliance">Discuss a custom oral appliance</option>
+        <option value="inspire">Discuss a hypoglossal nerve stimulator, such as Inspire or Genio</option>
+        <option value="surgery">Discuss nasal or throat surgery</option>
+        <option value="non-pap">Discuss treatment options other than PAP</option>
+        <option value="precision-onboarding">Join Precision Sleep as an established patient</option>
+        <option value="follow-up">Follow up on sleep apnea or another sleep concern</option>
       </select>
     </div>
     <div class="col-md-5">
@@ -643,7 +643,7 @@
     <i class="bi bi-file-earmark-medical"></i> <span id="btnOpenPapReviewLabel">Add PAP compliance report</span>
   </button>
   <button type="button" class="btn btn-outline-secondary btn-sm" id="btnOpenDise">
-    <i class="bi bi-images"></i> Open DISE fields
+    <i class="bi bi-images"></i> <span id="btnOpenDiseLabel">Open DISE fields</span>
   </button>
 </div>
 

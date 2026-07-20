@@ -85,6 +85,27 @@
         </div>
         <div class="intake-section__body">
 
+          <div class="intake-field-group intake-visit-reason">
+            <label for="visitReason" class="intake-label intake-label--required">What is the main reason for today's sleep visit?</label>
+            <p class="intake-field-help">Choose the closest answer. A staff member can update it with you if needed.</p>
+            <select id="visitReason" name="visitReason" class="intake-select" required>
+              <option value="">Select one...</option>
+              <option value="snoring">I want help with loud or bothersome snoring</option>
+              <option value="symptoms">I feel tired, do not sleep well, snore, or may have sleep apnea</option>
+              <option value="new-diagnosis">I want to review a new sleep study or sleep apnea diagnosis</option>
+              <option value="transfer-pap">I want to transfer or continue my PAP care here</option>
+              <option value="pap-troubleshoot">I use PAP and need help with comfort, dryness, mask fit, or results</option>
+              <option value="restart-pap">I used PAP before and want to restart</option>
+              <option value="oral-appliance">I want to discuss a custom oral appliance</option>
+              <option value="inspire">I want to discuss an implanted nerve stimulator, such as Inspire or Genio</option>
+              <option value="surgery">I want to discuss nasal or throat surgery</option>
+              <option value="non-pap">I want to discuss treatment options other than PAP</option>
+              <option value="precision-onboarding">I already see this practice and am joining Precision Sleep</option>
+              <option value="follow-up">I am following up on sleep apnea or another sleep concern</option>
+            </select>
+            <div class="intake-error" id="visitReasonError">Please select the main reason for today's visit.</div>
+          </div>
+
           <div class="intake-demographics-grid">
             <div class="intake-field-group">
               <label for="sex" class="intake-label intake-label--required">Sex</label>
@@ -1920,7 +1941,13 @@
     var errors = [];
     var firstErrorEl = null;
 
-    // Demographics
+    // Visit context and demographics
+    if (!document.getElementById('visitReason').value) {
+      showError('visitReason', 'visitReasonError');
+      errors.push('visit-reason');
+      if (!firstErrorEl) firstErrorEl = document.getElementById('visitReason');
+    }
+
     if (!document.getElementById('sex').value) {
       showError('sex', 'sexError');
       errors.push('sex');
@@ -2258,6 +2285,9 @@
 
     // Build payload matching the Lambda's expected schema
     var data = {
+      // TX-09: local workflow context. This guides report emphasis and draft
+      // suggestions, but never finalizes a treatment without clinician review.
+      visitReason: document.getElementById('visitReason').value,
       sex: document.getElementById('sex').value,
       heightInches: totalInches,
       weightLbs: parseInt(document.getElementById('weight').value, 10),

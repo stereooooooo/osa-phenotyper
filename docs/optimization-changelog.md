@@ -20,6 +20,14 @@ AWS environment remains staff-authenticated; patients interact only through a re
 single-use intake link and receive clinician-approved reports rather than access to a patient chart.
 
 ### Added — clinical workflow and patient experience
+- A required, plain-language main reason for the initial visit on the patient questionnaire. It maps
+  into visit context for MA correction and can guide report emphasis or draft suggestions, but it
+  cannot select treatment or confirm the clinician's plan.
+- One actionable readiness surface in Clinician Review. Pending items now state the exact work
+  required and open or focus the corresponding control, while Prep retains its full handoff gate.
+- A scan-oriented clinician briefing with compact questionnaire and sleep-study metrics plus labeled
+  symptom, preference, treatment, PAP-download, testing-context, and safety rows.
+- Matched typography for the optional PAP compliance and DISE launchers.
 - A saved MA readiness and clinician-handoff workflow. The MA view now distinguishes blocked,
   in-progress, ready, and not-needed preparation states; records preparer and time; keeps treatment
   plan confirmation clinician-owned; and invalidates a prior handoff when source data changes.
@@ -98,8 +106,9 @@ single-use intake link and receive clinician-approved reports rather than access
   event-linked HB, symptomatic BiPAP use with central signals and missing LVEF, failed MAD history
   during an HGNS evaluation, and mild supine-predominant OSA.
 - Added focused HGNS-only content, counterexample, terminology, no-typographic-dash, and rendered-PDF
-  pacing coverage. With MA-handoff, focused-correction, persistence-guard, and accessible-name
-  regression coverage, the complete suite now passes 1,899 assertions.
+  pacing coverage. MA-handoff, focused-correction, persistence, actionable-readiness, structured
+  visit-context, and accessible-name regression coverage are included in the complete suite, which
+  now passes 1,910 assertions.
 
 ### Fixed — combined-output review
 - When PAP management is confirmed but APAP, CPAP, or BiPAP has not been selected, Today's Sleep
