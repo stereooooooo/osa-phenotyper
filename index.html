@@ -156,8 +156,27 @@
 <div id="chartView">
 <form id="form" novalidate>
 
+<!-- ===== Role-optimized workspace switch ===== -->
+<section class="osa-workspace-toolbar no-print" aria-label="Workspace view">
+  <div class="osa-workspace-toolbar__copy">
+    <strong>Workspace</strong>
+    <span>Changes what is emphasized, not what you can access.</span>
+  </div>
+  <div class="btn-group osa-workspace-switch" role="group" aria-label="Choose a workspace view">
+    <button type="button" class="btn btn-sm" data-workspace-mode-button="prep" aria-pressed="false">
+      <i class="bi bi-clipboard2-check"></i> MA / Nurse Prep
+    </button>
+    <button type="button" class="btn btn-sm" data-workspace-mode-button="clinician" aria-pressed="false">
+      <i class="bi bi-person-badge"></i> Clinician Review
+    </button>
+    <button type="button" class="btn btn-sm" data-workspace-mode-button="full" aria-pressed="false">
+      <i class="bi bi-sliders"></i> Full Chart
+    </button>
+  </div>
+</section>
+
 <!-- ===== Progress Track ===== -->
-<div class="osa-progress-track no-print" id="progressTrack" role="navigation" aria-label="Clinician form sections">
+<div class="osa-progress-track no-print" id="progressTrack" role="navigation" aria-label="Chart preparation sections" data-workspace-modes="prep,full">
   <button type="button" class="osa-progress-step" data-section="demographics" data-target="#cardDemographics">Demographics</button>
   <button type="button" class="osa-progress-step" data-section="treatment" data-target="#cardTreatment">Treatment Hx</button>
   <button type="button" class="osa-progress-step" data-section="pap-review" data-target="#cardPapCompliance">PAP Review</button>
@@ -168,7 +187,7 @@
 </div>
 
 <!-- ===== PDF Import (top of form for fast workflow) ===== -->
-<div class="row g-3 mb-3" id="pdfImportSection">
+<div class="row g-3 mb-3" id="pdfImportSection" data-workspace-modes="prep,full">
   <div class="col-md-6">
     <div class="card osa-import-card">
       <div class="card-body d-flex align-items-center gap-2 py-2 px-3">
@@ -232,8 +251,20 @@
   </div>
 </div>
 
+<!-- ===== Clinician briefing ===== -->
+<section class="osa-clinician-briefing" id="clinicianBriefing" data-workspace-modes="clinician" aria-labelledby="clinicianBriefingTitle" aria-live="polite">
+  <div class="osa-clinician-briefing__header">
+    <div>
+      <h2 id="clinicianBriefingTitle">Visit Briefing</h2>
+      <p>Questionnaire, history, and study findings prepared for clinical review.</p>
+    </div>
+    <span class="osa-briefing-status" id="clinicianBriefingStatus">Preparing summary</span>
+  </div>
+  <div id="clinicianBriefingContent"></div>
+</section>
+
 <!-- ===== Patient Name / DOB / MRN (for new or editing) ===== -->
-<div class="card mb-3" id="cardPatientInfo">
+<div class="card mb-3" id="cardPatientInfo" data-workspace-modes="prep,full">
   <div class="card-header"><i class="bi bi-person-vcard"></i> Patient Information</div>
   <div class="card-body row g-2 align-items-end">
     <div class="col-md-4">
@@ -271,7 +302,7 @@
 </div>
 
 <!-- ===== Encounter Context ===== -->
-<div class="card mb-3" id="cardVisitContext">
+<div class="card mb-3" id="cardVisitContext" data-workspace-modes="prep,full">
   <div class="card-header"><i class="bi bi-signpost-split"></i> Reason for This Visit</div>
   <div class="card-body row g-2 align-items-end">
     <div class="col-md-7">
@@ -303,8 +334,8 @@
 </div>
 
 <!-- ===== Demographics & History ===== -->
-<p class="text-muted small mb-2 no-print"><i class="bi bi-info-circle"></i> <strong>Minimum for a result:</strong> Date of birth, Sex, BMI, and one sleep-study metric (AHI or pAHI). Every other field refines the analysis.</p>
-<div class="card" id="cardDemographics">
+<p class="text-muted small mb-2 no-print" id="minimumResultGuide" data-workspace-modes="prep,full"><i class="bi bi-info-circle"></i> <strong>Minimum for a result:</strong> Date of birth, Sex, BMI, and one sleep-study metric (AHI or pAHI). Every other field refines the analysis.</p>
+<div class="card" id="cardDemographics" data-workspace-modes="prep,full">
   <div class="card-header"><i class="bi bi-person-badge"></i> Demographics &amp; History</div>
   <div class="card-body row g-2 align-items-center">
     <div class="col-auto" style="width:110px;"><label class="form-label required mb-1">Age</label><input type="number" name="age" class="form-control form-control-sm bg-light" min="1" max="120" required readonly aria-describedby="ageHelp" data-label="Age"><div class="form-text" id="ageHelp">From DOB</div></div>
@@ -318,7 +349,7 @@
 </div>
 
 <!-- ===== Treatment History ===== -->
-<div class="card mt-3" id="cardTreatment">
+<div class="card mt-3" id="cardTreatment" data-workspace-modes="prep,full">
   <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseTreatment" aria-expanded="true" aria-controls="collapseTreatment">
     <i class="bi bi-capsule"></i> Treatment History &amp; Preferences
     <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
@@ -556,11 +587,25 @@
 </div>
 </div>
 
+<!-- ===== Contextual tools ===== -->
+<div class="osa-context-tools mt-3 no-print" id="workspaceContextTools" data-workspace-modes="prep,clinician">
+  <div>
+    <strong id="workspaceContextToolsTitle">Optional chart tools</strong>
+    <span id="workspaceContextToolsHint">Open detailed modules only when they are relevant to this visit.</span>
+  </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnOpenPapReview">
+    <i class="bi bi-file-earmark-medical"></i> <span id="btnOpenPapReviewLabel">Add PAP compliance report</span>
+  </button>
+  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnOpenDise">
+    <i class="bi bi-images"></i> Open DISE fields
+  </button>
+</div>
+
 <!-- ===== Clinician PAP Download Review ===== -->
 <div class="card mt-3" id="cardPapCompliance">
   <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapsePapCompliance" aria-expanded="false" aria-controls="collapsePapCompliance">
     <i class="bi bi-cpu"></i> PAP Compliance Review
-    <span class="badge text-bg-secondary ms-2">Clinician only</span>
+    <span class="badge text-bg-secondary ms-2">Staff import, clinician review</span>
     <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
   </button>
   <div class="collapse" id="collapsePapCompliance">
@@ -638,8 +683,8 @@
 </div>
 
 <!-- ===== Physical Exam & DISE (side by side) ===== -->
-<div class="row g-3 mt-2">
-  <div class="col-md-4">
+<div class="row g-3 mt-2" id="clinicalEntrySection" data-workspace-modes="clinician,full">
+  <div class="col-md-4" id="physicalExamColumn">
     <div class="card h-100" id="cardPhysicalExam">
       <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapsePhysExam" aria-expanded="true" aria-controls="collapsePhysExam">
         <i class="bi bi-clipboard-pulse"></i> Physical Exam
@@ -657,7 +702,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-8">
+  <div class="col-md-8" id="diseColumn">
     <div class="card h-100" id="cardImaging">
       <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseImaging" aria-expanded="true" aria-controls="collapseImaging">
         <i class="bi bi-images"></i> Drug-Induced Sleep Endoscopy
@@ -681,7 +726,7 @@
 </div>
 
 <!-- ===== Questionnaires ===== -->
-<div class="card mt-3" id="cardQuestionnaires">
+<div class="card mt-3" id="cardQuestionnaires" data-workspace-modes="prep,full">
   <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseQuestionnaires" aria-expanded="true" aria-controls="collapseQuestionnaires">
     <i class="bi bi-question-circle"></i> Questionnaires
     <i class="bi bi-chevron-down osa-collapse-icon float-end"></i>
@@ -706,7 +751,7 @@
 </div>
 
 <!-- ===== Study Type Selector ===== -->
-<div class="card mt-3 osa-study-selector">
+<div class="card mt-3 osa-study-selector" id="studyTypeSelector" data-workspace-modes="prep,full">
   <div class="card-body py-2">
     <div class="d-flex align-items-center gap-3">
       <strong>Sleep Study Type:</strong>
@@ -727,7 +772,7 @@
 </div>
 
 <!-- ===== WatchPAT Metrics (full-width horizontal) ===== -->
-<div class="mt-3" id="sleepStudyWatchpat">
+<div class="mt-3" id="sleepStudyWatchpat" data-workspace-modes="prep,full">
   <div class="card">
     <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapseWatchpat" aria-expanded="true" aria-controls="collapseWatchpat">
       <i class="bi bi-watch"></i> WatchPAT Metrics
@@ -768,7 +813,7 @@
 </div>
 
 <!-- ===== Lab PSG (full-width, below WatchPAT) ===== -->
-<div class="mt-3" id="sleepStudyPSG">
+<div class="mt-3" id="sleepStudyPSG" data-workspace-modes="prep,full">
   <div class="card">
     <button type="button" class="card-header osa-collapsible" data-bs-toggle="collapse" data-bs-target="#collapsePSG" aria-expanded="true" aria-controls="collapsePSG">
       <i class="bi bi-hospital"></i> Lab PSG Metrics
@@ -798,10 +843,10 @@
 </div>
 
 <!-- ===== Validation Alerts & Submit ===== -->
-<div id="validationAlerts" class="mt-3"></div>
+<div id="validationAlerts" class="mt-3" data-workspace-modes="clinician,full"></div>
 
 <!-- ===== Clinician-confirmed plan ===== -->
-<div class="card mt-3" id="cardVisitPlan">
+<div class="card mt-3" id="cardVisitPlan" data-workspace-modes="clinician,full">
   <div class="card-header"><i class="bi bi-clipboard2-check"></i> Finalize Today's Plan</div>
   <div class="card-body">
     <p class="small text-muted mb-2">Complete this after the visit. Only selected pathways appear as active treatments in the patient report. Technical candidacy details remain available in the clinician view.</p>
@@ -847,9 +892,9 @@
 </form>
 
 <hr class="my-5">
-<div id="patientSummary"></div>
-<div id="precisionSleepProfile" class="mt-4" aria-live="polite"></div>
-<div id="patientReportTrigger" class="text-center my-3" style="display:none;">
+<div id="patientSummary" data-workspace-modes="clinician,full"></div>
+<div id="precisionSleepProfile" class="mt-4" aria-live="polite" data-workspace-modes="clinician,full"></div>
+<div id="patientReportTrigger" class="text-center my-3" style="display:none;" data-workspace-modes="clinician,full">
   <button type="button" class="btn btn-primary btn-lg" id="btnGenerateTodayPlan">
     <i class="bi bi-clipboard2-check"></i> Today's Sleep Plan
   </button>
@@ -857,7 +902,7 @@
     <i class="bi bi-file-earmark-medical"></i> Full Sleep Profile
   </button>
 </div>
-<div id="clinicianReport" class="mt-4"></div>
+<div id="clinicianReport" class="mt-4" data-workspace-modes="clinician,full"></div>
 </div><!-- /chartView -->
 </main>
 
@@ -1209,6 +1254,7 @@ window.OSALibs = (function () {
 <script src="js/app.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/home.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/precision-sleep.js?v=__OSA_BUILD_ID__"></script>
+<script src="js/workspace-view.js?v=__OSA_BUILD_ID__"></script>
 <script>
 /* ── Hide form fields for disabled features (e.g. ΔHR) ─────────── */
 if (!(typeof OSA_CONFIG !== 'undefined' && OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate)) {

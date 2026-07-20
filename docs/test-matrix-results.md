@@ -1588,3 +1588,19 @@
 - a patient submission appends a structured checkpoint with Review needed status, does not overwrite baseline chart fields, and can be marked reviewed by an authorized clinician
 - the complete headless suite passed **1,859 assertions**
 **Finding:** implemented locally. This is a workflow and longitudinal-measurement change, not a new diagnostic or treatment rule. Clinician review and deployment remain pending.
+
+### Tests 220-224: Role-optimized clinical workspace
+**Status:** local workflow, responsive visual, accessibility-state, syntax, output-parity, and full regression testing complete
+**Result:** passed after replacing the monolithic default chart with role-optimized views ✅
+**Verification:**
+- Clinician Review is the default and presents a concise visit briefing followed by clinician-owned exam and plan work instead of the complete raw intake form
+- MA / Nurse Prep emphasizes patient identity, visit reason, source imports, demographics, treatment history, questionnaires, and sleep-study verification while keeping clinician exam, plan confirmation, and report generation out of its primary flow
+- Full Chart preserves every control, so the view switch does not create a permissions boundary or lock either role out of the other workflow
+- a large PAP Compliance Review stays hidden during an unrelated visit with no imported PAP data, while a persistent launcher can reveal it; PAP-focused visits and existing download data surface it automatically
+- DISE remains hidden when unrelated, allowing the physical exam to use the full clinician workspace width, but surgery or nerve-stimulation context, existing DISE data, and an explicit launcher reveal it
+- the clinician briefing updates from current form state and provides direct Edit data paths to the underlying source sections
+- the selected mode is reflected through `aria-pressed`, uses visible keyboard focus, respects reduced motion, and stores only a non-PHI display preference
+- visual inspection at a 1440-pixel desktop viewport confirmed clearer hierarchy and substantially less initial density in both Clinician Review and MA / Nurse Prep
+- no phenotype, threshold, diagnostic-routing, treatment-ranking, patient-language, or report-generation logic changed
+- the complete headless suite passed **1,879 assertions**
+**Finding:** implemented locally. The workflow is now progressive and role-aware without fragmenting the chart or changing clinical output. Clinician approval and deployment remain pending.

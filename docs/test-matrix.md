@@ -443,3 +443,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 217 | Uncomplicated stable follow-up counterexample | A returning patient without current insomnia or nasal symptoms does not receive ISI or NOSE, and omitted scales remain null rather than being stored as false zeroes. |
 | 218 | Pending clinician-review boundary | A patient-submitted follow-up appends a versioned checkpoint marked Review needed. It cannot overwrite baseline form data, select a treatment, or alter patient instructions before clinician review. |
 | 219 | Single-use questionnaire separation | Staff can generate either a new-patient or follow-up token from the same chart. Token history identifies the questionnaire type, and both remain patient-specific, single-use, and time-limited without exposing the clinician workspace or roster. |
+
+### Group 49: Role-Optimized Clinical Workspace
+| # | Name | Key Features |
+|---|---|---|
+| 220 | View separation without access lockout | MA / Nurse Prep emphasizes source-data entry, Clinician Review emphasizes the briefing, exam, and final plan, and Full Chart exposes every section. Switching views changes presentation only and never clears chart state or removes authorized access. |
+| 221 | Clinician briefing source summary | Questionnaire, treatment history, sleep-study, PAP, follow-up, and missing-data findings are summarized as readable facts with direct Edit data paths instead of duplicating raw checkboxes and menus. |
+| 222 | Contextual PAP compliance review | A non-PAP visit without download data keeps the large PAP card out of the primary flow but retains an accessible launcher. PAP-focused visits, imported values, or an explicit open action reveal and expand it. Full Chart always preserves access. |
+| 223 | Contextual DISE review | DISE stays out of an unrelated clinician visit, allowing Physical Exam to use the available width. A nerve-stimulation or surgery visit, existing DISE data, or an explicit open action reveals it. |
+| 224 | Output-parity and accessible-state boundary | Workspace mode may change visible emphasis and the persisted non-PHI preference only. It does not alter clinical thresholds, source values, selected pathways, or generated reports, and the active mode is exposed through `aria-pressed`. |

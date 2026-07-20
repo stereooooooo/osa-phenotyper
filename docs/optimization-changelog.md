@@ -20,6 +20,11 @@ AWS environment remains staff-authenticated; patients interact only through a re
 single-use intake link and receive clinician-approved reports rather than access to a patient chart.
 
 ### Added — clinical workflow and patient experience
+- Three role-optimized chart workspaces: `MA / Nurse Prep`, `Clinician Review`, and `Full Chart`.
+  Clinician Review summarizes questionnaire, history, study, PAP, and follow-up findings without
+  leading with raw controls; Prep emphasizes staff entry and verification; Full Chart preserves
+  unrestricted access. PAP compliance and DISE expand automatically when context or existing data
+  makes them relevant and remain available through explicit launchers at other visits.
 - Precision Sleep clinical workspace, reason-for-visit routing, automatic age calculation, first-
   or last-name search, APAP/CPAP/BiPAP capture, editable clinician-finalized plans, and personalized
   comprehensive and visit-focused patient reports.
@@ -82,7 +87,8 @@ single-use intake link and receive clinician-approved reports rather than access
   event-linked HB, symptomatic BiPAP use with central signals and missing LVEF, failed MAD history
   during an HGNS evaluation, and mild supine-predominant OSA.
 - Added focused HGNS-only content, counterexample, terminology, no-typographic-dash, and rendered-PDF
-  pacing coverage. The complete suite now passes 1,845 assertions.
+  pacing coverage. With role-optimized workspace regression coverage, the complete suite now passes
+  1,879 assertions.
 
 ### Fixed — combined-output review
 - When PAP management is confirmed but APAP, CPAP, or BiPAP has not been selected, Today's Sleep

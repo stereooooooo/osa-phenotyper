@@ -21,7 +21,7 @@ formal clinical validation.
   change (`063d108`). Both are pushed and tested but not deployed.
 - [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
   clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
-  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,845
+  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,879
   assertions. One report-specificity defect was fixed in the first batch: an unspecified PAP mode
   now remains generic in Today's Sleep Plan. The second batch found no clinical-routing defect.
 - [ ] If approved, update the evidence-review decision and reviewed build, deploy the hosted frontend,
@@ -30,6 +30,11 @@ formal clinical validation.
   after Dr. Brown confirms the clinical output and MA workflow.
 
 ### Near-term clinical and MA experience
+- [x] Replace the monolithic chart with role-optimized `MA / Nurse Prep`, `Clinician Review`, and
+  `Full Chart` workspaces. Clinician Review now opens to a concise briefing and clinician-owned
+  exam and plan tasks. Prep emphasizes source-data entry and verification. PAP and DISE tools surface
+  automatically when relevant and remain available on demand. This changes presentation only: it
+  removes no access, changes no clinical logic, and stores only the non-PHI workspace preference.
 - [ ] Conduct an observed iPad intake walkthrough with at least one MA and several synthetic patient
   types: straightforward snoring, current PAP transfer, prior PAP intolerance, Inspire inquiry, and
   complex cardiovascular history.
