@@ -102,6 +102,7 @@ assert(typeof OSAReportShared === 'object', 'OSAReportShared exists');
 assert(typeof OSAReportShared.buildCarePathway === 'function', 'buildCarePathway helper exists');
 assert(typeof OSAReportShared.detectUARS === 'function', 'detectUARS helper exists');
 assert(typeof OSAReportShared.resolvePapState === 'function', 'resolvePapState helper exists');
+assert(typeof OSAReportShared.classifyPositionalPattern === 'function', 'classifyPositionalPattern helper exists');
 
 assertEqual(OSAReportShared.resolvePapState({ cpapCurrent: true, cpapFailed: true }), 'continuing', 'Current PAP use takes precedence over historical failure');
 assertEqual(OSAReportShared.resolvePapState({ cpapFailed: true, cpapWillRetry: true }), 'retrying', 'Failed PAP with retry intent resolves to retrying');
@@ -115,6 +116,17 @@ assert(sharedUars.rdiElevated, 'Shared UARS helper flags elevated RDI pattern');
 
 sharedUars = OSAReportShared.detectUARS({ ahi: 8, rdi: 20, arInd: 20, ess: 14, isi: 10 });
 assert(!sharedUars.isUARS, 'Shared UARS helper suppresses UARS once AHI reaches OSA range');
+
+const supineIsolated = OSAReportShared.classifyPositionalPattern({ supineAhi: 20, nonSupineAhi: 3 });
+assert(supineIsolated.positional && supineIsolated.type === 'supine-isolated', 'Supine-isolated OSA requires a positional ratio and non-supine AHI below 5');
+assert(supineIsolated.monotherapyPotential, 'Supine-isolated OSA may support positional monotherapy after sampling and outcome verification');
+
+const supinePredominant = OSAReportShared.classifyPositionalPattern({ supineAhi: 40, nonSupineAhi: 12 });
+assert(supinePredominant.positional && supinePredominant.type === 'supine-predominant', 'Supine-predominant OSA retains the phenotype when OSA persists off the back');
+assert(!supinePredominant.monotherapyPotential, 'Supine-predominant OSA does not imply positional monotherapy');
+
+const nonPositional = OSAReportShared.classifyPositionalPattern({ supineAhi: 20, nonSupineAhi: 12 });
+assert(!nonPositional.positional && nonPositional.type === 'non-positional', 'A ratio below 2 does not meet the positional phenotype definition');
 
 const patientPathway = OSAReportShared.buildCarePathway({
   milestones: ['Initial Eval', 'Study Ordered', 'Study Reviewed', 'CPAP Trial'],
@@ -277,7 +289,7 @@ assertEqual(
 group('Positional OSA Confidence');
 assertEqual(
   confidenceFor('Positional OSA', { metrics: { sup: 45, nons: 8 } }),
-  'High', 'Ratio 5.6, nonsup 8 (<10) → High'
+  'High', 'Ratio 5.6 confirms a strong positional effect even though off-back OSA persists'
 );
 assertEqual(
   confidenceFor('Positional OSA', { metrics: { sup: 22, nons: 0 } }),
@@ -285,11 +297,11 @@ assertEqual(
 );
 assertEqual(
   confidenceFor('Positional OSA', { metrics: { sup: 30, nons: 12 } }),
-  'Moderate', 'Ratio 2.5, nonsup 12 (<15) → Moderate'
+  'Moderate', 'Ratio 2.5 confirms a positional effect; non-supine AHI determines adjunctive use'
 );
 assertEqual(
-  confidenceFor('Positional OSA', { metrics: { sup: 20, nons: 18 } }),
-  'Low', 'nonsup 18 (>15) → Low'
+  confidenceFor('Positional OSA', { metrics: { sup: 40, nons: 18 } }),
+  'Moderate', 'Ratio above 2 remains positional even when non-supine OSA makes therapy adjunctive'
 );
 assertEqual(
   confidenceFor('Positional OSA', { metrics: { sup: 45, nons: 8, usesHstPositionEstimate: true } }),
@@ -508,10 +520,11 @@ const hlgTrigger = (sampleMetrics.csr >= T.loopGain.csr) ||
   (sampleMetrics.pahic4 >= T.loopGain.pahic4);
 assert(!hlgTrigger, 'Sample: HLG does NOT trigger (CVD alone no longer sufficient)');
 
-// Positional: 52.9/22.1 = 2.39 > 2, nonsup 22.1 > 15 → does NOT trigger
+// Positional: 52.9/22.1 = 2.39 meets the positional definition, while
+// non-supine AHI 22.1 means positional therapy is adjunctive rather than monotherapy.
 const posRatio = sampleMetrics.sup / sampleMetrics.nons;
-const posTrigger = posRatio > T.positional.supNonSupRatio && sampleMetrics.nons < T.positional.nonSupMax;
-assert(!posTrigger, 'Sample: Positional does NOT trigger (non-sup 22.1 > 15)');
+const posTrigger = posRatio >= T.positional.supNonSupRatio;
+assert(posTrigger, 'Sample: positional effect triggers while non-supine OSA remains clinically important');
 
 // Event-linked hypoxic burden: exploratory signal boundary only
 assert(sampleMetrics.hbPH >= T.hypoxicBurden.signalBoundary, 'Sample: triggers event-linked HB research signal (HB/hr 37)');
@@ -951,7 +964,8 @@ assert(!reportHtml.includes('Get fitted for CPAP'), 'Mild PAP-avoidant summary d
 assert(reportHtml.includes('Try sleeping on your side'), 'Mild positional summary leads with positional therapy');
 assert(!reportHtml.slice(mildStartIndex, mildWorkupIndex).includes('PAP Therapy'), 'Deferred PAP does not appear under Start Now');
 assert(mildDiscussIndex >= 0 && reportHtml.slice(mildDiscussIndex).includes('PAP Therapy'), 'Deferred PAP remains available under Discuss With Your Doctor');
-assert(reportHtml.includes('Oral Appliance Therapy (Favorable Profile)') && reportHtml.includes('Confirm Oral Appliance Safety First'), 'Oral-appliance option and prerequisite both remain visible');
+assert(reportHtml.includes('Oral Appliance Therapy</strong>') && reportHtml.includes('Confirm Oral Appliance Safety First'), 'Oral-appliance option and prerequisite both remain visible without an unvalidated response tier');
+assert(!reportHtml.includes('Favorable Profile'), 'Legacy oral-appliance tags do not expose an unvalidated patient-specific response tier');
 assert(!reportHtml.includes('quiet toll') && !reportHtml.includes('investment in your long-term health'), 'Mild lower-oxygen-risk report avoids categorical long-term-risk language');
 assert(!reportHtml.includes('or weight management may be appropriate'), 'Mild options box lists only treatments actually recommended for that patient');
 

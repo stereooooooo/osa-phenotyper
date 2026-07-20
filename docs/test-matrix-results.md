@@ -1,8 +1,29 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** July 19, 2026
-**Latest app version:** working copy after `ER-2026-07-19-HB` (deployment pending)
+**Latest app version:** working copy after `ER-2026-07-19-NONPAP-PREDICTION` (clinician approval and deployment pending)
 
 ---
+
+## 2026-07-19 Non-PAP treatment-response calibration
+
+**Status:** local implementation and full regression verification complete; clinician approval and deployment pending
+
+**Result:** passed 1,509 headless assertions with no failures.
+
+**Verified behavior:**
+
+- oral-appliance selection no longer emits an app-created favorable, standard, or poor response tier, score, probability, or score-driven treatment rank
+- a PAP-intolerant patient who requests an oral appliance still receives the option, dental and TMJ safety review, and objective on-treatment sleep testing
+- prior benefit, tolerance, and adverse effects remain more clinically important than population-level response associations
+- supine-isolated OSA is distinct from supine-predominant OSA; only the isolated pattern can support possible positional monotherapy, and only after adequate non-supine and non-supine REM sampling plus objective verification
+- supine-predominant OSA retains the positional phenotype but receives explicit adjunctive language because OSA persists off the back
+- complete lateral oropharyngeal-wall collapse appears as negative unilateral-HGNS response context without becoming a universal contraindication or individual probability
+- partial lateral-wall collapse is documented but is not treated as the same adverse predictor as complete collapse
+- HGNS demographic, PAP-pressure, Ji-stage, and endotype associations are not counted into strong, good, marginal, or other aggregate response tiers
+- Friedman Stage I and Stage III provide directional anatomy context without exact historical success percentages or patient-specific probabilities
+- DISE remains useful for collapse localization but is not presented as a validated general surgical-response score
+- legacy oral-appliance tags in saved snapshots render neutral patient wording rather than preserving an obsolete favorable or poor tier
+- patient-facing reports remain free of typographic dash characters
 
 ## July 19, 2026 Event-Linked HB and Nocturnal-Hypoxemia Separation
 

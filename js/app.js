@@ -760,9 +760,9 @@ function buildHGNSAssessment(ctx) {
   // ── Favorable factors ──
   if (exists(bmi)) {
     if (bmi <= H.bmiStar) {
-      result.favorable.push({ factor: 'BMI ≤ 32', detail: `BMI ${bmi} is within the original STAR trial criterion. Lower BMI strongly predicts treatment success.`, cite: 'Strollo 2014; ADHERE registry' });
+      result.favorable.push({ factor: 'BMI within original trial range', detail: `BMI ${bmi} is within the original STAR trial criterion. Lower BMI is associated with better average outcomes, but it does not predict individual success.`, cite: 'Strollo 2014; ADHERE registry' });
     } else if (bmi <= H.bmiIdeal) {
-      result.favorable.push({ factor: 'BMI ≤ 35', detail: `BMI ${bmi} is within the expanded real-world ADHERE range. ADHERE data shows 8.5% decrease in odds of success per unit BMI increase.`, cite: 'Heiser 2019 ADHERE' });
+      result.favorable.push({ factor: 'BMI within registry range', detail: `BMI ${bmi} is within a commonly studied real-world range. Higher BMI is associated with lower average response, without a validated individual-response cutoff.`, cite: 'Heiser 2019 ADHERE' });
     } else if (bmi <= H.bmiMax) {
       result.unfavorable.push({ factor: 'BMI 35–40', detail: `BMI ${bmi} is above the range with the strongest response data. Higher BMI lowers expected response and payer criteria may be stricter. Inspire labeling extends through BMI 40; current US Genio labeling says safety and effectiveness above BMI 32 have not been established.`, cite: 'FDA Inspire P130008/S090; FDA Genio P240024 (2025)' });
     }
@@ -770,7 +770,7 @@ function buildHGNSAssessment(ctx) {
 
   if (exists(ahi)) {
     if (ahi >= 20 && ahi <= 50) {
-      result.favorable.push({ factor: 'AHI in optimal range', detail: `AHI ${ahi} is within the original STAR trial range of 20–50, where the strongest efficacy data exists. FDA approval now covers AHI 15–100.`, cite: 'Strollo 2014 STAR; FDA P130008/S090' });
+      result.favorable.push({ factor: 'AHI within original trial range', detail: `AHI ${ahi} is within the original STAR trial range of 20–50. This describes the evidence base, not an optimal-response category. FDA approval now covers AHI 15–100.`, cite: 'Strollo 2014 STAR; FDA P130008/S090' });
     } else if (ahi >= H.ahiMin && ahi < 20) {
       result.favorable.push({ factor: 'AHI in lower supported range', detail: `AHI ${ahi} meets the current FDA lower bound (15–100), though it sits below the original STAR lower cut point of 20. Shared decision-making should rely more heavily on anatomy, PAP history, and DISE findings in this range.`, cite: 'FDA P130008/S090; Strollo 2014 STAR' });
     } else if (ahi > 50 && ahi <= 65) {
@@ -783,13 +783,13 @@ function buildHGNSAssessment(ctx) {
   }
 
   if (sex === 'F') {
-    result.favorable.push({ factor: 'Female sex', detail: 'Female sex is a positive predictor of HGNS success in ADHERE registry data. Women tend to have lower BMI, less severe collapsibility, and favorable collapse anatomy.', cite: 'ADHERE registry' });
+      result.favorable.push({ factor: 'Female sex association', detail: 'Female sex was associated with better average outcomes in registry data, but it is not a validated individual predictor and should not determine candidacy.', cite: 'ADHERE registry' });
   }
 
   // DISE factors
   if (hasDISEData) {
     if (!hasCCC) {
-      result.favorable.push({ factor: 'No CCC at velum', detail: 'Absence of complete concentric collapse at the velum is the most critical DISE-based positive predictor. STAR Phase II showed success in 8/10 patients with AP velum collapse vs < 50% with CCC.', cite: 'Vanderveken 2017; Kezirian 2020' });
+      result.favorable.push({ factor: 'No velar CCC documented', detail: 'Absence of complete concentric collapse satisfies an Inspire-specific anatomic requirement. It does not by itself predict success.', cite: 'FDA Inspire labeling' });
     }
 
     // Tongue base AP complete collapse — positive predictor
@@ -800,8 +800,10 @@ function buildHGNSAssessment(ctx) {
     }
 
     // Oropharyngeal lateral wall collapse — negative
-    if (oPat === 'Lateral' && (oDeg === '1' || oDeg === '2')) {
-      result.unfavorable.push({ factor: 'Lateral oropharyngeal collapse', detail: `${oDeg === '2' ? 'Complete' : 'Partial'} lateral wall collapse at the oropharynx. Lateral wall collapse is a negative predictor — tongue advancement does not address lateral pharyngeal wall narrowing.`, cite: 'Grillet 2024 systematic review' });
+    if (oPat === 'Lateral' && oDeg === '2') {
+      result.unfavorable.push({ factor: 'Complete lateral oropharyngeal-wall collapse', detail: 'Complete lateral-wall collapse on DISE is associated with meaningfully lower unilateral HGNS efficacy. It is a response-context factor, not a universal contraindication.', cite: 'Vena 2025 ERJ prospective cohort' });
+    } else if (oPat === 'Lateral' && oDeg === '1') {
+      result.favorable.push({ factor: 'Partial lateral-wall collapse', detail: 'The strongest prospective adverse evidence applies to complete lateral-wall collapse. Partial collapse should be documented but not relabeled as the same validated negative predictor.', cite: 'Vena 2025 ERJ' });
     }
 
     // Oropharyngeal concentric collapse — negative
@@ -816,7 +818,7 @@ function buildHGNSAssessment(ctx) {
   // Therapeutic CPAP pressure
   if (exists(cpapPressure)) {
     if (cpapPressure < H.papLow) {
-      result.favorable.push({ factor: 'Low therapeutic pressure', detail: `Therapeutic PAP of ${cpapPressure} cmH₂O is below ${H.papLow}. The low-pressure group (<8 cmH₂O) achieved 92% HGNS response rate vs 44% in the high-pressure group (p < 0.01). Low PAP implies less severe collapsibility — favorable endotypic terrain.`, cite: 'Lee 2019 JCSM' });
+      result.favorable.push({ factor: 'Lower therapeutic PAP pressure', detail: `Therapeutic PAP of ${cpapPressure} cmH₂O is directionally associated with less collapsible anatomy in observational data. This is not a validated response threshold.`, cite: 'Lee 2019 JCSM' });
     } else if (cpapPressure >= H.papHigh) {
       result.unfavorable.push({ factor: 'High therapeutic pressure', detail: `Therapeutic PAP of ${cpapPressure} cmH₂O suggests more severe or anatomically fixed collapsibility. Higher pressures correlate with lower HGNS response rates.`, cite: 'Lee 2019 JCSM' });
     }
@@ -827,54 +829,30 @@ function buildHGNSAssessment(ctx) {
     if (nons > 0) {
       const supRatio = sup / nons;
       if (supRatio >= H.supNonSupRatio && nons < 10) {
-        result.unfavorable.push({ factor: 'Supine-predominant OSA', detail: `Supine/non-supine ratio is ${supRatio.toFixed(1)}x. Only 39% of supine-predominant patients achieved treatment response vs 78% overall. Supine-dependent anatomy may involve multilevel collapse that HGNS alone cannot resolve.`, cite: 'ADHERE adjusted analysis' });
+        result.unfavorable.push({ factor: 'Supine-predominant OSA', detail: `Supine/non-supine ratio is ${supRatio.toFixed(1)}x. Observational data associate supine predominance with lower HGNS response, but no validated individual threshold is available.`, cite: 'ADHERE adjusted analysis' });
       } else {
-        result.favorable.push({ factor: 'No supine predominance', detail: `Supine/non-supine AHI ratio is ${supRatio.toFixed(1)}x (supine ${sup}, non-supine ${nons}). OSA is not position-dependent, which is favorable — supine-predominant patients have significantly lower HGNS response rates (39% vs 78%).`, cite: 'ADHERE adjusted analysis' });
+        result.favorable.push({ factor: 'No supine predominance', detail: `Supine/non-supine AHI ratio is ${supRatio.toFixed(1)}x (supine ${sup}, non-supine ${nons}). This avoids one observationally adverse pattern but does not predict success.`, cite: 'ADHERE adjusted analysis' });
       }
     } else if (nons === 0 && sup > 0) {
-      result.unfavorable.push({ factor: 'Exclusively supine OSA', detail: `All obstructive events occur in the supine position (non-supine AHI is 0). Strongly position-dependent anatomy may involve multilevel collapse that HGNS alone cannot resolve. Only 39% of supine-predominant patients achieved treatment response.`, cite: 'ADHERE adjusted analysis' });
+      result.unfavorable.push({ factor: 'Exclusively supine OSA', detail: 'All recorded obstructive events occurred supine. Consider whether positional therapy and positional sampling affect the need for an implant; this pattern does not independently predict an individual HGNS result.', cite: 'ADHERE adjusted analysis' });
     }
   }
 
-  // Endotype-based factors — always comment when WatchPAT CSR/central data is available
-  if (phenotypes.includes('High Loop Gain')) {
-    result.unfavorable.push({ factor: 'High loop gain phenotype', detail: 'Elevated ventilatory loop gain indicates central/neurochemical breathing instability. HGNS targets anatomical obstruction; patients with high loop gain have predominantly non-anatomical pathophysiology and are less likely to respond.', cite: 'Op de Beeck 2021 AJRCCM' });
-  } else if (exists(csr) || exists(pahic3) || exists(cai)) {
-    // CSR/central data available but no high loop gain detected — favorable
-    const csrNote = exists(csr) ? `CSR ${csr}%` : '';
-    const centralNote = exists(pahic3) ? `central AHI ${pahic3}` : exists(cai) ? `CAI ${cai}` : '';
-    const details = [csrNote, centralNote].filter(Boolean).join(', ');
-    result.favorable.push({ factor: 'No high loop gain', detail: `No elevated ventilatory loop gain detected (${details}). Low loop gain indicates predominantly anatomical rather than central/neurochemical OSA — the phenotype most responsive to HGNS, which works by mechanically opening the airway.`, cite: 'Op de Beeck 2021 AJRCCM' });
-  }
-  if (phenotypes.includes('Low Arousal Threshold')) {
-    result.unfavorable.push({ factor: 'Low arousal threshold', detail: 'Endotyped HGNS responders had higher respiratory arousal thresholds. A low arousal threshold is not a formal contraindication, but it should be treated as a cautionary rather than favorable signal.', cite: 'Op de Beeck 2021 AJRCCM' });
-  }
-  if (phenotypes.includes('Poor Muscle Responsiveness')) {
-    result.unfavorable.push({ factor: 'Low muscle compensation', detail: 'Endotyped HGNS responders demonstrated higher upper-airway muscle compensation. Reduced compensation therefore tempers expectations rather than strengthening candidacy.', cite: 'Op de Beeck 2021 AJRCCM' });
-  }
+  // PSG-derived endotypes remain research context only. The app's WatchPAT and
+  // clinical surrogates are not interchangeable with the measured traits used
+  // in the STAR secondary analysis, so they must not score HGNS response.
 
   // ── Overall assessment ──
   if (result.assessment === '') {
     // Only set if not already set by hard-stop criteria
-    const favCount = result.favorable.length;
-    const unfavCount = result.unfavorable.filter(u => u.factor !== 'Device-specific airway evaluation incomplete').length;
     const dise_missing = !hasDISEData;
 
     if (dise_missing && eligible) {
-      result.assessment = 'Potentially eligible — device-specific workup incomplete';
-      result.assessmentDetail = `Based on available data (${favCount} favorable, ${unfavCount} unfavorable factors), this patient may be a candidate for HGNS. Confirm the current device-specific airway-evaluation requirements before final determination; some systems require DISE, and DISE findings can materially affect treatment selection and expected response. Velar CCC contraindicates unilateral Inspire; if present, do not assume another HGNS system is appropriate without reviewing current device-specific labeling.`;
-    } else if (eligible && unfavCount === 0 && favCount >= 2) {
-      result.assessment = 'Strong candidate';
-      result.assessmentDetail = `This patient has ${favCount} favorable factors and no significant unfavorable findings. The evidence supports a high likelihood of HGNS success (STAR trial: 66% overall success with Sher criteria; higher in patients with multiple favorable predictors).`;
-    } else if (eligible && favCount > unfavCount) {
-      result.assessment = 'Good candidate';
-      result.assessmentDetail = `This patient has ${favCount} favorable and ${unfavCount} unfavorable factors. The balance of evidence supports HGNS candidacy, though the unfavorable factors should be weighed in shared decision-making.`;
-    } else if (eligible && unfavCount >= favCount && favCount > 0) {
-      result.assessment = 'Candidate with caveats';
-      result.assessmentDetail = `This patient meets basic eligibility but has ${unfavCount} unfavorable factors against ${favCount} favorable. Consider whether the unfavorable factors are modifiable (e.g., weight loss may shift BMI favorably) and discuss realistic expectations with the patient (~30% of well-selected patients still do not achieve success criteria).`;
+      result.assessment = 'Basic referral criteria appear met; device-specific workup incomplete';
+      result.assessmentDetail = 'Confirm the current device-specific airway-evaluation requirements before final eligibility is determined. Response associations shown below are contextual and must not be counted into a success score.';
     } else if (eligible) {
-      result.assessment = 'Marginal candidate';
-      result.assessmentDetail = 'This patient meets basic eligibility criteria but has limited favorable predictors. Consider optimizing modifiable factors before proceeding.';
+      result.assessment = 'Basic referral criteria appear met; individual response remains uncertain';
+      result.assessmentDetail = 'Current evidence does not support an externally validated multivariable response score. Review device-specific eligibility, complete lateral-wall collapse, other anatomy, patient goals, and alternatives without converting the number of listed factors into a probability.';
     }
   }
 
@@ -917,12 +895,9 @@ function renderHGNSHTML(hgns) {
 
   // Assessment badge
   const badgeMap = {
-    'Strong candidate':                 'bg-success',
-    'Good candidate':                   'bg-success',
-    'Candidate with caveats':           'bg-warning text-dark',
-    'Marginal candidate':               'bg-warning text-dark',
     'Not a candidate':                  'bg-danger',
-    'Potentially eligible — device-specific workup incomplete': 'bg-info text-dark'
+    'Basic referral criteria appear met; device-specific workup incomplete': 'bg-info text-dark',
+    'Basic referral criteria appear met; individual response remains uncertain': 'bg-info text-dark'
   };
   const badgeClass = badgeMap[hgns.assessment] || 'bg-secondary';
 
@@ -935,14 +910,14 @@ function renderHGNSHTML(hgns) {
         <ul class="mb-0 mt-1">${hgns.eligibilityIssues.map(i => `<li>${i}</li>`).join('')}</ul>
       </div>`;
   } else {
-    eligHTML = `<p class="text-success"><i class="bi bi-check-circle-fill"></i> <strong>Meets basic eligibility criteria</strong> (AHI range, BMI, CPAP intolerance)</p>`;
+    eligHTML = `<p class="text-success"><i class="bi bi-check-circle-fill"></i> <strong>Basic referral criteria appear met</strong> (AHI range, local BMI guardrail, PAP intolerance). Confirm device-specific labeling, central-event burden, airway requirements, and payer criteria.</p>`;
   }
 
   // Favorable factors
   let favHTML = '';
   if (hgns.favorable.length > 0) {
     favHTML = `
-      <h6 class="mt-2 text-success"><i class="bi bi-plus-circle"></i> Favorable Factors (${hgns.favorable.length})</h6>
+      <h6 class="mt-2 text-primary"><i class="bi bi-info-circle"></i> Supportive or descriptive context</h6>
       <table class="table table-sm">
         <tbody>${hgns.favorable.map(f => `<tr><td style="width:200px;"><strong>${f.factor}</strong></td><td>${f.detail} <span class="text-muted small">[${f.cite}]</span></td></tr>`).join('')}</tbody>
       </table>`;
@@ -952,7 +927,7 @@ function renderHGNSHTML(hgns) {
   let unfavHTML = '';
   if (hgns.unfavorable.length > 0) {
     unfavHTML = `
-      <h6 class="mt-2 text-danger"><i class="bi bi-dash-circle"></i> Unfavorable Factors (${hgns.unfavorable.length})</h6>
+      <h6 class="mt-2 text-warning"><i class="bi bi-exclamation-triangle"></i> Cautionary response context</h6>
       <table class="table table-sm">
         <tbody>${hgns.unfavorable.map(f => `<tr><td style="width:200px;"><strong>${f.factor}</strong></td><td>${f.detail} <span class="text-muted small">[${f.cite}]</span></td></tr>`).join('')}</tbody>
       </table>`;
@@ -974,6 +949,7 @@ function renderHGNSHTML(hgns) {
       <div class="card-header"><i class="bi bi-cpu"></i> HGNS (Inspire / Genio) Candidacy Assessment</div>
       <div class="card-body">
         ${eligHTML}
+        <div class="alert alert-light border py-2"><strong>Interpretation boundary:</strong> No guideline-endorsed or externally validated multivariable HGNS response score is available. Do not count the contextual factors below into a probability. Complete lateral oropharyngeal-wall collapse on DISE is associated with lower unilateral HGNS efficacy. Airflow-shape prediction requires raw, unfiltered nasal-pressure data and a validated algorithm; it must not be inferred from a standard WatchPAT report.</div>
         ${favHTML}
         ${unfavHTML}
         <div class="alert ${hgns.eligible ? (badgeClass.includes('success') ? 'alert-success' : badgeClass.includes('warning') ? 'alert-warning' : 'alert-info') : 'alert-danger'} mt-3">
@@ -1049,8 +1025,17 @@ function detectPhenotypes(m, T){
     add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`, `AHI ${m.ahi}`, 'inferred surrogate (not a measured trait)']);
   }
 
-  if( exists(supNonSupRatio) && exists(m.nons) && supNonSupRatio > T.positional.supNonSupRatio && m.nons < T.positional.nonSupMax ){
-    add('Positional OSA',[`Sup/Non-sup ${formatRatio(supNonSupRatio)}`, `Non-sup AHI ${m.nons}`]);
+  const positionalPattern = OSAReportShared.classifyPositionalPattern({
+    supineAhi: m.sup,
+    nonSupineAhi: m.nons,
+    ratioThreshold: T.positional.supNonSupRatio,
+  });
+  if(positionalPattern.positional){
+    add('Positional OSA',[
+      `Sup/Non-sup ${formatRatio(positionalPattern.ratio)}`,
+      `Non-sup AHI ${m.nons}`,
+      positionalPattern.type === 'supine-isolated' ? 'Supine-isolated pattern' : 'Supine-predominant pattern',
+    ]);
   }
 
   if( exists(remStageRatio) && exists(m.nremAhi) && remStageRatio > T.remPredominant.remNremRatio && m.nremAhi < T.remPredominant.nremMax ){
@@ -1219,7 +1204,7 @@ function buildHstFlags(m, T){
    tests/phenotype-matrix.html. ── */
 function mapTreatments(f, m, T){
   const {
-    phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
+    phen, sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr, sup, nons,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, severeNocturnalHypoxemia,
     negativeHstNeedsPsg,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty, papMode,
@@ -1310,12 +1295,17 @@ function mapTreatments(f, m, T){
         }
         break;
       case 'Positional OSA':
-        pushRec(recs,'Begin positional therapy (vibratory trainer, backpack/pillow strategies).','POS');
-        if(ahi >= T.severity.severe){
-          if(cpapFailed) {
-            pushRec(recs,'Positional therapy alone may be insufficient at this severity; combine with MAD or surgical approach.','POS-GUARD');
+        {
+          const positionalPattern = OSAReportShared.classifyPositionalPattern({
+            supineAhi: sup,
+            nonSupineAhi: nons,
+            ratioThreshold: T.positional.supNonSupRatio,
+          });
+          if (positionalPattern.type === 'supine-isolated') {
+            pushRec(recs,'Consider positional therapy. The non-supine AHI is below 5, so monotherapy may be possible only after confirming adequate non-supine sleep including REM and verifying control with follow-up testing.','POS');
           } else {
-            pushRec(recs,'Positional therapy alone may be insufficient at this severity; use as adjunct to CPAP.','POS-GUARD');
+            pushRec(recs,`Use positional therapy as an adjunct. OSA persists off the back (non-supine AHI ${exists(nons) ? nons : 'not fully characterized'}), so position alone should not be assumed to control disease.`,'POS');
+            pushRec(recs,'Positional therapy is adjunctive because clinically important OSA persists during non-supine sleep.','POS-GUARD');
           }
         }
         break;
@@ -1363,7 +1353,8 @@ function mapTreatments(f, m, T){
   }
 
   /* ─── FRIEDMAN STAGE (auto-calculated) ────────────────────── */
-  /* Friedman 2004: FTP + tonsils + BMI → surgical candidacy tier */
+  /* Friedman 2004: FTP + tonsils + BMI provide historical anatomic context,
+     not an individualized surgical-response probability. */
   const friedmanStage = (() => {
     if (!exists(tons) || !mall) return null;
     if (exists(bmi) && bmi >= 40) return 'IV';
@@ -1389,11 +1380,10 @@ function mapTreatments(f, m, T){
     if (exists(bmi) && bmi >= 30) { unfavorable++; details.push('BMI ≥30'); }
     if (ahi > 30) { unfavorable++; details.push('AHI >30'); }
     const stage = unfavorable === 0 ? 'I' : unfavorable === 1 ? 'II' : unfavorable === 2 ? 'III' : 'IV';
-    // Qualitative candidacy tier only. The Ji 2026 model is single-center (n=119, C=0.68)
-    // and uses a 4th variable (comorbidity burden) the form does not capture, so we do NOT
-    // emit the paper's exact response percentages — see clinician display caveat.
-    const favorability = unfavorable === 0 ? 'more favorable' : unfavorable === 1 ? 'favorable–intermediate' : unfavorable === 2 ? 'less favorable' : 'least favorable';
-    return { stage, favorability, unfavorable, details };
+    // Published staging context only. The Ji 2026 model is single-center
+    // (n=119, C=0.68), lacks external validation, and uses comorbidity burden,
+    // which this implementation does not fully represent.
+    return { stage, unfavorable, details };
   })();
 
   /* ─── DISE concentric collapse check ────────────────────── */
@@ -1413,9 +1403,9 @@ function mapTreatments(f, m, T){
     pushRec(recs,`${response} Review the operative report and current anatomy before considering revision pharyngoplasty or alternative DISE-directed targets.`,'SOFT-TISSUE-REVISION');
   } else if(exists(tons) && tons >= T.anatomical.tonsils){
     if(friedmanStage === 'I'){
-      pushRec(recs,`Strongly consider tonsillectomy +/- expansion pharyngoplasty (Friedman Stage I: FTP ${mall}, Tonsils ${tons}, BMI ${bmi?.toFixed(1)} — ~80% UPPP success rate).`,'SOFT-TISSUE-STRONG');
+      pushRec(recs,'Consider tonsillectomy with or without expansion pharyngoplasty. Friedman Stage I anatomy is associated with better palatal-surgery outcomes, but it does not provide an individualized success probability.','SOFT-TISSUE-STRONG');
     } else if(friedmanStage === 'II' && ftpIorII){
-      pushRec(recs,`Consider tonsillectomy +/- expansion pharyngoplasty as part of multilevel plan (Friedman Stage II — intermediate success rate ~37-74%).`,'SOFT-TISSUE-CONSIDER');
+      pushRec(recs,'Consider tonsillectomy with or without expansion pharyngoplasty as part of an anatomy-directed plan. Friedman Stage II provides context but does not predict an individual outcome.','SOFT-TISSUE-CONSIDER');
     } else if(highAnat && ftpIorII){
       pushRec(recs,'Consider tonsillectomy +/- expansion pharyngoplasty based on anatomic crowding and large tonsils.','SOFT-TISSUE-GENERAL');
     }
@@ -1443,43 +1433,32 @@ function mapTreatments(f, m, T){
     pushRec(recs,inspireEvalText,'INSPIRE-EVAL');
   }
 
-  /* ─── MAD CANDIDACY SCORING ─────────────────────────────── */
-  /* Evidence-based factors: Camañes-Gonzalvo 2022, Chen 2020, Edwards 2016, Marques 2019 */
-  const madScore = (() => {
-    let score = 0;
-    const factors = [];
+  /* ─── ORAL-APPLIANCE RESPONSE CONTEXT ───────────────────── */
+  /* Population-level associations only. No externally validated individual
+     response rule supports a point score, tier, probability, or plan ranking.
+     Ramar 2015; Camañes-Gonzalvo 2022; Hamza 2026. */
+  const madResponseContext = (() => {
+    const supportive = [];
+    const cautionary = [];
     const MAD = T.madCandidacy;
-    /* OSA severity: mild-moderate favorable, severe unfavorable */
-    if (exists(ahi) && ahi >= MAD.ahiMild && ahi < MAD.ahiModerate) { score += 2; factors.push('mild OSA'); }
-    else if (exists(ahi) && ahi >= MAD.ahiModerate && ahi < MAD.ahiSevere) { score += 1; factors.push('moderate OSA'); }
-    else if (exists(ahi) && ahi >= MAD.ahiSevere) { score -= 2; factors.push('severe OSA'); }
-    /* BMI: <28 favorable, ≥35 unfavorable */
-    if (exists(bmi) && bmi < MAD.bmiLow) { score += 1; factors.push('lower BMI'); }
-    else if (exists(bmi) && bmi >= MAD.bmiHigh) { score -= 1; factors.push('higher BMI'); }
-    /* Female: better response rates */
-    if (sex === 'F') { score += 1; factors.push('female'); }
-    /* Smaller neck: responders avg 1-1.5cm smaller */
+    if (exists(ahi) && ahi >= MAD.ahiMild && ahi < MAD.ahiSevere) supportive.push(ahi < MAD.ahiModerate ? 'mild OSA' : 'moderate OSA');
+    else if (exists(ahi) && ahi >= MAD.ahiSevere) cautionary.push('severe OSA');
+    if (exists(bmi) && bmi < MAD.bmiLow) supportive.push('lower BMI');
+    else if (exists(bmi) && bmi >= MAD.bmiHigh) cautionary.push('higher BMI');
+    if (sex === 'F') supportive.push('female sex');
     const neckThresh = sex === 'F' ? MAD.neckFemale : MAD.neckMale;
-    if (exists(neck) && neck < neckThresh) { score += 1; factors.push('smaller neck'); }
-    /* Positional OSA: 64% vs 36% response rate */
-    if (out.phen.includes('Positional OSA')) { score += 1; factors.push('positional OSA'); }
-    /* REM-predominant: NREM-OSA responds better */
-    if (out.phen.includes('REM-Predominant OSA')) { score -= 1; factors.push('REM-predominant'); }
-    /* High loop gain: lower collapsibility predicts better response */
-    if (out.phen.includes('High Loop Gain')) { score -= 1; factors.push('high loop gain'); }
-    /* Event-linked HB is not used in this unvalidated response score. */
-    /* Retrognathia: mandibular retrusion independently predicts better MAD response (Hamza 2026) */
-    if (retrognathia) { score += 1; factors.push('retrognathia'); }
-    /* Hypopnea-predominant: better MAD response than apnea-predominant (Camañes-Gonzalvo 2025) */
-    if (exists(fHypopneas) && fHypopneas > MAD.hypopneaHigh) { score += 1; factors.push('hypopnea-predominant'); }
-    else if (exists(fHypopneas) && fHypopneas < MAD.hypopneaLow) { score -= 1; factors.push('apnea-predominant'); }
-    /* Age: younger patients respond better (3-4.5 yr mean difference, Camañes-Gonzalvo 2022, Chen 2020) */
+    if (exists(neck) && neck < neckThresh) supportive.push('smaller neck');
+    if (out.phen.includes('Positional OSA')) supportive.push('positional pattern');
+    if (out.phen.includes('REM-Predominant OSA')) cautionary.push('REM-predominant pattern');
+    // Do not reuse the app's qualitative ventilatory-instability flag here. It
+    // is not interchangeable with the measured loop gain used in MAD studies.
+    if (retrognathia) supportive.push('mandibular retrusion');
+    if (exists(fHypopneas) && fHypopneas > MAD.hypopneaHigh) supportive.push('hypopnea-predominant pattern');
+    else if (exists(fHypopneas) && fHypopneas < MAD.hypopneaLow) cautionary.push('apnea-predominant pattern');
     const age = n(f.get('age'));
-    if (exists(age) && age < MAD.ageYoung) { score += 1; factors.push('younger age'); }
-    else if (exists(age) && age >= MAD.ageOld) { score -= 1; factors.push('older age'); }
-    /* tier: favorable (≥3), standard (0-2), poor (< 0) */
-    const tier = score >= MAD.scoreFavorable ? 'favorable' : score < MAD.scorePoor ? 'poor' : 'standard';
-    return { score, tier, factors };
+    if (exists(age) && age < MAD.ageYoung) supportive.push('younger age');
+    else if (exists(age) && age >= MAD.ageOld) cautionary.push('older age');
+    return { supportive, cautionary };
   })();
 
   /* ─── STAGE-AWARE CORE RECOMMENDATIONS ───────────────────── */
@@ -1579,14 +1558,8 @@ function mapTreatments(f, m, T){
     } else if(priorJaw) {
       /* Fix #1: Wire priorJaw — prior jaw surgery affects MAD candidacy */
       pushRec(recs,'Prior jaw surgery noted \u2014 MAD candidacy requires careful dental evaluation of occlusal changes','MAD');
-    } else if(madScore.tier === 'favorable') {
-      pushRec(recs,'Oral appliance therapy (MAD) \u2014 favorable candidate based on profile','MAD-FAVORABLE');
-    } else if(madScore.tier === 'poor') {
-      /* Poor MAD candidate (e.g. severe OSA / high BMI) \u2014 de-emphasized per
-         clinical review: the tier assessment stays in the Treatment Candidacy
-         card as a fallback option, but MAD is not pushed into the main plan. */
-    } else {
-      pushRec(recs,'Custom oral appliance (MAD)','MAD');
+    } else if (!cpapCurrent && (ahi < T.severity.severe || prefAvoidCpap || cpapFailed)) {
+      pushRec(recs,'Consider a custom, titratable oral appliance when the patient prefers an alternative to PAP or cannot tolerate PAP. Population-level response associations are not reliable enough to rank this option for an individual; confirm efficacy with follow-up sleep testing.','MAD');
     }
     /* Only recommend generic surgery when anatomical findings are present */
     const hasAnatomicalPhenotype = out.phen.includes('High Anatomical Contribution');
@@ -1622,7 +1595,7 @@ function mapTreatments(f, m, T){
     }
   }
 
-  return { recs, recTags, friedmanStage, hnsStage, madScore, hasConcentricCollapse, hasCOMISA, sleepyCOMISA };
+  return { recs, recTags, friedmanStage, hnsStage, madResponseContext, hasConcentricCollapse, hasCOMISA, sleepyCOMISA };
 }
 
 /* ── Clinician report renderer — pure-ish function extracted from the submit
@@ -1637,7 +1610,7 @@ function buildClinicianReport(f, m, T){
     ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons, cpapDifficulty,
     cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
     friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbPH, hnsStage,
-    isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
+    isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madResponseContext, madTmj, mall,
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP, priorNasal, priorSinus,
@@ -1753,8 +1726,15 @@ function buildClinicianReport(f, m, T){
   if(diagnosticSignals?.severeNocturnalHypoxemia){
     guardrails.push('Substantial conventional nocturnal hypoxemia is present. Review whether OSA fully explains it, treat confirmed OSA effectively, and objectively confirm oxygen control; do not relabel ODI, T90, or nadir as hypoxic burden.');
   }
-  if(out.phen.includes('Positional OSA') && ahi >= T.severity.severe){
-    guardrails.push('Positional therapy alone may be insufficient at this AHI severity; consider as adjunct to PAP.');
+  const positionalPattern = OSAReportShared.classifyPositionalPattern({
+    supineAhi: sup,
+    nonSupineAhi: nons,
+    ratioThreshold: T.positional.supNonSupRatio,
+  });
+  if(out.phen.includes('Positional OSA') && positionalPattern.type === 'supine-predominant'){
+    guardrails.push(`Supine-predominant OSA: non-supine AHI ${nons} remains diagnostic. Positional therapy is adjunctive and should not be presented as monotherapy.`);
+  } else if(out.phen.includes('Positional OSA') && positionalPattern.type === 'supine-isolated'){
+    guardrails.push('Supine-isolated pattern: positional monotherapy may be considered only after confirming adequate non-supine sleep, including non-supine REM when available, and verifying treatment efficacy objectively.');
   }
   if(out.phen.includes('Elevated Delta Heart Rate') && cvd){
     guardrails.push('Elevated \u0394HR with existing CVD \u2014 consider cardiology monitoring and aggressive PAP adherence targets.');
@@ -1812,7 +1792,7 @@ function buildClinicianReport(f, m, T){
 
   const followUps = [];
   if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI 4–6 weeks after CBT-I begins</li><li>Start or continue PAP on the individualized concurrent/sequential plan</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor PAP adherence at 1, 4, and 12 weeks</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
-  if(out.phen.includes('Positional OSA')) followUps.push('Reassess after 2\u20134 weeks of positional therapy with HSAT/WatchPAT.');
+  if(out.phen.includes('Positional OSA')) followUps.push('Objectively reassess positional-therapy efficacy after an adequate trial; long-term adherence and progression to non-positional OSA remain concerns.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');
   if (recTags.some(r => r.tag === 'WEIGHT')) {
@@ -2229,14 +2209,14 @@ function buildClinicianReport(f, m, T){
   /* ── Build collapsible treatment candidacy content ───── */
   const txCandidacyParts = [];
   if (friedmanStage)
-    txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : friedmanStage === 'III' ? 'warning' : 'danger'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Favorable UPPP candidate (~80% success)' : friedmanStage === 'II' ? 'Intermediate surgical candidate (~37-74%)' : friedmanStage === 'III' ? 'Poor UPPP candidate (~8%) — consider tongue base surgery, HNS, or MMA' : 'Generally excluded from soft tissue surgery (BMI ≥40 or skeletal deformity)'}</div>`);
+    txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Anatomy is more supportive of palatal or tonsil surgery.' : friedmanStage === 'II' ? 'Intermediate anatomic context; procedure selection requires the complete airway evaluation.' : friedmanStage === 'III' ? 'Isolated palatal surgery is less likely to control OSA; evaluate other airway levels and treatment modalities.' : 'The staging system does not provide a reliable individualized response estimate in this anatomy.'}<br><small class="text-muted">Friedman stage is an evidence-informed anatomic framework, not a validated patient-specific probability. DISE can localize collapse when indicated, but DISE findings do not form a validated general surgical-response score.</small></div>`);
   if (hnsStage && !priorInspire) {
     const cccBadge = hasConcentricCollapse ? ' <span class="badge bg-warning text-dark">DISE: CCC — Inspire contraindicated; Genio evidence/labeling not established for CCC</span>' : '';
     const bmiBadge = exists(bmi) && bmi > T.hgns.bmiMax ? ' <span class="badge bg-danger">BMI >40 — above current Capital ENT HGNS referral guardrail</span>' : '';
     if (hnsStage.insufficient) {
-      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>HGNS device-specific candidacy (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to generate a stage-based response tier.${cccBadge}${bmiBadge}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-secondary py-2 px-3 mb-2"><strong>Exploratory HGNS response context (Ji 2026)</strong> — Insufficient data. Enter ${hnsStage.missing.join(', ')} to describe the published staging context.${cccBadge}${bmiBadge}</div>`);
     } else {
-      txCandidacyParts.push(`<div class="alert alert-${hnsStage.stage === 'I' ? 'success' : hnsStage.stage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>HGNS response tier — Stage ${hnsStage.stage}: ${hnsStage.favorability}</strong>${hnsStage.details.length ? ' (unfavorable: ' + hnsStage.details.join(', ') + ')' : ' (all factors favorable)'}<br><small class="text-muted">Qualitative tier adapted from Ji 2026 (single-center, n=119, C=0.68; needs external validation). This is not device eligibility; confirm with DISE and current device-specific labeling.</small>${cccBadge}${bmiBadge}</div>`);
+      txCandidacyParts.push(`<div class="alert alert-light py-2 px-3 mb-2"><strong>Exploratory HGNS response context — Ji Stage ${hnsStage.stage}</strong>${hnsStage.details.length ? ' (published adverse features represented: ' + hnsStage.details.join(', ') + ')' : ' (no published adverse features represented)'}<br><small class="text-muted">This single-center staging model had modest discrimination (C=0.68), is not externally validated, and cannot assign candidacy or an individual response probability. Confirm eligibility and response-relevant anatomy separately using current device labeling and the device-specific workup.</small>${cccBadge}${bmiBadge}</div>`);
     }
   }
   const madBarrierLabels = { madProblemTmj: 'TMJ pain', madProblemTeeth: 'dental problems', madProblemBite: 'bite changes', madProblemDiscomfort: 'discomfort or poor fit' };
@@ -2250,7 +2230,9 @@ function buildClinicianReport(f, m, T){
           ? ' <span class="badge bg-success">Prior benefit and tolerance reported</span>'
           : ' <span class="badge bg-secondary">Prior response incomplete</span>'
     : '';
-  txCandidacyParts.push(`<div class="alert alert-${priorMAD && madTolerated === 'no' ? 'warning' : priorMAD ? 'secondary' : madScore.tier === 'favorable' ? 'success' : madScore.tier === 'poor' ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>${priorMAD ? 'MAD Physiologic Profile Match' : 'MAD Candidacy'}: ${madScore.tier.charAt(0).toUpperCase() + madScore.tier.slice(1)}</strong> (score ${madScore.score})${priorMadStatus}${priorMAD ? '<br><small class="text-muted">The score describes anatomy and OSA profile only. Prior effectiveness, tolerance, dental effects, and titration determine whether another trial is clinically appropriate.</small>' : ''} — Factors: ${madScore.factors.join(', ')}<br><small class="text-muted"><strong>Before prescribing MAD, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
+  const madSupportive = madResponseContext.supportive?.length ? escapeHtml(madResponseContext.supportive.join(', ')) : 'none captured';
+  const madCautionary = madResponseContext.cautionary?.length ? escapeHtml(madResponseContext.cautionary.join(', ')) : 'none captured';
+  txCandidacyParts.push(`<div class="alert alert-${priorMAD && madTolerated === 'no' ? 'warning' : priorMAD ? 'secondary' : 'light'} py-2 px-3 mb-2"><strong>${priorMAD ? 'Prior oral appliance and response context' : 'Oral appliance response context'}</strong>${priorMadStatus}<br><small><strong>No validated individual response score is available.</strong> Population-level studies report directional associations, but these do not establish candidacy or predict this patient's result. Supportive associations captured: ${madSupportive}. Cautionary associations captured: ${madCautionary}. Treatment choice should follow preference, PAP tolerance, dental safety, and objective follow-up testing.</small><br><small class="text-muted"><strong>Before prescribing an oral appliance, verify:</strong> adequate dentition, no severe TMJ dysfunction, mandibular protrusion ≥6mm${priorJaw ? ', prior jaw surgery occlusal assessment' : ''}</small></div>`);
   if (surgHelper) txCandidacyParts.push(surgHelper);
   if (hgnsHTML) txCandidacyParts.push(`<div class="mt-2">${hgnsHTML}</div>`);
 
@@ -2264,8 +2246,8 @@ function buildClinicianReport(f, m, T){
 
   const candidacyBadges = [
     friedmanStage ? `Friedman ${friedmanStage}` : null,
-    priorMAD ? `MAD profile: ${madScore.tier}${madTolerated === 'no' ? ' (prior intolerance)' : ' (prior trial)'}` : `MAD: ${madScore.tier}`,
-    priorInspire ? 'HGNS: existing device' : hnsStage && !hnsStage.insufficient ? `Inspire: Stage ${hnsStage.stage} (${hnsStage.favorability})` : hnsStage?.insufficient ? 'Inspire: staging incomplete' : null,
+    priorMAD ? `Oral appliance: prior trial${madTolerated === 'no' ? ' (intolerance)' : ''}` : 'Oral appliance: response uncertain',
+    priorInspire ? 'HGNS: existing device' : hnsStage && !hnsStage.insufficient ? `HGNS: Ji Stage ${hnsStage.stage} (exploratory)` : hnsStage?.insufficient ? 'HGNS: staging context incomplete' : null,
   ].filter(Boolean);
 
   let cHTML = `
@@ -2591,11 +2573,11 @@ document.getElementById('form').addEventListener('submit', e => {
 
   /* ─── TREATMENT MAPPING (delegated to mapTreatments — pure fn) ─── */
   const {
-    recTags: generatedRecTags, friedmanStage, hnsStage, madScore,
+    recTags: generatedRecTags, friedmanStage, hnsStage, madResponseContext,
     hasConcentricCollapse, hasCOMISA, sleepyCOMISA,
   } = mapTreatments(f, {
     phen: out.phen,
-    sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr,
+    sex, bmi, neck, tons, mall, ahi, isi, ess, arInd, cvd, dhr, sup, nons,
     noseScore, nasalObs, ctSeptum, ctTurbs, retrognathia, fHypopneas, severeNocturnalHypoxemia,
     negativeHstNeedsPsg: diagnosticSignals.negativeHstNeedsPsg,
     priorCpap, cpapCurrent, cpapFailed, cpapRefused, cpapWillRetry, cpapReasons, cpapDifficulty,
@@ -2617,7 +2599,7 @@ document.getElementById('form').addEventListener('submit', e => {
     ahi, bmi, cai, collapsibility, cpapCurrent, cpapFailed, cpapHelped, cpapReasons,
     cpapWillRetry, csr, ctSeptum, ctTurbs, ctxBase, cvd, dhr, edwardsArTH, ess, fHypopneas,
     friedmanStage, hasCOMISA, hasConcentricCollapse, hb90PH, hbPH, hnsStage,
-    isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madScore, madTmj, mall,
+    isi, loopGainSupportCount, lvef, madDentition, madProtrusion, madResponseContext, madTmj, mall,
     nadir, nasalObs, nons, noseScore, nremAhi, odi, osaConfirmed, out,
     oxygenCompositeSufficient, oxygenMetricCount, oxygenMetricsAvailable, pahic3, pahic4,
     prefAvoidCpap, prefInspire, prefSurgery, priorInspire, priorJaw, priorMAD, priorUPPP,
@@ -2699,7 +2681,7 @@ document.getElementById('form').addEventListener('submit', e => {
     madDentition,
     madProtrusion,
     madTmj,
-    madScore,
+    madResponseContext,
     friedmanStage,
     hnsStage,
     hasConcentricCollapse,

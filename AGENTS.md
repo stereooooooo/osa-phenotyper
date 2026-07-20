@@ -40,10 +40,11 @@ High Anatomical Contribution, Low Arousal Threshold, High Loop Gain, Poor Muscle
 ## Clinical Logic — Key Rules
 - **Delta Heart Rate** is manual entry only. WatchPAT does NOT calculate it. Do NOT derive from pulse rate Max-Mean.
 - **CVD alone does NOT trigger High Loop Gain** — only boosts confidence (Low → Moderate).
-- **Hypoxic Burden uses composite tiering**: worst available HB, ODI, T90, and nadir tier. HB 30 is an exploratory elevated-signal boundary; HB 73 and 87 are cohort-derived high/very-high research thresholds. Moderate signals provide context only and do not independently create treatment urgency.
+- **Hypoxic Burden is event-linked only**: HB 30 is an exploratory elevated-signal boundary; HB 73.1 and 87.1 are descriptive research-cohort context only. ODI, T90, nadir, and area below 90% feed a separate substantial-nocturnal-hypoxemia safety pathway and cannot create the HB phenotype.
 - **Friedman Stage** auto-calculated from FTP + tonsils + BMI. Stage I → strong UPPP candidate. Stage III → suppress UPPP, recommend tongue base/HNS/MMA.
-- **MAD candidacy scoring** based on severity, BMI, sex, neck, positional, retrognathia, loop gain, HB. Three tiers: favorable/standard/poor.
-- **HNS staging** per Ji 2026 is qualitative response context, not a validated probability or device-eligibility rule. Complete concentric collapse contraindicates unilateral Inspire; do not automatically route it to Genio.
+- **Oral appliance response context is not a candidacy score**. Population-level associations such as age, BMI, neck size, sex, severity, anatomy, and research endotypes cannot create favorable/poor tiers, a probability, or treatment ranking. Route by preference, PAP tolerance, dental/TMJ safety, prior response, and objective follow-up testing.
+- **Positional OSA** requires supine AHI at least 2 times non-supine AHI. Non-supine AHI below 5 is supine-isolated and may support monotherapy only after adequate non-supine and non-supine REM sampling plus objective verification. Non-supine AHI 5 or higher is supine-predominant and positional therapy is adjunctive.
+- **HNS response context** is separate from device eligibility. Ji staging, PAP pressure, demographics, and endotype surrogates do not create a response tier. Complete lateral oropharyngeal-wall collapse is negative unilateral-HGNS response context; partial collapse is not treated as equivalent. Complete concentric collapse contraindicates unilateral Inspire; do not automatically route it to Genio.
 - **COMISA** (ISI ≥15 + AHI ≥5): offer CBT-I early. PAP may start concurrently or sequentially based on severity, oxygen burden, sleepiness, access, and preference; do not automatically delay urgent OSA treatment.
 - **Pre-study patients** (no sleep study): only get sleep study rec + CBT-I if insomnia + nasal if obstruction. No OSA treatment recs.
 - **Normal AHI (<5)**: phenotypes suppressed. Snoring pathway + UARS detection if symptomatic.

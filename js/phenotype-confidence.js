@@ -82,8 +82,8 @@
         // phenotype agreement has not been established against PSG. Cap the
         // signal at Moderate when it is derived from the home-study fields.
         const hstCap = m.usesHstPositionEstimate === true;
-        if(pr >= T.positional.supNonSupRatioHigh && (m.nons||0) < T.positional.nonSupMaxHigh) return hstCap ? 'Moderate' : 'High';
-        if(pr >= T.positional.supNonSupRatio && (m.nons||0) < T.positional.nonSupMax) return 'Moderate';
+        if(pr >= T.positional.supNonSupRatioHigh) return hstCap ? 'Moderate' : 'High';
+        if(pr >= T.positional.supNonSupRatio) return 'Moderate';
         return 'Low';
       }
       case 'REM-Predominant OSA': {

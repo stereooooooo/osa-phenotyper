@@ -1299,7 +1299,16 @@ ${renderSectionG(data)}`;
 
       'Poor Muscle Responsiveness': `The muscles that normally tighten to hold your airway open may respond weakly, especially during dream (REM) sleep when muscles relax most. This can shape your options — including whether a treatment that physically supports the airway is a better fit.`,
 
-      'Positional OSA': `Your apnea is much worse on your back, where gravity pulls the tongue and throat tissue into the airway; on your side it stays more open. Positional therapy — a device or pillow that keeps you off your back — can cut your events substantially and is one of the simplest steps.`,
+      'Positional OSA': (() => {
+        const pattern = OSAReportShared.classifyPositionalPattern({
+          supineAhi: data.supPahi ?? data.ahiSup,
+          nonSupineAhi: data.nonSupPahi ?? data.ahiNonSup,
+        });
+        if (pattern.type === 'supine-isolated') {
+          return 'Your apnea was much worse on your back and fell below the diagnostic range off your back. A positional device can help you stay on your side. Before using position as the only treatment, your clinician should confirm that the study included enough side-sleeping, including dream sleep when available, and verify that treatment controls the apnea.';
+        }
+        return `Your apnea is much worse on your back, but breathing events still occur off your back${pattern.nonSupineAhi !== undefined ? ` (${pattern.nonSupineAhi} per hour)` : ''}. Positional therapy can reduce part of the problem, but it should support another treatment rather than replace it.`;
+      })(),
 
       'REM-Predominant OSA': `Your breathing problems cluster in REM (dream) sleep, when your brain relaxes the muscles that hold the airway open. Because REM is key for memory and mood, disruptions there affect how you feel. CPAP is particularly good at protecting REM sleep.`,
 
@@ -1374,8 +1383,10 @@ ${items}`;
     'CPAP-RETITRATE': null,  // Merged into CPAP context
     'CPAP-FIXED': null,  // Merged into CPAP context
     'MAD': `<strong>Oral Appliance Therapy</strong> — A sleep dentist fits a custom device that moves the lower jaw forward during sleep. It is a reasonable option for selected patients, especially when PAP is not tolerated; follow-up sleep testing is needed to confirm effectiveness.`,
-    'MAD-FAVORABLE': `<strong>Oral Appliance Therapy (Favorable Profile)</strong> — Your profile includes features associated with a better response to a custom jaw-advancement device. A sleep dentist should confirm safety, and follow-up testing should measure the result.`,
-    'MAD-POOR': `<strong>Oral Appliance Therapy</strong> — A custom jaw-advancement device may help, but your profile suggests it may not control your sleep apnea well enough by itself. It can still be discussed as a backup or combination option if PAP is not tolerated.`,
+    // Legacy aliases are retained for saved snapshots, but no longer communicate a
+    // patient-specific response tier. No externally validated prediction rule supports one.
+    'MAD-FAVORABLE': `<strong>Oral Appliance Therapy</strong>: A custom jaw-advancement device is an option to discuss based on your goals, PAP experience, and dental health. A sleep dentist should confirm safety, and follow-up sleep testing should measure how well it works for you.`,
+    'MAD-POOR': `<strong>Oral Appliance Therapy</strong>: A custom jaw-advancement device is an option to discuss based on your goals, PAP experience, and dental health. A sleep dentist should confirm safety, and follow-up sleep testing should measure how well it works for you.`,
     'POS': `<strong>Positional Therapy</strong> — Your breathing is worse on your back. A positional device or pillow can help you stay on your side and may be used alone or with another treatment, depending on the study results.`,
     'POS-GUARD': null,  // Contextual note — appended to POS, not shown standalone
     'OXYGEN-WORKUP': `<strong>Complete the Oxygen Review</strong> — Part of your overnight oxygen information is still incomplete or has not yet been reviewed in full. Your care team should review the complete study before describing how strongly breathing interruptions affected oxygen levels.`,
@@ -1468,6 +1479,18 @@ ${items}`;
       const device = papDeviceLabel(data);
       return `<strong>Continue ${device}</strong>: Keep using your current ${device}${papSettingsText(data)} whenever you sleep. Your follow-up can focus on comfort, dryness, mask fit, and whether the settings or equipment need adjustment.`;
     }
+    if (tag === 'POS' && data) {
+      const pattern = OSAReportShared.classifyPositionalPattern({
+        supineAhi: data.supPahi ?? data.ahiSup,
+        nonSupineAhi: data.nonSupPahi ?? data.ahiNonSup,
+      });
+      if (pattern.type === 'supine-isolated') {
+        return '<strong>Positional Therapy</strong>: Your study suggests that staying off your back may be enough for some nights. Your clinician should first confirm adequate side-sleeping data, including dream sleep when available, and follow-up testing should verify control before positional therapy replaces another treatment.';
+      }
+      if (pattern.type === 'supine-predominant') {
+        return `<strong>Positional Therapy as an Add-On</strong>: Sleeping off your back can reduce events, but your non-supine AHI remained ${pattern.nonSupineAhi} per hour. Use position with the other treatment selected by your clinician rather than as the only treatment.`;
+      }
+    }
     if (tag === 'NASAL-OPT' && data) {
       return `<strong>Prioritize Nasal Treatment</strong>: ${nasalContributorDescription(data)}`;
     }
@@ -1494,7 +1517,7 @@ ${items}`;
     if ((tag === 'SURGALT' || tag === 'SURG') && data) {
       if (hasPatientRecTag(data, 'SOFT-TISSUE-STRONG')) {
         const anatomy = data.friedmanStage === 'I'
-          ? 'Your enlarged tonsils and favorable Friedman Stage I airway pattern'
+          ? 'Your enlarged tonsils and Friedman Stage I airway pattern'
           : 'Your enlarged tonsils and airway exam';
         return `<strong>Tonsil and Palate Surgery Consultation</strong>: ${anatomy} make a surgical consultation especially relevant. This finding does not guarantee that surgery will fully control sleep apnea. Your ENT should review expected benefit, risks, recovery, whether more airway evaluation is needed, and how surgery compares with PAP and other options for you.`;
       }
@@ -1915,13 +1938,13 @@ ${items}`;
         items.push(`
 <div class="whatif-item">
   <strong>What if you slept on your side every night?</strong>
-  <p style="margin:0.4rem 0 0;">Your breathing is much worse on your back than on your side. Sleeping on your side consistently could cut your events sharply — it's one of the simplest changes with a real payoff, and a positional device helps you keep it up overnight.</p>
+          <p style="margin:0.4rem 0 0;">Your breathing is much worse on your back than on your side. Sleeping on your side consistently may reduce events. Whether it can be used alone depends on how much apnea remains off your back and whether the study captured enough side-sleeping.</p>
 </div>`);
       } else {
         items.push(`
 <div class="whatif-item">
   <strong>What if you slept on your side every night?</strong>
-  <p style="margin:0.4rem 0 0;">Your study showed your breathing is much worse on your back. Sleeping on your side is one of the simplest changes you can make and can sharply reduce your breathing events — a positional device helps you keep it up overnight.</p>
+          <p style="margin:0.4rem 0 0;">Your study showed your breathing is much worse on your back. Sleeping on your side may reduce breathing events, and a positional device can help you maintain that position overnight.</p>
 </div>`);
       }
     }
@@ -2249,6 +2272,7 @@ ${items.join('')}`;
       const supine = data.supPahi ?? data.ahiSup ?? null;
       const nonSupine = data.nonSupPahi ?? data.ahiNonSup ?? null;
       const hasComparison = exists(supine) && exists(nonSupine);
+      const pattern = OSAReportShared.classifyPositionalPattern({ supineAhi: supine, nonSupineAhi: nonSupine });
       modules.push({
         id: 'positional',
         priority: 8,
@@ -2261,7 +2285,11 @@ ${items.join('')}`;
           'Use a body pillow, backpack-style aid, or positional device to make side-sleeping easier to maintain through the night.',
           'Track whether you can stay off your back and whether snoring, awakenings, or morning symptoms improve.'
         ],
-        note: papSelected ? `Continue ${device} unless your clinician specifically said positional therapy can replace it.` : 'Follow-up testing may be needed before positional therapy is used as the only sleep apnea treatment.',
+        note: pattern.type === 'supine-predominant'
+          ? 'Because apnea persists off your back, use positional therapy with the other treatment selected by your clinician.'
+          : papSelected
+            ? `Continue ${device} unless your clinician specifically said positional therapy can replace it after objective verification.`
+            : 'Follow-up testing is needed before positional therapy is used as the only sleep apnea treatment.',
         shortAction: 'Use a positional aid and track whether side-sleeping is sustainable.',
       });
     }

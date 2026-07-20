@@ -31,6 +31,32 @@ var OSAReportShared = (() => {
     };
   }
 
+  /* Positional OSA is defined by a supine AHI at least twice the
+     non-supine AHI. A non-supine AHI below 5 is a supine-isolated pattern;
+     persistent OSA off the back is supine-predominant and makes positional
+     therapy adjunctive. This classification does not prove monotherapy will
+     work because the app does not capture adequate non-supine time or
+     non-supine REM exposure. Srijithesh 2019; Lastra 2025. */
+  function classifyPositionalPattern({ supineAhi, nonSupineAhi, ratioThreshold = 2 } = {}) {
+    const supine = Number.isFinite(+supineAhi) && +supineAhi >= 0 ? +supineAhi : null;
+    const nonSupine = Number.isFinite(+nonSupineAhi) && +nonSupineAhi >= 0 ? +nonSupineAhi : null;
+    if (supine === null || nonSupine === null) {
+      return { evaluable: false, positional: false, type: 'unresolved', ratio: null, monotherapyPotential: false };
+    }
+    const ratio = nonSupine === 0 ? (supine > 0 ? Infinity : null) : supine / nonSupine;
+    const positional = ratio !== null && ratio >= ratioThreshold;
+    const type = !positional ? 'non-positional' : nonSupine < 5 ? 'supine-isolated' : 'supine-predominant';
+    return {
+      evaluable: true,
+      positional,
+      type,
+      ratio,
+      supineAhi: supine,
+      nonSupineAhi: nonSupine,
+      monotherapyPotential: positional && nonSupine < 5,
+    };
+  }
+
   /* Shared encounter signals used by the MA plan draft and the final clinical
      analysis. This keeps diagnostic and safety escalation rules from appearing
      only after the plan has already been drafted. */
@@ -335,6 +361,7 @@ var OSAReportShared = (() => {
   return {
     buildCarePathway,
     detectUARS,
+    classifyPositionalPattern,
     assessEncounterSignals,
     buildNextTestGuidance,
     resolvePapState,

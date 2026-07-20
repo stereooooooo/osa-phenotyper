@@ -27,6 +27,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 | ER-2026-07-19-NEXT-TEST | 2026-07-19 | 2026-07-19 | Operationalizing repeat HST versus in-lab PSG guidance | AASM diagnostic guideline 2017; Iftikhar et al. 2022; Ioachimescu et al. 2020; Punjabi et al. 2020; Roeder et al. 2020; Fricke et al. 2026 | Added the missing AASM complicating-condition inputs and a clinician-only four-state next-test hierarchy. Selective multi-night HST requires an explicit clinician variability concern and remains subordinate to PSG escalation rules. | DX-01, DX-02, DX-03, DX-04, SAF-02 | Draft guidance is visible to clinicians and MAs, remains editable, and reaches the patient only after Diagnostic Testing is selected and confirmed |
 | ER-2026-07-19-PAP | 2026-07-19 | 2026-07-19 | PAP compliance downloads, residual device-reported events, leak, adherence, central signals, and follow-up testing | ATS PAP tracking statement 2013; ResMed AirSense 11 user guide; AASM PAP guideline 2019; AASM longitudinal testing guidance 2021; Reiter et al. 2016; Midelet et al. 2021; May et al. 2023; Malhotra et al. 2026 accepted manuscript | Added a clinician-only, verification-gated PAP download assistant. Usage and leak are reviewed before efficacy; P95 leak alone remains contextual; device event indices remain manufacturer-specific estimates; explicitly confirmed current symptoms and central signals prevent false reassurance; no pressure is selected or changed automatically. | PAP-01, PAP-02, PAP-03, SAF-01 | New structured input, ResMed AirView-oriented parser, editable clinician guidance, and regression scenarios; no unconfirmed guidance is sent to patients |
 | ER-2026-07-19-HB | 2026-07-19 | 2026-07-19 | Event-linked hypoxic burden definition, prognostic evidence, cohort cut points, treatment interactions, and separation from conventional nocturnal hypoxemia | Azarbarzin et al. 2019; Labarca et al. 2023; Trzepizur et al. 2022; Pinilla et al. 2023; Parekh 2024; Esmaeili et al. 2023; Peker et al. 2025; Cohen et al. ATS workshop; Azarbarzin et al. 2026; Messineo et al. 2024; Bertram et al. 2026; Pengo et al. 2025 | Removed the app-created worst-metric HB composite and all low-HB treatment de-emphasis. True HB is a Moderate research signal only. ODI, T90, nadir, and area below 90% now feed a separate substantial-nocturnal-hypoxemia safety pathway. Cohort cut points are descriptive and cannot allocate treatment. | PH-07, SAF-03, TX-01, TX-02 | Clinical logic, clinician wording, patient ranking, safety tags, evidence register, and counterexample regressions updated; Raymond Brown, MD approved deployment 2026-07-19; build `8219ec0` deployed and verified with 1,414 assertions |
+| ER-2026-07-19-NONPAP-PREDICTION | 2026-07-19 | 2026-07-19 | Individual treatment-response prediction for oral appliances, positional therapy, upper-airway surgery, and HGNS | AASM/AADSM oral-appliance guideline 2015; Camañes-Gonzalvo et al. 2022; Srijithesh et al. 2019; Lastra et al. 2025; Friedman et al. 2004; Choi et al. 2016; Qi et al. 2024; Green et al. 2019; Meraj et al. 2017; Vena et al. 2025; Huyett et al. 2021; Op de Beeck et al. 2021; Ji et al. 2026 | Removed app-created MAD response tiers and aggregate HGNS response tiers; separated supine-isolated from supine-predominant OSA; limited complete lateral-wall collapse to negative unilateral-HGNS response context; removed exact Friedman success percentages and general DISE prediction claims. | PH-05, TX-02, TX-03, TX-07 | 1,509 regression assertions passed locally; clinician approval and deployment pending |
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 
@@ -304,6 +305,66 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Next review trigger or due date:** Prospective HB-stratified treatment trial; AASM, ATS, ERS, or
   AHA guidance endorsing clinical categories; validated WatchPAT HB-method documentation; external
   validation of HBOxi implementation; or the next scheduled comprehensive review
+
+### ER-2026-07-19-NONPAP-PREDICTION: Non-PAP treatment-response prediction
+
+- **Reviewer:** Codex evidence review for Capital ENT clinician review
+- **Review date:** 2026-07-19
+- **Evidence cutoff date:** 2026-07-19
+- **Reason for review:** Open Evidence synthesis supplied by the clinician raised concern that the
+  app was converting exploratory response associations into individualized candidacy tiers and
+  treatment ranking.
+- **Affected Logic IDs:** PH-05, TX-02, TX-03, and TX-07
+- **Databases and official sources searched:** AASM and AADSM guideline publications, PubMed,
+  PubMed Central, Cochrane, European Respiratory Journal, Journal of Clinical Sleep Medicine,
+  Laryngoscope, and FDA device labeling already reviewed under ER-2026-07-15.
+- **Search concepts or saved search strings:** `oral appliance response predictors external
+  validation guideline`, `supine isolated positional therapy monotherapy non-supine REM`, `DISE
+  upper airway surgery prediction meta-analysis`, `lateral wall collapse hypoglossal nerve
+  stimulation efficacy`, and `HGNS response model external validation`.
+- **Inclusion criteria:** Current professional guidance; systematic reviews or meta-analyses;
+  prospective or multicenter validation cohorts; and primary studies directly evaluating objective
+  treatment response. Regulatory eligibility evidence was kept separate from response prediction.
+- **Key studies or documents added:** Ramar et al. 2015; Camañes-Gonzalvo et al. 2022; Srijithesh
+  et al. 2019; Lastra et al. 2025; Qi et al. 2024; Green et al. 2019; Meraj et al. 2017; Vena et al.
+  2025; Huyett et al. 2021; Op de Beeck et al. 2021; and Ji et al. 2026. Friedman et al. 2004 and
+  Choi et al. 2016 were reclassified as directional anatomic context rather than individual
+  probability sources.
+- **Key studies considered but not used, with reason:** Internally cross-validated MAD endotype and
+  machine-learning models were not implemented because they lack adequate external validation and
+  require measurements not available from routine WatchPAT summaries. The Vena airflow-shape
+  algorithm was not implemented because it requires raw unfiltered nasal-pressure signals and a
+  separately validated analytic pipeline. The internally validated MMA model and Ji HGNS staging
+  model were not converted to probabilities. OSPREY proximal-HGNS results were not generalized to
+  other devices because response predictors and device-specific labeling differ.
+- **Risk of bias or applicability concerns:** Oral-appliance response definitions and devices vary,
+  subjective benefit can diverge from objective control, and most individual predictors have small
+  effects. Positional response depends on body-position and non-supine REM exposure, adherence, and
+  durability. DISE has moderate interrater reliability and inconsistent predictive performance
+  across surgical procedures. Complete lateral-wall collapse evidence is most applicable to
+  unilateral HGNS and does not define a universal contraindication or an individual probability.
+- **Conclusion:** Clinical confidence and treatment-ranking change. Keep evidence-based treatment
+  options and safety gates, but remove unvalidated response tiers. Oral-appliance factors are
+  contextual only. Supine-isolated OSA may support positional monotherapy only after adequate
+  non-supine, including REM, sampling and objective verification; supine-predominant OSA receives
+  adjunctive language. Friedman stage and DISE localize anatomy without exact success predictions.
+  HGNS response context is not aggregated, and partial lateral-wall collapse is not equated with
+  complete collapse.
+- **Code and patient-report effect:** Removed app-created MAD favorable/poor output and MAD-based
+  treatment ranking; neutralized legacy snapshot wording; replaced HGNS strong/good/marginal tiers
+  with eligibility plus uncertainty; removed HGNS scoring from clinical endotype surrogates;
+  separated complete from partial lateral-wall collapse; removed exact Friedman response rates; and
+  made positional-treatment wording depend on isolated versus predominant disease.
+- **Regression scenarios added or updated:** Updated oral-appliance request, prior intolerance,
+  prior success, and tonsillar-surgery scenarios. Added paired supine-isolated and
+  supine-predominant scenarios, paired complete and partial lateral-wall HGNS scenarios, and direct
+  positional-classification counterexamples. The full headless suite passed 1,509 assertions.
+- **Clinician reviewer and decision:** Raymond Brown, MD, review pending
+- **Commit:** pending
+- **Deployed build:** not deployed
+- **Next review trigger or due date:** External validation of an individual oral-appliance, surgery,
+  or HGNS response model; validated commercial raw-airflow implementation; updated AASM, AADSM, or
+  surgical guidance; device-label change; or the next scheduled comprehensive review.
 
 ## Review template
 

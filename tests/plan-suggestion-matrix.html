@@ -122,8 +122,8 @@ const SCENARIOS = [
     },
     checks: ['priorCpap', 'cpapMask', 'prefAvoidCpap'],
     expectedSuggestions: ['Oral appliance'],
-    expectedTags: ['MAD-FAVORABLE'],
-    clinicianIncludes: ['Oral appliance therapy'],
+    expectedTags: ['MAD'],
+    clinicianIncludes: ['Oral appliance response context', 'No validated individual response score is available'],
     clinicianExcludes: [],
     patientIncludes: ['oral appliance', 'sleep dentist'],
     patientExcludes: ['Begin PAP therapy now', 'DISE-Guided']
@@ -177,7 +177,7 @@ const SCENARIOS = [
     checks: ['priorCpap', 'priorMAD', 'madProblemTmj', 'madProblemBite'],
     expectedSuggestions: ['Oral appliance'],
     expectedTags: ['MAD'],
-    clinicianIncludes: ['Prior oral appliance: benefit no, tolerance no, barriers: TMJ pain, bite change', 'MAD Physiologic Profile Match: Favorable', 'Clinically limited by prior intolerance', 'Do not repeat the same pathway without sleep-dentist review'],
+    clinicianIncludes: ['Prior oral appliance: benefit no, tolerance no, barriers: TMJ pain, bite change', 'Prior oral appliance and response context', 'No validated individual response score is available', 'Clinically limited by prior intolerance', 'Do not repeat the same pathway without sleep-dentist review'],
     clinicianExcludes: ['MAD Candidacy: Favorable'],
     patientIncludes: ['jaw-joint pain', 'bite changes', 'before asking you to try a similar appliance again'],
     patientExcludes: ['favorable candidate'],
@@ -288,7 +288,7 @@ const SCENARIOS = [
     checks: ['priorCpap', 'prefSurgery'],
     expectedSuggestions: ['Airway surgery'],
     expectedTags: ['SOFT-TISSUE-STRONG', 'SURG-PREF'],
-    clinicianIncludes: ['Favorable UPPP candidate'],
+    clinicianIncludes: ['Friedman Stage I', 'Anatomy is more supportive of palatal or tonsil surgery', 'not a validated patient-specific probability'],
     clinicianExcludes: ['Complete DISE-guided surgical planning'],
     patientIncludes: ['tonsil', 'palate surgery'],
     patientExcludes: ['Complete the Nerve-Stimulation Evaluation First']
@@ -403,7 +403,7 @@ const SCENARIOS = [
     checks: ['priorMAD', 'prefAvoidCpap'],
     expectedSuggestions: ['Oral appliance'],
     expectedTags: ['MAD'],
-    clinicianIncludes: ['Prior oral appliance: benefit yes, tolerance yes', 'MAD Physiologic Profile Match'],
+    clinicianIncludes: ['Prior oral appliance: benefit yes, tolerance yes', 'Prior oral appliance and response context', 'No validated individual response score is available'],
     clinicianExcludes: ['Clinically limited by prior intolerance', 'Do not repeat the same pathway'],
     patientIncludes: ['prior oral appliance helped and was tolerable'],
     patientExcludes: ['before asking you to try a similar appliance again', 'Begin PAP therapy now'],
@@ -725,6 +725,76 @@ const SCENARIOS = [
     patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
     todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'request the latest echocardiogram', 'Continue BiPAP'],
     todayPlanExcludes: ['ASV is unsafe']
+  },
+  {
+    id: 'supine-isolated-positional',
+    name: 'Supine-isolated OSA with normal non-supine AHI',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '27', neck: '15', tonsils: '1', ftp: 'II', ess: '9', isi: '5', noseScore: '10',
+      pahi: '11', tst: '6.8', remPercent: '22', supPahi: '24', nonSupPahi: '3', remPahi: '13',
+      nremPahi: '10', odi: '9', nadir: '89', hbAreaPH: '18', t90: '0.5'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management', 'Positional therapy'],
+    expectedTags: ['CPAP', 'POS'],
+    clinicianIncludes: ['Supine-isolated pattern', 'positional monotherapy may be considered only after confirming adequate non-supine sleep, including non-supine REM when available, and verifying treatment efficacy objectively'],
+    clinicianExcludes: ['Use positional therapy as an adjunct'],
+    patientIncludes: ['fell below the diagnostic range off your back', 'Before using position as the only treatment', 'verify that treatment controls the apnea'],
+    patientExcludes: ['works best as an add-on']
+  },
+  {
+    id: 'supine-predominant-positional',
+    name: 'Supine-predominant OSA with persistent non-supine disease',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'F', bmi: '30', neck: '15', tonsils: '1', ftp: 'III', ess: '12', isi: '6', noseScore: '10',
+      pahi: '21', tst: '6.5', remPercent: '20', supPahi: '42', nonSupPahi: '12', remPahi: '25',
+      nremPahi: '20', odi: '18', nadir: '85', hbAreaPH: '32', t90: '2'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management', 'Positional therapy'],
+    expectedTags: ['CPAP', 'POS', 'POS-GUARD'],
+    clinicianIncludes: ['Supine-predominant pattern', 'Use positional therapy as an adjunct', 'OSA persists off the back'],
+    clinicianExcludes: ['possible monotherapy only'],
+    patientIncludes: ['breathing events still occur off your back', 'support another treatment rather than replace it'],
+    patientExcludes: ['may be enough by itself']
+  },
+  {
+    id: 'hgns-complete-lateral-wall',
+    name: 'HGNS referral with complete lateral oropharyngeal-wall collapse',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '29', neck: '16', tonsils: '1', ftp: 'III', ess: '12', isi: '5', noseScore: '10',
+      pahi: '27', tst: '6.5', remPercent: '20', supPahi: '31', nonSupPahi: '23', remPahi: '30',
+      nremPahi: '26', odi: '23', nadir: '83', hbAreaPH: '43', t90: '3', cpapHelped: 'No', cpapRetry: 'No',
+      oDeg: '2', oPat: 'Lateral'
+    },
+    checks: ['priorCpap', 'prefInspire'],
+    expectedSuggestions: ['Nerve stimulation'],
+    expectedTags: ['INSPIRE-EVAL'],
+    clinicianIncludes: ['Basic referral criteria appear met; individual response remains uncertain', 'Complete lateral oropharyngeal-wall collapse', 'lower unilateral HGNS efficacy', 'not a universal contraindication', 'Cautionary response context'],
+    clinicianExcludes: ['Strong candidate', 'Good candidate', 'HGNS response tier'],
+    patientIncludes: ['nerve stimulation'],
+    patientExcludes: ['high chance of success']
+  },
+  {
+    id: 'hgns-partial-lateral-wall',
+    name: 'HGNS referral with partial lateral oropharyngeal-wall collapse',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '29', neck: '16', tonsils: '1', ftp: 'III', ess: '12', isi: '5', noseScore: '10',
+      pahi: '27', tst: '6.5', remPercent: '20', supPahi: '31', nonSupPahi: '23', remPahi: '30',
+      nremPahi: '26', odi: '23', nadir: '83', hbAreaPH: '43', t90: '3', cpapHelped: 'No', cpapRetry: 'No',
+      oDeg: '1', oPat: 'Lateral'
+    },
+    checks: ['priorCpap', 'prefInspire'],
+    expectedSuggestions: ['Nerve stimulation'],
+    expectedTags: ['INSPIRE-EVAL'],
+    clinicianIncludes: ['Basic referral criteria appear met; individual response remains uncertain', 'Partial lateral-wall collapse', 'Supportive or descriptive context'],
+    clinicianExcludes: ['Cautionary response context', 'Strong candidate', 'Good candidate'],
+    patientIncludes: ['nerve stimulation'],
+    patientExcludes: ['high chance of success']
   }
 ];
 

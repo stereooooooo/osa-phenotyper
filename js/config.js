@@ -70,8 +70,7 @@ const OSA_CONFIG = {
     positional: {
       supNonSupRatio:     2.0,  // Cartwright 1984, Mador 2005
       supNonSupRatioHigh: 3.0,
-      nonSupMax:          15,
-      nonSupMaxHigh:      10
+      nonSupIsolatedMax:  5     // <5 identifies a potential supine-isolated pattern; monotherapy still requires confirmation
     },
 
     remPredominant: {
@@ -156,22 +155,22 @@ const OSA_CONFIG = {
       severe:         30
     },
 
-    // MAD (oral appliance) candidacy scoring factors & tier cutoffs
-    // Evidence: Camañes-Gonzalvo 2022/2025, Chen 2020, Edwards 2016, Hamza 2026
+    // Exploratory MAD response-context factors. These app-created cut points
+    // summarize population-level associations only. They must not create an
+    // individual response probability, candidacy tier, or treatment ranking.
+    // Evidence: Camañes-Gonzalvo 2022, Edwards 2016, Hamza 2026.
     madCandidacy: {
-      ahiMild:         5,    // AHI 5–<15 → +2 (mild, favorable)
-      ahiModerate:     15,   // AHI 15–<30 → +1 (moderate)
-      ahiSevere:       30,   // AHI ≥30 → −2 (severe, unfavorable)
-      bmiLow:          28,   // BMI <28 → +1
-      bmiHigh:         35,   // BMI ≥35 → −1
-      neckFemale:      14,   // smaller-neck threshold (in), female → +1
-      neckMale:        16,   // smaller-neck threshold (in), male → +1
-      hypopneaHigh:    70,   // F(hypopneas) >70 → +1 (hypopnea-predominant)
-      hypopneaLow:     50,   // F(hypopneas) <50 → −1 (apnea-predominant)
-      ageYoung:        50,   // age <50 → +1
-      ageOld:          65,   // age ≥65 → −1
-      scoreFavorable:  3,    // score ≥3 → favorable
-      scorePoor:       0     // score <0 → poor
+      ahiMild:         5,    // mild OSA, supportive population association
+      ahiModerate:     15,   // moderate OSA, supportive population association
+      ahiSevere:       30,   // severe OSA, cautionary for complete control by OAT alone
+      bmiLow:          28,   // lower BMI, supportive population association
+      bmiHigh:         35,   // higher BMI, cautionary population association
+      neckFemale:      14,   // smaller-neck context (in), female
+      neckMale:        16,   // smaller-neck context (in), male
+      hypopneaHigh:    70,   // hypopnea-predominant research context
+      hypopneaLow:     50,   // apnea-predominant research context
+      ageYoung:        50,   // younger-age research context
+      ageOld:          65    // older-age research context
     },
 
     // Home sleep test (WatchPAT) validity-flag thresholds

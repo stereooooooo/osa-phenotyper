@@ -338,7 +338,7 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | # | Name | Key Features |
 |---|------|-------------|
 | 165 | New-chart hidden-state reset | Starting or hydrating a chart clears derived hidden PAP pressure, prior-study answer, and LVEF follow-up values so one patient's state cannot affect the next analysis |
-| 166 | Prior MAD intolerance routing | Prior jaw-joint pain, bite change, dental problems, or poor fit should limit the clinical appropriateness of another oral appliance trial even when the physiologic profile match is favorable |
+| 166 | Prior MAD intolerance routing | Prior jaw-joint pain, bite change, dental problems, or poor fit should limit the clinical appropriateness of another oral appliance trial even when population-level associations are supportive; the app should not produce an individual response tier |
 | 167 | Failed prior throat and nasal surgery | A prior operation without benefit should prompt operative-report review, current-anatomy reassessment, and DISE-guided target mapping rather than an automatic revision recommendation |
 | 168 | Prior-study retrieval with unknown LVEF | A patient with heart failure, a prior echo, and no documented LVEF should retain an Echo/LVEF Needed flag while the unavailable prior sleep-study report is requested |
 | 169 | Stable current CPAP with prior GLP-1 cost barrier | Current CPAP without comfort difficulty should remain a continuation and efficacy-review pathway, while an effective prior GLP-1 trial stopped for cost receives specific coverage-aware weight counseling |
@@ -389,3 +389,14 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 192 | ODI 55/h or nadir SpO2 74% with HB below the research boundary | Creates the separate substantial-nocturnal-hypoxemia safety pathway but cannot create the event-linked HB phenotype |
 | 193 | HB at a 73.1 or 87.1 research-cohort cut point | Clinician wording identifies the post hoc cohort context and explicitly states that the value is not a validated clinical category, treatment guarantee, or stand-alone allocation rule |
 | 194 | Mild OSA with reassuring oxygen metrics and a selected PAP plan | Reassuring oxygen metrics do not automatically move PAP down the patient plan; treatment order follows the clinician-confirmed plan, symptoms, anatomy, preferences, and other clinical factors |
+
+### Group 43: Non-PAP Response-Prediction Calibration
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 195 | PAP-intolerant patient requesting an oral appliance | The option remains available, but the app emits generic `MAD`, no favorable/poor response tier or probability, and requires dental safety plus objective follow-up testing |
+| 196 | Supine-isolated OSA | A supine/non-supine ratio of at least 2 with non-supine AHI below 5 is labeled supine-isolated; positional monotherapy is described as possible only after adequate non-supine, including REM, sampling and objective verification |
+| 197 | Supine-predominant OSA | A positional ratio with non-supine AHI 5 or higher remains a positional phenotype, but positional therapy is explicitly adjunctive because OSA persists off the back |
+| 198 | HGNS referral with complete lateral oropharyngeal-wall collapse | Complete collapse appears as negative unilateral-HGNS response context without becoming a universal contraindication, individual probability, or aggregate response tier |
+| 199 | HGNS referral with partial lateral oropharyngeal-wall collapse | Partial collapse is documented but is not relabeled as the same validated adverse predictor as complete collapse |
+| 200 | Stage I tonsillar anatomy and surgical interest | Friedman stage supports anatomy-directed discussion without an exact historical success percentage, a patient-specific probability, or a general DISE response score |
