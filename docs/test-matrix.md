@@ -417,3 +417,13 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 205 | Three-hour WatchPAT with 5% estimated REM plus severe nasal obstruction | Clinician output flags the short/low-REM study and suggests diagnostic testing plus nasal care; patient output avoids technical quality criticism and no definitive PAP, positional, or HGNS treatment is activated. |
 | 206 | Young lower-BMI patient requesting an oral appliance with supine-isolated mild OSA and adequate dental safety inputs | Oral appliance and positional options remain available with objective verification, but favorable associations do not become a response tier or probability. |
 | 207 | HGNS inquiry with BMI 34, larger neck, AHI 35, and partial lateral-wall collapse | Eligibility and exploratory factor-level context remain visible; partial collapse is not treated as complete collapse and mixed associations do not become strong/good/marginal response labels. |
+
+### Group 46: Second Predeployment Boundary Test
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 208 | Adequate negative WatchPAT with persistent fatigue, severe nasal obstruction, and deviated septum; clinician confirms nasal treatment without Diagnostic Testing | Clinician concern and draft PSG guidance remain visible, but the patient report follows the confirmed nasal-first plan, describes PSG only as a possible later step, and does not say that an in-lab study was ordered. |
+| 209 | Severe OSA with ODI 58, nadir 72%, T90 23%, and event-linked HB 18 | Conventional-hypoxemia safety guidance activates independently; event-linked HB phenotype and research-context wording remain absent; PAP is prioritized and objective oxygen control is required. |
+| 210 | Symptomatic current BiPAP user with device event index 13, device central index 8, periodic breathing 7%, heart failure, and missing numeric LVEF | Clinician review, central-event safeguards, PSG confirmation, and echocardiogram retrieval activate; the app does not reflexively increase pressure or state that ASV is contraindicated without the LVEF. |
+| 211 | Prior failed and intolerable oral appliance with TMJ pain and bite change, now requesting HGNS | Prior barriers remain visible as decision history, but the active confirmed plan contains nerve-stimulation evaluation only and does not reactivate oral-appliance therapy, response tiers, or safety-finalization instructions for an unselected pathway. |
+| 212 | Mild supine-predominant OSA with non-supine AHI 6.3 | PAP and positional therapy remain available, but patient and clinician outputs explicitly present positioning as an adjunct because OSA persists off the back. |

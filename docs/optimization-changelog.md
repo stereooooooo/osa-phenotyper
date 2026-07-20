@@ -64,7 +64,12 @@ single-use intake link and receive clinician-approved reports rather than access
 - Added a five-encounter combined release-candidate matrix covering sleepy COMISA with elevated HB,
   an asymptomatic current APAP user with an elevated P95 leak signal, a short low-REM WatchPAT with
   nasal obstruction, supine-isolated OSA with oral-appliance interest, and an HGNS inquiry with mixed
-  response factors. The complete suite now passes 1,679 assertions.
+  response factors.
+- Added a second five-encounter predeployment boundary matrix covering a clinician-confirmed
+  nasal-first plan after an adequate negative WatchPAT, substantial conventional hypoxemia with low
+  event-linked HB, symptomatic BiPAP use with central signals and missing LVEF, failed MAD history
+  during an HGNS evaluation, and mild supine-predominant OSA. The complete suite now passes 1,825
+  assertions.
 
 ### Fixed — combined-output review
 - When PAP management is confirmed but APAP, CPAP, or BiPAP has not been selected, Today's Sleep

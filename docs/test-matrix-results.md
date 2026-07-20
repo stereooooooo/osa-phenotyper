@@ -1545,3 +1545,20 @@
 - one genuine communication defect was found: when no PAP mode had been chosen, Today's Sleep Plan defaulted to CPAP. The renderer now preserves generic PAP wording until APAP, CPAP, or BiPAP is documented
 - the five-scenario focused run passed 137 scenario assertions, and the complete headless suite passed **1,679 assertions**
 **Finding:** fixed. The combined candidate is internally consistent across the clinician, MA, PAP-guidance, and patient layers. No unresolved clinical-routing or safety defect was found in this batch. Clinician review and deployment remain pending.
+
+### Tests 208-212: Second predeployment boundary test
+**Status:** local plan-suggestion, clinician-report, PAP-guidance, patient-report, action-plan, evidence-integrity, and full regression testing complete
+**Result:** passed without a clinical-logic change ✅
+**Scenarios and findings:**
+- an adequate negative WatchPAT with persistent fatigue, severe nasal obstruction, and a deviated septum preserved the clinician-side PSG concern and draft Diagnostic Testing suggestion; after the clinician confirmed nasal treatment alone, the patient report described PSG only as a possible later step and did not claim that an in-lab study had been ordered
+- severe OSA with ODI 58, nadir 72%, T90 23%, and event-linked HB 18 activated `OXYGEN-URG`, prioritized PAP, and required objective confirmation of oxygen control; the event-linked HB phenotype and research-cohort language remained absent
+- a symptomatic current BiPAP user with device event index 13, central index 8, periodic breathing 7%, heart failure, and missing numeric LVEF received central-event review, PSG confirmation, and echocardiogram retrieval; the app did not recommend reflex pressure escalation and did not label ASV contraindicated without the LVEF
+- a patient with prior MAD failure, intolerance, TMJ pain, and bite change who now requested HGNS retained that history in the clinician view; the confirmed plan contained only nerve-stimulation evaluation and did not reactivate MAD therapy or expose oral-appliance finalization instructions to the patient
+- mild supine-predominant OSA with non-supine AHI 6.3 retained PAP plus positional therapy; both clinician and patient outputs explicitly stated that position is an adjunct because OSA persists off the back
+**Output review:**
+- the initial focused run passed 130 assertions and failed two expectations in the HGNS case
+- inspection showed both failures were incorrect expectations, not app defects: selected-plan filtering appropriately removed `MAD-SAFETY-LIMIT` and current-TMJ treatment language when oral-appliance therapy was not selected, while preserving the prior failure history
+- after correcting the test expectations, the focused five-case plan matrix passed all 132 assertions
+- the HGNS-only Today's Sleep Plan is clinically correct but visually sparse because nerve-stimulation evaluation currently renders as a supporting action rather than an expanded module; this was added to the UX roadmap and is not a safety blocker
+- the complete headless suite passed **1,825 assertions**
+**Finding:** no unresolved clinical-routing or safety issue. The second batch confirms that clinician signoff, independent oxygen-versus-HB logic, central-event safeguards, competing-treatment history, and positional adjunct wording remain coherent when combined. Deployment remains pending clinician review.

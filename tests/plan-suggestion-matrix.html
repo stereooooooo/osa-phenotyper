@@ -920,12 +920,128 @@ const ALL_SCENARIOS = [
     patientExcludes: ['high chance of success', 'strong candidate', 'good candidate'],
     todayPlanIncludes: ['Continue the device-specific nerve-stimulation evaluation'],
     todayPlanExcludes: ['You are likely to respond', 'high chance of success']
+  },
+  {
+    id: 'predeploy-negative-hst-nasal-first-fatigue',
+    name: 'Adequate negative WatchPAT with fatigue and structural nasal obstruction, nasal-first plan confirmed',
+    visitReason: 'symptoms',
+    fields: {
+      sex: 'F', bmi: '23.5', neck: '13.5', tonsils: '1', ftp: 'II', ess: '15', isi: '9', noseScore: '70',
+      pahi: '3.4', patRdi: '4.5', tst: '7.1', remPercent: '24', supPahi: '4.2', nonSupPahi: '2.8',
+      remPahi: '4.5', nremPahi: '3.1', odi: '3', nadir: '92', hbAreaPH: '7', t90: '0'
+    },
+    checks: ['snoringReported', 'nasalObs', 'ctDev'],
+    expectedSuggestions: ['Diagnostic testing', 'Nasal treatment'],
+    confirmedPlanFields: ['planNasal'],
+    manualSummary: 'Begin nasal treatment first, then reassess fatigue, snoring, and disrupted sleep before deciding on additional testing.',
+    expectedTags: ['NASAL-OPT'],
+    excludedTags: ['NEG-HST-PSG', 'UARS-EVAL', 'CPAP'],
+    clinicianIncludes: ['Negative home sleep test with persistent symptoms', 'AASM guidance supports in-lab PSG', 'Nasal exam: deviated septum', 'Confirmed plan: nasal treatment'],
+    clinicianExcludes: ['Start CPAP/APAP'],
+    patientIncludes: ['deviated nasal septum', 'possible later step, not a test ordered by this handout'],
+    patientExcludes: ['Schedule the in-lab sleep study recommended', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Improve nasal airflow', 'Use the saline spray or rinse recommended by your clinician'],
+    todayPlanExcludes: ['Complete the recommended in-lab sleep study', 'Schedule the recommended in-lab sleep study']
+  },
+  {
+    id: 'predeploy-hypoxemia-low-hb',
+    name: 'Severe OSA with substantial conventional hypoxemia but low event-linked hypoxic burden',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '26', neck: '16', tonsils: '2', ftp: 'III', ess: '16', isi: '7', noseScore: '10',
+      pahi: '46', tst: '6.4', remPercent: '20', supPahi: '51', nonSupPahi: '41', remPahi: '54',
+      nremPahi: '44', odi: '58', nadir: '72', hbAreaPH: '18', t90: '23'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management'],
+    expectedTags: ['OXYGEN-URG', 'CPAP'],
+    clinicianIncludes: ['Substantial Nocturnal Hypoxemia', 'These conventional oxygen metrics are clinically important, but they are not event-linked hypoxic burden', 'objectively confirm oxygen control'],
+    clinicianExcludes: ['Event-Linked Hypoxic Burden Signal', 'Event-Linked Hypoxic Burden: Research Context'],
+    patientIncludes: ['oxygen', 'PAP'],
+    patientExcludes: ['high hypoxic burden', 'cardiovascular benefit'],
+    todayPlanIncludes: ['Start PAP with support'],
+    todayPlanExcludes: ['Start oxygen'],
+    expectedAnalysisFlags: { severeHypoxemiaMissingFromDraftSummary: false }
+  },
+  {
+    id: 'predeploy-bipap-central-download-missing-lvef',
+    name: 'Symptomatic BiPAP user with elevated device central index, heart failure, and missing LVEF',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'M', bmi: '31', neck: '17', tonsils: '1', ftp: 'III', ess: '17', isi: '8', noseScore: '10',
+      pahi: '31', pahic: '12', csr: '18', tst: '6.2', remPercent: '19', supPahi: '35', nonSupPahi: '28',
+      remPahi: '36', nremPahi: '30', odi: '28', nadir: '80', hbAreaPH: '50', t90: '7', papMode: 'BiPAP',
+      papEpapPressure: '8', papIpapPressure: '15', cpapDifficulty: 'unsure', echoHistory: 'yes',
+      echoResultKnowledge: 'unknown', papManufacturer: 'resmed', papReportDays: '30', papNightsUsed: '29',
+      papNightsFourHours: '27', papAverageUseHours: '6.8', papUsualSleepHours: '7.5', papDeviceAhi: '13',
+      papDeviceCai: '8', papDeviceOai: '2', papLeakValue: '20', papLeakThreshold: '24', papLeakMetric: 'p95',
+      papPeriodicBreathingPct: '7', papPersistentSymptoms: 'yes'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'cvd', 'cvdHeartFailure', 'papValuesVerified', 'papSymptomSleepiness'],
+    expectedSuggestions: ['Diagnostic testing', 'PAP management'],
+    expectedTags: ['CENTRAL-PSG-WORKUP', 'ASV-SAFETY', 'CPAP'],
+    excludedTags: ['ASV-CONTRA', 'HLG-ADV'],
+    expectedInputState: { lvefFollowupNeeded: true },
+    clinicianIncludes: ['Echo/LVEF Needed', 'If ASV is being considered, document LVEF >45% first', 'Currently using BiPAP'],
+    clinicianExcludes: ['Documented reduced ejection fraction makes ASV unsafe'],
+    papGuidanceIncludes: ['Clinician review needed', 'Residual-event review needed', 'Current symptoms despite PAP', 'Explicitly documented current symptoms: daytime sleepiness', 'Possible central-event concern', 'Do not reflexively increase pressure', 'Obtain the most recent echocardiogram and numeric LVEF'],
+    papGuidanceExcludes: ['No major concern identified', 'Continue current PAP with routine clinical follow-up'],
+    patientIncludes: ['heart function', 'in-lab sleep study', 'Building on your current BiPAP therapy'],
+    patientExcludes: ['heart-pumping function is below', 'Begin PAP therapy now'],
+    todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'request the latest echocardiogram', 'Continue BiPAP'],
+    todayPlanExcludes: ['ASV is unsafe'],
+    expectedAnalysisFlags: { centralWorkupMissingFromPlanSuggestions: false }
+  },
+  {
+    id: 'predeploy-failed-mad-to-hgns',
+    name: 'Prior failed oral appliance with TMJ and bite problems, now requesting HGNS',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'F', bmi: '28', neck: '14.5', tonsils: '1', ftp: 'III', ess: '13', isi: '6', noseScore: '10',
+      pahi: '26', tst: '6.6', remPercent: '21', supPahi: '30', nonSupPahi: '22', remPahi: '29',
+      nremPahi: '25', odi: '22', nadir: '84', hbAreaPH: '40', t90: '3', cpapHelped: 'No', cpapRetry: 'No',
+      madHelped: 'no', madTolerated: 'no', madDentition: 'adequate', madProtrusion: 'adequate', madTmj: 'severe',
+      oDeg: '1', oPat: 'Lateral'
+    },
+    checks: ['priorCpap', 'priorMAD', 'madProblemTmj', 'madProblemBite', 'prefInspire'],
+    expectedSuggestions: ['Nerve stimulation'],
+    expectedTags: ['INSPIRE-EVAL'],
+    excludedTags: ['MAD', 'MAD-SAFETY-LIMIT', 'MAD-FAVORABLE', 'MAD-POOR'],
+    clinicianIncludes: ['Prior oral appliance: benefit no, tolerance no, barriers: TMJ pain, bite change', 'Basic referral criteria appear met; individual response remains uncertain'],
+    clinicianExcludes: ['Oral appliance therapy (MAD)', 'favorable candidate', 'Good candidate', 'Strong candidate'],
+    patientIncludes: ['nerve stimulation'],
+    patientExcludes: ['try an oral appliance', 'high chance of success'],
+    todayPlanIncludes: ['Continue the device-specific nerve-stimulation evaluation'],
+    todayPlanExcludes: ['Complete the sleep-dentist evaluation', 'custom oral appliance']
+  },
+  {
+    id: 'predeploy-mild-supine-predominant',
+    name: 'Mild supine-predominant OSA with persistent non-supine disease',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '25', neck: '15', tonsils: '1', ftp: 'II', ess: '10', isi: '5', noseScore: '8',
+      pahi: '9.5', tst: '7', remPercent: '22', supPahi: '22', nonSupPahi: '6.3', remPahi: '12',
+      nremPahi: '9', odi: '8', nadir: '89', hbAreaPH: '15', t90: '0.5'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management', 'Positional therapy'],
+    expectedTags: ['CPAP', 'POS', 'POS-GUARD'],
+    clinicianIncludes: ['Supine-predominant pattern', 'Use positional therapy as an adjunct', 'OSA persists off the back'],
+    clinicianExcludes: ['possible monotherapy only'],
+    patientIncludes: ['breathing events still occur off your back', 'support another treatment rather than replace it'],
+    patientExcludes: ['may be enough by itself'],
+    todayPlanIncludes: ['Start PAP with support', 'Stay off your back during sleep'],
+    todayPlanExcludes: ['position as the only treatment']
   }
 ];
 
-const SCENARIOS = new URLSearchParams(window.location.search).get('recent') === '1'
-  ? ALL_SCENARIOS.filter((scenario) => scenario.id.startsWith('release-'))
-  : ALL_SCENARIOS;
+const scenarioParams = new URLSearchParams(window.location.search);
+const scenarioBatch = scenarioParams.get('batch');
+const SCENARIOS = scenarioBatch
+  ? ALL_SCENARIOS.filter((scenario) => scenario.id.startsWith(`${scenarioBatch}-`))
+  : scenarioParams.get('recent') === '1'
+    ? ALL_SCENARIOS.filter((scenario) => scenario.id.startsWith('release-'))
+    : ALL_SCENARIOS;
 
 async function runScenario(win, doc, scenario, index) {
   win.OSAFormState.reset(doc.getElementById('form'));

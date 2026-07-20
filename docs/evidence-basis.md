@@ -5,7 +5,7 @@
 | Application | Capital ENT Precision Sleep Clinical Hub |
 | Document status | Living pre-validation evidence register |
 | Register version | 1.7 |
-| Clinical logic reviewed through | `ER-2026-07-19-RC-STRESS`; clinician review pending; 1,679 regression assertions passed locally; combined implementation is not deployed |
+| Clinical logic reviewed through | `ER-2026-07-19-RC-STRESS`; clinician review pending; 1,825 regression assertions passed locally; combined implementation is not deployed |
 | Last comprehensive review | 2026-06-11 |
 | Last targeted review | 2026-07-19 |
 | Next scheduled review | 2027-01-19, or sooner after a major guideline, regulatory, or safety update |
