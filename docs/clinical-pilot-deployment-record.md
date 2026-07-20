@@ -3,7 +3,7 @@
 **Current decision:** NO GO for real PHI until the remaining human and synthetic-workflow gates below are complete.  
 **Environment:** Isolated clinician-only clinical pilot  
 **Pilot URL:** https://d3fgk3yvbi0jvr.cloudfront.net  
-**Latest deployed code candidate:** `dfca26e`
+**Latest deployed code candidate:** `e12734f`
 **Stack:** `osa-phenotyper-capital-ent-precision-sleep-pilot`  
 **AWS region:** `us-east-2` (CloudFront WAF resources in `us-east-1`)  
 **Initial administrator:** `drbrown@capitalent.com`  
@@ -90,6 +90,16 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 - No clinical threshold, phenotype, diagnostic route, treatment ranking, or patient-report rule changed.
 - The complete local regression suite passed 1,899 assertions; syntax, lint, evidence-integrity, and diff checks passed.
 - Live CloudFront verification confirmed build `dfca26e` and the MA handoff, focused correction, and persistent chart-state controls at the pilot URL.
+
+### Actionable readiness and clinician-briefing update, 2026-07-20
+
+- Build `e12734f` removes the duplicate clinician readiness count and keeps the full readiness gate in MA / Nurse Prep.
+- Pending items use precise labels and keyboard-accessible actions that open or focus the exact source control needed for completion.
+- The clinician briefing uses compact score and study metrics plus labeled symptom, preference, treatment, PAP-download, and safety rows.
+- Initial patient intake requires a plain-language reason for the visit. The mapped value remains MA-correctable and cannot select or confirm treatment.
+- Optional PAP compliance and DISE launchers use consistent typography.
+- The complete local regression suite passed 1,910 assertions; syntax, lint, evidence-integrity, and diff checks passed.
+- Live CloudFront verification confirmed build `e12734f`, the revised workspace markup, and the structured initial visit-reason field at the pilot URL.
 
 ## Required synthetic rehearsal
 

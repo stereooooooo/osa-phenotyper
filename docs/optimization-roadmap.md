@@ -25,8 +25,9 @@ formal clinical validation.
   assertions.
   One report-specificity defect was fixed in the first batch: an unspecified PAP mode
   now remains generic in Today's Sleep Plan. The second batch found no clinical-routing defect.
-- [x] Deploy the role-workflow build, invalidate CloudFront, and verify build `dfca26e` plus the MA
-  handoff, focused correction, and persistent chart-state controls at the hosted pilot URL.
+- [x] Deploy the role-workflow build, invalidate CloudFront, and verify build `e12734f` plus the MA
+  handoff, focused correction, persistent chart-state controls, actionable readiness, and structured
+  initial visit context at the hosted pilot URL.
 - [ ] Complete formal evidence-register sign-off for the already implemented non-PAP response and
   COMISA calibration before changing the current NO GO decision for routine real-PHI use.
 - [ ] Begin a limited pilot with synthetic data, then a small number of current sleep patients only

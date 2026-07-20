@@ -116,9 +116,10 @@ single-use intake link and receive clinician-approved reports rather than access
   appears when the mode is documented.
 
 ### Deployment status
-- Build `dfca26e` is deployed and verified on the existing clinician-only AWS clinical pilot. It
-  includes the role workspaces, saved MA handoff, focused clinician corrections, and persistence
-  safeguards described above.
+- Build `e12734f` is deployed and verified on the existing clinician-only AWS clinical pilot. It
+  includes the role workspaces, saved MA handoff, focused clinician corrections, persistence
+  safeguards, actionable readiness tasks, structured initial visit context, and scan-oriented
+  clinician briefing described above.
 - The non-PAP response and COMISA code is present in the pilot testing build, but formal
   evidence-register sign-off remains open before routine real-PHI use.
 - The patient portal and autonomous PAP-setting concepts remain out of scope for this clinician-only
