@@ -1529,3 +1529,19 @@
 - patient-facing recommendations remain limited to the clinician-confirmed CBT-I and PAP plan and contain no technical setting or medication instructions
 - the full headless suite passed with **1,542 assertions**
 **Finding:** fixed. The app now reflects the consistent evidence for treating insomnia in COMISA while preserving uncertainty about PAP adherence, sequencing, individual PAP settings, and the short-term safety implications of bedtime restriction.
+
+### Tests 203-207: Combined release-candidate clinical stress test
+**Status:** local plan-suggestion, clinician-report, PAP-guidance, patient-report, action-plan, evidence-integrity, and full regression testing complete
+**Result:** passed after one patient-instruction specificity fix ✅
+**Scenarios and findings:**
+- sleepy COMISA with severe OSA and event-linked HB 80 correctly activated clinician-confirmed CBT-I and PAP in parallel; high ESS produced first-week sleepiness, driving, and safety-sensitive-duty monitoring; HB remained research context and did not create conventional-hypoxemia urgency or change treatment rank
+- an asymptomatic current APAP user with historical ESS 18, device event index 1.2, central index 0.2, P95 leak 42, and P95 pressure 14.4 within a 13-17 range remained stable; historical sleepiness did not create symptom-download discordance, P95 leak remained a screening signal, low device indices were labeled reassuring, and no mask or pressure change was prescribed
+- a three-hour WatchPAT with 5% estimated REM, pAHI 11, severe nasal symptoms, and a deviated septum produced clinician-only short-recording and limited-REM warnings plus Diagnostic Testing and Nasal Treatment suggestions; definitive PAP, positional, and HGNS pathways were withheld, and the patient report did not describe the study as bad or expose technical quality language
+- a young lower-BMI patient requesting an oral appliance with supine-isolated mild OSA and adequate dental safety inputs received oral-appliance and positional options plus objective verification; supportive characteristics did not become favorable/poor tiers or an individual response probability
+- an HGNS inquiry with BMI 34, larger neck, AHI 35, and partial lateral-wall collapse retained basic referral and exploratory factor-level context; partial collapse was not treated as complete collapse and mixed factors did not become strong, good, or marginal response labels
+**Output review:**
+- all five suggested-plan sets, editable summaries, confirmed-plan fields, recommendation tags, clinician cautions, patient inclusions and exclusions, and no-typographic-dash checks passed
+- the first run's five failures were examined against the rendered output; four were overly specific test phrases that did not match accurate existing labels
+- one genuine communication defect was found: when no PAP mode had been chosen, Today's Sleep Plan defaulted to CPAP. The renderer now preserves generic PAP wording until APAP, CPAP, or BiPAP is documented
+- the five-scenario focused run passed 137 scenario assertions, and the complete headless suite passed **1,679 assertions**
+**Finding:** fixed. The combined candidate is internally consistent across the clinician, MA, PAP-guidance, and patient layers. No unresolved clinical-routing or safety defect was found in this batch. Clinician review and deployment remain pending.

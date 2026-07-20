@@ -93,7 +93,14 @@ run_suite() {
   if ! grep -Eq '<strong>[0-9]+ passed</strong>, <strong>0 failed</strong>' <<< "${summary}"; then
     echo "${label} failed: ${summary}" >&2
     grep -n 'class="fail"' "${DOM_FILE}" >&2 || true
+    if [[ "${label}" == "plan suggestion matrix" && "${PLAN_CAPTURE:-0}" == "1" ]]; then
+      sed -n '/id="capture"/,/<\/pre>/p' "${DOM_FILE}" >&2 || true
+    fi
     exit 1
+  fi
+
+  if [[ "${label}" == "plan suggestion matrix" && "${PLAN_CAPTURE:-0}" == "1" ]]; then
+    sed -n '/id="capture"/,/<\/pre>/p' "${DOM_FILE}" >&2 || true
   fi
 
   sed -E 's#<strong>([0-9]+) passed</strong>, <strong>0 failed</strong>#\1#' <<< "${summary}"
@@ -182,7 +189,7 @@ TOTAL_PASSED=$((TOTAL_PASSED + INTAKE_BRANCHING_PASSED))
 MATRIX_PASSED="$(run_suite "tests/phenotype-matrix.html" "phenotype characterization matrix" 30000)"
 TOTAL_PASSED=$((TOTAL_PASSED + MATRIX_PASSED))
 
-PLAN_SUGGESTION_PASSED="$(run_suite "tests/plan-suggestion-matrix.html" "plan suggestion matrix" 30000)"
+PLAN_SUGGESTION_PASSED="$(run_suite "tests/plan-suggestion-matrix.html${PLAN_QUERY:+?${PLAN_QUERY}}" "plan suggestion matrix" 30000)"
 TOTAL_PASSED=$((TOTAL_PASSED + PLAN_SUGGESTION_PASSED))
 
 PDF_PAGINATION_PASSED="$(run_pdf_pagination_suite)"

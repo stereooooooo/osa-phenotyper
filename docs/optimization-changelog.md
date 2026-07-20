@@ -12,6 +12,74 @@ full findings inventory.
 
 ---
 
+## [Precision Sleep clinical pilot and evidence-calibration program] — 2026-07-15 to 2026-07-19
+
+Branch: `codex/precision-sleep-v1`. This work turns the original phenotyper into a clinician-only
+Precision Sleep hub while preserving the more expansive platform for possible future use. The live
+AWS environment remains staff-authenticated; patients interact only through a restricted,
+single-use intake link and receive clinician-approved reports rather than access to a patient chart.
+
+### Added — clinical workflow and patient experience
+- Precision Sleep clinical workspace, reason-for-visit routing, automatic age calculation, first-
+  or last-name search, APAP/CPAP/BiPAP capture, editable clinician-finalized plans, and personalized
+  comprehensive and visit-focused patient reports.
+- Restricted patient intake questionnaire with conditional branching for PAP/BiPAP use and barriers,
+  prior sleep studies and treatments, cardiovascular history and missing LVEF follow-up, GLP-1 use,
+  weight readiness, alcohol exposure, nasal symptoms, and treatment goals.
+- MA-facing plan suggestions that remain optional and editable. Only clinician-selected and confirmed
+  pathways become active treatments or patient instructions.
+- Clinician-only next-test guidance for inadequate, negative, or category-uncertain WatchPAT studies.
+  Patient handouts do not call a study "bad" and do not present PSG as ordered until Diagnostic
+  Testing is selected and confirmed.
+- Clinician-only PAP compliance review with a verification step, initial ResMed AirView PDF parsing,
+  usage/coverage context, manufacturer-specific device-event limitations, symptom-download
+  discordance, central-event safeguards, contextual leak interpretation, and no autonomous setting
+  changes.
+
+### Changed — clinical evidence calibration
+- Separated event-linked hypoxic burden from ODI, T90, nadir, and area below 90%. HB remains a
+  research-context signal, while substantial conventional nocturnal hypoxemia has its own safety
+  pathway. Research cut points cannot independently rank or allocate treatment (`72fe762`, deployed
+  and documented through `8219ec0`).
+- Replaced app-created oral-appliance favorable/poor tiers and aggregate HGNS strong/good/marginal
+  tiers with factor-level response context, explicit uncertainty, safety prerequisites, and objective
+  on-treatment verification (`1c1c6cf`, pushed, not deployed).
+- Separated supine-isolated from supine-predominant OSA. Positional monotherapy is considered only
+  when non-supine disease is below the diagnostic range and sampling plus efficacy are verified;
+  persistent non-supine OSA receives adjunctive wording.
+- Recalibrated COMISA guidance: CBT-I remains early, PAP may be concurrent or sequential, high ESS
+  triggers first-week sleepiness and safety monitoring rather than a CBT-I contraindication, and
+  COMISA alone no longer prescribes APAP, EPR, ramp, or a pressure range (`063d108`, pushed, not
+  deployed).
+- Replaced deterministic septoplasty, snoring, WatchPAT, DISE, Friedman-stage, and treatment-response
+  claims with evidence-bounded clinician tooltips and patient language.
+
+### Added — evidence and validation infrastructure
+- A linked manuscript-oriented evidence system: `evidence-basis.md`, `citations.md`, and
+  `evidence-review-log.md`, with stable Logic IDs, evidence level, limitations, validation endpoints,
+  source-verification requirements, and a same-change documentation gate.
+- Regression matrices for intake branching, WatchPAT parsing, PAP compliance, clinician plan
+  suggestions, treatment history, patient reports, diagnostic boundaries, hypoxic-burden separation,
+  and non-PAP response calibration.
+- Added a five-encounter combined release-candidate matrix covering sleepy COMISA with elevated HB,
+  an asymptomatic current APAP user with an elevated P95 leak signal, a short low-REM WatchPAT with
+  nasal obstruction, supine-isolated OSA with oral-appliance interest, and an HGNS inquiry with mixed
+  response factors. The complete suite now passes 1,679 assertions.
+
+### Fixed — combined-output review
+- When PAP management is confirmed but APAP, CPAP, or BiPAP has not been selected, Today's Sleep
+  Plan now uses the generic term PAP instead of inventing a CPAP mode. Device-specific wording still
+  appears when the mode is documented.
+
+### Deployment status
+- The clinical pilot and hypoxic-burden separation are deployed and verified on AWS.
+- Commits `1c1c6cf` and `063d108` are pushed but intentionally **not deployed** pending clinician
+  review of non-PAP response and COMISA calibration.
+- The patient portal and autonomous PAP-setting concepts remain out of scope for this clinician-only
+  pilot.
+
+---
+
 ## [Post-audit feature: front-desk home screen + MRN fix] — 2026-06-12
 
 Merged to `main`. Work beyond the original 5-phase audit roadmap — a physician-requested front-desk

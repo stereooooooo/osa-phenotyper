@@ -70,7 +70,7 @@ function localIsoDate(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-const SCENARIOS = [
+const ALL_SCENARIOS = [
   {
     id: 'current-apap',
     name: 'Current APAP with nasal symptoms and weight interest',
@@ -812,8 +812,120 @@ const SCENARIOS = [
     clinicianExcludes: ['Cautionary response context', 'Strong candidate', 'Good candidate'],
     patientIncludes: ['nerve stimulation'],
     patientExcludes: ['high chance of success']
+  },
+  {
+    id: 'release-comisa-hb-context',
+    name: 'Sleepy COMISA with severe OSA and high event-linked HB but no substantial conventional hypoxemia',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'F', bmi: '28', neck: '14', tonsils: '1', ftp: 'II', ess: '18', isi: '23', noseScore: '10',
+      pahi: '32', tst: '6.4', remPercent: '20', supPahi: '38', nonSupPahi: '28', remPahi: '35',
+      nremPahi: '31', odi: '24', nadir: '82', hbAreaPH: '80', t90: '4'
+    },
+    checks: [],
+    expectedSuggestions: ['CBT-I', 'PAP management'],
+    expectedTags: ['CBTI', 'CPAP'],
+    excludedTags: ['OXYGEN-URG'],
+    clinicianIncludes: ['COMISA screen positive', 'Event-Linked Hypoxic Burden: Research Context', 'HB 80.0 %min/h', 'driving and safety-sensitive duties', 'Individualize PAP mode and settings'],
+    clinicianExcludes: ['Substantial Nocturnal Hypoxemia', 'full sleep restriction contraindicated', 'Use APAP over fixed CPAP'],
+    patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel'],
+    patientExcludes: ['high chance', 'full sleep restriction'],
+    todayPlanIncludes: ['Begin cognitive behavioral therapy for insomnia', 'Start PAP with support'],
+    todayPlanExcludes: ['Change PAP pressure', 'Start oxygen']
+  },
+  {
+    id: 'release-airview-p95-asymptomatic',
+    name: 'Asymptomatic current APAP user with reassuring device indices and elevated P95 leak screening signal',
+    visitReason: 'transfer-pap',
+    fields: {
+      sex: 'M', bmi: '29', neck: '16', tonsils: '1', ftp: 'III', ess: '18', isi: '6', noseScore: '10',
+      pahi: '30', tst: '6.5', remPercent: '20', supPahi: '34', nonSupPahi: '26', remPahi: '33',
+      nremPahi: '29', odi: '26', nadir: '82', hbAreaPH: '48', t90: '4', papMode: 'APAP',
+      papMinPressure: '13', papMaxPressure: '17', cpapDifficulty: 'no', papManufacturer: 'resmed',
+      papReportDays: '30', papNightsUsed: '30', papNightsFourHours: '30', papAverageUseHours: '7.8',
+      papUsualSleepHours: '7.9', papDeviceAhi: '1.2', papDeviceCai: '0.2', papDeviceOai: '0.3',
+      papPressure95: '14.4', papLeakValue: '42', papLeakThreshold: '24', papLeakMetric: 'p95',
+      papPeriodicBreathingPct: '0', papPersistentSymptoms: 'no'
+    },
+    checks: ['priorCpap', 'cpapCurrent', 'papValuesVerified'],
+    expectedSuggestions: ['PAP management'],
+    expectedTags: ['CPAP'],
+    clinicianIncludes: ['Currently using APAP', 'no current difficulty reported'],
+    clinicianExcludes: ['PAP re-fitting'],
+    papGuidanceIncludes: ['No major concern identified', 'Elevated P95 leak signal', 'does not prove sustained major leak', '2.6 cm H2O below', 'Low device-reported event indices'],
+    papGuidanceExcludes: ['Symptoms and download do not agree', 'Clinician review needed', 'Address mask seal'],
+    patientIncludes: ['Building on your current APAP therapy'],
+    patientExcludes: ['Begin PAP therapy now', 'change your pressure'],
+    todayPlanIncludes: ['Continue APAP', 'Bring or upload the compliance report'],
+    todayPlanExcludes: ['Increase your pressure', 'Replace your mask']
+  },
+  {
+    id: 'release-limited-watchpat-nasal',
+    name: 'Short low-REM WatchPAT with nasal obstruction and no definitive treatment decision',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '26', neck: '15', tonsils: '1', ftp: 'II', ess: '14', isi: '8', noseScore: '60',
+      pahi: '11', tst: '3', remPercent: '5', supPahi: '18', nonSupPahi: '5', remPahi: '27',
+      nremPahi: '9', odi: '9', nadir: '88', hbAreaPH: '18', t90: '1'
+    },
+    checks: ['nasalObs', 'ctDev'],
+    expectedSuggestions: ['Diagnostic testing', 'Nasal treatment'],
+    expectedTags: ['NASAL-OPT'],
+    excludedTags: ['CPAP', 'POS', 'INSPIRE-EVAL'],
+    clinicianIncludes: ['Short recording time', 'Limited REM sampling', 'Exam: deviated septum'],
+    clinicianExcludes: ['Start CPAP/APAP'],
+    patientIncludes: ['sleep apnea', 'nasal'],
+    patientExcludes: ['Short recording time', 'Limited REM sampling', 'bad sleep study', 'Worse during dream (REM) sleep'],
+    todayPlanIncludes: ['Complete the recommended in-lab sleep study', 'Improve nasal airflow'],
+    todayPlanExcludes: ['Start PAP', 'Use a positional aid'],
+    expectedAnalysisFlags: { limitedStudyStillSuggestsDefinitiveTreatment: false }
+  },
+  {
+    id: 'release-mad-positional-no-tier',
+    name: 'Young lower-BMI patient requesting an oral appliance with supine-isolated mild OSA',
+    visitReason: 'oral-appliance',
+    fields: {
+      sex: 'F', bmi: '24', neck: '13.5', tonsils: '1', ftp: 'II', ess: '8', isi: '4', noseScore: '5',
+      pahi: '12', tst: '7', remPercent: '23', supPahi: '30', nonSupPahi: '3', remPahi: '14',
+      nremPahi: '11', odi: '9', nadir: '89', hbAreaPH: '16', t90: '0.5', madDentition: 'adequate',
+      madProtrusion: 'adequate', madTmj: 'none'
+    },
+    checks: ['prefAvoidCpap'],
+    expectedSuggestions: ['Oral appliance', 'Positional therapy'],
+    expectedTags: ['MAD', 'POS'],
+    excludedTags: ['MAD-FAVORABLE', 'MAD-POOR', 'MAD-SAFETY-LIMIT'],
+    clinicianIncludes: ['Oral appliance response context', 'No validated individual response score is available', 'Supine-isolated pattern'],
+    clinicianExcludes: ['favorable candidate', 'response probability'],
+    patientIncludes: ['oral appliance', 'fell below the diagnostic range off your back', 'verify'],
+    patientExcludes: ['high chance of success', 'favorable candidate'],
+    todayPlanIncludes: ['Complete the sleep-dentist evaluation', 'Stay off your back during sleep'],
+    todayPlanExcludes: ['Begin PAP therapy now']
+  },
+  {
+    id: 'release-hgns-mixed-context',
+    name: 'HGNS inquiry with mixed demographic context and partial lateral-wall collapse',
+    visitReason: 'inspire',
+    fields: {
+      sex: 'M', bmi: '34', neck: '17', tonsils: '1', ftp: 'III', ess: '13', isi: '6', noseScore: '10',
+      pahi: '35', tst: '6.5', remPercent: '20', supPahi: '40', nonSupPahi: '30', remPahi: '39',
+      nremPahi: '34', odi: '30', nadir: '81', hbAreaPH: '52', t90: '6', cpapHelped: 'No', cpapRetry: 'No',
+      oDeg: '1', oPat: 'Lateral'
+    },
+    checks: ['priorCpap', 'prefInspire'],
+    expectedSuggestions: ['Nerve stimulation'],
+    expectedTags: ['INSPIRE-EVAL'],
+    clinicianIncludes: ['Basic referral criteria appear met; individual response remains uncertain', 'Partial lateral-wall collapse', 'Exploratory HGNS response context', 'cannot assign candidacy or an individual response probability'],
+    clinicianExcludes: ['Strong candidate', 'Good candidate', 'Marginal candidate', 'Cautionary response context'],
+    patientIncludes: ['nerve stimulation'],
+    patientExcludes: ['high chance of success', 'strong candidate', 'good candidate'],
+    todayPlanIncludes: ['Continue the device-specific nerve-stimulation evaluation'],
+    todayPlanExcludes: ['You are likely to respond', 'high chance of success']
   }
 ];
+
+const SCENARIOS = new URLSearchParams(window.location.search).get('recent') === '1'
+  ? ALL_SCENARIOS.filter((scenario) => scenario.id.startsWith('release-'))
+  : ALL_SCENARIOS;
 
 async function runScenario(win, doc, scenario, index) {
   win.OSAFormState.reset(doc.getElementById('form'));
@@ -894,10 +1006,13 @@ async function runScenario(win, doc, scenario, index) {
   const clinicianTooltipText = [...doc.querySelectorAll('#clinicianReport [data-bs-toggle="tooltip"]')]
     .map(element => element.getAttribute('title') || element.getAttribute('data-bs-original-title') || '')
     .join(' ');
+  const papGuidanceText = (doc.getElementById('papComplianceGuidance')?.textContent || '').replace(/\s+/g, ' ').trim();
   assert(clinicianText.length > 100, `${scenario.name}: clinician report is populated`);
   (scenario.clinicianIncludes || []).forEach(phrase => assert(clinicianText.includes(phrase), `${scenario.name}: clinician report includes "${phrase}"`));
   (scenario.clinicianExcludes || []).forEach(phrase => assert(!clinicianText.includes(phrase), `${scenario.name}: clinician report excludes "${phrase}"`));
   (scenario.clinicianTooltipIncludes || []).forEach(phrase => assert(clinicianTooltipText.includes(phrase), `${scenario.name}: clinician tooltip includes "${phrase}"`));
+  (scenario.papGuidanceIncludes || []).forEach(phrase => assert(papGuidanceText.includes(phrase), `${scenario.name}: PAP guidance includes "${phrase}"`));
+  (scenario.papGuidanceExcludes || []).forEach(phrase => assert(!papGuidanceText.includes(phrase), `${scenario.name}: PAP guidance excludes "${phrase}"`));
   scenario.patientIncludes.forEach(phrase => assert(patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report includes "${phrase}"`));
   scenario.patientExcludes.forEach(phrase => assert(!patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report excludes "${phrase}"`));
   (scenario.todayPlanIncludes || []).forEach(phrase => assert(todayPlanText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: today's plan includes "${phrase}"`));
@@ -910,7 +1025,7 @@ async function runScenario(win, doc, scenario, index) {
     missingUarsDiagnosticSuggestion: recTags.includes('UARS-EVAL') && suggestions.length === 0,
     severeHypoxemiaMissingFromDraftSummary: recTags.includes('OXYGEN-URG') &&
       !/(oxygen|hypox|urgent|prompt|recheck|follow-up)/i.test(draftSummary),
-    limitedStudyStillSuggestsDefinitiveTreatment: scenario.id === 'limited-watchpat' &&
+    limitedStudyStillSuggestsDefinitiveTreatment: scenario.id.includes('limited-watchpat') &&
       suggestions.some(item => ['planPap', 'planPositional'].includes(item.field)),
     centralWorkupMissingFromPlanSuggestions: recTags.includes('CENTRAL-PSG-WORKUP') &&
       !suggestions.some(item => item.field === 'planStudy')
@@ -928,6 +1043,7 @@ async function runScenario(win, doc, scenario, index) {
     recommendationTags: recTags,
     analysisFlags,
     clinicianPlanExcerpt: clinicianText.slice(0, 1200),
+    papGuidanceExcerpt: papGuidanceText.slice(0, 1600),
     patientReportExcerpt: patientText.slice(0, 1600),
     todayPlanExcerpt: todayPlanText.slice(0, 1800)
   });

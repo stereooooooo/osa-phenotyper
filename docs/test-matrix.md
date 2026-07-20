@@ -407,3 +407,13 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 |---|----------|----------|
 | 201 | Moderate OSA, clinically important insomnia, and high baseline sleepiness | Offer CBT-I early with concurrent or sequential PAP according to urgency and preference. High ESS produces first-week sleepiness, driving, and safety-sensitive-duty monitoring, not unsafe or contraindicated wording. COMISA alone does not prescribe APAP, EPR, ramp, or a pressure range. |
 | 202 | Moderate OSA and clinically important insomnia without substantial daytime sleepiness | Offer CBT-I and PAP without the high-sleepiness monitoring alert. PAP mode and settings remain individualized, providing a counterexample to both universal COMISA PAP settings and an automatic bedtime-restriction warning. |
+
+### Group 45: Combined Release-Candidate Stress Test
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 203 | Sleepy COMISA, severe OSA, and event-linked HB 80 with conventional oxygen metrics below the substantial-hypoxemia bands | CBT-I and PAP remain active in parallel; bedtime-restriction monitoring appears; HB is research context only and cannot create `OXYGEN-URG` or independently change treatment rank. |
+| 204 | Current APAP with historical ESS 18, explicit absence of current PAP symptoms, device event index 1.2, P95 leak 42, and P95 pressure 14.4 within a 13-17 range | Device events remain reassuring, historical sleepiness does not create symptom-download discordance, P95 leak remains a screening signal rather than a sustained-leak diagnosis, and no pressure change is recommended. |
+| 205 | Three-hour WatchPAT with 5% estimated REM plus severe nasal obstruction | Clinician output flags the short/low-REM study and suggests diagnostic testing plus nasal care; patient output avoids technical quality criticism and no definitive PAP, positional, or HGNS treatment is activated. |
+| 206 | Young lower-BMI patient requesting an oral appliance with supine-isolated mild OSA and adequate dental safety inputs | Oral appliance and positional options remain available with objective verification, but favorable associations do not become a response tier or probability. |
+| 207 | HGNS inquiry with BMI 34, larger neck, AHI 35, and partial lateral-wall collapse | Eligibility and exploratory factor-level context remain visible; partial collapse is not treated as complete collapse and mixed associations do not become strong/good/marginal response labels. |

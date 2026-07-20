@@ -10,6 +10,56 @@ changelog as they ship. Every item carries its severity, location, and recommend
 > `ER-2026-07-19-HB`. Current logic separates event-linked HB from ODI, T90, nadir, and area below
 > 90%; removes low-HB treatment de-emphasis; and treats 73.1/87.1 only as research-cohort context.
 
+## Current clinical-pilot roadmap — 2026-07-19
+
+The original audit phases below are historical and substantially complete. Current work is organized
+around a safe, clinician-only Precision Sleep pilot, rapid real-world usability testing, and eventual
+formal clinical validation.
+
+### Release gate for the next pilot build
+- [ ] Complete clinician review of the non-PAP response-calibration change (`1c1c6cf`) and COMISA
+  change (`063d108`). Both are pushed and tested but not deployed.
+- [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
+  clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
+  Tests 203-207 pass, and the complete local suite passes 1,679 assertions. One report-specificity
+  defect was fixed: an unspecified PAP mode now remains generic in Today's Sleep Plan.
+- [ ] If approved, update the evidence-review decision and reviewed build, deploy the hosted frontend,
+  invalidate CloudFront, and verify the signed-in build identifier and all five encounters.
+- [ ] Begin a limited pilot with synthetic data, then a small number of current sleep patients only
+  after Dr. Brown confirms the clinical output and MA workflow.
+
+### Near-term clinical and MA experience
+- [ ] Conduct an observed iPad intake walkthrough with at least one MA and several synthetic patient
+  types: straightforward snoring, current PAP transfer, prior PAP intolerance, Inspire inquiry, and
+  complex cardiovascular history.
+- [ ] Measure intake completion time, MA correction burden, clinician edits to suggested pathways,
+  report-generation time, and reasons suggested plans are overridden.
+- [ ] Expand PAP-download parsing only after the ResMed AirView workflow is stable. Priorities are
+  Philips Respironics and other common report layouts; every imported value must remain source-
+  verified and vendor-specific.
+- [ ] Add structured clinician feedback at report finalization so wording, missing inputs, irrelevant
+  recommendations, and plan overrides can be captured without PHI in analytics logs.
+- [ ] Continue scenario testing in five-case batches whenever new intake fields, diagnostic routing,
+  treatment logic, or patient education modules are added.
+
+### Clinical-validation preparation
+- [ ] Freeze a versioned clinical-logic build and data dictionary before collecting research outcomes.
+- [ ] Prespecify endpoints for diagnostic routing, phenotype agreement, clinician-plan agreement,
+  override rate, treatment uptake, objective treatment response, symptoms, and adverse events.
+- [ ] Preserve component predictors and clinician decisions without presenting unvalidated individual
+  probabilities. Ji HGNS stage and other research models may be retained for retrospective validation
+  but not converted into success tiers.
+- [ ] Design an outcomes registry and governance protocol that minimizes PHI, records longitudinal
+  treatment exposure, and separates care delivery from research analysis.
+- [ ] Perform scheduled literature surveillance at least every six months and before any study freeze;
+  record both logic-changing and no-change reviews in `evidence-review-log.md`.
+
+### Explicitly deferred
+- Patient chart portal, patient self-service account system, automated emailing of PHI, autonomous PAP
+  setting changes, treatment-response probability labels, and broad commercial licensing features.
+- These may be reconsidered only after the clinician-only workflow is stable, the cost and security
+  implications are reassessed, and a separate implementation decision is made.
+
 ---
 
 ## Overall verdict
@@ -44,7 +94,7 @@ are genuinely strong. Problems cluster where the physician expected: the **patie
 
 ---
 
-## Post-audit work (2026-06-12)
+## Historical post-audit work (2026-06-12)
 
 Beyond the original 5-phase roadmap. Shipped to `main`:
 - ✅ **Front-desk home screen** — new home/landing (create + intake-link · universal search · "intakes
@@ -54,11 +104,11 @@ Beyond the original 5-phase roadmap. Shipped to `main`:
 - ✅ **Empty-MRN save fix** — backend keeps the `mrn-index` GSI sparse so MRN-less patients save
   (PR #2, deployed to staging).
 
-**Outstanding:**
-- [ ] **Deploy the hosted frontend** — the staging CloudFront site is still the April-3 build
-  (`aws-config.js` buildId `2f89f8d`); run `deploy.sh` to sync `main`'s static files + regenerate config +
-  apply the WAF rule + invalidate the CDN. The backend is already updated; only the hosted frontend is stale.
-- [ ] Finish the signed-in end-to-end walkthrough of the home flows (search / create+link / review→open).
+**Original outstanding items, now superseded by the July clinical-pilot roadmap:**
+- [x] **Deploy the hosted frontend** — superseded by multiple verified Precision Sleep clinical-pilot
+  deployments. Do not use the historical April build identifier as current state.
+- [x] Complete signed-in end-to-end home-flow walkthroughs; subsequent testing expanded to intake,
+  patient search, report generation, and PAP-download workflows.
 - [ ] Minor backlog: fold the FormData/DOM reads into `m` for the sibling `(m,T)` signatures
   (`mapTreatments`/`buildClinicianReport`); extract `n`/`ratio`/`exists` to a shared util; machine-readable
   CI output; `private/` gitignore reorg.

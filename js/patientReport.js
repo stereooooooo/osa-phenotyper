@@ -2099,7 +2099,9 @@ ${items.join('')}`;
     const modules = [];
     const stage = getReportStage(data);
     const alcoholFrequency = alcoholNearBedLabel(data.alcoholNearBed);
-    const device = papDeviceLabel(data);
+    // Keep an unselected treatment mode generic. Do not tell a newly diagnosed
+    // patient to start CPAP when the clinician has confirmed only PAP management.
+    const device = data?.papMode ? papDeviceLabel(data) : 'PAP';
     const nasalSelected = selected.has('planNasal');
     const papSelected = selected.has('planPap');
 
