@@ -3,7 +3,7 @@
 **Current decision:** NO GO for real PHI until the remaining human and synthetic-workflow gates below are complete.  
 **Environment:** Isolated clinician-only clinical pilot  
 **Pilot URL:** https://d3fgk3yvbi0jvr.cloudfront.net  
-**Approved code candidate:** `27b42ec`
+**Latest deployed code candidate:** `674f414`
 **Stack:** `osa-phenotyper-capital-ent-precision-sleep-pilot`  
 **AWS region:** `us-east-2` (CloudFront WAF resources in `us-east-1`)  
 **Initial administrator:** `drbrown@capitalent.com`  
@@ -70,6 +70,15 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 - An elevated P95 leak is contextual and does not establish sustained major leak without corroborating report pattern or clinical evidence. Symptom-download discordance requires explicit current symptoms despite PAP and names the selected symptoms.
 - The workflow never selects a pressure or changes settings. Clinician disposition and notes remain editable.
 - The complete local regression suite passed 1,394 assertions before deployment. Live CloudFront verification confirmed build `27b42ec`, the updated clinician inputs, and revised PAP guidance at the pilot URL.
+
+### Role-optimized workspace update, 2026-07-19
+
+- Build `674f414` adds `MA / Nurse Prep`, `Clinician Review`, and `Full Chart` workspaces without changing authorization or clinical logic.
+- Clinician Review opens to a concise questionnaire, history, study, treatment, and follow-up briefing plus clinician-owned exam and plan tasks.
+- MA / Nurse Prep emphasizes source-data entry and verification. Full Chart preserves access to every field for either role.
+- PAP compliance and DISE modules surface when visit context or existing data makes them relevant and remain accessible on demand at other visits.
+- The complete local regression suite passed 1,879 assertions; lint and evidence-documentation integrity checks passed.
+- Live CloudFront verification confirmed build `674f414`, the role switch controls, and the versioned workspace script at the pilot URL.
 
 ## Required synthetic rehearsal
 
