@@ -994,7 +994,10 @@ const OSAPdfExport = (() => {
     const dateStr = clone.getAttribute('data-report-date') || new Date().toISOString().split('T')[0];
     const filename = `Sleep_Report_${safeName}_${dateStr}.pdf`;
 
-    return exportFromHTML(clone.outerHTML, filename, true, dateStr, options.download !== false);
+    const exportHtml = typeof PatientReport?.normalizePatientHandoutPunctuation === 'function'
+      ? PatientReport.normalizePatientHandoutPunctuation(clone.outerHTML)
+      : clone.outerHTML;
+    return exportFromHTML(exportHtml, filename, true, dateStr, options.download !== false);
   }
 
   return { exportClinicianPDF, exportPatientReportPDF };

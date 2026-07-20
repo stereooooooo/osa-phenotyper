@@ -278,17 +278,21 @@
     const positionalThresholds = typeof OSA_CONFIG !== 'undefined'
       ? (OSA_CONFIG.thresholds?.positional || {})
       : {};
-    const minimumRatio = positionalThresholds.supNonSupRatio ?? 2;
-    const maximumNonSupine = positionalThresholds.nonSupMax ?? 15;
-    if (!signals.shortRecording && study.supineAhi !== null && study.nonSupineAhi !== null && study.supineAhi > 0) {
-      const positional = study.nonSupineAhi === 0 ||
-        (study.supineAhi / study.nonSupineAhi > minimumRatio && study.nonSupineAhi < maximumNonSupine);
-      if (positional) {
-        const reason = study.nonSupineAhi === 0
-          ? `Respiratory events occurred only while supine, AHI ${study.supineAhi}`
-          : `Supine AHI is ${(study.supineAhi / study.nonSupineAhi).toFixed(1)} times non-supine AHI (${study.supineAhi} vs ${study.nonSupineAhi})`;
-        addSuggestion(suggestions, 'planPositional', reason, 'add positional therapy', 30);
-      }
+    const positionalPattern = OSAReportShared.classifyPositionalPattern({
+      supineAhi: study.supineAhi,
+      nonSupineAhi: study.nonSupineAhi,
+      ratioThreshold: positionalThresholds.supNonSupRatio ?? 2,
+    });
+    if (osaPresent && !signals.shortRecording && positionalPattern.positional) {
+      const reason = positionalPattern.nonSupineAhi === 0
+        ? `Respiratory events occurred only while supine, AHI ${positionalPattern.supineAhi}`
+        : `Supine AHI is ${positionalPattern.ratio.toFixed(1)} times non-supine AHI (${positionalPattern.supineAhi} vs ${positionalPattern.nonSupineAhi})`;
+      // PH-05: supine-predominant OSA remains active off the back, so the
+      // draft must describe position as adjunctive rather than monotherapy.
+      const action = positionalPattern.type === 'supine-isolated'
+        ? 'add positional therapy and objectively verify whether it can control OSA without another treatment'
+        : 'add positional therapy as an adjunct to the primary OSA treatment';
+      addSuggestion(suggestions, 'planPositional', reason, action, 30);
     }
 
     const bmi = numberValue('bmi');

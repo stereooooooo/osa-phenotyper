@@ -52,6 +52,9 @@ async function run() {
   const win = frame.contentWindow;
   const doc = frame.contentDocument;
 
+  assert(win.history.state?.intakeToken === 'short-path-token', 'Validated intake keeps a session-scoped recovery token after removing it from the address bar');
+  assert(!win.location.search.includes('t='), 'Validated intake removes the bearer token from the visible URL');
+
   chooseRadio(win, 'snoringReported', 'yes');
   chooseRadio(win, 'priorSleepStudy', 'no');
   click(win, '#priorTxNone');

@@ -470,3 +470,15 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 232 | Scan-friendly clinician briefing | Symptoms, questionnaire scores, sleep-study severity and quality measures, treatment status, PAP download status, and safety context use compact metrics plus labeled rows rather than sentence-heavy summaries. Focused Edit data access remains available. |
 | 233 | Consistent optional-tool launchers | Add PAP compliance report and Open DISE fields use the same type size, weight, line height, and control hierarchy while remaining contextual optional tools. |
 | 234 | Patient-stated initial visit reason and counterexample | Initial intake requires a plain-language reason for the visit and maps it to chart context for MA correction. The answer may guide emphasis or draft suggestions but cannot select or confirm treatment, which provides the counterexample to treating a patient request as a clinical plan. |
+
+### Group 52: Independent Audit Remediation
+
+| # | Name | Key Features |
+|---|---|---|
+| 235 | Short positive-signal WatchPAT with nondiagnostic recording | A three-hour home recording with pAHI 7 is described as a possible signal that cannot establish diagnosis or severity. The full handout suppresses the severity scale, subtype, phenotype narrative, and definitive risk narrative while retaining the clinician-confirmed testing plan. |
+| 236 | Adequate positive-study counterexample | A technically adequate positive study continues to receive the appropriate confirmed severity, phenotype explanation, and clinician-confirmed treatment content. The nondiagnostic language does not leak into adequate studies. |
+| 237 | Exact positional ratio boundary with persistent non-supine OSA | Confirmed OSA with supine AHI exactly twice non-supine AHI activates positional OSA. Non-supine AHI 8 makes position an adjunct in the draft and patient explanation rather than monotherapy. |
+| 238 | Below-boundary and normal-AHI positional counterexamples | A supine/non-supine ratio below 2 does not activate positional OSA. A ratio of 2 with an overall AHI below 5 also does not create positional OSA or a positional treatment draft. |
+| 239 | Uncertain cardiovascular history preservation | Patient intake answer unsure maps to the unresolved cardiovascular-history chart flag. It does not create confirmed CVD, an LVEF value, or an autonomous diagnostic or treatment decision. |
+| 240 | Clinician-edited report integrity | A clinician edit containing macOS smart punctuation is normalized before snapshot and PDF. Closing unsaved edits warns; downloading an edited report requires saving the final version first; a successful snapshot clears the unsaved-edit state. |
+| 241 | Intake reload and answer-loss boundary | Validation removes the token from the visible URL but retains a session-scoped recovery token. Navigation with entered answers warns. Reload can reopen a blank form; successful submission removes the recovery token and clears responses. |

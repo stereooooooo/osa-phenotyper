@@ -1634,3 +1634,18 @@
 - all clinical thresholds and phenotype logic remain unchanged
 - the complete headless suite passed **1,910 assertions**
 **Finding:** fixed locally. The change reduces duplicate status messaging, turns readiness into an actionable checklist, and moves visit context upstream to the patient without surrendering MA correction or clinician plan ownership. Clinician approval and deployment remain pending.
+
+### Tests 235-241: Independent audit remediation
+**Status:** local clinical-routing, patient-language, workflow-integrity, intake-state, evidence-documentation, and full regression testing complete
+**Result:** passed after reconciling the independent audit findings ✅
+**Verification:**
+- a short three-hour WatchPAT with pAHI 7 now presents a possible sleep apnea signal without declaring mild OSA, confirmed OSA, a subtype, causal phenotype, or definitive risk; the clinician-confirmed diagnostic plan remains the next step
+- adequate positive studies retain confirmed severity and treatment behavior, providing the diagnostic counterexample
+- an exact supine/non-supine ratio of 2.0 now behaves consistently across phenotype detection, draft suggestions, and patient explanation; non-supine AHI 8 is adjunctive, while a 1.99 ratio and a normal overall AHI do not activate positional OSA
+- patient-reported cardiovascular uncertainty reaches the chart as an unresolved safety flag without becoming confirmed disease or a treatment rule
+- APAP, IPAP, and EPAP are defined conditionally before use; duplicate UPPP terminology is removed
+- clinician edits containing typographic dash characters are normalized before snapshot/PDF, and edited downloads require a saved final snapshot
+- validated intake removes the bearer token from the address bar, keeps only session-scoped reload recovery, warns before losing entered answers, and clears recovery state after submission
+- every generated full report and Today's Sleep Plan in the scenario matrix remains free of typographic dash characters
+- the complete headless suite passed **2,020 assertions** locally; clinician acceptance and deployment remain pending
+**Finding:** the patient-safety contradiction and related consistency gaps are fixed locally. No deferred infrastructure defense-in-depth item was included in this clinical remediation candidate.

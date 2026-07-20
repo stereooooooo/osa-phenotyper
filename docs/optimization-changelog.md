@@ -19,6 +19,26 @@ Precision Sleep hub while preserving the more expansive platform for possible fu
 AWS environment remains staff-authenticated; patients interact only through a restricted,
 single-use intake link and receive clinician-approved reports rather than access to a patient chart.
 
+### Changed — independent audit remediation candidate (not deployed)
+- Nondiagnostic short home recordings can still show the observed numerical signal, but the full
+  patient report no longer declares confirmed OSA, a severity category, subtype, phenotype, or
+  definitive risk narrative. The clinician-confirmed testing plan controls the next step.
+- The editable plan draft now uses the same positional classifier as the phenotype engine and
+  patient report. The inclusive 2.0 ratio boundary is consistent, supine-predominant disease is
+  explicitly adjunctive, and a normal overall AHI remains a counterexample that cannot create
+  positional OSA.
+- Patient-reported uncertainty about cardiovascular history is retained as an unresolved MA and
+  clinician review flag instead of being silently treated as a negative history.
+- Added patient definitions for APAP, IPAP, and EPAP and removed the duplicate UPPP terminology
+  entry.
+- Clinician report edits are normalized before snapshot or PDF generation. Edited reports prompt
+  the clinician to save the final version before download and warn before unsaved edits are closed.
+- The intake page warns before entered answers are lost on navigation. After URL cleanup, only a
+  session-scoped recovery token remains so a reload can reopen a blank form; successful submission
+  removes that token and clears the handed device.
+- Reconciled `CLAUDE.md` and `AGENTS.md` with the current HB, oral-appliance, HGNS, test-inventory,
+  launch-path, and pilot-checklist rules.
+
 ### Added — clinical workflow and patient experience
 - A required, plain-language main reason for the initial visit on the patient questionnaire. It maps
   into visit context for MA correction and can guide report emphasis or draft suggestions, but it

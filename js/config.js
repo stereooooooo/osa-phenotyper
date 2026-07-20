@@ -68,6 +68,8 @@ const OSA_CONFIG = {
     },
 
     positional: {
+      // Shared by phenotype detection, patient explanation, and the editable
+      // plan draft through classifyPositionalPattern(). The boundary is >=2.0.
       supNonSupRatio:     2.0,  // Cartwright 1984, Mador 2005
       supNonSupRatioHigh: 3.0,
       nonSupIsolatedMax:  5     // <5 identifies a potential supine-isolated pattern; monotherapy still requires confirmation
@@ -185,7 +187,9 @@ const OSA_CONFIG = {
       ageOld:          65    // older-age research context
     },
 
-    // Home sleep test (WatchPAT) validity-flag thresholds
+    // Home sleep test (WatchPAT) validity-flag thresholds. A recording below
+    // tstWarning is not assigned definitive OSA severity in the patient report;
+    // the clinician-confirmed diagnostic plan controls the next-step message.
     hstValidity: {
       tstDanger:        2,    // TST <2 hrs → danger (inadequate recording)
       tstWarning:       4,    // TST <4 hrs → warning (short recording)

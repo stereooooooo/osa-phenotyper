@@ -951,7 +951,7 @@
   // ── Config ──────────────────────────────────────────────────
   const API_URL = (document.body.dataset.apiUrl || '').trim();
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('t');
+  let token = params.get('t') || (window.history.state && window.history.state.intakeToken) || '';
   const requestedWorkflowQuestionnaire = params.get('questionnaire') === 'followup' ? 'followup' : 'intake';
   let activeQuestionnaireType = 'intake';
   const workflowTestMode = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
@@ -1051,7 +1051,19 @@
   const progressFill   = document.getElementById('progressFill');
   const progressLabel  = document.getElementById('progressLabel');
   const progressTrack  = document.getElementById('progressTrack');
+  let questionnaireDirty = false;
   applyRuntimeMeta();
+
+  function historyStateWithToken() {
+    return Object.assign({}, window.history.state || {}, { intakeToken: token });
+  }
+
+  function clearRecoverableToken() {
+    if (!window.history || !window.history.replaceState) return;
+    var nextState = Object.assign({}, window.history.state || {});
+    delete nextState.intakeToken;
+    window.history.replaceState(nextState, document.title, window.location.pathname);
+  }
 
   // ── Questionnaire Data ──────────────────────────────────────
   const ESS_QUESTIONS = [
@@ -1103,7 +1115,7 @@
 
   function showWorkflowToken() {
     if (window.history && window.history.replaceState) {
-      window.history.replaceState({}, document.title, window.location.pathname + '?testMode=workflow' + (requestedWorkflowQuestionnaire === 'followup' ? '&questionnaire=followup' : ''));
+      window.history.replaceState(historyStateWithToken(), document.title, window.location.pathname + '?testMode=workflow' + (requestedWorkflowQuestionnaire === 'followup' ? '&questionnaire=followup' : ''));
     }
     greetingName.textContent = 'Workflow Test';
     thankYouName.textContent = 'Workflow Test';
@@ -2498,6 +2510,8 @@
   }
 
   function attachFollowupSubmission() {
+    followupQuestionnaireForm.addEventListener('change', function() { questionnaireDirty = true; });
+    followupQuestionnaireForm.addEventListener('input', function() { questionnaireDirty = true; });
     followupQuestionnaireForm.addEventListener('submit', async function(event) {
       event.preventDefault();
       if (!validateFollowupQuestionnaire()) return;
@@ -2519,9 +2533,8 @@
             throw new Error(errorData.error || 'Submission failed');
           }
         }
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        questionnaireDirty = false;
+        clearRecoverableToken();
         followupQuestionnaireForm.reset();
         document.querySelectorAll('.intake-conditional--visible').forEach(function(element) {
           element.classList.remove('intake-conditional--visible');
@@ -2576,6 +2589,8 @@
       });
 
       if (!resp.ok) {
+        clearRecoverableToken();
+        token = '';
         showState(stateError);
         return;
       }
@@ -2583,9 +2598,10 @@
       var data = await resp.json();
 
       // Keep the bearer token only in this page's memory after validation so
-      // it is not left visible in the iPad address bar or browser history.
+      // it is not left visible in the iPad address bar. A session-scoped copy
+      // in history.state lets a reload reopen a blank form after the warning.
       if (window.history && window.history.replaceState) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(historyStateWithToken(), document.title, window.location.pathname);
       }
 
       // Use textContent (not innerHTML) for security
@@ -2606,12 +2622,14 @@
   function attachListeners() {
     // Update scores and progress on any radio change
     intakeForm.addEventListener('change', function() {
+      questionnaireDirty = true;
       updateScores();
       updateProgress();
     });
 
     // Also update progress on text input changes
     intakeForm.addEventListener('input', function(e) {
+      questionnaireDirty = true;
       if (e.target.type === 'number' || e.target.tagName === 'SELECT') {
         updateProgress();
       }
@@ -2651,10 +2669,9 @@
           }
         }
 
-        // Success — remove token from URL for safety
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        // Success: remove the recoverable token before clearing the handed device.
+        questionnaireDirty = false;
+        clearRecoverableToken();
 
         // Clear responses from the handed device immediately after the server
         // accepts them. The now-used token cannot reopen the questionnaire.
@@ -2673,6 +2690,12 @@
       }
     });
   }
+
+  window.addEventListener('beforeunload', function(event) {
+    if (!questionnaireDirty || !stateForm.classList.contains('intake-form-view--active')) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
 
   // ── Init ────────────────────────────────────────────────────
   validateToken();

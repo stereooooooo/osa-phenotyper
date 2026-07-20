@@ -348,9 +348,47 @@ const ALL_SCENARIOS = [
     clinicianIncludes: ['Short recording time', 'Limited REM sampling', 'WatchPAT severity-category uncertainty'],
     clinicianTooltipIncludes: ['Quality flags identify limitations'],
     clinicianExcludes: [],
-    patientIncludes: ['sleep apnea'],
-    patientExcludes: ['Short recording time', 'Limited REM sampling', 'WatchPAT severity-category uncertainty', 'bad sleep study', 'Worse during dream (REM) sleep'],
+    patientIncludes: ['possible sleep apnea signal', 'confirm the diagnosis or severity'],
+    patientExcludes: ['mild sleep apnea', 'confirmed obstructive sleep apnea', "What's Contributing to Your Sleep Apnea", 'Short recording time', 'Limited REM sampling', 'WatchPAT severity-category uncertainty', 'bad sleep study', 'Worse during dream (REM) sleep'],
     expectedAnalysisFlags: { limitedStudyStillSuggestsDefinitiveTreatment: false }
+  },
+  {
+    id: 'positional-boundary-adjunct',
+    name: 'Positional OSA at the exact two-to-one boundary with persistent non-supine OSA',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '26', neck: '15', tonsils: '1', ftp: 'II', ess: '9', isi: '5', noseScore: '10',
+      pahi: '12', tst: '6.5', remPercent: '20', supPahi: '16', nonSupPahi: '8', remPahi: '14',
+      nremPahi: '11', odi: '10', nadir: '89', hbAreaPH: '18', t90: '0.5'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management', 'Positional therapy'],
+    expectedTags: ['CPAP', 'POS'],
+    clinicianIncludes: ['Positional OSA'],
+    clinicianExcludes: [],
+    patientIncludes: ['support another treatment rather than replace it'],
+    patientExcludes: ['Before using position as the only treatment'],
+    todayPlanIncludes: ['as an adjunct to the primary OSA treatment'],
+    todayPlanExcludes: []
+  },
+  {
+    id: 'positional-below-boundary-counterexample',
+    name: 'Supine difference below the positional OSA ratio boundary',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'F', bmi: '25', neck: '14', tonsils: '1', ftp: 'II', ess: '9', isi: '5', noseScore: '10',
+      pahi: '12', tst: '6.5', remPercent: '20', supPahi: '15.9', nonSupPahi: '8', remPahi: '14',
+      nremPahi: '11', odi: '10', nadir: '89', hbAreaPH: '18', t90: '0.5'
+    },
+    checks: ['cvdUnsure'],
+    expectedSuggestions: ['PAP management'],
+    expectedTags: ['CPAP'],
+    clinicianIncludes: ['diagnosis uncertain'],
+    clinicianExcludes: ['Positional OSA'],
+    patientIncludes: ['sleep apnea'],
+    patientExcludes: ['Worse when you sleep on your back'],
+    todayPlanIncludes: [],
+    todayPlanExcludes: ['positional therapy']
   },
   {
     id: 'bipap-central-safety',
@@ -1136,6 +1174,7 @@ async function runScenario(win, doc, scenario, index) {
   scenario.patientExcludes.forEach(phrase => assert(!patientText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: patient report excludes "${phrase}"`));
   (scenario.todayPlanIncludes || []).forEach(phrase => assert(todayPlanText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: today's plan includes "${phrase}"`));
   (scenario.todayPlanExcludes || []).forEach(phrase => assert(!todayPlanText.toLowerCase().includes(phrase.toLowerCase()), `${scenario.name}: today's plan excludes "${phrase}"`));
+  assert(!/[\u2010-\u2015\u2212]/.test(patientHtml), `${scenario.name}: full patient report contains no typographic dash characters`);
   assert(!/[\u2010-\u2015\u2212]/.test(todayPlanHtml), `${scenario.name}: today's plan contains no typographic dash characters`);
 
   const analysisFlags = {

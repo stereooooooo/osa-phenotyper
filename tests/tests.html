@@ -1046,6 +1046,27 @@ assert(!terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<d
 assert(!terminologyReportHtml.slice(terminologyIndex, summaryIndex).includes('<dt>ASV</dt>'), 'Terminology guide omits a supported term that is not used in this report');
 assert(!/[\u2010-\u2015\u2212]/.test(terminologyReportHtml), 'Patient handout output contains no typographic dash characters');
 
+const apapTerminologyHtml = PatientReport.generateReportHTML(buildReportData({
+  cpapCurrent: true,
+  papMode: 'APAP',
+  papMinPressure: 6,
+  papMaxPressure: 14,
+  recTags: [{ tag: 'CPAP', text: 'Continue APAP.' }],
+}));
+assert(apapTerminologyHtml.includes('<dt>APAP</dt>'), 'APAP is defined before current-therapy language');
+
+const bipapTerminologyHtml = PatientReport.generateReportHTML(buildReportData({
+  cpapCurrent: true,
+  papMode: 'BiPAP',
+  papIpapPressure: 14,
+  papEpapPressure: 8,
+  recTags: [{ tag: 'CPAP', text: 'Continue BiPAP.' }],
+}));
+['BiPAP', 'IPAP', 'EPAP'].forEach(term => {
+  assert(bipapTerminologyHtml.includes(`<dt>${term}</dt>`), `${term} is defined before bilevel pressure details`);
+});
+assert(typeof PatientReport.normalizePatientHandoutPunctuation === 'function', 'Patient handout punctuation normalizer is available to edit and PDF workflows');
+
 // ── Render results ──────────────────────────────────────────────
 const out = document.getElementById('results');
 let html = `<div class="summary ${failed ? 'has-fail' : 'all-pass'}">

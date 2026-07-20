@@ -17,6 +17,12 @@ around a safe, clinician-only Precision Sleep pilot, rapid real-world usability 
 formal clinical validation.
 
 ### Release gate for the next pilot build
+- [x] Reconcile the independent audit's runtime findings: nondiagnostic full-report wording,
+  positional draft consistency, unresolved cardiovascular history, edited-report snapshot
+  integrity, patient terminology, and intake reload protection. Paired counterexamples and the full
+  regression suite pass locally with 2,020 assertions.
+- [ ] Complete clinician acceptance of audit remediation `ER-2026-07-20-AUDIT-REMEDIATION` before
+  deployment. The current hosted pilot remains build `e12734f` until this signoff.
 - [ ] Complete formal clinician evidence signoff for the non-PAP response-calibration change
   (`1c1c6cf`) and COMISA change (`063d108`). Both are included in deployed clinical-pilot build
   `e12734f` for acceptance testing; deployment is complete, but clinical signoff is not.
@@ -41,6 +47,16 @@ formal clinical validation.
 - [x] Move the initial reason for visit into the patient questionnaire using plain-language choices,
   preserve MA correction, and prevent that answer from selecting or confirming treatment.
 - [x] Normalize optional PAP compliance and DISE launcher typography.
+- [ ] Observe the new save-before-download report workflow and intake reload warning during
+  clinician and MA testing; refine copy only if it causes confusion without weakening the data-loss
+  guard.
+
+### Deferred defense-in-depth after clinical and workflow acceptance
+- [ ] Harden the CloudFormation input so a pilot deployment cannot proceed with an empty WAF ARN,
+  then rotate the CloudFront origin secret during a planned infrastructure release.
+- [ ] Evaluate POST-based search, CSP nonces, and tighter query limits after the current clinical
+  logic and user-experience pilot. These are defense-in-depth tasks, not blockers created by the
+  independent audit.
 - [x] Replace the monolithic chart with role-optimized `MA / Nurse Prep`, `Clinician Review`, and
   `Full Chart` workspaces. Clinician Review now opens to a concise briefing and clinician-owned
   exam and plan tasks. Prep emphasizes source-data entry and verification. PAP and DISE tools surface

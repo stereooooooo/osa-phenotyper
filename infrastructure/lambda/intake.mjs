@@ -941,6 +941,11 @@ function mapToFormData(data, scores) {
   for (const [condition, field] of Object.entries(cvdFieldMap)) {
     formData[field] = cvdConditions.includes(condition) ? 'on' : '';
   }
+  // An uncertain cardiovascular history is an unresolved safety input, not a
+  // negative history. Preserve it as a visible chart flag for MA/clinician review.
+  if (data.cardiovascularHistory?.historyAnswer === 'unsure') {
+    formData.cvdUnsure = 'on';
+  }
 
   const glp1Issues = data.glp1History?.issues || [];
   formData.glp1IssueNone = glp1Issues.includes('none') ? 'on' : '';

@@ -106,6 +106,11 @@ var PatientReport = (() => {
       definition: 'Continuous positive airway pressure: a common type of PAP treatment that keeps the airway open with air pressure.',
     },
     {
+      label: 'APAP',
+      patterns: [/\bAPAP\b/],
+      definition: 'Auto-adjusting positive airway pressure: a PAP mode that changes pressure within a range set by the clinician.',
+    },
+    {
       label: 'CBT-I',
       patterns: [/\bCBT-I\b/, /Cognitive Behavioral Therapy for Insomnia/i],
       definition: 'Cognitive Behavioral Therapy for Insomnia: a structured treatment recommended early for ongoing insomnia.',
@@ -161,6 +166,16 @@ var PatientReport = (() => {
       definition: 'Bilevel positive airway pressure: PAP treatment with different pressures for breathing in and out.',
     },
     {
+      label: 'IPAP',
+      patterns: [/\bIPAP\b/],
+      definition: 'Inspiratory positive airway pressure: the BiPAP pressure delivered while breathing in.',
+    },
+    {
+      label: 'EPAP',
+      patterns: [/\bEPAP\b/],
+      definition: 'Expiratory positive airway pressure: the BiPAP pressure delivered while breathing out.',
+    },
+    {
       label: 'PSG',
       patterns: [/\bPSG\b/],
       definition: 'Polysomnography: a detailed sleep study performed in a sleep laboratory.',
@@ -214,11 +229,6 @@ var PatientReport = (() => {
       label: 'Oral appliance',
       patterns: [/oral appliance/i, /mandibular advancement device/i],
       definition: 'A custom dental device worn during sleep that holds the lower jaw forward to help keep the airway open.',
-    },
-    {
-      label: 'UPPP',
-      patterns: [/\bUPPP\b/],
-      definition: 'Uvulopalatopharyngoplasty: surgery that reshapes tissue in the palate and throat to enlarge the airway.',
     },
     {
       label: 'General anesthesia',
@@ -805,6 +815,9 @@ var PatientReport = (() => {
       finding = data.priorSleepStudyAnswer === 'yes'
         ? 'We need to review your previous sleep-study report before deciding whether updated testing is necessary.'
         : 'We are recommending a sleep study to get a clear picture of how you breathe overnight.';
+    } else if (data.nondiagnosticHstNeedsPsg) {
+      finding = 'Your home sleep study recorded a possible sleep apnea signal, but it did not capture enough reliable sleep information to confirm the diagnosis or severity.';
+      meaning = 'Your clinician will use the testing plan selected today to clarify the result before treatment is finalized.';
     } else if (exists(ahi) && ahi < 5) {
       finding = 'Your sleep study did not find obstructive sleep apnea — your breathing was in the normal range.';
       if (negativeHstLabStudySelected(data)) {
@@ -1050,6 +1063,19 @@ ${parts.join('')}`;
     const ahiRound = Math.round(ahi);
     const ctx      = getVisitContext(data);
 
+    /* A short home recording may contain a clinically important signal without
+       supporting a definitive diagnosis or severity assignment. Keep the
+       numerical observation visible, but do not render the severity scale,
+       subtype, hypoxemia-risk narrative, or phenotype narrative as confirmed. */
+    if (data.nondiagnosticHstNeedsPsg) {
+      return `
+<h2>Understanding Your Results</h2>
+<div class="ahi-summary-block">
+  <p>Your home sleep study recorded an Apnea-Hypopnea Index (AHI) of <strong>${ahiRound} events per hour</strong>. This is a possible sleep apnea signal, but the recording did not provide enough reliable sleep information to confirm the diagnosis or severity.</p>
+  <p>Your clinician will use the testing plan selected today before finalizing treatment.</p>
+</div>`;
+    }
+
     /* — O2 nadir (best available from WatchPAT or PSG) — */
     const nadirRaw = Math.min(
       data.nadir    !== null && data.nadir    !== undefined ? +data.nadir    : 999,
@@ -1271,6 +1297,7 @@ ${renderSectionG(data)}`;
     }
     const includeWeight = exists(data.bmi) && Number(data.bmi) >= 27 && hasPatientRecTag(data, 'WEIGHT');
     if (getReportStage(data) !== 'post-study') return '';
+    if (data.nondiagnosticHstNeedsPsg) return '';
     if (data.primaryAHI < 5) return '';  // Normal AHI handled by Section B2
     // Phase 3: the "contributing factors still being clarified" callout is suppressed from
     // the patient view (clinician-oriented, actionless for the patient).
@@ -2500,6 +2527,6 @@ ${items.join('')}`;
     return normalizePatientHandoutPunctuation(reportHTML);
   }
 
-  return { generateReportHTML, generateTodayPlanHTML, getReportStage };
+  return { generateReportHTML, generateTodayPlanHTML, getReportStage, normalizePatientHandoutPunctuation };
 
 })();

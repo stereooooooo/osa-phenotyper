@@ -20,6 +20,7 @@ const citations = read('docs/citations.md');
 const reviewLog = read('docs/evidence-review-log.md');
 const agents = read('AGENTS.md');
 const claude = read('CLAUDE.md');
+const intakeLambda = read('infrastructure/lambda/intake.mjs');
 
 const logicIds = [...evidence.matchAll(/\|\s*((?:DX|PH|TX|SAF)-\d{2})\s*\|/g)].map(match => match[1]);
 const uniqueLogicIds = new Set(logicIds);
@@ -35,6 +36,10 @@ check(evidence.includes('not a completed systematic review'), 'Evidence register
 check(evidence.includes('Prospective validation data requirements'), 'Evidence register must retain the prospective validation requirements.');
 check(citations.includes('[`evidence-basis.md`](evidence-basis.md)'), 'Citation library must link to the evidence register.');
 check(citations.includes('[`evidence-review-log.md`](evidence-review-log.md)'), 'Citation library must link to the review log.');
+check(
+  /historyAnswer === 'unsure'[\s\S]{0,180}formData\.cvdUnsure = 'on'/.test(intakeLambda),
+  'Uncertain patient cardiovascular history must remain visible as an unresolved chart safety flag.'
+);
 
 for (const [name, contents] of [['AGENTS.md', agents], ['CLAUDE.md', claude]]) {
   for (const requiredPath of ['docs/evidence-basis.md', 'docs/citations.md', 'docs/evidence-review-log.md']) {

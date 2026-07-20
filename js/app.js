@@ -2772,6 +2772,7 @@ let lastReportTrigger = null;
 let reportOriginalHtml = '';
 let reportHasEdits = false;
 let reportIsEditing = false;
+let reportEditsSaved = false;
 
 function setReportEditStatus(message) {
   if (reportEditStatus) reportEditStatus.textContent = message;
@@ -2791,7 +2792,10 @@ function getCleanReportPreviewHtml() {
     el.removeAttribute('aria-multiline');
     el.removeAttribute('spellcheck');
   });
-  return clone.innerHTML;
+  const cleanHtml = clone.innerHTML;
+  return typeof PatientReport?.normalizePatientHandoutPunctuation === 'function'
+    ? PatientReport.normalizePatientHandoutPunctuation(cleanHtml)
+    : cleanHtml;
 }
 
 function setReportEditing(enabled, options = {}) {
@@ -2825,7 +2829,7 @@ function setReportEditing(enabled, options = {}) {
 
   if (!options.keepStatus) {
     setReportEditStatus(reportIsEditing
-      ? 'Editing is on. Changes will be used for the snapshot and PDF.'
+      ? 'Editing is on. Save the final version before PDF download.'
       : reportHasEdits
         ? 'Edited preview. Save a snapshot to keep it in the chart.'
         : 'Review before saving or downloading.');
@@ -2883,6 +2887,7 @@ function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false, r
   lastReportTrigger = triggerEl || document.activeElement;
   reportOriginalHtml = html;
   reportHasEdits = false;
+  reportEditsSaved = false;
   if (reportPreviewContent) reportPreviewContent.innerHTML = html;
   if (reportPreviewTitle) {
     reportPreviewTitle.textContent = reportKind === 'today-plan'
@@ -2898,13 +2903,18 @@ function openReportOverlayFromHtml(html, triggerEl, allowSnapshotSave = false, r
   window.setTimeout(() => reportCloseButton?.focus(), 0);
 }
 
-function closeReportOverlay() {
-  if (!reportOverlay) return;
+function closeReportOverlay(options = {}) {
+  if (!reportOverlay) return false;
+  if (reportHasEdits && !reportEditsSaved && !options.force) {
+    const discard = window.confirm('This report has edits that are not saved to the chart. Close and discard them?');
+    if (!discard) return false;
+  }
   setReportEditing(false, { focus: false, keepStatus: true });
   reportOverlay.classList.remove('active');
   document.body.classList.remove('report-preview-open');
   const returnFocusEl = lastReportTrigger instanceof HTMLElement ? lastReportTrigger : document.getElementById('btnGenerateTodayPlan');
   returnFocusEl?.focus();
+  return true;
 }
 
 document.getElementById('btnGenerateReport')?.addEventListener('click', (e) => {
@@ -2924,6 +2934,7 @@ reportResetButton?.addEventListener('click', () => {
   if (!window.confirm('Reset all clinician edits and restore the generated report?')) return;
   reportPreviewContent.innerHTML = reportOriginalHtml;
   reportHasEdits = false;
+  reportEditsSaved = false;
   setReportEditing(false, { focus: false });
   setReportEditStatus('Generated report restored.');
 });
@@ -2931,8 +2942,9 @@ reportResetButton?.addEventListener('click', () => {
 reportPreviewContent?.addEventListener('input', () => {
   if (!reportIsEditing) return;
   reportHasEdits = true;
+  reportEditsSaved = false;
   if (reportResetButton) reportResetButton.disabled = false;
-  setReportEditStatus('Editing is on. Changes will be used for the snapshot and PDF.');
+  setReportEditStatus('Editing is on. Save the final version before PDF download.');
 });
 
 /* Prevent pasted web content from bringing foreign fonts, colors, or hidden
@@ -2944,20 +2956,27 @@ reportPreviewContent?.addEventListener('paste', (event) => {
   document.execCommand('insertText', false, plainText);
 });
 
-document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', async (e) => {
+async function saveCurrentReportSnapshot(triggerEl) {
   if (!lastAnalysisData || !window.OSAChartActions?.saveReportSnapshot) return;
   setReportEditing(false, { focus: false, keepStatus: true });
   const currentHtml = getCleanReportPreviewHtml();
-  await window.OSAChartActions.saveReportSnapshot({
+  const savedPatient = await window.OSAChartActions.saveReportSnapshot({
     analysisData: lastAnalysisData,
     patientReportHtml: currentHtml,
     reportDate: lastAnalysisData.reportDate,
     patientName: lastAnalysisData.patientName,
-    triggerEl: e.currentTarget,
+    triggerEl,
   });
+  if (!savedPatient) return false;
+  reportEditsSaved = true;
   setReportEditStatus(reportHasEdits
     ? 'Edited report snapshot saved to the chart.'
     : 'Report snapshot saved to the chart.');
+  return true;
+}
+
+document.getElementById('btnSaveReportSnapshot')?.addEventListener('click', async (e) => {
+  await saveCurrentReportSnapshot(e.currentTarget);
 });
 
 reportCloseButton?.addEventListener('click', () => {
@@ -2967,10 +2986,16 @@ reportCloseButton?.addEventListener('click', () => {
 document.getElementById('btnDownloadReportPdf')?.addEventListener('click', async () => {
   if (typeof OSAPdfExport !== 'undefined' && OSAPdfExport.exportPatientReportPDF) {
     setReportEditing(false, { focus: false, keepStatus: true });
+    if (reportHasEdits && !reportEditsSaved) {
+      const saveAndDownload = window.confirm('This edited report has not been saved to the chart. Save the final version and download it now?');
+      if (!saveAndDownload) return;
+      const saved = await saveCurrentReportSnapshot(document.getElementById('btnDownloadReportPdf'));
+      if (!saved) return;
+    }
     const result = await OSAPdfExport.exportPatientReportPDF();
     if (result) {
       setReportEditStatus(reportHasEdits
-        ? 'PDF downloaded with your edits. Save a snapshot to keep them in the chart.'
+        ? 'PDF downloaded with the saved clinician edits.'
         : 'PDF downloaded.');
     }
   }
@@ -3010,5 +3035,6 @@ window.OSAReportState = {
   openHtmlSnapshot: (html, triggerEl) => openReportOverlayFromHtml(html, triggerEl, false),
   closePreview: () => closeReportOverlay(),
   isEditingPreview: () => reportIsEditing,
+  hasUnsavedPreviewEdits: () => reportHasEdits && !reportEditsSaved,
   getPreviewHtml: () => getCleanReportPreviewHtml(),
 };

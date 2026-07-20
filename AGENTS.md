@@ -7,7 +7,7 @@ A client-side clinical decision-support tool for obstructive sleep apnea (OSA). 
 
 ## Architecture
 - **Vanilla JS + Bootstrap 5**, fully client-side, no build step, no server framework
-- Served via `npx serve .` on port 3000 (configured in `.Codex/launch.json`)
+- Served via `npx serve .` on port 3000 (configured in `.claude/launch.json`)
 - Script load order: `config.js` → `validate.js` → `pdf-parser.js` → `questionnaire-parser.js` → `pdf-export.js` → `patientReport.js` → `app.js`
 - CDNs: Bootstrap 5.3.3, Bootstrap Icons 1.11.3, Inter font, pdf.js 3.11.174 (UMD), jsPDF 2.5.1, html2canvas 1.4.1
 - AWS Cognito for auth (`js/auth.js`), DynamoDB for patient storage (`js/db.js`)
@@ -77,10 +77,10 @@ Four patient states with different report behavior:
 4. **Current CPAP user**: "Building on your CPAP" box
 
 ## Treatment Tag System
-Recommendations use tags (e.g., `CPAP`, `MAD-FAVORABLE`, `HNS`, `CBTI`) that map to patient-friendly descriptions in `patientReport.js`. Tags starting with `CPAP-` are suppressed as standalone recs. Prior MAD suppresses all MAD-tier descriptions.
+Recommendations use tags (e.g., `CPAP`, `MAD`, `HNS`, `CBTI`) that map to patient-friendly descriptions in `patientReport.js`. Tags starting with `CPAP-` are suppressed as standalone recs. Prior-treatment history remains visible but does not reactivate an unselected pathway.
 
 ## Testing
-- Test matrix: `docs/test-matrix.md` (31 scenarios)
+- Scenario register: `docs/test-matrix.md` (living inventory; do not hard-code a stale count here)
 - Test results: `docs/test-matrix-results.md`
 - Use preview server to run test patients via JS eval
 - Sex field is a `<select>` with values `M`/`F` (not radio with Male/Female)
@@ -93,7 +93,7 @@ Recommendations use tags (e.g., `CPAP`, `MAD-FAVORABLE`, `HNS`, `CBTI`) that map
 - **Separate Lambda** (`intake.mjs`) with a least-privilege role scoped to the patient and questionnaire-token tables. It can `GetItem`, `UpdateItem`, and `TransactWriteItems` on those tables but cannot `Scan`, `Query`, `DeleteItem`, or access any other table. Application code limits patient reads and writes to the explicit attributes needed for intake merging or pending follow-up checkpoints.
 - **Field mapping**: Initial intake maps responses to exact `formData` keys used by `app.js` and `populateForm()`. Follow-up questionnaires append a `patientSubmitted` checkpoint with `reviewStatus: pending`; they must never overwrite baseline `formData` or alter clinical recommendations before clinician review. Boolean intake fields use `'on'`/`''` to match HTML checkbox behavior.
 - **Audit**: CloudTrail logs all DynamoDB data-plane events, CloudWatch logs retained 7 years (2557 days), no PHI in any log
-- **HIPAA**: Full compliance checklist in `docs/plans/staged-bubbling-cosmos.md`. All AWS services are HIPAA-eligible with active BAA.
+- **HIPAA**: Pilot checklist in `docs/precision-sleep-pilot-checklist.md` and risk analysis in `docs/clinical-pilot-risk-analysis.md`. All AWS services in scope are HIPAA-eligible with active BAA.
 - **WAF**: Rate limiting (100 req/5min/IP) + AWS managed rule groups on intake endpoints
 - **Token table**: `osa-intake-tokens-*` with DynamoDB TTL auto-cleanup, KMS encryption, PITR
 

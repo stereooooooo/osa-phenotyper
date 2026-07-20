@@ -2809,7 +2809,7 @@ function applyRuntimeMeta(meta) {
     async saveReportSnapshot({ analysisData, patientReportHtml, reportDate, patientName, triggerEl }) {
       if (!currentPatientId) {
         alert('Save the patient chart before saving a report snapshot.');
-        return;
+        return null;
       }
 
       const button = document.getElementById('btnSaveReportSnapshot');
@@ -2835,12 +2835,14 @@ function applyRuntimeMeta(meta) {
         updatePatientBar(patient);
         renderReportSnapshotsModal(patient);
         alert('Report snapshot saved to the chart.');
+        return patient;
       } catch (err) {
         if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
           alert('This chart changed before the snapshot could be saved. Reload the patient record and try again.');
         } else {
           alert('Could not save report snapshot: ' + err.message);
         }
+        return null;
       } finally {
         if (button) {
           button.disabled = false;
