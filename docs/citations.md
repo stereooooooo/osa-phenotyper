@@ -6,9 +6,9 @@ limitations, and validation targets is maintained in [`evidence-basis.md`](evide
 
 | Field | Current value |
 |---|---|
-| Last updated | 2026-07-19 |
+| Last updated | 2026-07-20 |
 | Last comprehensive review | 2026-06-11 |
-| Last targeted review | 2026-07-19 |
+| Last targeted review | 2026-07-20 |
 | Review history | [`evidence-review-log.md`](evidence-review-log.md) |
 
 This library is not a flat endorsement of every cited claim. Evidence strength and applicability are

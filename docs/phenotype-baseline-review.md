@@ -1,4 +1,4 @@
-# Phenotype Baseline — Clinical Review (v4)
+# Phenotype Baseline — Clinical Review (v5, Historical Snapshot)
 
 _Regenerated 2026-06-11 after the clinical-logic refinements (ranked plan, gated workups, MAD demotion, Zepbound, ΔHR off) plus the DISE-not-always-required fix (thin Friedman-I + large tonsils → tonsillectomy ± expansion pharyngoplasty without DISE). Recommendations are in plan order; `*-WORKUP` caveats sort last._
 

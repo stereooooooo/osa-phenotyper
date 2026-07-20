@@ -79,18 +79,22 @@ single-use intake link and receive clinician-approved reports rather than access
   and documented through `8219ec0`).
 - Replaced app-created oral-appliance favorable/poor tiers and aggregate HGNS strong/good/marginal
   tiers with factor-level response context, explicit uncertainty, safety prerequisites, and objective
-  on-treatment verification (`1c1c6cf`, pushed, not deployed).
+  on-treatment verification (`1c1c6cf`, included in pilot build `e12734f`; formal clinician evidence
+  signoff remains open).
 - Separated supine-isolated from supine-predominant OSA. Positional monotherapy is considered only
   when non-supine disease is below the diagnostic range and sampling plus efficacy are verified;
   persistent non-supine OSA receives adjunctive wording.
 - Recalibrated COMISA guidance: CBT-I remains early, PAP may be concurrent or sequential, high ESS
   triggers first-week sleepiness and safety monitoring rather than a CBT-I contraindication, and
-  COMISA alone no longer prescribes APAP, EPR, ramp, or a pressure range (`063d108`, pushed, not
-  deployed).
+  COMISA alone no longer prescribes APAP, EPR, ramp, or a pressure range (`063d108`, included in
+  pilot build `e12734f`; formal clinician evidence signoff remains open).
 - Replaced deterministic septoplasty, snoring, WatchPAT, DISE, Friedman-stage, and treatment-response
   claims with evidence-bounded clinician tooltips and patient language.
 
 ### Added — evidence and validation infrastructure
+- Reconciled current maintenance documents with deployed pilot build `e12734f`, the 1,910-assertion
+  test baseline, and the remaining NO GO gates. Historical reviews and milestone counts remain
+  preserved but are now clearly distinguished from current deployment status.
 - A linked manuscript-oriented evidence system: `evidence-basis.md`, `citations.md`, and
   `evidence-review-log.md`, with stable Logic IDs, evidence level, limitations, validation endpoints,
   source-verification requirements, and a same-change documentation gate.
@@ -459,10 +463,13 @@ add the clinician fast-path hint).
   the official published values). Together with the CSP these shrink the blast radius of the
   Cognito-tokens-in-localStorage XSS risk.
 - **`esc()` now escapes single quotes** (`'` → `&#39;`) — latent-only today, but removes the gap.
-- **Infra (committed, not deployed — needs a `deploy.sh` run):** always-on API-Gateway stage throttle
+- **Infra (status at the time of this historical release):** always-on API-Gateway stage throttle
   backstop (`ThrottlingRateLimit: 200`/`Burst: 400`); extended all 3 CloudFront WAF rule scopes to
   cover the public `/patient-portal/` route (WAF JSON re-validated, 3 rules × 4 paths); portal-token
-  lifetime 180 → 90 days. See the HIPAA change-log for rationale and deploy notes.
+  lifetime 180 → 90 days. These infrastructure changes were deployed in later stacks. The current
+  clinician-only architecture removed the patient portal and reusable portal token entirely; scoped
+  questionnaire links are single-use and expire after 72 hours. See the HIPAA change-log for the
+  original rationale and deploy notes.
 - **IAM doc correction.** `CLAUDE.md` overstated the intake Lambda's IAM as "only UpdateItem on
   formData." Corrected to reality (`GetItem`/`UpdateItem`/`TransactWriteItems` on the patient +
   token tables; attribute scoping is enforced in application code, not IAM, since DynamoDB IAM

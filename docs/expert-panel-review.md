@@ -1,11 +1,14 @@
 # OSA Phenotyper — Expert Panel Clinical Review
 
 **Review date:** March 20, 2026
-**App version:** Current working copy (uncommitted changes on main, post commit 8744ce1)
+**Document status:** Historical review snapshot, not a description of current logic
+**Historical app version:** Uncommitted working copy after commit `8744ce1`
 **Methodology:** 31 test-matrix patients + 10 edge cases run programmatically; 4 patient reports inspected; all thresholds cross-referenced against `docs/citations.md`
 
 > Historical snapshot: HB tiering and low-HB treatment-allocation endorsements in this review were
 > superseded by `ER-2026-07-19-HB` after primary-source re-review. They are not current app logic.
+> The current source of truth is `evidence-basis.md`; current deployment and testing status is in
+> `clinical-pilot-deployment-record.md` and `test-matrix-results.md`.
 
 ---
 

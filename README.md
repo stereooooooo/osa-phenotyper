@@ -2,6 +2,11 @@
 
 This branch is the internal Capital ENT version of the OSA clinical decision-support app. The clinical workspace and patient reports remain clinician-controlled. Its only patient-accessible surface is a narrowly scoped, patient-specific new-patient or follow-up questionnaire.
 
+**Current pilot status, 2026-07-20:** Technical candidate build `e12734f` is deployed to the isolated
+clinician-only clinical pilot. The full suite passes 1,910 assertions. The environment remains
+**NO GO for real PHI** until the unchecked organizational and workflow gates in
+[`docs/pilot-go-live-checklist.md`](docs/pilot-go-live-checklist.md) are completed and signed.
+
 ## Security boundary
 
 - Cognito sign-in with mandatory software-token MFA

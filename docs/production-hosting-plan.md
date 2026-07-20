@@ -1,9 +1,11 @@
 # Production Hosting Plan
 
 ## Goal
-Move the OSA Phenotyper from a validated staging deployment to a production-hosted environment suitable for real clinical use under Capital ENT & Sinus Center control.
+Move the clinician-only Precision Sleep clinical pilot from a technical candidate to a separately
+approved production-hosted environment suitable for real clinical use under Capital ENT & Sinus
+Center control.
 
-This plan assumes the current staging architecture remains the baseline:
+This plan uses the current clinical-pilot architecture as the technical baseline:
 - private S3 app origin
 - CloudFront front door
 - CloudFront-scoped WAF
@@ -12,11 +14,14 @@ This plan assumes the current staging architecture remains the baseline:
 - KMS-backed data stores and logs
 
 ## Current State
-- Staging stack: `osa-phenotyper-capital-ent-stg-20260401b`
-- Staging app URL: `https://dk259m1syu2bu.cloudfront.net`
-- Staging region: `us-east-2`
-- Current validated staging build: `1a11170`
+- Clinical-pilot stack: `osa-phenotyper-capital-ent-precision-sleep-pilot`
+- Clinical-pilot URL: `https://d3fgk3yvbi0jvr.cloudfront.net`
+- Clinical-pilot region: `us-east-2`
+- Current deployed technical candidate: `e12734f`
 - Current edge pattern: CloudFront routes static assets from S3 and dynamic API paths to API Gateway, with WAF attached at CloudFront
+- Current authorization state: **NO GO for real PHI** until the organizational and remaining workflow gates in `pilot-go-live-checklist.md` are completed
+- The older staging stacks remain synthetic-data-only and are not the production target
+- A separate branded production stack and Capital ENT domain have not been provisioned
 
 ## Target Production Topology
 1. Route 53

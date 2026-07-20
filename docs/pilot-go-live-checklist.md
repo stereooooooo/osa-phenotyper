@@ -4,6 +4,8 @@ Use this checklist before the first real patient is entered into the clinician-o
 
 ## Pilot identification
 
+- Technical candidate URL: `https://d3fgk3yvbi0jvr.cloudfront.net`
+- Technical candidate build: `e12734f`
 - Approved pilot URL: ____________________
 - Approved build: ____________________
 - Stack name: `osa-phenotyper-capital-ent-precision-sleep-pilot`

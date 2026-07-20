@@ -17,8 +17,9 @@ around a safe, clinician-only Precision Sleep pilot, rapid real-world usability 
 formal clinical validation.
 
 ### Release gate for the next pilot build
-- [ ] Complete clinician review of the non-PAP response-calibration change (`1c1c6cf`) and COMISA
-  change (`063d108`). Both are pushed and tested but not deployed.
+- [ ] Complete formal clinician evidence signoff for the non-PAP response-calibration change
+  (`1c1c6cf`) and COMISA change (`063d108`). Both are included in deployed clinical-pilot build
+  `e12734f` for acceptance testing; deployment is complete, but clinical signoff is not.
 - [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
   clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
   Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,910
@@ -245,14 +246,18 @@ CSP **and** SRI on `index.html`, and both optional items. See the changelog for 
 ### 4c · Security hardening (audit downgraded the portal Referer claim; these remain)
 - [x] **Rate limiting depends on an optional WAF; no API-Gateway throttle; portal endpoint uncovered**
   (medium) — always-on stage throttle backstop added (`template.yaml`); all 3 CloudFront WAF rules
-  extended to `/patient-portal/` (`deploy.sh`). **Committed, not deployed.**
+  extended to `/patient-portal/` (`deploy.sh`). **Historical status:** the throttle was deployed in
+  later staging and pilot stacks; the patient portal was subsequently removed from the current
+  clinician-only architecture.
 - [x] **Intake Lambda IAM is broader than documented** (medium) — docs corrected (`CLAUDE.md`, HIPAA
   change-log). Tightening rejected: DynamoDB IAM can't scope to an attribute; app code enforces it.
 - [x] **`esc()` doesn't escape single quotes** (low) — added `.replace(/'/g, '&#39;')` (`js/patientReport.js`).
 - [x] **Cognito tokens in localStorage** (low) — mitigated with a scoped CSP + SRI on `index.html`
   (accepted as a no-build-SPA tradeoff).
 - [x] **Portal token is long-lived (180 d) and reusable in the URL** (low, residual) — shortened to
-  90 days (`infrastructure/lambda/index.mjs`). **Committed, not deployed.**
+  90 days (`infrastructure/lambda/index.mjs`). **Superseded:** no patient-portal token or hosted-report
+  route is deployed. Current questionnaire links are patient-specific, single-use, and expire after
+  72 hours.
 
 ---
 

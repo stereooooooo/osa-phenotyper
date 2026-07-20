@@ -1,12 +1,13 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** July 19, 2026
-**Latest app version:** working copy after `ER-2026-07-19-NONPAP-PREDICTION` (clinician approval and deployment pending)
+**Latest smoke test:** July 20, 2026
+**Latest tested build:** `e12734f`, deployed to the clinician-only clinical pilot for acceptance testing
+**Latest complete result:** 1,910 headless assertions passed with no failures
 
 ---
 
 ## 2026-07-19 Non-PAP treatment-response calibration
 
-**Status:** local implementation and full regression verification complete; clinician approval and deployment pending
+**Status at review:** local implementation and full regression verification complete. The combined code was subsequently deployed in pilot build `e12734f`; formal clinician evidence signoff remains open.
 
 **Result:** passed 1,509 headless assertions with no failures.
 

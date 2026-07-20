@@ -1,5 +1,11 @@
 # Capital ENT Precision Sleep — v1
 
+**Current implementation status, 2026-07-20:** Deployed to the clinician-only clinical pilot as
+technical candidate build `e12734f` for synthetic and clinician-acceptance testing. The current
+release state and remaining gates are maintained in
+[`optimization-roadmap.md`](optimization-roadmap.md) and
+[`clinical-pilot-deployment-record.md`](clinical-pilot-deployment-record.md).
+
 ## Product decision
 
 V1 is a clinician-controlled operating layer for an OSA-centered Precision Sleep pilot. It keeps the validated phenotyping and report engine, adds a qualitative six-domain profile, structured longitudinal follow-ups, and narrowly scoped single-use new-patient and follow-up questionnaires. It does not add patient accounts or a patient portal, replace the EHR, or launch every future sleep service. Patient-submitted follow-ups remain pending until clinician review and do not overwrite baseline chart data.
@@ -29,17 +35,22 @@ V1 is a clinician-controlled operating layer for an OSA-centered Precision Sleep
 
 ### 1. Visit-specific patient action plans
 
-Add a concise **Today's Sleep Plan** that can be printed or sent through an approved patient communication channel after each visit. It is separate from the more comprehensive Precision Sleep Profile and is assembled from clinician-confirmed pathways rather than every technically eligible treatment.
+The implemented **Today's Sleep Plan** can be printed or sent through an approved patient communication channel after each visit. It is separate from the more comprehensive Precision Sleep Profile and is assembled from clinician-confirmed pathways rather than every technically eligible treatment.
 
-The first release is limited to five reusable education modules:
+The current release uses reusable, conditional education modules for:
 
 1. Pending sleep study and interim snoring measures
 2. PAP comfort and continued-use support
 3. Nasal care
 4. Weight, alcohol, and lifestyle measures
 5. Positional measures
+6. CBT-I and COMISA
+7. Oral-appliance evaluation
+8. Nerve-stimulation evaluation or existing-device follow-up
+9. Clinician-confirmed diagnostic follow-up and other selected pathways
 
-Only the one or two highest-priority modules are expanded. Other confirmed actions remain visible as a compact checklist. The clinician can edit the generated plan before saving or exporting it.
+The report emphasizes the highest-priority content and keeps supporting confirmed actions concise.
+The clinician can edit the generated plan before saving or exporting it.
 
 ### 2. PAP compliance report assistant
 
@@ -98,7 +109,12 @@ Do not add features during the initial cohort unless a defect blocks safe use. R
 
 ## PHI go-live boundary
 
-The existing clinician-only staging environment remains synthetic-data-only. Current patients may be entered only after a separate PHI-approved pilot environment passes the production controls in `docs/clinician-only-architecture.md`, including individual accounts with MFA, managed devices, monitoring alarms, tested recovery/audit retrieval, written operating procedures, and final security review.
+The older clinician-only staging environment remains synthetic-data-only. A separate clinical-pilot
+environment has been deployed and has passed the documented technical controls, recovery drill, and
+synthetic administrator rehearsal. It remains **NO GO for real PHI** until the unchecked mandatory
+gates in `docs/pilot-go-live-checklist.md` are completed, including individual workforce access,
+managed-device and operating-procedure approval, non-admin authorization rehearsal, EHR delivery and
+downtime rehearsal, organizational risk review, and final authorization.
 
 ## V1 completion criteria
 

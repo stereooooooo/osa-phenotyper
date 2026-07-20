@@ -1,10 +1,13 @@
 # Precision Sleep v1 — Current-Patient Pilot Checklist
 
-Use this checklist for a limited 20–30 patient pilot. The current clinician-only staging environment is synthetic-data-only and must not be used for this cohort.
+Use this checklist for a limited 20-30 patient pilot. A separate clinician-only `CLINICAL PILOT`
+environment is deployed at `https://d3fgk3yvbi0jvr.cloudfront.net` with technical candidate build
+`e12734f`. The older staging environment remains synthetic-data-only. The pilot remains **NO GO for
+real PHI** until every mandatory organizational and remaining workflow gate is approved.
 
 ## Before any PHI
 
-- [ ] Deploy a separate `CLINICAL PILOT` stack, patient table, Cognito pool, logs, and CloudFront distribution.
+- [x] Deploy a separate `CLINICAL PILOT` stack, patient table, Cognito pool, logs, and CloudFront distribution.
 - [ ] Confirm every AWS service in the pilot data flow is covered by the Capital ENT AWS BAA.
 - [ ] Complete and document the HIPAA security risk analysis for the pilot workflow.
 - [ ] Complete the controls in `docs/clinician-only-architecture.md` under **Required production controls outside the code**.
@@ -12,20 +15,20 @@ Use this checklist for a limited 20–30 patient pilot. The current clinician-on
 - [ ] Restrict pilot access to managed Capital ENT devices and approved remote-access practices.
 - [ ] Configure and test alarms for authentication failures, API errors, WAF blocks, and unexpected request volume.
 - [ ] Confirm both regional and CloudFront/WAF SNS email subscriptions; receive one PHI-free test alert.
-- [ ] Test one DynamoDB recovery and one audit-log retrieval.
-- [ ] Confirm all browser libraries, fonts, and PDF workers load from the private app origin; no public CDN is allowed by CSP.
-- [ ] Confirm the only anonymous patient route is the scoped intake endpoint; verify 72-hour expiry, one-time use, revocation, rate limiting, origin-secret enforcement, and no patient portal/report route.
+- [x] Test one DynamoDB recovery and one audit-log retrieval.
+- [x] Confirm all browser libraries, fonts, and PDF workers load from the private app origin; no public CDN is allowed by CSP.
+- [x] Confirm the only anonymous patient route is the scoped intake endpoint; verify 72-hour expiry, one-time use, revocation, rate limiting, origin-secret enforcement, and no patient portal/report route.
 - [ ] Configure clinic iPads as managed devices and train staff never to sign the clinician workspace into a handed device.
-- [ ] Confirm the footer reads `CLINICAL PILOT` and shows the expected build.
+- [x] Confirm the footer reads `CLINICAL PILOT` and shows technical candidate build `e12734f`.
 - [ ] Obtain clinical, privacy/security, and operational approval to begin the limited cohort.
 
 ## One synthetic rehearsal
 
-- [ ] Create, find, save, and reload one synthetic chart.
-- [ ] Generate clinician and patient reports.
-- [ ] Save and reopen a report snapshot.
-- [ ] Save and reopen one structured follow-up.
-- [ ] Archive and restore the synthetic chart as an administrator.
+- [x] Create, find, save, and reload one synthetic chart.
+- [x] Generate clinician and patient reports.
+- [x] Save and reopen a report snapshot.
+- [x] Save and reopen one structured follow-up.
+- [x] Archive and restore the synthetic chart as an administrator.
 - [ ] Confirm a clinician cannot perform administrator-only archive/restore actions.
 - [ ] Confirm the EHR report-delivery workflow and downtime fallback.
 - [ ] Confirm ordinary email is not the default report-delivery path.
