@@ -297,6 +297,27 @@
         supPahi: 36,
         nonSupPahi: 9.5,
       }),
+      'today-plan-hgns-evaluation': Object.assign({}, retryFixture, {
+        patientName: 'TESTPATIENT, HGNSPlan',
+        reportDate: '2026-07-19',
+        primaryAHI: 28,
+        ahi: 28,
+        severity: 'moderate',
+        bmi: 28.4,
+        cpapCurrent: false,
+        cpapFailed: true,
+        cpapWillRetry: false,
+        cpapReasons: ['cpapClaustro'],
+        priorInspire: false,
+        visitReasonLabel: 'Discuss nerve stimulation',
+        planSummary: 'Continue the device-specific nerve-stimulation evaluation.',
+        planConfirmed: true,
+        selectedPlanFields: ['planInspire'],
+        recTags: [
+          { tag: 'INSPIRE-EVAL', text: 'Evaluate device-specific nerve-stimulation candidacy.' },
+          { tag: 'HNS-WORKUP', text: 'Complete only the device-specific evaluation selected by the ENT.' },
+        ],
+      }),
     };
     const fixture = fixtures[scenario] || fixtures.retry;
     const format = params.get('format') || 'profile';

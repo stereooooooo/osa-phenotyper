@@ -21,7 +21,7 @@ formal clinical validation.
   change (`063d108`). Both are pushed and tested but not deployed.
 - [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
   clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
-  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,825
+  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,845
   assertions. One report-specificity defect was fixed in the first batch: an unspecified PAP mode
   now remains generic in Today's Sleep Plan. The second batch found no clinical-routing defect.
 - [ ] If approved, update the evidence-review decision and reviewed build, deploy the hosted frontend,
@@ -40,9 +40,10 @@ formal clinical validation.
   verified and vendor-specific.
 - [ ] Add structured clinician feedback at report finalization so wording, missing inputs, irrelevant
   recommendations, and plan overrides can be captured without PHI in analytics logs.
-- [ ] Add a dedicated expanded Today's Sleep Plan module for a selected nerve-stimulation evaluation.
-  The current HGNS-only plan is clinically correct but visually sparse compared with PAP, nasal, and
-  diagnostic modules.
+- [x] Add a dedicated expanded Today's Sleep Plan module for a selected nerve-stimulation evaluation.
+  The module now separates a new device-specific evaluation from existing-implant management,
+  provides concrete next steps and uncertainty boundaries, and has content plus rendered-PDF pacing
+  coverage in Tests 213-214.
 - [ ] Continue scenario testing in five-case batches whenever new intake fields, diagnostic routing,
   treatment logic, or patient education modules are added.
 

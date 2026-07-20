@@ -35,6 +35,10 @@ single-use intake link and receive clinician-approved reports rather than access
   usage/coverage context, manufacturer-specific device-event limitations, symptom-download
   discordance, central-event safeguards, contextual leak interpretation, and no autonomous setting
   changes.
+- A dedicated HGNS-only Today's Sleep Plan module. New-device visits explain the device-specific
+  review, conditional testing, procedure and follow-up discussion, and uncertainty without promising
+  candidacy or response. Existing implants receive a distinct use, programming, barrier, and
+  objective-efficacy review pathway instead of new-device candidacy instructions.
 
 ### Changed — clinical evidence calibration
 - Separated event-linked hypoxic burden from ODI, T90, nadir, and area below 90%. HB remains a
@@ -68,8 +72,9 @@ single-use intake link and receive clinician-approved reports rather than access
 - Added a second five-encounter predeployment boundary matrix covering a clinician-confirmed
   nasal-first plan after an adequate negative WatchPAT, substantial conventional hypoxemia with low
   event-linked HB, symptomatic BiPAP use with central signals and missing LVEF, failed MAD history
-  during an HGNS evaluation, and mild supine-predominant OSA. The complete suite now passes 1,825
-  assertions.
+  during an HGNS evaluation, and mild supine-predominant OSA.
+- Added focused HGNS-only content, counterexample, terminology, no-typographic-dash, and rendered-PDF
+  pacing coverage. The complete suite now passes 1,845 assertions.
 
 ### Fixed — combined-output review
 - When PAP management is confirmed but APAP, CPAP, or BiPAP has not been selected, Today's Sleep

@@ -1562,3 +1562,17 @@
 - the HGNS-only Today's Sleep Plan is clinically correct but visually sparse because nerve-stimulation evaluation currently renders as a supporting action rather than an expanded module; this was added to the UX roadmap and is not a safety blocker
 - the complete headless suite passed **1,825 assertions**
 **Finding:** no unresolved clinical-routing or safety issue. The second batch confirms that clinician signoff, independent oxygen-versus-HB logic, central-event safeguards, competing-treatment history, and positional adjunct wording remain coherent when combined. Deployment remains pending clinician review.
+
+### Tests 213-214: Dedicated HGNS Today's Sleep Plan
+**Status:** local patient-content, terminology, counterexample, syntax, rendered-PDF pacing, and full regression testing complete
+**Result:** passed after replacing the sparse supporting action with a dedicated module ✅
+**Verification:**
+- a clinician-confirmed HGNS-only visit for a patient without an implant now renders a full module with the reason for evaluation, device-specific review inputs, conditional DISE or updated testing, procedure and programming expectations, follow-up testing, alternatives, and an explicit statement that evaluation does not promise eligibility or treatment success
+- the conditional terminology guide defines nerve stimulation, PAP, and DISE before those terms appear in the clinical narrative
+- existing implanted devices use a separate follow-up pathway that reviews model, activation, nightly use, programming, comfort or technical barriers, and objective on-therapy efficacy rather than repeating new-device candidacy steps
+- an existing device reported as helpful remains in continuation and verification; a device reported as unhelpful moves to reassessment; severe residual breathing or oxygen findings make objective verification prompt without creating an autonomous programming or treatment change
+- the generic one-line nerve-stimulation fallback no longer appears when the dedicated module is active
+- patient-facing output remains free of typographic dash characters
+- both the established PAP plan and the new HGNS-only plan remain within the accepted one-to-two-page rendered PDF range
+- the complete headless suite passed **1,845 assertions**
+**Finding:** fixed. The HGNS-only handout now matches the detail and visual hierarchy of the other major plan modules while preserving device-specific uncertainty and clinician control. No clinical threshold or eligibility rule changed. Clinician review and deployment remain pending.

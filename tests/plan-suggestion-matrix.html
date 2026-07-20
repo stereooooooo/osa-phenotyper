@@ -160,7 +160,9 @@ const ALL_SCENARIOS = [
     clinicianIncludes: ['Complete the device-specific HGNS workup'],
     clinicianExcludes: [],
     patientIncludes: ['nerve stimulation', 'Complete the Nerve-Stimulation Evaluation First'],
-    patientExcludes: ['custom oral appliance']
+    patientExcludes: ['custom oral appliance'],
+    todayPlanIncludes: ['Continue the nerve-stimulation evaluation', 'does not confirm eligibility or predict how well it will work', 'drug-induced sleep endoscopy (DISE)', 'does not promise eligibility or treatment success'],
+    todayPlanExcludes: ['Review the confirmed plan with your care team before making changes']
   },
   {
     id: 'existing-hgns',
@@ -179,7 +181,8 @@ const ALL_SCENARIOS = [
     clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'Inspire/HGNS workup is incomplete', 'HGNS response tier'],
     patientIncludes: ['hypoglossal nerve stimulator implanted around 2022 without clear improvement'],
     patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE'],
-    todayPlanIncludes: ['existing nerve stimulator has not clearly helped', 'objective on-therapy testing']
+    todayPlanIncludes: ['Reassess your existing nerve stimulator', 'has not clearly improved', 'Confirm the device model', 'objective on-therapy testing'],
+    todayPlanExcludes: ['Review the confirmed plan with your care team before making changes']
   },
   {
     id: 'prior-mad-barriers',
@@ -464,7 +467,7 @@ const ALL_SCENARIOS = [
     clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'HGNS response tier'],
     patientIncludes: ['hypoglossal nerve stimulator implanted around 2024 that has helped'],
     patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE'],
-    todayPlanIncludes: ['existing nerve stimulator has helped', 'confirm current settings'],
+    todayPlanIncludes: ['Continue and verify your existing nerve stimulator', 'reported benefit', 'Confirm the device model', 'objective on-therapy testing'],
     todayPlanExcludes: ['complete the nerve-stimulation evaluation']
   },
   {
@@ -543,7 +546,7 @@ const ALL_SCENARIOS = [
     clinicianExcludes: ['Complete a device-specific candidacy evaluation', 'HGNS response tier'],
     patientIncludes: ['hypoglossal nerve stimulator implanted around 2023 without clear improvement', 'oxygen', 'weight management'],
     patientExcludes: ['Nerve-Stimulation Candidacy Evaluation', 'DISE', 'cardiovascular benefit'],
-    todayPlanIncludes: ['existing nerve stimulator has not clearly helped', 'prompt objective on-therapy testing', 'severe breathing and oxygen findings', 'Choose one realistic nutrition or activity step'],
+    todayPlanIncludes: ['Reassess your existing nerve stimulator', 'has not clearly improved', 'prompt objective on-therapy testing', 'severe breathing and oxygen findings', 'Choose one realistic nutrition or activity step'],
     todayPlanExcludes: ['complete the nerve-stimulation evaluation']
   },
   {
@@ -918,7 +921,7 @@ const ALL_SCENARIOS = [
     clinicianExcludes: ['Strong candidate', 'Good candidate', 'Marginal candidate', 'Cautionary response context'],
     patientIncludes: ['nerve stimulation'],
     patientExcludes: ['high chance of success', 'strong candidate', 'good candidate'],
-    todayPlanIncludes: ['Continue the device-specific nerve-stimulation evaluation'],
+    todayPlanIncludes: ['Continue the nerve-stimulation evaluation', 'does not confirm eligibility or predict how well it will work', 'does not promise eligibility or treatment success'],
     todayPlanExcludes: ['You are likely to respond', 'high chance of success']
   },
   {
@@ -1011,8 +1014,8 @@ const ALL_SCENARIOS = [
     clinicianExcludes: ['Oral appliance therapy (MAD)', 'favorable candidate', 'Good candidate', 'Strong candidate'],
     patientIncludes: ['nerve stimulation'],
     patientExcludes: ['try an oral appliance', 'high chance of success'],
-    todayPlanIncludes: ['Continue the device-specific nerve-stimulation evaluation'],
-    todayPlanExcludes: ['Complete the sleep-dentist evaluation', 'custom oral appliance']
+    todayPlanIncludes: ['Continue the nerve-stimulation evaluation', 'does not confirm eligibility or predict how well it will work', 'drug-induced sleep endoscopy (DISE)', 'does not promise eligibility or treatment success'],
+    todayPlanExcludes: ['Complete the sleep-dentist evaluation', 'custom oral appliance', 'Review the confirmed plan with your care team before making changes']
   },
   {
     id: 'predeploy-mild-supine-predominant',

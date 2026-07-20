@@ -427,3 +427,10 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 210 | Symptomatic current BiPAP user with device event index 13, device central index 8, periodic breathing 7%, heart failure, and missing numeric LVEF | Clinician review, central-event safeguards, PSG confirmation, and echocardiogram retrieval activate; the app does not reflexively increase pressure or state that ASV is contraindicated without the LVEF. |
 | 211 | Prior failed and intolerable oral appliance with TMJ pain and bite change, now requesting HGNS | Prior barriers remain visible as decision history, but the active confirmed plan contains nerve-stimulation evaluation only and does not reactivate oral-appliance therapy, response tiers, or safety-finalization instructions for an unselected pathway. |
 | 212 | Mild supine-predominant OSA with non-supine AHI 6.3 | PAP and positional therapy remain available, but patient and clinician outputs explicitly present positioning as an adjunct because OSA persists off the back. |
+
+### Group 47: Dedicated HGNS Today's Sleep Plan
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 213 | Clinician-confirmed HGNS-only evaluation for a patient without an implant | Render a full nerve-stimulation module that explains why the option is being evaluated, reviews PAP history, study, health, anatomy, and device requirements, makes DISE or updated testing conditional on the selected device and clinician question, and explicitly avoids promising eligibility or success. The generic supporting-action fallback should be absent. |
+| 214 | Existing implanted HGNS with reported benefit, no benefit, or severe residual oxygen findings | Use the existing-device branch rather than new-candidacy instructions. Confirm device, activation, use, programming, and barriers; call for clinician-selected objective treatment-effect verification; make testing prompt when severe residual breathing or oxygen findings require timely confirmation; do not repeat DISE or eligibility claims. |

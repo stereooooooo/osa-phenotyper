@@ -2156,6 +2156,64 @@ ${items.join('')}`;
       });
     }
 
+    if (selected.has('planInspire')) {
+      const urgentOxygenFollowup = (data.recTags || []).some(entry => entry?.tag === 'OXYGEN-URG');
+      const existingDevice = Boolean(data.priorInspire);
+      const reportedBenefit = String(data.hgnsHelped || '').toLowerCase();
+      const implantTiming = data.hgnsImplantYear ? ` implanted around ${data.hgnsImplantYear}` : '';
+
+      // Evidence register TX-03: distinguish device-specific candidacy from
+      // exploratory response context, and require objective verification.
+      if (existingDevice) {
+        const title = reportedBenefit === 'no'
+          ? 'Reassess your existing nerve stimulator'
+          : reportedBenefit === 'yes'
+            ? 'Continue and verify your existing nerve stimulator'
+            : 'Review your existing nerve stimulator';
+        const reason = reportedBenefit === 'no'
+          ? `You reported that the nerve stimulator${implantTiming} has not clearly improved your sleep or sleep apnea. The next step is to verify use, programming, and treatment effect before changing pathways.`
+          : reportedBenefit === 'yes'
+            ? `You reported benefit from the nerve stimulator${implantTiming}. The next step is to confirm that it remains comfortable, active, and effective.`
+            : `A nerve stimulator is already in place${implantTiming}, but its current benefit is not yet clear from the information available today.`;
+        const actions = [
+          'Confirm the device model, activation status, nightly use, current programming, and any comfort or technical barriers.',
+          `Arrange ${urgentOxygenFollowup ? 'prompt ' : ''}objective on-therapy testing when your clinician recommends it, rather than relying only on symptoms or device use.`,
+          reportedBenefit === 'no'
+            ? 'Use the device review and treatment test to decide whether reprogramming, additional evaluation, or another treatment is appropriate.'
+            : 'Continue follow-up for programming and treatment response at the interval selected by your sleep team.'
+        ];
+        modules.push({
+          id: 'nerve-stimulation',
+          priority: urgentOxygenFollowup ? 0.75 : 3,
+          icon: 'bi-lightning-charge',
+          title,
+          reason,
+          actions,
+          note: urgentOxygenFollowup
+            ? 'The severe breathing and oxygen findings make timely confirmation of effective treatment important.'
+            : 'Symptoms and nightly use are important, but objective testing is needed to confirm control of sleep apnea.',
+          shortAction: reportedBenefit === 'no'
+            ? `Review the existing nerve stimulator and arrange ${urgentOxygenFollowup ? 'prompt ' : ''}objective on-therapy testing.`
+            : 'Review the existing nerve stimulator, its programming, and objective treatment efficacy.',
+        });
+      } else {
+        modules.push({
+          id: 'nerve-stimulation',
+          priority: 3,
+          icon: 'bi-lightning-charge',
+          title: 'Continue the nerve-stimulation evaluation',
+          reason: 'Nerve stimulation is one option being evaluated because it matches the treatment goal discussed today. An evaluation does not confirm eligibility or predict how well it will work for you.',
+          actions: [
+            'Review your PAP history, current sleep study, medical history, airway anatomy, and goals against the requirements for the specific device being considered.',
+            'Complete only the additional evaluation selected by your ENT. Depending on the device, this may include drug-induced sleep endoscopy (DISE) or updated sleep testing.',
+            'Before deciding, review implantation, recovery, activation and programming, follow-up testing, expected benefits, limitations, and alternatives.'
+          ],
+          note: 'Final candidacy and expected benefit remain uncertain until the device-specific review is complete. This plan does not promise eligibility or treatment success.',
+          shortAction: 'Continue the device-specific nerve-stimulation evaluation and complete only the testing selected by your ENT.',
+        });
+      }
+    }
+
     if (papSelected) {
       const barriers = patientCpapBarrierText(data);
       const hasDocumentedBarriers = Array.isArray(data.cpapReasons) && data.cpapReasons.length > 0;
@@ -2338,18 +2396,6 @@ ${items.join('')}`;
           : data.priorJaw
             ? 'Because you have had jaw surgery, ask the sleep dentist to review your bite (occlusion), tooth support, jaw movement, and jaw-joint health before finalizing an oral appliance.'
           : 'Complete the sleep-dentist evaluation for a custom oral appliance and arrange follow-up testing after adjustment.');
-    }
-    if (selected.has('planInspire')) {
-      if (data.priorInspire) {
-        const urgentOxygenFollowup = (data.recTags || []).some(entry => entry?.tag === 'OXYGEN-URG');
-        add(data.hgnsHelped === 'no'
-          ? `Because the existing nerve stimulator has not clearly helped, confirm activation and use, review programming, and arrange ${urgentOxygenFollowup ? 'prompt ' : ''}objective on-therapy testing before changing treatment.${urgentOxygenFollowup ? ' The severe breathing and oxygen findings make timely confirmation of effective treatment important.' : ''}`
-          : data.hgnsHelped === 'yes'
-            ? 'Because the existing nerve stimulator has helped, continue it and confirm current settings, nightly use, and objective treatment efficacy.'
-            : 'Review activation, nightly use, settings, and objective treatment efficacy for the existing nerve stimulator.');
-      } else {
-        add('Continue the device-specific nerve-stimulation evaluation discussed with your ENT.');
-      }
     }
     if (selected.has('planSurgery')) {
       add(data.priorUPPP
