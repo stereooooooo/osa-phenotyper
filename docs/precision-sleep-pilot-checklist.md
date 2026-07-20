@@ -2,7 +2,7 @@
 
 Use this checklist for a limited 20-30 patient pilot. A separate clinician-only `CLINICAL PILOT`
 environment is deployed at `https://d3fgk3yvbi0jvr.cloudfront.net` with technical candidate build
-`e12734f`. The older staging environment remains synthetic-data-only. The pilot remains **NO GO for
+`16cbd81`. The older staging environment remains synthetic-data-only. The pilot remains **NO GO for
 real PHI** until every mandatory organizational and remaining workflow gate is approved.
 
 ## Before any PHI
@@ -19,7 +19,7 @@ real PHI** until every mandatory organizational and remaining workflow gate is a
 - [x] Confirm all browser libraries, fonts, and PDF workers load from the private app origin; no public CDN is allowed by CSP.
 - [x] Confirm the only anonymous patient route is the scoped intake endpoint; verify 72-hour expiry, one-time use, revocation, rate limiting, origin-secret enforcement, and no patient portal/report route.
 - [ ] Configure clinic iPads as managed devices and train staff never to sign the clinician workspace into a handed device.
-- [x] Confirm the footer reads `CLINICAL PILOT` and shows technical candidate build `e12734f`.
+- [x] Confirm the footer reads `CLINICAL PILOT` and shows technical candidate build `16cbd81`.
 - [ ] Obtain clinical, privacy/security, and operational approval to begin the limited cohort.
 
 ## One synthetic rehearsal

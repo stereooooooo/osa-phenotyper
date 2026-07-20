@@ -19,7 +19,7 @@ Precision Sleep hub while preserving the more expansive platform for possible fu
 AWS environment remains staff-authenticated; patients interact only through a restricted,
 single-use intake link and receive clinician-approved reports rather than access to a patient chart.
 
-### Changed — independent audit remediation candidate (not deployed)
+### Changed — independent audit remediation candidate (`16cbd81`, deployed for clinician testing)
 - Nondiagnostic short home recordings can still show the observed numerical signal, but the full
   patient report no longer declares confirmed OSA, a severity category, subtype, phenotype, or
   definitive risk narrative. The clinician-confirmed testing plan controls the next step.
@@ -38,6 +38,8 @@ single-use intake link and receive clinician-approved reports rather than access
   removes that token and clears the handed device.
 - Reconciled `CLAUDE.md` and `AGENTS.md` with the current HB, oral-appliance, HGNS, test-inventory,
   launch-path, and pilot-checklist rules.
+- The complete suite passed 2,020 assertions. CloudFront verification confirmed build `16cbd81` on
+  the existing clinician-only pilot; formal clinician acceptance remains pending.
 
 ### Added — clinical workflow and patient experience
 - A required, plain-language main reason for the initial visit on the patient questionnaire. It maps
@@ -140,10 +142,10 @@ single-use intake link and receive clinician-approved reports rather than access
   appears when the mode is documented.
 
 ### Deployment status
-- Build `e12734f` is deployed and verified on the existing clinician-only AWS clinical pilot. It
+- Build `16cbd81` is deployed and verified on the existing clinician-only AWS clinical pilot. It
   includes the role workspaces, saved MA handoff, focused clinician corrections, persistence
   safeguards, actionable readiness tasks, structured initial visit context, and scan-oriented
-  clinician briefing described above.
+  clinician briefing described above, plus the independent audit remediation.
 - The non-PAP response and COMISA code is present in the pilot testing build, but formal
   evidence-register sign-off remains open before routine real-PHI use.
 - The patient portal and autonomous PAP-setting concepts remain out of scope for this clinician-only

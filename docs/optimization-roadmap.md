@@ -21,11 +21,11 @@ formal clinical validation.
   positional draft consistency, unresolved cardiovascular history, edited-report snapshot
   integrity, patient terminology, and intake reload protection. Paired counterexamples and the full
   regression suite pass locally with 2,020 assertions.
-- [ ] Complete clinician acceptance of audit remediation `ER-2026-07-20-AUDIT-REMEDIATION` before
-  deployment. The current hosted pilot remains build `e12734f` until this signoff.
+- [x] Deploy audit remediation `ER-2026-07-20-AUDIT-REMEDIATION` as build `16cbd81` for clinician
+  acceptance testing. Formal clinician acceptance remains pending.
 - [ ] Complete formal clinician evidence signoff for the non-PAP response-calibration change
   (`1c1c6cf`) and COMISA change (`063d108`). Both are included in deployed clinical-pilot build
-  `e12734f` for acceptance testing; deployment is complete, but clinical signoff is not.
+  `16cbd81` for acceptance testing; deployment is complete, but clinical signoff is not.
 - [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
   clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
   Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,910

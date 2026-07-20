@@ -3,7 +3,7 @@
 **Current decision:** NO GO for real PHI until the remaining human and synthetic-workflow gates below are complete.  
 **Environment:** Isolated clinician-only clinical pilot  
 **Pilot URL:** https://d3fgk3yvbi0jvr.cloudfront.net  
-**Latest deployed code candidate:** `e12734f`
+**Latest deployed code candidate:** `16cbd81`
 **Stack:** `osa-phenotyper-capital-ent-precision-sleep-pilot`  
 **AWS region:** `us-east-2` (CloudFront WAF resources in `us-east-1`)  
 **Initial administrator:** `drbrown@capitalent.com`  
@@ -100,6 +100,14 @@ Both PHI-free test alarms were sent and returned to `OK`. Receipt in the destina
 - Optional PAP compliance and DISE launchers use consistent typography.
 - The complete local regression suite passed 1,910 assertions; syntax, lint, evidence-integrity, and diff checks passed.
 - Live CloudFront verification confirmed build `e12734f`, the revised workspace markup, and the structured initial visit-reason field at the pilot URL.
+
+### Independent audit-remediation update, 2026-07-20
+
+- Build `16cbd81` corrects the nondiagnostic short-HSAT patient handout, routes positional draft suggestions through the shared classifier, and preserves uncertain cardiovascular history for staff review.
+- Clinician-edited reports are normalized and saved before download. Intake warns before answer loss and retains only a session-scoped recovery token after URL cleanup.
+- The complete local regression suite passed 2,020 assertions; syntax, evidence-integrity, and diff checks passed.
+- CloudFront verification at `2026-07-20T20:37:35Z` confirmed build `16cbd81` with a cache miss and the expected clinical-pilot security headers.
+- Deployment is for clinician acceptance testing. Formal clinical acceptance remains pending.
 
 ## Required synthetic rehearsal
 
