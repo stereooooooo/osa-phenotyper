@@ -8,7 +8,7 @@
   --osa-crimson-dark: #A31830;
   --osa-orange:       #E86B47;
   --osa-gold:         #F4C430;
-  --osa-gray-body:    #6B7280;
+  --osa-gray-body:    #5E6877;
   --osa-gray-light:   #F5F5F5;
   --osa-gray-border:  #E5E7EB;
   --osa-white:        #FFFFFF;
@@ -674,6 +674,18 @@ fieldset legend {
   color: var(--osa-navy);
   border-bottom-color: var(--osa-orange);
 }
+.osa-progress-step__state {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.osa-progress-step.not-started { border-bottom-color: #cbd5e1; }
+.osa-progress-step.in-progress { color: #7a4b00; border-bottom-color: #d89a22; }
+.osa-progress-step.ready { color: #17663a; border-bottom-color: #2d8a57; }
+.osa-progress-step.not-required { color: #64748b; border-bottom-color: #94a3b8; }
 
 /* ── Report Output ───────────────────────────────────────────── */
 .osa-section-title {
@@ -1299,15 +1311,35 @@ fieldset legend {
   justify-content: flex-end;
   gap: 0.35rem;
 }
+.osa-briefing-review-groups {
+  display: grid;
+  flex: 0 1 46rem;
+  gap: 0.65rem;
+}
+.osa-briefing-review-groups > div { min-width: 0; }
+.osa-briefing-review-groups small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #5e6877;
+  font-size: 0.72rem;
+}
+.osa-briefing-review-label {
+  display: block;
+  margin-bottom: 0.22rem;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
 .osa-attention-chip,
-.osa-attention-clear {
+.osa-attention-clear,
+.osa-clinician-task-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   min-height: 1.7rem;
   padding: 0.24rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 .osa-attention-chip {
@@ -1319,6 +1351,11 @@ fieldset legend {
   background: #ecfdf3;
   color: #17663a;
 }
+.osa-clinician-task-chip {
+  background: #eef4fb;
+  color: #214f7c;
+}
+.osa-clinician-task-chip i { font-size: 0.55rem; }
 .osa-briefing-sections {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1366,7 +1403,7 @@ fieldset legend {
   display: block;
   margin-bottom: 0.08rem;
   color: #718096;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 650;
 }
 .osa-briefing-fact > strong {
@@ -1428,6 +1465,142 @@ fieldset legend {
   font-size: 0.72rem;
 }
 
+.osa-prep-handoff {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  background: #fff;
+}
+.osa-prep-handoff__header,
+.osa-prep-handoff__footer,
+.osa-prep-handoff__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.osa-prep-handoff__header h2 {
+  margin: 0;
+  color: var(--osa-navy);
+  font-size: 1rem;
+}
+.osa-prep-handoff__header p {
+  margin: 0.15rem 0 0;
+  color: #526174;
+  font-size: 0.78rem;
+}
+.osa-prep-handoff__status {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: #fff4e5;
+  color: #7a470f;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.osa-prep-handoff__status[data-state="ready"] { background: #e9f7ef; color: #17663a; }
+.osa-prep-handoff__status[data-state="review"] { background: #eef4fb; color: #214f7c; }
+.osa-prep-readiness-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.8rem 0;
+}
+.osa-prep-readiness-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #dfe5ec;
+  border-radius: 7px;
+  background: #f9fbfd;
+}
+.osa-prep-readiness-item__icon { color: #9a5b10; }
+.osa-prep-readiness-item--ready .osa-prep-readiness-item__icon { color: #248451; }
+.osa-prep-readiness-item strong,
+.osa-prep-readiness-item small { display: block; }
+.osa-prep-readiness-item strong { color: #334155; font-size: 0.78rem; }
+.osa-prep-readiness-item small { margin-top: 0.08rem; color: #5e6877; font-size: 0.71rem; line-height: 1.35; }
+.osa-prep-handoff__footer {
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5eaf0;
+}
+#chartView[data-workspace-mode="clinician"] .osa-prep-handoff {
+  padding: 0.65rem 0.8rem;
+}
+#chartView[data-workspace-mode="clinician"] .osa-prep-readiness-list,
+#chartView[data-workspace-mode="clinician"] .osa-prep-handoff__footer {
+  display: none;
+}
+.osa-source-review-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  color: #334155;
+  font-size: 0.78rem;
+}
+.osa-source-review-check .form-check-input { flex: 0 0 auto; margin: 0.15rem 0 0; }
+
+.osa-focused-edit-bar {
+  position: sticky;
+  z-index: 1015;
+  top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #bfd0e3;
+  border-radius: 9px;
+  background: #f4f8fc;
+  box-shadow: 0 5px 18px rgba(31, 58, 92, 0.1);
+}
+.osa-focused-edit-bar > div:first-child { display: grid; gap: 0.08rem; }
+.osa-focused-edit-bar__eyebrow { color: var(--osa-crimson); font-size: 0.7rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.06em; }
+.osa-focused-edit-bar strong { color: var(--osa-navy); font-size: 0.92rem; }
+.osa-focused-edit-bar #focusedEditHint { color: #526174; font-size: 0.76rem; }
+
+#form { padding-bottom: 4.5rem; }
+.osa-chart-state-bar {
+  position: sticky;
+  z-index: 1010;
+  bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cfd8e3;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 7px 22px rgba(15, 23, 42, 0.14);
+}
+.osa-chart-state-bar__status { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+.osa-chart-state-bar__status > i { color: #248451; font-size: 1.15rem; }
+.osa-chart-state-bar__status strong,
+.osa-chart-state-bar__status span { display: block; }
+.osa-chart-state-bar__status strong { color: #334155; font-size: 0.8rem; }
+.osa-chart-state-bar__status span { color: #5e6877; font-size: 0.72rem; }
+.osa-chart-state-bar[data-state="dirty"] { border-color: #d9a441; background: #fffbf2; }
+.osa-chart-state-bar[data-state="dirty"] .osa-chart-state-bar__status > i { color: #9a5b10; }
+.osa-chart-state-bar[data-state="saving"] .osa-chart-state-bar__status > i { color: #214f7c; animation: osa-save-spin 1s linear infinite; }
+.osa-chart-state-bar[data-state="error"] { border-color: #d9939d; background: #fff7f8; }
+.osa-chart-state-bar[data-state="error"] .osa-chart-state-bar__status > i { color: var(--osa-crimson); }
+@keyframes osa-save-spin { to { transform: rotate(360deg); } }
+
+.osa-focused-edit-bar button:focus-visible,
+.osa-chart-state-bar button:focus-visible,
+.osa-prep-handoff button:focus-visible,
+.osa-source-review-check input:focus-visible {
+  outline: 2px solid var(--osa-crimson);
+  outline-offset: 2px;
+}
+
 @media (max-width: 991.98px) {
   .osa-workspace-toolbar,
   .osa-briefing-lead {
@@ -1440,6 +1613,7 @@ fieldset legend {
     border-top: 1px solid #e5eaf0;
     border-left: 0;
   }
+  .osa-prep-readiness-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 767.98px) {
   .osa-workspace-toolbar__copy,
@@ -1457,10 +1631,22 @@ fieldset legend {
   }
   .osa-workspace-switch .btn { border-radius: 5px !important; }
   .osa-context-tools .btn { width: 100%; }
+  .osa-prep-handoff__header,
+  .osa-prep-handoff__footer,
+  .osa-prep-handoff__actions,
+  .osa-focused-edit-bar,
+  .osa-chart-state-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .osa-prep-readiness-list { grid-template-columns: 1fr; }
+  .osa-chart-state-bar .btn,
+  .osa-focused-edit-bar .btn { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .osa-workspace-toolbar *,
-  .osa-clinician-briefing * { scroll-behavior: auto !important; }
+  .osa-clinician-briefing *,
+  .osa-chart-state-bar * { animation: none !important; scroll-behavior: auto !important; }
 }
 
 /* ── Home screen ─────────────────────────────────────────────── */

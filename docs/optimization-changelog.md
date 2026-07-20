@@ -12,7 +12,7 @@ full findings inventory.
 
 ---
 
-## [Precision Sleep clinical pilot and evidence-calibration program] — 2026-07-15 to 2026-07-19
+## [Precision Sleep clinical pilot and evidence-calibration program] — 2026-07-15 to 2026-07-20
 
 Branch: `codex/precision-sleep-v1`. This work turns the original phenotyper into a clinician-only
 Precision Sleep hub while preserving the more expansive platform for possible future use. The live
@@ -20,6 +20,17 @@ AWS environment remains staff-authenticated; patients interact only through a re
 single-use intake link and receive clinician-approved reports rather than access to a patient chart.
 
 ### Added — clinical workflow and patient experience
+- A saved MA readiness and clinician-handoff workflow. The MA view now distinguishes blocked,
+  in-progress, ready, and not-needed preparation states; records preparer and time; keeps treatment
+  plan confirmation clinician-owned; and invalidates a prior handoff when source data changes.
+- Focused clinician corrections from the visit briefing. Questionnaire, sleep-study, and treatment-
+  history edits open only the relevant source section, with explicit Save and return and Return
+  without saving actions that restore the prior clinician context.
+- A persistent chart-state bar that distinguishes unsaved, saving, saved, and failed states. Report
+  generation for an existing chart is held until current changes are persisted, and dirty charts
+  are protected during chart switches, sign-out, and page exit.
+- Programmatic accessible names for every interactive control and staff-account-scoped workspace
+  preferences. The view setting remains non-PHI and no longer leaks between users of a shared device.
 - Three role-optimized chart workspaces: `MA / Nurse Prep`, `Clinician Review`, and `Full Chart`.
   Clinician Review summarizes questionnaire, history, study, PAP, and follow-up findings without
   leading with raw controls; Prep emphasizes staff entry and verification; Full Chart preserves
@@ -87,8 +98,8 @@ single-use intake link and receive clinician-approved reports rather than access
   event-linked HB, symptomatic BiPAP use with central signals and missing LVEF, failed MAD history
   during an HGNS evaluation, and mild supine-predominant OSA.
 - Added focused HGNS-only content, counterexample, terminology, no-typographic-dash, and rendered-PDF
-  pacing coverage. With role-optimized workspace regression coverage, the complete suite now passes
-  1,879 assertions.
+  pacing coverage. With MA-handoff, focused-correction, persistence-guard, and accessible-name
+  regression coverage, the complete suite now passes 1,899 assertions.
 
 ### Fixed — combined-output review
 - When PAP management is confirmed but APAP, CPAP, or BiPAP has not been selected, Today's Sleep

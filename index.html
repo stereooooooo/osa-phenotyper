@@ -27,11 +27,11 @@
       <!-- Standard login -->
       <div id="loginForm">
         <div class="mb-3">
-          <label class="form-label small">Email</label>
+          <label class="form-label small" for="loginEmail">Email</label>
           <input type="email" id="loginEmail" class="form-control" autocomplete="username" autofocus>
         </div>
         <div class="mb-3">
-          <label class="form-label small">Password</label>
+          <label class="form-label small" for="loginPassword">Password</label>
           <input type="password" id="loginPassword" class="form-control" autocomplete="current-password">
         </div>
         <button class="btn btn-primary w-100" id="btnLogin">
@@ -44,11 +44,11 @@
       <div id="newPasswordForm" class="d-none">
         <p class="small text-muted">You must set a new password to continue.</p>
         <div class="mb-3">
-          <label class="form-label small">New Password</label>
+          <label class="form-label small" for="newPassword">New Password</label>
           <input type="password" id="newPassword" class="form-control" autocomplete="new-password">
         </div>
         <div class="mb-3">
-          <label class="form-label small">Confirm Password</label>
+          <label class="form-label small" for="newPasswordConfirm">Confirm Password</label>
           <input type="password" id="newPasswordConfirm" class="form-control" autocomplete="new-password">
         </div>
         <button class="btn btn-primary w-100" id="btnSetNewPassword">Set Password</button>
@@ -58,6 +58,7 @@
       <div id="mfaForm" class="d-none">
         <p class="small text-muted">Enter the code from your authenticator app.</p>
         <div class="mb-3">
+          <label class="visually-hidden" for="mfaCode">Authenticator code</label>
           <input type="text" id="mfaCode" class="form-control text-center" maxlength="6" placeholder="000000" autocomplete="one-time-code">
         </div>
         <button class="btn btn-primary w-100" id="btnVerifyMfa">Verify</button>
@@ -71,7 +72,7 @@
           <code id="mfaSetupSecret" class="small user-select-all"></code>
         </div>
         <div class="mb-3">
-          <label class="form-label small">Authenticator Code</label>
+          <label class="form-label small" for="mfaSetupCode">Authenticator Code</label>
           <input type="text" id="mfaSetupCode" class="form-control text-center" maxlength="6" placeholder="000000" autocomplete="one-time-code">
         </div>
         <button class="btn btn-primary w-100" id="btnCompleteMfaSetup">Finish MFA Setup</button>
@@ -95,7 +96,7 @@
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnPatientList"><i class="bi bi-search"></i> Find Patient</button>
       <button class="btn btn-sm osa-btn-outline-light no-print" id="btnClearForm"><i class="bi bi-arrow-counterclockwise"></i> New chart</button>
       <span class="text-light small d-none d-md-inline ms-2" id="userEmail"></span>
-      <button class="btn btn-sm btn-outline-light no-print" id="btnSignOut" title="Sign out"><i class="bi bi-box-arrow-right"></i></button>
+      <button class="btn btn-sm btn-outline-light no-print" id="btnSignOut" title="Sign out" aria-label="Sign out"><i class="bi bi-box-arrow-right"></i></button>
     </div>
   </div>
 </header>
@@ -155,6 +156,10 @@
 <main class="container my-4">
 <div id="chartView">
 <form id="form" novalidate>
+<input type="hidden" name="maPrepStatus" id="maPrepStatus" value="">
+<input type="hidden" name="maPrepReadyAt" id="maPrepReadyAt" value="">
+<input type="hidden" name="maPrepPreparedBy" id="maPrepPreparedBy" value="">
+<input type="hidden" name="maSourceReviewComplete" id="maSourceReviewComplete" value="">
 
 <!-- ===== Role-optimized workspace switch ===== -->
 <section class="osa-workspace-toolbar no-print" aria-label="Workspace view">
@@ -175,6 +180,23 @@
   </div>
 </section>
 
+<!-- ===== Focused clinician edit context ===== -->
+<section class="osa-focused-edit-bar no-print" id="focusedEditBar" hidden aria-live="polite">
+  <div>
+    <span class="osa-focused-edit-bar__eyebrow">Focused correction</span>
+    <strong id="focusedEditTitle">Editing source data</strong>
+    <span id="focusedEditHint">Only the selected source section is shown.</span>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFocusedEditReturn">
+      <i class="bi bi-arrow-left"></i> Return without saving
+    </button>
+    <button type="button" class="btn btn-primary btn-sm" id="btnFocusedEditSaveReturn">
+      <i class="bi bi-cloud-check"></i> Save and return
+    </button>
+  </div>
+</section>
+
 <!-- ===== Progress Track ===== -->
 <div class="osa-progress-track no-print" id="progressTrack" role="navigation" aria-label="Chart preparation sections" data-workspace-modes="prep,full">
   <button type="button" class="osa-progress-step" data-section="demographics" data-target="#cardDemographics">Demographics</button>
@@ -185,6 +207,30 @@
   <button type="button" class="osa-progress-step" data-section="questionnaires" data-target="#cardQuestionnaires">Questionnaires</button>
   <button type="button" class="osa-progress-step" data-section="sleep-study" data-target="#sleepStudyWatchpat">Sleep Study</button>
 </div>
+
+<!-- ===== MA preparation and clinician handoff ===== -->
+<section class="osa-prep-handoff" id="prepHandoffPanel" data-workspace-modes="prep,clinician" aria-labelledby="prepHandoffTitle">
+  <div class="osa-prep-handoff__header">
+    <div>
+      <h2 id="prepHandoffTitle">Visit preparation</h2>
+      <p id="prepHandoffSummary">Checking the chart for handoff readiness.</p>
+    </div>
+    <span class="osa-prep-handoff__status" id="prepHandoffStatus">Checking</span>
+  </div>
+  <div class="osa-prep-readiness-list" id="prepReadinessList" aria-live="polite"></div>
+  <div class="osa-prep-handoff__footer">
+    <label class="form-check osa-source-review-check" for="maSourceReviewToggle">
+      <input class="form-check-input" type="checkbox" id="maSourceReviewToggle">
+      <span>Questionnaire, history, and imported values reviewed; remaining blanks are intentional.</span>
+    </label>
+    <div class="osa-prep-handoff__actions">
+      <span id="prepHandoffMeta" class="small text-muted"></span>
+      <button type="button" class="btn btn-primary btn-sm" id="btnMarkPrepReady">
+        <i class="bi bi-person-check"></i> Mark ready and save
+      </button>
+    </div>
+  </div>
+</section>
 
 <!-- ===== PDF Import (top of form for fast workflow) ===== -->
 <div class="row g-3 mb-3" id="pdfImportSection" data-workspace-modes="prep,full">
@@ -885,9 +931,20 @@
 </div>
 
 <div class="text-center mt-4 d-flex justify-content-center gap-3 flex-wrap" id="analysisActions">
-  <button type="button" class="btn btn-success btn-lg px-4" id="btnSavePatient"><i class="bi bi-cloud-upload"></i> Save Patient</button>
+  <button type="button" class="btn btn-success btn-lg px-4" id="btnSavePatient"><i class="bi bi-cloud-upload"></i> Save chart changes</button>
   <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-bar-chart"></i> Generate Reports</button>
 </div>
+
+<!-- ===== Persistent chart state ===== -->
+<aside class="osa-chart-state-bar no-print" id="chartStateBar" role="status" aria-live="polite">
+  <div class="osa-chart-state-bar__status">
+    <i class="bi bi-cloud-check" id="chartStateIcon"></i>
+    <div><strong id="chartStateTitle">No unsaved changes</strong><span id="chartStateDetail">Open or create a chart to begin.</span></div>
+  </div>
+  <button type="button" class="btn btn-success btn-sm" id="btnStickySave">
+    <i class="bi bi-cloud-upload"></i> Save chart changes
+  </button>
+</aside>
 
 </form>
 
@@ -1350,7 +1407,7 @@ syncNasalObstructionFallback();
 /* ── New Patient / Clear Form ─────────────────────────────────── */
 function clearDerivedHiddenFields(form) {
   if (!form) return;
-  ['cpapPressure', 'priorSleepStudyAnswer', 'lvefFollowupNeeded'].forEach(name => {
+  ['cpapPressure', 'priorSleepStudyAnswer', 'lvefFollowupNeeded', 'maPrepStatus', 'maPrepReadyAt', 'maPrepPreparedBy', 'maSourceReviewComplete'].forEach(name => {
     const input = form.querySelector(`[name="${name}"]`);
     if (input) input.value = '';
   });
@@ -1396,7 +1453,11 @@ function resetWorkspaceUiState() {
 }
 
 document.getElementById('btnClearForm').addEventListener('click', () => {
-  if(!confirm('Clear all fields and start a new patient?')) return;
+  const dirty = window.OSAChartState?.isDirty?.();
+  const message = dirty
+    ? 'Discard unsaved chart changes and start a new patient?'
+    : 'Clear all fields and start a new patient?';
+  if(!confirm(message)) return;
   if (window.OSAChartActions?.resetWorkspaceForNewPatient) {
     window.OSAChartActions.resetWorkspaceForNewPatient();
     return;
@@ -1542,11 +1603,25 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     steps.forEach(step => {
       const section = step.dataset.section;
       const fields = sectionFields[section] || [];
-      const hasValue = fields.some(name => {
+      const fallbackHasValue = fields.some(name => {
         const el = form.querySelector(`[name="${name}"]`);
         return hasFieldValue(el);
       });
-      step.classList.toggle('completed', hasValue);
+      const result = window.OSAReadiness?.getSectionStatus?.(section) || {
+        state: fallbackHasValue ? 'in-progress' : 'not-started',
+        label: fallbackHasValue ? 'In progress' : 'Not started',
+      };
+      step.classList.remove('completed', 'not-started', 'in-progress', 'ready', 'not-required');
+      step.classList.add(result.state);
+      step.dataset.readinessState = result.state;
+      let stateLabel = step.querySelector('.osa-progress-step__state');
+      if (!stateLabel) {
+        stateLabel = document.createElement('span');
+        stateLabel.className = 'osa-progress-step__state';
+        step.appendChild(stateLabel);
+      }
+      stateLabel.textContent = result.label;
+      step.setAttribute('aria-label', `${step.childNodes[0]?.textContent?.trim() || section}: ${result.label}`);
     });
   }
 
@@ -1763,6 +1838,7 @@ function applyRuntimeMeta(meta) {
       currentUserIsAdmin = currentUserGroups.includes(adminGroupName);
       document.getElementById('userEmail').textContent = email || '';
       document.getElementById('archivedToggleWrap').classList.toggle('d-none', !currentUserIsAdmin);
+      document.dispatchEvent(new CustomEvent('osa:user-context', { detail: { email: email || '', groups: currentUserGroups } }));
     });
     OSAAuth.startIdleWatch(() => {
       alert('Session expired due to inactivity. Please sign in again.');
@@ -1896,6 +1972,7 @@ function applyRuntimeMeta(meta) {
 
   // ── Sign out ────────────────────────────────────────────────
   document.getElementById('btnSignOut').addEventListener('click', () => {
+    if (window.OSAChartState?.isDirty?.() && !window.OSAChartState.confirmDiscard('sign out')) return;
     OSAAuth.signOut();
     showLogin();
   });
@@ -2092,6 +2169,7 @@ function applyRuntimeMeta(meta) {
   });
 
   function hydrateLoadedPatient(patient, { clearReports = true, scrollToTop = true } = {}) {
+    document.dispatchEvent(new CustomEvent('osa:patient-hydration-start'));
     currentPatientId = patient.patientId;
     currentPatientVersion = Number.isInteger(patient.version) ? patient.version : 1;
     currentPatientRecord = patient;
@@ -2114,6 +2192,7 @@ function applyRuntimeMeta(meta) {
 
     updatePatientBar(patient);
     renderIntakeReviewAlert(patient);
+    document.dispatchEvent(new CustomEvent('osa:patient-hydration-end', { detail: { patient } }));
 
     if (clearReports) {
       document.getElementById('patientSummary').innerHTML = '';
@@ -2129,6 +2208,7 @@ function applyRuntimeMeta(meta) {
 
   // ── Load patient into form ──────────────────────────────────
   async function loadPatient(id) {
+    if (window.OSAChartState?.isDirty?.() && !window.OSAChartState.confirmDiscard('open another chart')) return false;
     try {
       const patient = await OSADatabase.getPatient(id);
       hydrateLoadedPatient(patient);
@@ -2598,7 +2678,9 @@ function applyRuntimeMeta(meta) {
     const form = document.getElementById('form');
     const formData = OSADatabase.serializeForm(form);
     const btn = document.getElementById('btnSavePatient');
-    const origText = btn.innerHTML;
+    const origText = btn.dataset.defaultHtml || btn.innerHTML;
+    btn.dataset.defaultHtml = origText;
+    document.dispatchEvent(new CustomEvent('osa:save-start'));
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
 
@@ -2620,8 +2702,12 @@ function applyRuntimeMeta(meta) {
       updatePatientBar(patient);
       renderIntakeReviewAlert(patient);
       document.dispatchEvent(new CustomEvent('osa:patient-updated', { detail: { patient } }));
+      document.dispatchEvent(new CustomEvent('osa:save-success', { detail: { patient } }));
       btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
-      setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000);
+      btn.disabled = false;
+      setTimeout(() => {
+        if (!btn.disabled) btn.innerHTML = btn.dataset.defaultHtml || origText;
+      }, 2000);
     } catch (err) {
       if ((err.message || '').includes('updated elsewhere') || (err.message || '').includes('Reload before saving again')) {
         alert('This patient record changed in another tab or after a patient intake submission. Reload the patient record, review the latest data, and then save again.');
@@ -2630,6 +2716,7 @@ function applyRuntimeMeta(meta) {
       }
       btn.innerHTML = origText;
       btn.disabled = false;
+      document.dispatchEvent(new CustomEvent('osa:save-error', { detail: { message: err.message || 'Save failed' } }));
     }
   });
 

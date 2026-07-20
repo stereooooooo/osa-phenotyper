@@ -10,7 +10,7 @@ changelog as they ship. Every item carries its severity, location, and recommend
 > `ER-2026-07-19-HB`. Current logic separates event-linked HB from ODI, T90, nadir, and area below
 > 90%; removes low-HB treatment de-emphasis; and treats 73.1/87.1 only as research-cohort context.
 
-## Current clinical-pilot roadmap — 2026-07-19
+## Current clinical-pilot roadmap — 2026-07-20
 
 The original audit phases below are historical and substantially complete. Current work is organized
 around a safe, clinician-only Precision Sleep pilot, rapid real-world usability testing, and eventual
@@ -21,7 +21,7 @@ formal clinical validation.
   change (`063d108`). Both are pushed and tested but not deployed.
 - [x] Run and inspect five cross-cutting synthetic encounters after the combined changes, including
   clinician report, selected plan, patient report, and clinician-only PAP/diagnostic guidance.
-  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,879
+  Two distinct five-case batches, Tests 203-212, now pass, and the complete local suite passes 1,899
   assertions. One report-specificity defect was fixed in the first batch: an unspecified PAP mode
   now remains generic in Today's Sleep Plan. The second batch found no clinical-routing defect.
 - [ ] If approved, update the evidence-review decision and reviewed build, deploy the hosted frontend,
@@ -35,6 +35,17 @@ formal clinical validation.
   exam and plan tasks. Prep emphasizes source-data entry and verification. PAP and DISE tools surface
   automatically when relevant and remain available on demand. This changes presentation only: it
   removes no access, changes no clinical logic, and stores only the non-PHI workspace preference.
+- [x] Add a saved MA readiness and clinician-handoff state. Required identity, demographic,
+  questionnaire, sleep-study, source-review, and conflict checks are now explicit; clinician plan
+  confirmation remains a clinician task and never blocks MA completion. Editing source data after
+  handoff invalidates the ready state until it is reviewed and saved again.
+- [x] Add focused clinician corrections from the briefing, with Save and return or Return without
+  saving, so correcting questionnaire, sleep-study, or treatment-history data no longer requires
+  navigating the full chart.
+- [x] Add a persistent dirty, saving, saved, or failed chart-state bar; guard report generation for a
+  persisted chart until changes are saved; and warn before chart switching, sign-out, or page exit.
+- [x] Repair programmatic names for clinical controls and scope workspace preference to the signed-in
+  staff account. Workflow regression coverage now verifies no unnamed interactive controls.
 - [ ] Conduct an observed iPad intake walkthrough with at least one MA and several synthetic patient
   types: straightforward snoring, current PAP transfer, prior PAP intolerance, Inspire inquiry, and
   complex cardiovascular history.

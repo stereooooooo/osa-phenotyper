@@ -1604,3 +1604,18 @@
 - no phenotype, threshold, diagnostic-routing, treatment-ranking, patient-language, or report-generation logic changed
 - the complete headless suite passed **1,879 assertions**
 **Finding:** implemented locally. The workflow is now progressive and role-aware without fragmenting the chart or changing clinical output. Clinician approval and deployment remain pending.
+
+### Tests 225-229: MA handoff and P1 workflow safeguards
+**Status:** local workflow-state, persistence, focused-edit, accessibility, responsive visual, syntax, lint, and full regression testing complete
+**Result:** passed after implementing the saved MA handoff and all four P1 workflow fixes ✅
+**Verification:**
+- readiness remains blocked until required identity, demographics, questionnaire review, study-source context, explicit source review, and pending-conflict checks are resolved
+- the MA can complete handoff while the clinician plan remains unconfirmed; the handoff stores preparer and time and appears separately from clinician decisions in the briefing
+- changing a source field in Prep after handoff automatically returns the handoff to in progress, while clinician-owned exam or plan work does not falsely invalidate MA completion
+- briefing Edit data actions open a focused correction surface for only the selected questionnaire, study, or treatment-history section and restore the prior clinician position after return
+- unsaved, saving, saved, and error states remain visible; a persisted chart with unsaved data cannot generate a mismatched report and can be saved from the persistent action bar
+- dirty-state guards cover chart switching, sign-out, and page exit without altering source values or clinical output
+- workspace preference is stored per authenticated staff email, and every interactive form control has a programmatic accessible name
+- a 1440-pixel populated MA view confirmed clear readiness hierarchy, compact state labels, usable spacing, and a persistent save action without obscuring the form
+- the complete headless suite passed **1,899 assertions**
+**Finding:** fixed locally. MA preparation now ends in a trustworthy saved handoff, clinician corrections no longer require navigating the entire chart, and report generation cannot silently outrun chart persistence. No phenotype, threshold, diagnostic-routing, treatment-ranking, or patient-report logic changed. Deployment remains pending final verification.

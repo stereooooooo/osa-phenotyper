@@ -1,7 +1,7 @@
 (function initRoleOptimizedWorkspace() {
   'use strict';
 
-  const STORAGE_KEY = 'osa-workspace-mode';
+  const STORAGE_KEY_PREFIX = 'osa-workspace-mode';
   const VALID_MODES = new Set(['prep', 'clinician', 'full']);
   const PAP_VISIT_REASONS = new Set(['transfer-pap', 'pap-troubleshoot', 'restart-pap']);
   const form = document.getElementById('form');
@@ -15,15 +15,45 @@
   const diseLauncher = document.getElementById('btnOpenDise');
   const diseColumn = document.getElementById('diseColumn');
   const physicalExamColumn = document.getElementById('physicalExamColumn');
+  const prepReadinessList = document.getElementById('prepReadinessList');
+  const prepHandoffSummary = document.getElementById('prepHandoffSummary');
+  const prepHandoffStatus = document.getElementById('prepHandoffStatus');
+  const prepHandoffMeta = document.getElementById('prepHandoffMeta');
+  const prepReadyButton = document.getElementById('btnMarkPrepReady');
+  const sourceReviewToggle = document.getElementById('maSourceReviewToggle');
+  const chartStateBar = document.getElementById('chartStateBar');
+  const chartStateTitle = document.getElementById('chartStateTitle');
+  const chartStateDetail = document.getElementById('chartStateDetail');
+  const chartStateIcon = document.getElementById('chartStateIcon');
+  const stickySaveButton = document.getElementById('btnStickySave');
+  const mainSaveButton = document.getElementById('btnSavePatient');
+  const focusedEditBar = document.getElementById('focusedEditBar');
+  const focusedEditTitle = document.getElementById('focusedEditTitle');
+  const focusedEditReturn = document.getElementById('btnFocusedEditReturn');
+  const focusedEditSaveReturn = document.getElementById('btnFocusedEditSaveReturn');
   let papForcedOpen = false;
   let diseForcedOpen = false;
   let renderQueued = false;
+  let currentUserScope = '';
+  let focusedEdit = null;
+  let returnAfterSave = false;
+  let dirty = false;
+  let saving = false;
+  let saveError = '';
+  let lastSavedAt = '';
+  let hydrating = false;
 
   if (!form || !chartView) return;
 
+  function storageKey() {
+    return currentUserScope ? `${STORAGE_KEY_PREFIX}:${currentUserScope.toLowerCase()}` : '';
+  }
+
   function getStoredMode() {
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
+      const key = storageKey();
+      if (!key) return 'clinician';
+      const saved = window.localStorage.getItem(key);
       return VALID_MODES.has(saved) ? saved : 'clinician';
     } catch (_) {
       return 'clinician';
@@ -62,6 +92,171 @@
 
   function selectedStudyType() {
     return form.querySelector('input[name="studyType"]:checked')?.value || 'watchpat';
+  }
+
+  function hasValue(nameOrId) {
+    const element = control(nameOrId);
+    if (!element) return false;
+    if (element.type === 'checkbox' || element.type === 'radio') return element.checked;
+    return String(element.value || '').trim() !== '';
+  }
+
+  function anyValue(names) {
+    return names.some(hasValue);
+  }
+
+  function sourceReviewComplete() {
+    return value('maSourceReviewComplete') === 'on' || Boolean(sourceReviewToggle?.checked);
+  }
+
+  function getSectionStatus(section) {
+    const visitReason = value('visitReason');
+    const studyType = selectedStudyType();
+    const preStudyVisit = ['snoring', 'symptoms'].includes(visitReason);
+    const primaryStudyReady = studyType === 'psg'
+      ? hasValue('ahi')
+      : studyType === 'both'
+        ? hasValue('ahi') || hasValue('pahi')
+        : hasValue('pahi');
+    const anyStudyValue = anyValue([
+      'pahi', 'odi', 'nadir', 'supPahi', 'nonSupPahi', 'remPahi', 'nremPahi',
+      'remPercent', 't90', 'patRdi', 'tst', 'ahi', 'ahiSup', 'ahiNonSup', 'ahiREM',
+      'ahiNREM', 'cai', 'arInd', 'nadirPsg', 'odiPsg'
+    ]);
+    const treatmentStarted = anyValue([
+      'priorCpap', 'cpapCurrent', 'cpapHelped', 'cpapDifficulty', 'priorUPPP',
+      'priorNasal', 'priorSinus', 'priorJaw', 'priorInspire', 'priorMAD',
+      'priorSleepStudy', 'prefAvoidCpap', 'prefSurgery', 'prefInspire',
+      'weightLossReadiness', 'alcoholNearBed', 'glp1Status', 'echoHistory',
+      'chronicOpioidUse', 'neuromuscularRespiratoryRisk', 'hypoventilationRisk'
+    ]);
+    const questionnaireStarted = anyValue(['ess', 'isi', 'noseScore', 'nasalObs', 'snoringReported']);
+    const examStarted = anyValue(['tonsils', 'ftp', 'retrognathia', 'ctDev', 'ctTurbs']);
+    const examReady = hasValue('tonsils') && hasValue('ftp');
+    const diseStarted = hasDiseData();
+
+    const states = {
+      demographics: {
+        state: hasValue('patientDob') && hasValue('sex') && hasValue('bmi') ? 'ready' : anyValue(['patientDob', 'age', 'sex', 'bmi', 'neck']) ? 'in-progress' : 'not-started',
+      },
+      treatment: {
+        state: sourceReviewComplete() ? 'ready' : treatmentStarted ? 'in-progress' : 'not-started',
+      },
+      questionnaires: {
+        state: hasValue('ess') || sourceReviewComplete() ? 'ready' : questionnaireStarted ? 'in-progress' : 'not-started',
+      },
+      'sleep-study': {
+        state: primaryStudyReady ? 'ready' : !anyStudyValue && preStudyVisit ? 'not-required' : anyStudyValue ? 'in-progress' : 'not-started',
+      },
+      'pap-review': {
+        state: hasPapReportData() ? (checked('papValuesVerified') ? 'ready' : 'in-progress') : 'not-started',
+      },
+      exam: { state: examReady ? 'ready' : examStarted ? 'in-progress' : 'not-started' },
+      imaging: { state: hasDiseData() ? 'ready' : diseStarted ? 'in-progress' : 'not-started' },
+    };
+    const result = states[section] || { state: 'not-started' };
+    const labels = {
+      'not-started': 'Not started',
+      'in-progress': 'In progress',
+      ready: 'Ready',
+      'not-required': 'Not needed',
+    };
+    return { ...result, label: labels[result.state] };
+  }
+
+  function getReadiness() {
+    const tasks = [];
+    const addTask = (id, label, state, detail) => tasks.push({ id, label, state, detail });
+    const identityMissing = [];
+    if (!document.getElementById('patientName')?.value.trim()) identityMissing.push('patient name');
+    if (!document.getElementById('patientDob')?.value) identityMissing.push('date of birth');
+    if (!value('visitReason')) identityMissing.push('reason for visit');
+    addTask('identity', 'Patient and visit', identityMissing.length ? 'blocked' : 'ready', identityMissing.length ? `Missing ${identityMissing.join(', ')}` : 'Identity and visit goal documented');
+
+    const demographicsMissing = [];
+    if (!value('sex')) demographicsMissing.push('sex');
+    if (!value('bmi')) demographicsMissing.push('BMI');
+    addTask('demographics', 'Core demographics', demographicsMissing.length ? 'blocked' : 'ready', demographicsMissing.length ? `Missing ${demographicsMissing.join(', ')}` : 'Sex, BMI, and derived age available');
+
+    const questionnaireReady = hasValue('ess') || sourceReviewComplete();
+    addTask('questionnaire', 'Questionnaire review', questionnaireReady ? 'ready' : 'blocked', questionnaireReady ? (hasValue('ess') ? 'ESS documented' : 'Blank scores verified as intentional') : 'ESS not entered or verified as intentionally unavailable');
+
+    const studyState = getSectionStatus('sleep-study');
+    addTask('study', 'Sleep-study source', ['ready', 'not-required'].includes(studyState.state) ? 'ready' : 'blocked', studyState.state === 'not-required' ? 'No study expected for this pre-study visit' : studyState.state === 'ready' ? 'Primary study metric documented' : 'Primary AHI or pAHI is missing');
+
+    addTask('source', 'Source review', sourceReviewComplete() ? 'ready' : 'blocked', sourceReviewComplete() ? 'Questionnaire, history, and imported values reviewed' : 'Confirm that remaining blanks are intentional');
+
+    const intakeConflict = !document.getElementById('btnReviewIntake')?.classList.contains('d-none');
+    const followupPending = !document.getElementById('followupReviewBadge')?.classList.contains('d-none');
+    addTask('conflicts', 'Pending source conflicts', intakeConflict || followupPending ? 'blocked' : 'ready', intakeConflict ? 'Patient intake changes need review' : followupPending ? 'Follow-up questionnaire needs review' : 'No unresolved intake or follow-up conflicts');
+
+    const warnings = [];
+    if (!document.getElementById('lvefNeededBadge')?.classList.contains('d-none') || value('lvefFollowupNeeded') === 'on') warnings.push('Echo or LVEF remains a clinician-visible follow-up item');
+    const blockers = tasks.filter(task => task.state === 'blocked');
+    return { tasks, blockers, warnings, ready: blockers.length === 0 };
+  }
+
+  function setHiddenValue(name, nextValue, { emit = false } = {}) {
+    const element = control(name);
+    if (!element || element.value === nextValue) return;
+    element.value = nextValue;
+    if (emit) element.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function formatTimestamp(timestamp) {
+    if (!timestamp) return '';
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleString([], {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  function handoffIsCurrent() {
+    return value('maPrepStatus') === 'ready' && getReadiness().ready;
+  }
+
+  function updatePrepHandoff() {
+    if (!prepReadinessList || !prepHandoffSummary || !prepHandoffStatus) return;
+    const readiness = getReadiness();
+    const handoffReady = handoffIsCurrent();
+    const stateIcon = state => state === 'ready'
+      ? '<i class="bi bi-check-circle-fill" aria-hidden="true"></i>'
+      : '<i class="bi bi-exclamation-circle" aria-hidden="true"></i>';
+
+    prepReadinessList.innerHTML = readiness.tasks.map(task => `
+      <div class="osa-prep-readiness-item osa-prep-readiness-item--${task.state}">
+        <span class="osa-prep-readiness-item__icon">${stateIcon(task.state)}</span>
+        <span><strong>${escapeHtml(task.label)}</strong><small>${escapeHtml(task.detail)}</small></span>
+      </div>`).join('');
+
+    if (handoffReady) {
+      prepHandoffStatus.textContent = 'Ready for clinician';
+      prepHandoffStatus.dataset.state = 'ready';
+      prepHandoffSummary.textContent = 'Required preparation is complete and the chart has been handed off.';
+    } else if (readiness.ready) {
+      prepHandoffStatus.textContent = 'Ready to hand off';
+      prepHandoffStatus.dataset.state = 'review';
+      prepHandoffSummary.textContent = 'Preparation checks are complete. Mark the chart ready to create a saved handoff.';
+    } else {
+      prepHandoffStatus.textContent = `${readiness.blockers.length} item${readiness.blockers.length === 1 ? '' : 's'} remaining`;
+      prepHandoffStatus.dataset.state = 'blocked';
+      prepHandoffSummary.textContent = 'Complete the required preparation items before clinician handoff.';
+    }
+
+    if (sourceReviewToggle) sourceReviewToggle.checked = sourceReviewComplete();
+    if (prepReadyButton) {
+      prepReadyButton.disabled = !readiness.ready || saving || handoffReady;
+      prepReadyButton.innerHTML = handoffReady
+        ? '<i class="bi bi-check-circle"></i> Handoff saved'
+        : '<i class="bi bi-person-check"></i> Mark ready and save';
+    }
+
+    const preparedBy = value('maPrepPreparedBy');
+    const preparedAt = formatTimestamp(value('maPrepReadyAt'));
+    prepHandoffMeta.textContent = preparedBy && preparedAt
+      ? `Prepared by ${preparedBy}, ${preparedAt}`
+      : readiness.warnings.join(' ');
   }
 
   function fact(label, detail, options = {}) {
@@ -237,29 +432,37 @@
       if (checked('papValuesVerified')) papFacts.push('source values verified');
     }
 
-    const attention = [];
-    const missingIdentity = !document.getElementById('patientDob')?.value || !sex || !bmi;
-    if (!visitReason) attention.push('Reason for visit not selected');
-    if (missingIdentity) attention.push('Core demographics incomplete');
-    if (!value('tonsils') || !value('ftp')) attention.push('Physical exam not complete');
-    if (!checked('planConfirmed')) attention.push('Today\'s plan not confirmed');
-    if (!document.getElementById('followupReviewBadge')?.classList.contains('d-none')) attention.push('Follow-up questionnaire needs review');
-    if (!document.getElementById('lvefNeededBadge')?.classList.contains('d-none') || value('lvefFollowupNeeded') === 'on') attention.push('Echo or LVEF result needed');
-    if (!document.getElementById('btnReviewIntake')?.classList.contains('d-none')) attention.push('Intake conflicts need review');
+    const readiness = getReadiness();
+    const prepIssues = readiness.blockers.map(item => item.label);
+    const clinicianTasks = [];
+    if (!value('tonsils') || !value('ftp')) clinicianTasks.push('Complete physical exam');
+    if (!checked('planConfirmed')) clinicianTasks.push('Confirm today\'s plan');
+    if (!document.getElementById('lvefNeededBadge')?.classList.contains('d-none') || value('lvefFollowupNeeded') === 'on') clinicianTasks.push('Resolve echo or LVEF follow-up');
 
     const hasPreparedData = Boolean(visitReason || questionnaireFacts.length || studyFacts.length || checked('priorCpap'));
-    briefingStatus.textContent = !hasPreparedData
-      ? 'Awaiting visit preparation'
-      : attention.length
-        ? `${attention.length} item${attention.length === 1 ? '' : 's'} for review`
-        : 'Prepared for review';
-    briefingStatus.classList.toggle('osa-briefing-status--ready', hasPreparedData && attention.length === 0);
+    const handoffReady = handoffIsCurrent();
+    briefingStatus.textContent = handoffReady
+      ? 'MA handoff complete'
+      : !hasPreparedData
+        ? 'Awaiting visit preparation'
+        : readiness.ready
+          ? 'Preparation complete, handoff not saved'
+          : `${prepIssues.length} prep item${prepIssues.length === 1 ? '' : 's'} remaining`;
+    briefingStatus.classList.toggle('osa-briefing-status--ready', handoffReady);
 
     const visitHeading = visitReason || 'Reason for visit not yet entered';
     const visitSubheading = visitDetail || joinOrFallback(identity, 'Demographics not yet complete');
-    const attentionHtml = attention.length
-      ? attention.slice(0, 6).map(item => `<span class="osa-attention-chip"><i class="bi bi-circle-fill"></i>${escapeHtml(item)}</span>`).join('')
-      : '<span class="osa-attention-clear"><i class="bi bi-check-circle"></i> No unresolved preparation items</span>';
+    const prepHtml = prepIssues.length
+      ? prepIssues.slice(0, 6).map(item => `<span class="osa-attention-chip"><i class="bi bi-circle-fill"></i>${escapeHtml(item)}</span>`).join('')
+      : handoffReady
+        ? '<span class="osa-attention-clear"><i class="bi bi-check-circle"></i> MA preparation handed off</span>'
+        : '<span class="osa-attention-chip"><i class="bi bi-circle-fill"></i> Handoff not yet saved</span>';
+    const clinicianTaskHtml = clinicianTasks.length
+      ? clinicianTasks.map(item => `<span class="osa-clinician-task-chip"><i class="bi bi-circle"></i>${escapeHtml(item)}</span>`).join('')
+      : '<span class="osa-attention-clear"><i class="bi bi-check-circle"></i> No remaining clinician tasks</span>';
+    const handoffMeta = value('maPrepPreparedBy') && value('maPrepReadyAt')
+      ? `Prepared by ${value('maPrepPreparedBy')}, ${formatTimestamp(value('maPrepReadyAt'))}`
+      : 'No saved MA handoff yet';
 
     briefingContent.innerHTML = `
       <div class="osa-briefing-lead">
@@ -268,7 +471,10 @@
           <h3>${escapeHtml(visitHeading)}</h3>
           <p>${escapeHtml(visitSubheading)}</p>
         </div>
-        <div class="osa-briefing-attention" aria-label="Items for review">${attentionHtml}</div>
+        <div class="osa-briefing-review-groups">
+          <div><span class="osa-briefing-review-label">MA preparation</span><div class="osa-briefing-attention">${prepHtml}</div><small>${escapeHtml(handoffMeta)}</small></div>
+          <div><span class="osa-briefing-review-label">Clinician decisions</span><div class="osa-briefing-attention">${clinicianTaskHtml}</div></div>
+        </div>
       </div>
       <div class="osa-briefing-sections">
         <section>
@@ -304,11 +510,179 @@
         </section>
       </div>
       <div class="osa-briefing-handoff">
-        <div><strong>Clinician tasks</strong><span>Complete the exam, resolve highlighted items, and confirm today\'s plan.</span></div>
+        <div><strong>Clinician workflow</strong><span>Review the handoff, make focused corrections, complete the exam, and confirm today\'s plan.</span></div>
         ${hasPapReportData()
           ? '<button type="button" class="btn btn-outline-primary btn-sm" data-open-pap-review><i class="bi bi-clipboard2-pulse"></i> Review PAP data</button>'
           : ''}
       </div>`;
+  }
+
+  const focusedEditGroups = {
+    '#cardQuestionnaires': {
+      title: 'Correct questionnaire data',
+      selectors: ['#cardQuestionnaires'],
+    },
+    '#studyTypeSelector': {
+      title: 'Correct sleep-study data',
+      selectors: ['#studyTypeSelector', '#sleepStudyWatchpat', '#sleepStudyPSG'],
+    },
+    '#cardTreatment': {
+      title: 'Correct treatment history',
+      selectors: ['#cardTreatment'],
+    },
+  };
+
+  const focusedHideSelectors = [
+    '#progressTrack', '#prepHandoffPanel', '#pdfImportSection', '#clinicianBriefing',
+    '#cardPatientInfo', '#cardVisitContext', '#cardDemographics', '#cardTreatment',
+    '#workspaceContextTools', '#cardPapCompliance', '#clinicalEntrySection',
+    '#cardQuestionnaires', '#studyTypeSelector', '#sleepStudyWatchpat', '#sleepStudyPSG',
+    '#cardVisitPlan', '#analysisActions', '#patientSummary', '#precisionSleepProfile',
+    '#patientReportTrigger', '#clinicianReport'
+  ];
+
+  function prefersReducedMotion() {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function applyFocusedEditVisibility() {
+    if (!focusedEdit) {
+      if (focusedEditBar) focusedEditBar.hidden = true;
+      chartView.removeAttribute('data-focused-edit');
+      return;
+    }
+    chartView.dataset.focusedEdit = 'true';
+    if (focusedEditBar) focusedEditBar.hidden = false;
+    focusedHideSelectors.forEach(selector => {
+      const element = document.querySelector(selector);
+      if (element) element.hidden = true;
+    });
+    focusedEdit.group.selectors.forEach(selector => {
+      const element = document.querySelector(selector);
+      if (element) element.hidden = false;
+    });
+  }
+
+  function startFocusedEdit(targetSelector, trigger) {
+    const group = focusedEditGroups[targetSelector];
+    if (!group) return;
+    focusedEdit = {
+      group,
+      targetSelector,
+      returnScrollY: window.scrollY,
+      trigger,
+    };
+    if (focusedEditTitle) focusedEditTitle.textContent = group.title;
+    setMode('full', { skipPersist: true });
+    const target = document.querySelector(targetSelector);
+    const collapse = target?.querySelector('.collapse');
+    if (collapse && !collapse.classList.contains('show') && window.bootstrap?.Collapse) {
+      window.bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
+    }
+    window.requestAnimationFrame(() => target?.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'
+    }));
+  }
+
+  function exitFocusedEdit() {
+    if (!focusedEdit) return;
+    const returnScrollY = focusedEdit.returnScrollY;
+    const trigger = focusedEdit.trigger;
+    focusedEdit = null;
+    returnAfterSave = false;
+    setMode('clinician', { skipPersist: true });
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: returnScrollY, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      trigger?.focus?.({ preventScroll: true });
+    });
+  }
+
+  function updateChartState() {
+    if (!chartStateBar || !chartStateTitle || !chartStateDetail || !chartStateIcon) return;
+    let state = 'clean';
+    let title = lastSavedAt ? 'All changes saved' : 'No unsaved changes';
+    let detail = lastSavedAt ? `Saved ${formatTimestamp(lastSavedAt)}` : 'Open or create a chart to begin.';
+    let icon = 'bi-cloud-check';
+    if (saving) {
+      state = 'saving';
+      title = 'Saving chart';
+      detail = 'Keeping this chart open until the save completes.';
+      icon = 'bi-arrow-repeat';
+    } else if (saveError) {
+      state = 'error';
+      title = 'Save failed';
+      detail = saveError;
+      icon = 'bi-exclamation-triangle';
+    } else if (dirty) {
+      state = 'dirty';
+      title = 'Unsaved chart changes';
+      detail = 'Save before generating reports, changing charts, or signing out.';
+      icon = 'bi-cloud-slash';
+    }
+    chartStateBar.dataset.state = state;
+    chartStateTitle.textContent = title;
+    chartStateDetail.textContent = detail;
+    chartStateIcon.className = `bi ${icon}`;
+    if (stickySaveButton) {
+      stickySaveButton.disabled = saving || !dirty;
+      stickySaveButton.hidden = !mainSaveButton;
+    }
+    if (focusedEditSaveReturn) focusedEditSaveReturn.disabled = saving;
+    updatePrepHandoff();
+  }
+
+  function markDirty() {
+    dirty = true;
+    saveError = '';
+    updateChartState();
+  }
+
+  function markClean(timestamp = '') {
+    dirty = false;
+    saving = false;
+    saveError = '';
+    lastSavedAt = timestamp || new Date().toISOString();
+    updateChartState();
+  }
+
+  function confirmDiscard(action = 'continue') {
+    if (!dirty) return true;
+    return window.confirm(`Discard unsaved chart changes and ${action}?`);
+  }
+
+  function invalidateHandoffAfterPrepEdit(event) {
+    if (currentMode !== 'prep' || value('maPrepStatus') !== 'ready') return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || target.type === 'hidden' || target === sourceReviewToggle) return;
+    setHiddenValue('maPrepStatus', 'in-progress');
+    setHiddenValue('maPrepReadyAt', '');
+    setHiddenValue('maPrepPreparedBy', '');
+  }
+
+  function humanizeControlName(name) {
+    return String(name || '')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/^./, character => character.toUpperCase());
+  }
+
+  function ensureAccessibleNames() {
+    const controls = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, textarea, button'));
+    controls.forEach((element, index) => {
+      if (element.matches('button') && element.textContent.trim()) return;
+      if (element.getAttribute('aria-label') || element.getAttribute('aria-labelledby') || element.labels?.length) return;
+      if (!element.id) element.id = `osa-control-${element.name || index}`;
+      const nearbyLabel = element.closest('.col-4, .col-6, .col-md-3, .col-md-4, .col-md-6, .col-12, td')?.querySelector(':scope > .form-label');
+      if (nearbyLabel && !nearbyLabel.htmlFor) {
+        nearbyLabel.htmlFor = element.id;
+        return;
+      }
+      const label = element.dataset.label
+        || element.getAttribute('placeholder')
+        || humanizeControlName(element.name || element.id)
+        || 'Clinical form control';
+      element.setAttribute('aria-label', label);
+    });
   }
 
   function applyModeVisibility() {
@@ -335,14 +709,20 @@
 
     updatePapVisibility();
     updateDiseVisibility();
+    updatePrepHandoff();
     buildBriefing();
+    applyFocusedEditVisibility();
+    updateChartState();
   }
 
   function setMode(mode, options = {}) {
     if (!VALID_MODES.has(mode)) return;
     currentMode = mode;
     if (!options.skipPersist) {
-      try { window.localStorage.setItem(STORAGE_KEY, mode); } catch (_) {}
+      try {
+        const key = storageKey();
+        if (key) window.localStorage.setItem(key, mode);
+      } catch (_) {}
     }
     applyModeVisibility();
     document.dispatchEvent(new CustomEvent('osa:workspace-mode-changed', { detail: { mode } }));
@@ -355,7 +735,7 @@
     if (collapse && !collapse.classList.contains('show') && window.bootstrap?.Collapse) {
       window.bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
     }
-    window.requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    window.requestAnimationFrame(() => target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }));
   }
 
   function openPapReview() {
@@ -364,7 +744,7 @@
     if (papCollapse && !papCollapse.classList.contains('show') && window.bootstrap?.Collapse) {
       window.bootstrap.Collapse.getOrCreateInstance(papCollapse, { toggle: false }).show();
     }
-    window.requestAnimationFrame(() => papCard?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    window.requestAnimationFrame(() => papCard?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }));
   }
 
   function openDise() {
@@ -375,7 +755,7 @@
     if (collapse && !collapse.classList.contains('show') && window.bootstrap?.Collapse) {
       window.bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
     }
-    window.requestAnimationFrame(() => document.getElementById('cardImaging')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    window.requestAnimationFrame(() => document.getElementById('cardImaging')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }));
   }
 
   function queueRender() {
@@ -385,7 +765,9 @@
       renderQueued = false;
       updatePapVisibility();
       updateDiseVisibility();
+      updatePrepHandoff();
       buildBriefing();
+      updateChartState();
     });
   }
 
@@ -402,21 +784,106 @@
     }
     const editButton = event.target.closest('[data-workspace-edit-target]');
     if (!editButton) return;
-    setMode('full', { skipPersist: true });
-    expandAndScroll(editButton.dataset.workspaceEditTarget);
+    startFocusedEdit(editButton.dataset.workspaceEditTarget, editButton);
   });
 
-  form.addEventListener('input', queueRender);
-  form.addEventListener('change', queueRender);
+  sourceReviewToggle?.addEventListener('change', () => {
+    setHiddenValue('maSourceReviewComplete', sourceReviewToggle.checked ? 'on' : '', { emit: true });
+  });
+
+  prepReadyButton?.addEventListener('click', () => {
+    const readiness = getReadiness();
+    if (!readiness.ready) return;
+    setHiddenValue('maSourceReviewComplete', sourceReviewToggle?.checked ? 'on' : '');
+    setHiddenValue('maPrepStatus', 'ready');
+    setHiddenValue('maPrepReadyAt', new Date().toISOString());
+    setHiddenValue('maPrepPreparedBy', document.getElementById('userEmail')?.textContent?.trim() || 'Authorized staff');
+    markDirty();
+    mainSaveButton?.click();
+  });
+
+  focusedEditReturn?.addEventListener('click', exitFocusedEdit);
+  focusedEditSaveReturn?.addEventListener('click', () => {
+    if (!dirty) {
+      exitFocusedEdit();
+      return;
+    }
+    returnAfterSave = true;
+    mainSaveButton?.click();
+  });
+  stickySaveButton?.addEventListener('click', () => mainSaveButton?.click());
+
+  function handleFormEdit(event) {
+    if (hydrating) {
+      queueRender();
+      return;
+    }
+    if (event.target?.id === 'maSourceReviewToggle') {
+      setHiddenValue('maSourceReviewComplete', event.target.checked ? 'on' : '');
+    }
+    invalidateHandoffAfterPrepEdit(event);
+    if (event.target?.id !== 'maSourceReviewComplete') markDirty();
+    queueRender();
+  }
+  form.addEventListener('input', handleFormEdit);
+  form.addEventListener('change', handleFormEdit);
+  form.addEventListener('submit', event => {
+    const hasPersistedChart = Boolean(window.OSAWorkspace?.getCurrentPatient?.());
+    if (!dirty || !hasPersistedChart) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    saveError = 'Save the chart before generating reports so the report matches the stored record.';
+    updateChartState();
+    stickySaveButton?.focus();
+  }, true);
+
   form.addEventListener('reset', () => {
     papForcedOpen = false;
     diseForcedOpen = false;
-    window.setTimeout(queueRender, 0);
+    focusedEdit = null;
+    window.setTimeout(() => {
+      dirty = false;
+      saving = false;
+      saveError = '';
+      lastSavedAt = '';
+      queueRender();
+    }, 0);
+  });
+  document.addEventListener('osa:patient-hydration-start', () => {
+    hydrating = true;
+  });
+  document.addEventListener('osa:patient-hydration-end', event => {
+    hydrating = false;
+    markClean(event.detail?.patient?.updatedAt || '');
   });
   document.addEventListener('osa:patient-updated', () => {
     papForcedOpen = false;
     diseForcedOpen = false;
     queueRender();
+  });
+  document.addEventListener('osa:save-start', () => {
+    saving = true;
+    saveError = '';
+    updateChartState();
+  });
+  document.addEventListener('osa:save-success', event => {
+    markClean(event.detail?.patient?.updatedAt || '');
+    if (returnAfterSave) exitFocusedEdit();
+  });
+  document.addEventListener('osa:save-error', event => {
+    saving = false;
+    dirty = true;
+    saveError = event.detail?.message || 'The chart could not be saved. Try again.';
+    updateChartState();
+  });
+  document.addEventListener('osa:user-context', event => {
+    currentUserScope = String(event.detail?.email || '').trim();
+    setMode(getStoredMode(), { skipPersist: true });
+  });
+  window.addEventListener('beforeunload', event => {
+    if (!dirty) return;
+    event.preventDefault();
+    event.returnValue = '';
   });
 
   window.OSAWorkspaceView = Object.freeze({
@@ -428,5 +895,19 @@
     isPapContextual: () => isDirectPapVisit() || hasPapReportData(),
   });
 
+  window.OSAReadiness = Object.freeze({
+    getSectionStatus,
+    getReadiness,
+    refresh: queueRender,
+  });
+
+  window.OSAChartState = Object.freeze({
+    isDirty: () => dirty,
+    markDirty,
+    markClean,
+    confirmDiscard,
+  });
+
+  ensureAccessibleNames();
   setMode(currentMode, { skipPersist: true });
 })();

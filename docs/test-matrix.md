@@ -452,3 +452,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 222 | Contextual PAP compliance review | A non-PAP visit without download data keeps the large PAP card out of the primary flow but retains an accessible launcher. PAP-focused visits, imported values, or an explicit open action reveal and expand it. Full Chart always preserves access. |
 | 223 | Contextual DISE review | DISE stays out of an unrelated clinician visit, allowing Physical Exam to use the available width. A nerve-stimulation or surgery visit, existing DISE data, or an explicit open action reveals it. |
 | 224 | Output-parity and accessible-state boundary | Workspace mode may change visible emphasis and the persisted non-PHI preference only. It does not alter clinical thresholds, source values, selected pathways, or generated reports, and the active mode is exposed through `aria-pressed`. |
+
+### Group 50: MA Handoff And P1 Workflow Safeguards
+| # | Name | Key Features |
+|---|---|---|
+| 225 | MA readiness is a real gate | Identity and visit goal, DOB, sex, BMI, questionnaire review, primary study source or an appropriate pre-study state, explicit source review, and pending conflicts determine readiness. Clinician plan confirmation does not block MA handoff. |
+| 226 | Saved handoff provenance and invalidation | Mark ready records the authorized staff identity and timestamp and saves the chart. A later source-data edit in Prep changes the handoff back to in progress until it is reviewed and saved again. |
+| 227 | Focused clinician correction | Edit data from the briefing shows only the relevant questionnaire, sleep-study, or treatment-history source section, preserves dirty state, and returns to the prior clinician context after save or explicit return. |
+| 228 | Persistent save-state and report guard | Chart edits show Unsaved, save activity shows Saving, success shows Saved, and failures remain actionable. Existing charts cannot generate a report from unsaved data and warn before chart switching, sign-out, or page exit. |
+| 229 | Account-scoped preference and accessible controls | Workspace mode is stored by authenticated staff email, not globally. Every interactive form control has a programmatic accessible name, and the workflow-only changes preserve clinical-output behavior. |

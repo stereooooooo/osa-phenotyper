@@ -69,6 +69,10 @@ async function run() {
   win.confirm = () => true;
 
   await waitFor(() => !doc.getElementById('appContainer').classList.contains('d-none'), 'app visible');
+  const unnamedControls = Array.from(doc.querySelectorAll('input:not([type="hidden"]), select, textarea, button')).filter(control =>
+    !(control.getAttribute('aria-label') || control.getAttribute('aria-labelledby') || control.labels?.length || (control.tagName === 'BUTTON' && control.textContent.trim()))
+  );
+  assertEqual(unnamedControls.length, 0, 'Every interactive form control has a programmatic accessible name');
   assertEqual(doc.getElementById('runtimeEnvBadge').textContent.trim(), 'WORKFLOW TEST', 'Workflow runtime is clearly labeled');
   const dbClientSource = await fetch('../js/db.js').then(response => response.text());
   assert(!dbClientSource.includes('listPatients'), 'Production database client exposes no bulk patient-list method');
@@ -88,6 +92,8 @@ async function run() {
   assert(doc.getElementById('clinicalEntrySection').hidden, 'Preparation workspace removes clinician exam controls from the primary flow');
   assert(doc.getElementById('cardVisitPlan').hidden, 'Preparation workspace removes clinician plan confirmation from the primary flow');
   assert(doc.querySelector('#analysisActions button[type="submit"]').hidden, 'Preparation workspace leaves report generation to clinician review');
+  const scopedWorkspaceKey = `osa-workspace-mode:${doc.getElementById('userEmail').textContent.trim().toLowerCase()}`;
+  assertEqual(win.localStorage.getItem(scopedWorkspaceKey), 'prep', 'Workspace preference is scoped to the signed-in staff account');
   click(win, '[data-workspace-mode-button="clinician"]');
   assert(doc.getElementById('diseColumn').hidden, 'Clinician review hides DISE inputs when the visit does not call for them');
   assert(doc.getElementById('physicalExamColumn').classList.contains('col-md-12'), 'Physical exam uses the available width when DISE is not relevant');
@@ -120,12 +126,42 @@ async function run() {
   setValue(win, '#papMode', 'APAP');
   setValue(win, '[name="papMinPressure"]', '7');
   setValue(win, '[name="papMaxPressure"]', '15');
+  assert(win.OSAChartState.isDirty(), 'Editing chart data creates a persistent unsaved state');
+  click(win, '[data-workspace-mode-button="prep"]');
+  assertEqual(doc.querySelector('.osa-progress-step[data-section="demographics"]').dataset.readinessState, 'ready', 'Progress track marks demographics ready only after core fields are complete');
+  assertEqual(doc.querySelector('.osa-progress-step[data-section="treatment"]').dataset.readinessState, 'in-progress', 'A partially reviewed treatment history is shown as in progress rather than complete');
+  click(win, '#maSourceReviewToggle');
+  await waitFor(() => !doc.getElementById('btnMarkPrepReady').disabled, `MA readiness checks complete (${JSON.stringify(win.OSAReadiness.getReadiness())})`);
+  assert(!doc.getElementById('planConfirmed').checked, 'MA readiness does not require clinician plan confirmation');
+  click(win, '#btnMarkPrepReady');
+  await waitFor(() => doc.getElementById('maPrepStatus').value === 'ready' && !win.OSAChartState.isDirty(), 'saved MA handoff');
+  assert(doc.getElementById('prepHandoffStatus').textContent.includes('Ready for clinician'), 'MA can create an explicit saved clinician handoff');
+  assert(doc.getElementById('maPrepPreparedBy').value.length > 0, 'Saved handoff records who prepared the chart');
+  setValue(win, '[name="neck"]', '17.1');
+  assertEqual(doc.getElementById('maPrepStatus').value, 'in-progress', 'Editing source data after handoff invalidates the ready state');
+  click(win, '#btnMarkPrepReady');
+  await waitFor(() => doc.getElementById('maPrepStatus').value === 'ready' && !win.OSAChartState.isDirty(), 'renewed MA handoff');
+  click(win, '[data-workspace-mode-button="clinician"]');
   win.OSAWorkspaceView.refresh();
   await wait(100);
   const briefingText = doc.getElementById('clinicianBriefingContent').textContent;
   assert(briefingText.includes('WatchPAT pAHI 28'), `Clinician briefing refreshes from current chart values${briefingText.includes('pAHI') ? '' : ` (got ${briefingText.trim().slice(0, 240)})`}`);
   assert(briefingText.includes('NOSE 60'), 'Clinician briefing summarizes questionnaire findings without exposing raw controls');
   assert(briefingText.includes('Currently using APAP'), 'Clinician briefing summarizes current treatment status');
+  assert(briefingText.includes('MA preparation handed off'), 'Clinician briefing separates saved MA preparation from clinician decisions');
+  const questionnaireEdit = doc.querySelector('[data-workspace-edit-target="#cardQuestionnaires"]');
+  questionnaireEdit.click();
+  assert(!doc.getElementById('focusedEditBar').hidden, 'Clinician correction opens a focused edit context');
+  assert(!doc.getElementById('cardQuestionnaires').hidden && doc.getElementById('cardTreatment').hidden, 'Focused correction shows only the selected source section');
+  click(win, '#btnFocusedEditReturn');
+  await waitFor(() => win.OSAWorkspaceView.getMode() === 'clinician', 'focused edit return');
+  assert(doc.getElementById('focusedEditBar').hidden, 'Returning from focused correction restores the clinician briefing');
+  doc.querySelector('[data-workspace-edit-target="#cardTreatment"]').click();
+  setValue(win, '[name="alcoholNearBed"]', 'social-only');
+  click(win, '#btnFocusedEditSaveReturn');
+  await waitFor(() => win.OSAWorkspaceView.getMode() === 'clinician' && !win.OSAChartState.isDirty(), 'focused edit save and return');
+  assertEqual(doc.querySelector('[name="alcoholNearBed"]').value, 'social-only', 'Focused correction saves the edited source value');
+  assert(doc.getElementById('focusedEditBar').hidden, 'Save and return restores clinician review after persistence succeeds');
   assert(doc.getElementById('cardPapCompliance').hidden, 'Current PAP history alone does not force the large compliance module into an unrelated visit');
   click(win, '#btnOpenPapReview');
   assert(!doc.getElementById('cardPapCompliance').hidden, 'Optional PAP launcher reveals the compliance module for a patient who brings a report');
@@ -179,6 +215,7 @@ async function run() {
 
   click(win, '#btnSavePatient');
   await waitFor(() => doc.getElementById('patientNameDisplay').textContent.trim() === 'Workflow QA Patient', 'chart saved');
+  assert(!win.OSAChartState.isDirty(), 'Successful chart save clears the persistent unsaved state');
   assertEqual(win.__OSA_WORKFLOW_TEST__.listPatients(false).length, 1, 'Chart saves through the clinician UI');
   assert(doc.getElementById('lvefNeededBadge').textContent.includes('LVEF Needed'), 'LVEF follow-up flag persists on the saved chart');
   click(win, '#btnIntakeLink');
@@ -192,6 +229,14 @@ async function run() {
   await waitFor(() => doc.getElementById('intakeLinkExpiry').textContent.includes('Follow-up questionnaire'), 'follow-up link generated');
   assert(doc.getElementById('intakeTokenList').textContent.includes('Follow-up'), 'Token history distinguishes follow-up questionnaires from new-patient intake');
   win.bootstrap.Modal.getInstance(doc.getElementById('intakeLinkModal')).hide();
+
+  setValue(win, '[name="neck"]', '17.2');
+  click(win, '#form button[type="submit"]');
+  await wait(100);
+  assert(!win.OSAReportState?.getLastAnalysisData?.(), 'Report generation is blocked while a persisted chart has unsaved changes');
+  assert(doc.getElementById('chartStateDetail').textContent.includes('Save the chart before generating reports'), 'Persistence guard explains how to continue');
+  click(win, '#btnStickySave');
+  await waitFor(() => !win.OSAChartState.isDirty(), 'sticky chart save');
 
   click(win, '#form button[type="submit"]');
   await waitFor(() => win.OSAReportState && win.OSAReportState.getLastAnalysisData(), 'analysis');
@@ -253,6 +298,8 @@ async function run() {
   doc.querySelector('#patientListBody tr').click();
   await waitFor(() => doc.getElementById('patientName').value === 'Workflow QA Patient', 'chart loaded');
   assertEqual(doc.getElementById('patientDob').value, '1984-03-12', 'Selected chart rehydrates identity fields');
+  assertEqual(doc.getElementById('maPrepStatus').value, 'ready', 'Saved MA handoff survives chart rehydration');
+  assert(!win.OSAChartState.isDirty(), 'Loading a saved chart does not create a false unsaved state');
   assertEqual(doc.querySelector('[name="remPercent"]').value, '23.1', 'Imported REM percentage persists when the chart is reopened');
   assertEqual(doc.querySelector('[name="papDeviceAhi"]').value, '12', 'Verified PAP download values persist when the chart is reopened');
   assert(doc.getElementById('papValuesVerified').checked, 'PAP source-verification status persists with the chart');
