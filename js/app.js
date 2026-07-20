@@ -1580,18 +1580,21 @@ function mapTreatments(f, m, T){
   }
 
   /* ─── COMISA (Co-Morbid Insomnia and Sleep Apnea) ─────── */
-  const hasCOMISA = exists(isi) && isi >= 15 && exists(ahi) && ahi >= 5;
-  const sleepyCOMISA = hasCOMISA && exists(ess) && ess >= 15;   // high daytime sleepiness + insomnia
+  const hasCOMISA = exists(isi) && isi >= T.comisa.isiScreen && exists(ahi) && ahi >= T.comisa.ahiFloor;
+  const sleepyCOMISA = hasCOMISA && exists(ess) && ess >= T.comisa.sleepyEss;
   if (hasCOMISA) {
     // Offer CBT-I early. Sweetman 2019 supports CBT-I before PAP; MATRICS (Ong
-    // 2020) found no significant sequential-vs-concurrent difference. Do not
-    // universally delay effective OSA therapy when clinical urgency is high.
-    pushRec(recs, 'COMISA detected (ISI \u2265 15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Sweetman 2019; Ong/MATRICS 2020).', 'CBTI');
-    // APAP preferred over fixed CPAP for COMISA
-    pushRec(recs, 'Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).', 'COMISA-PAP');
-    // Sleep restriction safety caveat for sleepy COMISA
+    // 2020) found insomnia benefit from both sequential and concurrent CBT-I,
+    // without a PAP-adherence difference. Alessi 2021 supports an integrated
+    // CBT-I plus adherence program. No trial validates a universal PAP mode,
+    // pressure range, ramp, or pressure-relief recipe specifically for COMISA.
+    pushRec(recs, 'COMISA screen positive (ISI \u2265 15 + OSA): offer CBT-I early and start or continue PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Sweetman 2019; Ong/MATRICS 2020; Alessi 2021).', 'CBTI');
+    pushRec(recs, 'Individualize PAP mode and settings to the patient and objective PAP data. Address the documented barrier with interface fitting, humidification, ramp, pressure relief, desensitization, or pressure review as appropriate; COMISA alone does not establish APAP over fixed CPAP or a specific pressure range.', 'COMISA-PAP');
+    // Sweetman 2020 found a small, transient ESS increase after the first week
+    // of bedtime restriction that returned to baseline thereafter. High ESS is
+    // a monitoring signal, not evidence that CBT-I is unsafe or contraindicated.
     if (sleepyCOMISA) {
-      pushRec(recs, 'Caution: High ESS + high ISI — full sleep restriction therapy is unsafe due to excessive daytime sleepiness. Use modified CBT-I (stimulus control + cognitive restructuring first; introduce sleep compression gradually rather than restriction).', 'COMISA-SRT-CAUTION');
+      pushRec(recs, 'CBT-I sleepiness monitoring: high baseline ESS and insomnia warrant close follow-up when bedtime restriction begins. Explain that sleepiness can briefly increase during the first week; assess driving and other safety-sensitive duties, and let the treating CBT-I clinician adjust the pace or use sleep compression when needed.', 'COMISA-SRT-CAUTION');
     }
   }
 
@@ -1741,14 +1744,14 @@ function buildClinicianReport(f, m, T){
   }
   if(hasCOMISA){
     const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
-    let comisaBullets = `<strong>COMISA — ${comisaSeverity} (ISI ${isi}) + OSA</strong>
+    let comisaBullets = `<strong>COMISA screen positive: ${comisaSeverity} (ISI ${isi}) plus OSA</strong>
       <ul class="mb-1 mt-1">
-        <li>Start CBT-I promptly; begin PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, access, and patient preference <small class="text-muted">(Sweetman 2019; MATRICS 2020)</small></li>
+        <li>Offer CBT-I early; begin or continue PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, access, and patient preference <small class="text-muted">(Sweetman 2019; MATRICS 2020; Alessi 2021)</small></li>
         <li>Do not delay effective OSA treatment when severe disease, substantial hypoxemia, or safety-sensitive sleepiness creates urgency</li>
-        <li>Use APAP over fixed CPAP; set EPR/flex to max, enable ramp (min 4–5, max 15–16)</li>
-        <li>Avoid sedative-hypnotics as monotherapy (worsen OSA); if hypnotic bridge needed, ensure concurrent PAP</li>`;
+        <li>Individualize PAP mode and settings using the patient's barriers and objective download data; COMISA alone does not select APAP, fixed CPAP, or a pressure range</li>
+        <li>Medication is not an automatic app recommendation. Any hypnotic use requires individualized review of respiratory risk, comorbidities, interactions, falls or impairment risk, and the concurrent OSA plan</li>`;
     if(sleepyCOMISA){
-      comisaBullets += `<li class="text-danger"><strong>CAUTION:</strong> High ESS (${ess}) + high ISI — full sleep restriction contraindicated. Use stimulus control + cognitive restructuring first; introduce sleep compression gradually</li>`;
+      comisaBullets += `<li class="text-warning"><strong>MONITOR:</strong> ESS ${ess} indicates substantial baseline sleepiness. Bedtime restriction can briefly increase sleepiness during the first week; assess driving and safety-sensitive duties and let the treating CBT-I clinician adjust pace or use sleep compression when needed <small class="text-muted">(Sweetman 2020)</small></li>`;
     }
     comisaBullets += `</ul>`;
     guardrails.push(comisaBullets);
@@ -1791,7 +1794,7 @@ function buildClinicianReport(f, m, T){
   const surgHelper = surgTargets.length ? `<p><strong>Surgical targets (if pursuing intervention):</strong> ${surgTargets.join('; ')}.</p>${diseTable}` : '';
 
   const followUps = [];
-  if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI 4–6 weeks after CBT-I begins</li><li>Start or continue PAP on the individualized concurrent/sequential plan</li><li>If insomnia persists despite CBT-I → in-person sleep psychology</li><li>Monitor PAP adherence at 1, 4, and 12 weeks</li><li>Reassess insomnia subtype (sleep-onset vs. maintenance) to guide PAP comfort settings</li></ul>`);
+  if(hasCOMISA) followUps.push(`<strong>COMISA follow-up</strong><ul class="mb-0 mt-1"><li>Reassess ISI 4–6 weeks after CBT-I begins</li><li>Start or continue PAP on the individualized concurrent/sequential plan</li><li>If insomnia persists despite CBT-I, arrange in-person sleep psychology review</li><li>Monitor PAP adherence and efficacy early, then at clinically appropriate intervals</li><li>Reassess sleep-onset and sleep-maintenance symptoms to clarify treatment targets and response</li></ul>`);
   if(out.phen.includes('Positional OSA')) followUps.push('Objectively reassess positional-therapy efficacy after an adequate trial; long-term adherence and progression to non-positional OSA remain concerns.');
   if(out.phen.includes('Nasal-Resistance Contributor')) followUps.push('Nasal obstruction follow-up; repeat sleep testing after nasal treatment as needed.');
   if(out.phen.includes('Elevated Delta Heart Rate')) followUps.push('Recheck pulse rate variability on follow-up sleep study after therapy initiation.');

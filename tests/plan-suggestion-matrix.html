@@ -106,8 +106,25 @@ const SCENARIOS = [
     checks: [],
     expectedSuggestions: ['CBT-I', 'PAP management'],
     expectedTags: ['CBTI', 'CPAP'],
-    clinicianIncludes: ['validated digital CBT-I program'],
-    clinicianExcludes: ['Pear Somryst'],
+    clinicianIncludes: ['validated digital CBT-I program', 'Individualize PAP mode and settings'],
+    clinicianExcludes: ['Pear Somryst', 'full sleep restriction contraindicated', 'Use APAP over fixed CPAP', 'set EPR/flex to max'],
+    patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel'],
+    patientExcludes: ['Complete DISE-Guided']
+  },
+  {
+    id: 'sleepy-comisa-monitoring',
+    name: 'Moderate OSA with clinically important insomnia and high baseline sleepiness',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'F', bmi: '30', neck: '14.5', tonsils: '1', ftp: 'II', ess: '18', isi: '21', noseScore: '10',
+      pahi: '24', tst: '6.2', remPercent: '19', supPahi: '28', nonSupPahi: '20', remPahi: '27',
+      nremPahi: '23', odi: '21', nadir: '84', hbAreaPH: '36', t90: '3'
+    },
+    checks: [],
+    expectedSuggestions: ['CBT-I', 'PAP management'],
+    expectedTags: ['CBTI', 'CPAP'],
+    clinicianIncludes: ['COMISA screen positive', 'Individualize PAP mode and settings', 'briefly increase sleepiness during the first week', 'driving and safety-sensitive duties'],
+    clinicianExcludes: ['full sleep restriction contraindicated', 'sleep restriction therapy is unsafe', 'Use APAP over fixed CPAP', 'set EPR/flex to max', 'min 4', 'max 15'],
     patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel'],
     patientExcludes: ['Complete DISE-Guided']
   },

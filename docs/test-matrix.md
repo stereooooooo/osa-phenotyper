@@ -400,3 +400,10 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 198 | HGNS referral with complete lateral oropharyngeal-wall collapse | Complete collapse appears as negative unilateral-HGNS response context without becoming a universal contraindication, individual probability, or aggregate response tier |
 | 199 | HGNS referral with partial lateral oropharyngeal-wall collapse | Partial collapse is documented but is not relabeled as the same validated adverse predictor as complete collapse |
 | 200 | Stage I tonsillar anatomy and surgical interest | Friedman stage supports anatomy-directed discussion without an exact historical success percentage, a patient-specific probability, or a general DISE response score |
+
+### Group 44: COMISA Sequencing And Safety Calibration
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 201 | Moderate OSA, clinically important insomnia, and high baseline sleepiness | Offer CBT-I early with concurrent or sequential PAP according to urgency and preference. High ESS produces first-week sleepiness, driving, and safety-sensitive-duty monitoring, not unsafe or contraindicated wording. COMISA alone does not prescribe APAP, EPR, ramp, or a pressure range. |
+| 202 | Moderate OSA and clinically important insomnia without substantial daytime sleepiness | Offer CBT-I and PAP without the high-sleepiness monitoring alert. PAP mode and settings remain individualized, providing a counterexample to both universal COMISA PAP settings and an automatic bedtime-restriction warning. |

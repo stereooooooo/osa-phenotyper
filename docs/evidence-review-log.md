@@ -28,6 +28,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 | ER-2026-07-19-PAP | 2026-07-19 | 2026-07-19 | PAP compliance downloads, residual device-reported events, leak, adherence, central signals, and follow-up testing | ATS PAP tracking statement 2013; ResMed AirSense 11 user guide; AASM PAP guideline 2019; AASM longitudinal testing guidance 2021; Reiter et al. 2016; Midelet et al. 2021; May et al. 2023; Malhotra et al. 2026 accepted manuscript | Added a clinician-only, verification-gated PAP download assistant. Usage and leak are reviewed before efficacy; P95 leak alone remains contextual; device event indices remain manufacturer-specific estimates; explicitly confirmed current symptoms and central signals prevent false reassurance; no pressure is selected or changed automatically. | PAP-01, PAP-02, PAP-03, SAF-01 | New structured input, ResMed AirView-oriented parser, editable clinician guidance, and regression scenarios; no unconfirmed guidance is sent to patients |
 | ER-2026-07-19-HB | 2026-07-19 | 2026-07-19 | Event-linked hypoxic burden definition, prognostic evidence, cohort cut points, treatment interactions, and separation from conventional nocturnal hypoxemia | Azarbarzin et al. 2019; Labarca et al. 2023; Trzepizur et al. 2022; Pinilla et al. 2023; Parekh 2024; Esmaeili et al. 2023; Peker et al. 2025; Cohen et al. ATS workshop; Azarbarzin et al. 2026; Messineo et al. 2024; Bertram et al. 2026; Pengo et al. 2025 | Removed the app-created worst-metric HB composite and all low-HB treatment de-emphasis. True HB is a Moderate research signal only. ODI, T90, nadir, and area below 90% now feed a separate substantial-nocturnal-hypoxemia safety pathway. Cohort cut points are descriptive and cannot allocate treatment. | PH-07, SAF-03, TX-01, TX-02 | Clinical logic, clinician wording, patient ranking, safety tags, evidence register, and counterexample regressions updated; Raymond Brown, MD approved deployment 2026-07-19; build `8219ec0` deployed and verified with 1,414 assertions |
 | ER-2026-07-19-NONPAP-PREDICTION | 2026-07-19 | 2026-07-19 | Individual treatment-response prediction for oral appliances, positional therapy, upper-airway surgery, and HGNS | AASM/AADSM oral-appliance guideline 2015; Camañes-Gonzalvo et al. 2022; Srijithesh et al. 2019; Lastra et al. 2025; Friedman et al. 2004; Choi et al. 2016; Qi et al. 2024; Green et al. 2019; Meraj et al. 2017; Vena et al. 2025; Huyett et al. 2021; Op de Beeck et al. 2021; Ji et al. 2026 | Removed app-created MAD response tiers and aggregate HGNS response tiers; separated supine-isolated from supine-predominant OSA; limited complete lateral-wall collapse to negative unilateral-HGNS response context; removed exact Friedman success percentages and general DISE prediction claims. | PH-05, TX-02, TX-03, TX-07 | 1,509 regression assertions passed locally; clinician approval and deployment pending |
+| ER-2026-07-19-COMISA | 2026-07-19 | 2026-07-19 | CBT-I and PAP sequencing, PAP adherence, bedtime-restriction safety, PAP-setting claims, and medication boundaries in COMISA | Sweetman et al. 2019 and 2020; Ong et al. MATRICS 2020; Alessi et al. 2021; Sweetman et al. 2023 meta-analysis; Turner et al. 2023; Zhang et al. 2026 network meta-analysis | Retained early CBT-I with individualized concurrent or sequential PAP. Removed the universal APAP, EPR, ramp, and pressure-range recipe; replaced unsafe/contraindicated sleep-restriction wording with transient-sleepiness monitoring; and withheld automated hypnotic guidance. | TX-01, SAF-01 | Clinician guidance, threshold notes, evidence documents, and paired regressions updated; 1,542 assertions passed; clinician approval and deployment pending |
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 
@@ -365,6 +366,60 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Next review trigger or due date:** External validation of an individual oral-appliance, surgery,
   or HGNS response model; validated commercial raw-airflow implementation; updated AASM, AADSM, or
   surgical guidance; device-label change; or the next scheduled comprehensive review.
+
+### ER-2026-07-19-COMISA: CBT-I and PAP sequencing in COMISA
+
+- **Reviewer:** Codex evidence review for Capital ENT clinician review
+- **Review date:** 2026-07-19
+- **Evidence cutoff date:** 2026-07-19
+- **Reason for review:** Open Evidence synthesis supplied by the clinician identified divergent PAP-
+  adherence findings, bedtime-restriction safety data, and newer comparative evidence that required
+  review of the app's COMISA wording.
+- **Affected Logic IDs:** TX-01 and SAF-01
+- **Databases and official sources searched:** PubMed, PubMed Central, Sleep, Journal of Sleep
+  Research, Sleep Medicine Reviews, and the University of Adelaide primary-publication record.
+- **Search concepts or saved search strings:** `COMISA CBT-I PAP randomized sequential concurrent`,
+  `Sweetman zsz178`, `MATRICS zsaa041`, `COMISA bedtime restriction sleepiness zsaa002`, `integrated
+  CBT-I PAP adherence veterans zsaa235`, and `COMISA network meta-analysis 102301`.
+- **Inclusion criteria:** Randomized trials directly comparing CBT-I and PAP sequences or integrated
+  delivery; systematic review or meta-analysis of CBT-I in COMISA; and primary safety analyses of
+  bedtime restriction. Review articles and the supplied AI synthesis were used to locate sources,
+  not as evidence.
+- **Key studies or documents added:** Sweetman et al. 2019 COMSIA RCT; Ong et al. 2020 MATRICS RCT;
+  Sweetman et al. 2020 week-to-week sleepiness analysis; Alessi et al. 2021 integrated CBT-I and PAP-
+  adherence RCT; Sweetman et al. 2023 systematic review and meta-analysis; Turner et al. 2023
+  exploratory MATRICS neurocognitive analysis; and Zhang et al. 2026 network meta-analysis.
+- **Key studies considered but not used, with reason:** The probabilistic ranking of PAP plus CBT-I
+  plus eszopiclone was not implemented because direct evidence was limited and a network ranking does
+  not establish an individual medication recommendation. Insomnia subtype and psychiatric-comorbidity
+  sequence suggestions were not automated because available trials were not powered to validate those
+  treatment-effect modifiers. The app does not infer that CBT-I alone is an OSA treatment from small
+  AHI-change studies.
+- **Risk of bias or applicability concerns:** COMSIA and MATRICS disagree on PAP-adherence benefit.
+  The integrated trial was conducted in older, predominantly male veterans. The bedtime-restriction
+  safety result showed a small, transient mean ESS increase and does not exclude uncommon individual
+  safety problems. The Turner analysis involved only 45 participants and was exploratory. The 2026
+  network meta-analysis ranked heterogeneous interventions and had limited direct evidence for some
+  combinations.
+- **Conclusion:** Logic and safety-language change. Continue offering CBT-I early and individualize
+  concurrent versus sequential PAP rather than making CBT-I a prerequisite. Remove the unsupported
+  universal APAP, maximum EPR, ramp, and pressure-range recipe. High ESS prompts early monitoring,
+  driving and safety-sensitive-duty review, and clinician-adjusted CBT-I pacing rather than labeling
+  bedtime restriction unsafe or contraindicated. Do not automate hypnotic selection.
+- **Code and patient-report effect:** Clinician recommendations, guardrails, follow-up wording,
+  configuration notes, and evidence documentation changed. The patient report continues to recommend
+  only the clinician-confirmed CBT-I and PAP plan and does not expose technical PAP-setting or
+  medication advice.
+- **Regression scenarios added or updated:** Added paired sleepy and non-sleepy COMISA scenarios.
+  They require individualized PAP language, prohibit the prior universal setting recipe, and confirm
+  that only the high-ESS case receives transient-sleepiness and safety monitoring. The full headless
+  suite passed 1,542 assertions.
+- **Clinician reviewer and decision:** Raymond Brown, MD, review pending
+- **Commit:** pending
+- **Deployed build:** not deployed
+- **Next review trigger or due date:** AASM, ATS, or VA/DoD COMISA-specific sequencing guidance;
+  adequately powered treatment-effect-modifier trial; validated safety algorithm for bedtime
+  restriction; major PAP-adherence RCT; or the next scheduled comprehensive review.
 
 ## Review template
 

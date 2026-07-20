@@ -112,9 +112,9 @@ entered event-linked HB. The profile tables below remain historical until the ne
 **Plan (ranked):** `CBTI, COMISA-PAP, COMISA-SRT-CAUTION, CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
 **Recommendations (in order):**
-- COMISA detected (ISI ≥15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020).
-- Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).
-- Caution: High ESS + high ISI — full sleep restriction therapy is unsafe due to excessive daytime sleepiness. Use modified CBT-I (stimulus control + cognitive restructuring first; introduce sleep compression gradually rather than restriction).
+- COMISA screen positive (ISI ≥15 + OSA): offer CBT-I early and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020; Alessi 2021).
+- Individualize PAP mode and settings to the patient and objective PAP data. COMISA alone does not establish APAP over fixed CPAP, maximum EPR, ramp, or a pressure range.
+- High ESS plus high ISI warrants close monitoring when bedtime restriction begins. Explain possible transient first-week sleepiness, assess driving and safety-sensitive duties, and let the treating CBT-I clinician adjust pacing or use sleep compression when needed.
 - Alternative PAP (BiPAP, ASV) if willing to reconsider
 - Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).
 - Custom oral appliance (MAD)
@@ -158,8 +158,8 @@ entered event-linked HB. The profile tables below remain historical until the ne
 **Plan (ranked):** `CBTI, COMISA-PAP, CPAP, MAD-FAVORABLE, MILD-LIFESTYLE, MAD-WORKUP`
 
 **Recommendations (in order):**
-- COMISA detected (ISI ≥15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020).
-- Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).
+- COMISA screen positive (ISI ≥15 + OSA): offer CBT-I early and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020; Alessi 2021).
+- Individualize PAP mode and settings to the patient and objective PAP data. COMISA alone does not establish APAP over fixed CPAP, maximum EPR, ramp, or a pressure range.
 - Start CPAP/APAP
 - Oral appliance therapy (MAD) — favorable candidate based on profile
 - Very mild sleep apnea with no clear phenotype pattern. Consider initial lifestyle modifications (weight loss if overweight, positional changes, nasal care, alcohol avoidance) with repeat sleep study in 6–12 months before committing to device therapy.
@@ -171,9 +171,9 @@ entered event-linked HB. The profile tables below remain historical until the ne
 **Plan (ranked):** `CBTI, COMISA-PAP, COMISA-SRT-CAUTION, CPAP, WEIGHT, MAD, MAD-WORKUP, OXYGEN-WORKUP, POSITION-WORKUP, SLEEP-STAGE-WORKUP, ENDOTYPE-WORKUP, NASAL-WORKUP`
 
 **Recommendations (in order):**
-- COMISA detected (ISI ≥15 + OSA): initiate CBT-I promptly and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020).
-- Use APAP (not fixed CPAP) for COMISA patients — lower average delivered pressure improves comfort. Set EPR/flex to max (3 cmH₂O on ResMed), enable ramp for sleep-onset difficulty, use conservative pressure range (min 4–5, max 15–16 cmH₂O).
-- Caution: High ESS + high ISI — full sleep restriction therapy is unsafe due to excessive daytime sleepiness. Use modified CBT-I (stimulus control + cognitive restructuring first; introduce sleep compression gradually rather than restriction).
+- COMISA screen positive (ISI ≥15 + OSA): offer CBT-I early and start PAP concurrently or sequentially based on OSA severity, oxygen burden, sleepiness, access, and patient preference. Do not delay effective OSA therapy when urgency is high (Sweetman 2019; Ong/MATRICS 2020; Alessi 2021).
+- Individualize PAP mode and settings to the patient and objective PAP data. COMISA alone does not establish APAP over fixed CPAP, maximum EPR, ramp, or a pressure range.
+- High ESS plus high ISI warrants close monitoring when bedtime restriction begins. Explain possible transient first-week sleepiness, assess driving and safety-sensitive duties, and let the treating CBT-I clinician adjust pacing or use sleep compression when needed.
 - Start CPAP/APAP
 - Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).
 - Custom oral appliance (MAD)

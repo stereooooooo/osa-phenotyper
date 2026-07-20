@@ -264,7 +264,7 @@ The OSA Phenotyper is a **remarkably sophisticated** clinical decision-support t
 
 1. **HB-guided treatment allocation** is state-of-the-art. The three-tier system (moderate/high/very-high) with differentiated CPAP messaging is evidence-based and clinically nuanced. The alternatives-first approach for mild OSA + low HB per Pinilla 2023 is excellent.
 
-2. **COMISA handling** is best-in-class. CBT-I is correctly prioritized first, APAP preferred over fixed CPAP, sleepy-COMISA sleep restriction caution is present, and the patient report COMISA callout is clear and actionable.
+2. **COMISA handling** prioritizes CBT-I while allowing concurrent or sequential PAP according to clinical urgency, access, and preference. PAP mode and settings must remain individualized because COMISA alone does not establish APAP over fixed CPAP or a universal comfort-setting recipe. High baseline sleepiness warrants monitoring during bedtime restriction rather than making CBT-I contraindicated.
 
 3. **MAD candidacy scoring** is comprehensive. The 12+ factor system (severity, BMI, sex, neck, positional, REM, loop gain, HB, retrognathia, hypopnea fraction, age) with evidence citations for each factor is impressive.
 

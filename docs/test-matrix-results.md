@@ -1515,3 +1515,17 @@
 - patient-facing output remains free of typographic dash characters
 - full headless suite passed with 1,200 assertions
 **Finding:** fixed. Diagnostic concern remains visible to the clinical team, but the patient-facing plan now follows the clinician's confirmed pathway and clearly distinguishes an active lab-study decision from a possible later step.
+
+### Tests 201-202: COMISA sequencing and bedtime-restriction safety
+**Status:** local clinical-routing, clinician-report, patient-report, action-plan, syntax, evidence-integrity, and full regression testing complete
+**Result:** passed after evidence-calibration changes ✅
+**Verification:**
+- both sleepy and non-sleepy COMISA scenarios offer CBT-I early and preserve individualized concurrent or sequential PAP based on OSA urgency, access, and preference
+- COMISA no longer prescribes APAP over fixed CPAP, maximum expiratory pressure relief, ramp, or a universal pressure range; mode and settings are tied to documented barriers and objective PAP data
+- the high-ESS scenario explains that bedtime restriction can briefly increase sleepiness during the first week and calls for driving and safety-sensitive-duty review plus clinician-adjusted pacing
+- the lower-ESS counterexample receives no automatic bedtime-restriction warning, confirming that insomnia severity alone does not create a safety alert
+- neither scenario labels CBT-I or bedtime restriction unsafe or contraindicated
+- medication remains outside automatic app routing; clinician guidance requires individualized review rather than recommending a hypnotic or triple-therapy pathway
+- patient-facing recommendations remain limited to the clinician-confirmed CBT-I and PAP plan and contain no technical setting or medication instructions
+- the full headless suite passed with **1,542 assertions**
+**Finding:** fixed. The app now reflects the consistent evidence for treating insomnia in COMISA while preserving uncertainty about PAP adherence, sequencing, individual PAP settings, and the short-term safety implications of bedtime restriction.

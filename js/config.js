@@ -148,6 +148,18 @@ const OSA_CONFIG = {
       disturbedIsi:   15
     },
 
+    // Operational COMISA screen and monitoring context. ISI >=15 plus AHI >=5
+    // flags a clinically important insomnia-plus-OSA pattern; it does not by
+    // itself establish the duration and frequency criteria for chronic insomnia
+    // disorder. ESS >=15 triggers closer monitoring during the initial sleep-
+    // restriction component of CBT-I, not a contraindication to CBT-I.
+    // Sweetman 2019; Ong/MATRICS 2020; Sweetman 2020 (zsaa002); Alessi 2021.
+    comisa: {
+      isiScreen:      15,
+      ahiFloor:        5,
+      sleepyEss:      15
+    },
+
     // AHI severity labels (also read by patientReport.js ahiSeverityLabel)
     severity: {
       mild:           5,
