@@ -33,6 +33,13 @@ formal clinical validation.
 - [ ] Conduct an observed iPad intake walkthrough with at least one MA and several synthetic patient
   types: straightforward snoring, current PAP transfer, prior PAP intolerance, Inspire inquiry, and
   complex cardiovascular history.
+- [x] Add a state-aware returning-patient iPad follow-up questionnaire. The first release captures
+  the reason for follow-up, current treatments, use and perceived benefit, treatment barriers,
+  ESS, conditional ISI and NOSE, current weight, drowsy driving, and important health changes.
+  Patient submissions remain pending until clinician review and never overwrite baseline chart data.
+- [ ] Observe at least five synthetic follow-up visits on the actual clinic iPad, including stable
+  PAP, PAP difficulty with nasal symptoms, oral-appliance intolerance, CBT-I progress, and existing
+  HGNS follow-up. Measure completion time and MA review burden before adding more questions.
 - [ ] Measure intake completion time, MA correction burden, clinician edits to suggested pathways,
   report-generation time, and reasons suggested plans are overridden.
 - [ ] Expand PAP-download parsing only after the ResMed AirView workflow is stable. Priorities are

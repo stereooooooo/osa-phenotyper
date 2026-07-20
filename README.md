@@ -1,6 +1,6 @@
 # OSA Phenotyper — Clinician Hub with Scoped Patient Intake
 
-This branch is the internal Capital ENT version of the OSA clinical decision-support app. The clinical workspace and patient reports remain clinician-controlled. Its only patient-accessible surface is a narrowly scoped, patient-specific intake questionnaire.
+This branch is the internal Capital ENT version of the OSA clinical decision-support app. The clinical workspace and patient reports remain clinician-controlled. Its only patient-accessible surface is a narrowly scoped, patient-specific new-patient or follow-up questionnaire.
 
 ## Security boundary
 
@@ -16,7 +16,7 @@ This branch is the internal Capital ENT version of the OSA clinical decision-sup
 
 The generated patient report remains available as a PDF. Staff can deliver it through the EHR or another Capital ENT-approved communication process after documenting patient approval. The app itself does not email patients or host patient reports.
 
-For a clinic iPad, staff open a newly generated intake link on the iPad and hand the patient only that questionnaire. Staff must never sign the clinician workspace into a device handed to a patient. After submission, the token is consumed, the URL token is removed, and the completed form is cleared from the browser.
+For a clinic iPad, staff choose New Patient Intake or Follow-up Questionnaire, open the newly generated link on the iPad, and hand the patient only that questionnaire. Staff must never sign the clinician workspace into a device handed to a patient. After submission, the token is consumed, the URL token is removed, and the completed form is cleared from the browser. Follow-up submissions append a pending checkpoint for clinician review and do not overwrite baseline chart data.
 
 See [docs/clinician-only-architecture.md](docs/clinician-only-architecture.md) for the architecture, operational controls, and production checklist.
 

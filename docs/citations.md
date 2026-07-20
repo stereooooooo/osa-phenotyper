@@ -327,3 +327,11 @@ When incorporating new clinical evidence:
 7. Add a regression case and a clinically plausible counterexample.
 8. Record the search and decision in [`evidence-review-log.md`](evidence-review-log.md), including reviews that result in no change.
 9. Update the review dates and the frozen build identifier after clinician review and verification.
+## Longitudinal Patient-Reported Follow-up
+
+| App use | Source | How used and limitations |
+|---|---|---|
+| Repeat daytime-sleepiness measurement | Johns MW. "A New Method for Measuring Daytime Sleepiness: The Epworth Sleepiness Scale." *Sleep.* 1991;14(6):540-545. PMID 1798888. https://doi.org/10.1093/sleep/14.6.540 | Supports repeating the eight-item Epworth Sleepiness Scale (ESS) as a patient-reported measure of general daytime sleepiness. ESS is not an objective adherence or treatment-efficacy measure and does not diagnose the cause of sleepiness. |
+| Repeat insomnia-severity measurement when relevant | Bastien CH, Vallières A, Morin CM. "Validation of the Insomnia Severity Index as an Outcome Measure for Insomnia Research." *Sleep Med.* 2001;2(4):297-307. PMID 11438246. https://doi.org/10.1016/S1389-9457(00)00065-4 | Supports conditional repetition of the seven-item Insomnia Severity Index (ISI) when current insomnia symptoms or CBT-I treatment make it relevant. The score reflects perceived insomnia severity and does not replace clinical diagnosis. |
+| Repeat nasal-obstruction symptom measurement when relevant | Stewart MG, Witsell DL, Smith TL, Weaver EM, Yueh B, Hannley MT. "Development and Validation of the Nasal Obstruction Symptom Evaluation (NOSE) Scale." *Otolaryngol Head Neck Surg.* 2004;130(2):157-163. https://doi.org/10.1016/j.otohns.2003.09.016 | Supports conditional repetition of the five-item NOSE scale for current nasal symptoms or nasal treatment. Change in NOSE reflects subjective nasal obstruction and must not be interpreted as proof of OSA response. |
+| Clinician review before chart or decision impact | Capital ENT local workflow decision, 2026-07-19 | Patient-submitted follow-up answers are appended as pending checkpoints. They do not overwrite baseline data, confirm a diagnosis, activate treatment, or change patient instructions without clinician review. This is an E5 safety and workflow policy, not a published clinical claim. |

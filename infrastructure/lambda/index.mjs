@@ -37,6 +37,7 @@ const FOLLOWUP_ADHERENCE = new Set(['Using as planned', 'Partial use', 'Not usin
 const FOLLOWUP_NEXT_ACTIONS = new Set(['Continue current plan', 'Optimize current treatment', 'Reassess barriers', 'Repeat sleep study', 'Change treatment pathway', 'Schedule procedure', 'Refer / coordinate care', 'No action documented']);
 const INTAKE_TOKEN_LIFETIME_SECONDS = 72 * 60 * 60;
 const TOKEN_TTL_GRACE_SECONDS = 30 * 24 * 60 * 60;
+const QUESTIONNAIRE_TOKEN_TYPES = new Set(['intake', 'followup']);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const cognito = USER_POOL_ID ? new CognitoIdentityProviderClient({}) : null;
 
@@ -546,6 +547,8 @@ function extractPatientFirstName(fullName) {
 async function createIntakeToken(event, body, user) {
   const patientId = body?.patientId;
   if (!patientId) return fail(event, 'patientId is required');
+  const questionnaireType = String(body?.questionnaireType || 'intake').trim().toLowerCase();
+  if (!QUESTIONNAIRE_TOKEN_TYPES.has(questionnaireType)) return fail(event, 'Invalid questionnaire type');
 
   const { Item: patient } = await ddb.send(new GetCommand({
     TableName: TABLE,
@@ -565,7 +568,7 @@ async function createIntakeToken(event, body, user) {
     Item: {
       tokenHash,
       patientId,
-      tokenType: 'intake',
+      tokenType: questionnaireType,
       expiresAt,
       ttl: expiresAt + TOKEN_TTL_GRACE_SECONDS,
       status: 'active',
@@ -576,8 +579,8 @@ async function createIntakeToken(event, body, user) {
     },
   }));
 
-  console.log(JSON.stringify({ action: 'intake_token_created', patientId, createdBy: user, timestamp: now.toISOString() }));
-  return ok(event, { token: rawToken, expiresAt: new Date(expiresAt * 1000).toISOString() }, 201);
+  console.log(JSON.stringify({ action: 'questionnaire_token_created', questionnaireType, patientId, createdBy: user, timestamp: now.toISOString() }));
+  return ok(event, { token: rawToken, questionnaireType, expiresAt: new Date(expiresAt * 1000).toISOString() }, 201);
 }
 
 async function listIntakeTokens(event, patientId) {
@@ -591,9 +594,10 @@ async function listIntakeTokens(event, patientId) {
   }));
   const now = Math.floor(Date.now() / 1000);
   const tokens = (Items || [])
-    .filter(item => !item.tokenType || item.tokenType === 'intake')
+    .filter(item => !item.tokenType || QUESTIONNAIRE_TOKEN_TYPES.has(item.tokenType))
     .map(item => ({
       tokenHash: item.tokenHash,
+      questionnaireType: item.tokenType || 'intake',
       status: item.status === 'active' && item.expiresAt <= now ? 'expired' : item.status,
       expiresAt: new Date(item.expiresAt * 1000).toISOString(),
       createdAt: item.createdAt,
@@ -610,10 +614,10 @@ async function revokeIntakeToken(event, tokenHash, user) {
       TableName: TOKEN_TABLE,
       Key: { tokenHash },
       UpdateExpression: 'SET #s = :revoked, revokedAt = :now, revokedBy = :user',
-      ConditionExpression: '#s = :active AND (attribute_not_exists(tokenType) OR tokenType = :intake)',
+      ConditionExpression: '#s = :active',
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: {
-        ':revoked': 'revoked', ':active': 'active', ':intake': 'intake',
+        ':revoked': 'revoked', ':active': 'active',
         ':now': new Date().toISOString(), ':user': user,
       },
     }));
@@ -788,6 +792,44 @@ async function updatePatient(event, id, body, user, userGroups) {
   }
   let remainingPendingOverrides = currentPendingOverrides;
   let remainingPendingProvenance = currentPendingProvenance;
+
+  if (body.followupQuestionnaireReviewId !== undefined) {
+    const reviewId = String(body.followupQuestionnaireReviewId || '').trim();
+    const followups = Array.isArray(Item.followups) ? cloneJson(Item.followups) : [];
+    const entry = followups.find(item => item?.followupId === reviewId && item.patientSubmitted === true);
+    if (!entry) return fail(event, 'Follow-up questionnaire not found.', 404);
+    if (entry.reviewStatus === 'reviewed') return ok(event, Item);
+    entry.reviewStatus = 'reviewed';
+    entry.reviewedAt = now;
+    entry.reviewedBy = user;
+    const pendingCount = followups.filter(item => item?.patientSubmitted && item.reviewStatus !== 'reviewed').length;
+    const visit = [{ date: now, user, action: 'Patient follow-up questionnaire reviewed' }];
+    let Attributes;
+    try {
+      ({ Attributes } = await ddb.send(new UpdateCommand({
+        TableName: TABLE,
+        Key: { patientId: id },
+        UpdateExpression: 'SET #followups = :followups, #pendingCount = :pendingCount, #u = :now, #ub = :user, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), #ver = :nextVersion',
+        ConditionExpression: 'attribute_exists(patientId) AND ((attribute_not_exists(#ver) AND :expectedVersion = :legacyVersion) OR #ver = :expectedVersion)',
+        ExpressionAttributeNames: {
+          '#followups': 'followups', '#pendingCount': 'followupQuestionnairePendingCount', '#u': 'updatedAt',
+          '#ub': 'updatedBy', '#visits': 'visits', '#ver': 'version',
+        },
+        ExpressionAttributeValues: {
+          ':followups': followups, ':pendingCount': pendingCount, ':now': now, ':user': user,
+          ':emptyList': [], ':visit': visit, ':expectedVersion': expectedVersion, ':legacyVersion': 1,
+          ':nextVersion': expectedVersion + 1,
+        },
+        ReturnValues: 'ALL_NEW',
+      })));
+    } catch (err) {
+      if (err.name === 'ConditionalCheckFailedException') {
+        return fail(event, 'This patient record was updated elsewhere. Reload before saving again.', 409);
+      }
+      throw err;
+    }
+    return ok(event, Attributes);
+  }
 
   if (body.intakeReview !== undefined) {
     const { note, resolutions } = sanitizeIntakeReview(body.intakeReview, currentPendingOverrides);

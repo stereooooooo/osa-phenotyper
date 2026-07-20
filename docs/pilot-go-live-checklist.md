@@ -44,6 +44,7 @@ Any unchecked mandatory gate means **NO GO for real PHI**.
 - [ ] No patient content or search value appears in sample logs or alert messages.
 - [ ] No patient portal or hosted-report route is deployed. The sole anonymous route is the reviewed, single-use intake workflow.
 - [ ] On a managed clinic iPad, verify that successful intake consumes the token, removes it from the URL, clears form values, and returns the device to a non-PHI state.
+- [ ] On the same managed iPad, complete a follow-up questionnaire for a synthetic patient and verify that it appears as Review needed, does not overwrite baseline chart fields, and can be marked reviewed only from the authenticated clinician workspace.
 - [ ] Production HTML and CSP contain no public JavaScript, CSS, font, or PDF-worker CDN.
 
 ## Synthetic clinician workflow rehearsal

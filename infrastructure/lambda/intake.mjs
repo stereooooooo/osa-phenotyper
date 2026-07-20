@@ -3,8 +3,8 @@
  * HIPAA-compliant: No PHI logged. Token-based auth (no Cognito).
  *
  * Routes:
- *   GET  /intake/{token}  – validate magic-link token, return minimal info
- *   POST /intake/{token}  – submit intake form, merge into patient record
+ *   GET  /intake/{token}: validate a questionnaire token, return minimal info
+ *   POST /intake/{token}: submit an initial or follow-up questionnaire
  *
  * Security:
  *   - Tokens are SHA-256 hashed before DB lookup (never stored in plain text)
@@ -14,7 +14,7 @@
  */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 /* ── Configuration ───────────────────────────────────────── */
 
@@ -30,6 +30,9 @@ const ddb           = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const MAX_TOKEN_ATTEMPTS = 5;
 const FIELD_PROVENANCE_HISTORY_LIMIT = 12;
 const TOKEN_TYPE_INTAKE = 'intake';
+const TOKEN_TYPE_FOLLOWUP = 'followup';
+const QUESTIONNAIRE_TOKEN_TYPES = new Set([TOKEN_TYPE_INTAKE, TOKEN_TYPE_FOLLOWUP]);
+const FOLLOWUP_LIMIT = 20;
 
 /* ── CORS + security response headers ────────────────────── */
 
@@ -88,7 +91,7 @@ export async function handler(event) {
     // POST /intake/{token}
     if (method === 'POST' && path.match(/^\/intake\/[^/]+$/)) {
       const token = path.split('/').pop();
-      return await handlePostIntake(event, token, event.body);
+      return await handlePostQuestionnaire(event, token, event.body);
     }
 
     return fail(event, 'Not found', 404);
@@ -145,7 +148,7 @@ function validateTokenRecordForType(record, expectedTokenType) {
     return { valid: false, reason: 'not_found' };
   }
   const recordType = record.tokenType || TOKEN_TYPE_INTAKE;
-  if (recordType !== expectedTokenType) {
+  if (!QUESTIONNAIRE_TOKEN_TYPES.has(recordType) || (expectedTokenType && recordType !== expectedTokenType)) {
     return { valid: false, reason: 'token_type_mismatch' };
   }
   if (record.status !== 'active') {
@@ -190,7 +193,7 @@ async function lookupAndValidateToken(rawToken, expectedTokenType = TOKEN_TYPE_I
 /* ── GET /intake/{token} ─────────────────────────────────── */
 
 async function handleGetIntake(event, rawToken) {
-  const { valid, record, tokenHash } = await lookupAndValidateToken(rawToken, TOKEN_TYPE_INTAKE);
+  const { valid, record } = await lookupAndValidateToken(rawToken, null);
 
   if (!valid) {
     return fail(event, TOKEN_INVALID_MSG, 403);
@@ -219,6 +222,7 @@ async function handleGetIntake(event, rawToken) {
   return ok(event, {
     valid: true,
     firstName: record.patientFirstName,
+    questionnaireType: record.tokenType || TOKEN_TYPE_INTAKE,
     expiresAt: new Date(record.expiresAt * 1000).toISOString(),
   });
 }
@@ -1002,16 +1006,133 @@ function needsLvefFollowup(formData, pendingOverrides = {}) {
   return (hasHeartFailure || hasPriorEcho) && (!Number.isFinite(lvef) || lvef < 5 || lvef > 90);
 }
 
+const FOLLOWUP_VALUES = {
+  visitGoal: new Set(['routine', 'results', 'working', 'comfort', 'symptoms', 'change-treatment']),
+  overallChange: new Set(['much-better', 'better', 'same', 'worse', 'much-worse']),
+  concerns: new Set(['sleepiness', 'snoring', 'breathing', 'insomnia', 'nasal', 'treatment', 'weight', 'none']),
+  treatments: new Set(['pap', 'oral-appliance', 'hgns', 'positional', 'nasal', 'weight-glp1', 'cbti', 'surgery-recovery', 'none']),
+  treatmentUse: new Set(['as-planned', 'partial', 'not-using', 'not-applicable']),
+  treatmentBenefit: new Set(['yes', 'no', 'unsure', 'not-applicable']),
+  treatmentProblems: new Set(['mask-pressure-dryness', 'jaw-teeth', 'stimulation', 'nasal', 'medication', 'sleep-program', 'recovery', 'none']),
+  yesNoUnsure: new Set(['yes', 'no', 'unsure']),
+  drowsyDriving: new Set(['yes', 'no', 'not-driving']),
+  healthChanges: new Set(['heart-lung-neurologic', 'hospitalization', 'opioid', 'oxygen-support', 'medication', 'none']),
+  papMode: new Set(['cpap', 'apap', 'bipap', 'unsure']),
+};
+
+function sanitizeCodeArray(value, allowed, field, errors, { required = true } = {}) {
+  if (!Array.isArray(value) || (required && !value.length)) {
+    errors.push(field);
+    return [];
+  }
+  const values = [...new Set(value.map(item => String(item || '').trim()))];
+  if (values.some(item => !allowed.has(item)) || (values.includes('none') && values.length > 1)) {
+    errors.push(field);
+    return [];
+  }
+  return values;
+}
+
+function sanitizeScale(value, count, max, field, errors, required = true) {
+  if (value === null && !required) return null;
+  const values = Array.isArray(value)
+    ? value.slice()
+    : (value && typeof value === 'object' && !Array.isArray(value))
+      ? Array.from({ length: count }, (_, index) => value[`q${index + 1}`])
+      : [];
+  if (values.length !== count || values.some(item => !isIntInRange(item, 0, max))) {
+    errors.push(field);
+    return null;
+  }
+  return values;
+}
+
+function validateFollowupData(body) {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return { valid: false, errors: ['body'] };
+  }
+  const errors = [];
+  const data = {};
+  const requiredCode = (field, allowed) => {
+    const value = String(body[field] || '').trim();
+    if (!allowed.has(value)) errors.push(field);
+    else data[field] = value;
+  };
+
+  const visitDate = String(body.visitDate || '');
+  data.visitDate = /^\d{4}-\d{2}-\d{2}$/.test(visitDate) && !Number.isNaN(Date.parse(`${visitDate}T12:00:00Z`))
+    ? visitDate
+    : new Date().toISOString().slice(0, 10);
+  requiredCode('visitGoal', FOLLOWUP_VALUES.visitGoal);
+  requiredCode('overallChange', FOLLOWUP_VALUES.overallChange);
+  data.concerns = sanitizeCodeArray(body.concerns, FOLLOWUP_VALUES.concerns, 'concerns', errors);
+  data.treatments = sanitizeCodeArray(body.treatments, FOLLOWUP_VALUES.treatments, 'treatments', errors);
+  requiredCode('treatmentUse', FOLLOWUP_VALUES.treatmentUse);
+  requiredCode('treatmentBenefit', FOLLOWUP_VALUES.treatmentBenefit);
+  data.treatmentProblems = sanitizeCodeArray(body.treatmentProblems, FOLLOWUP_VALUES.treatmentProblems, 'treatmentProblems', errors);
+  requiredCode('insomniaCurrent', FOLLOWUP_VALUES.yesNoUnsure);
+  requiredCode('nasalCurrent', FOLLOWUP_VALUES.yesNoUnsure);
+  requiredCode('drowsyDriving', FOLLOWUP_VALUES.drowsyDriving);
+  data.healthChanges = sanitizeCodeArray(body.healthChanges, FOLLOWUP_VALUES.healthChanges, 'healthChanges', errors);
+
+  const primaryTreatment = String(body.primaryTreatment || '').trim();
+  if (!FOLLOWUP_VALUES.treatments.has(primaryTreatment) || !data.treatments.includes(primaryTreatment)) errors.push('primaryTreatment');
+  else data.primaryTreatment = primaryTreatment;
+
+  data.ess = sanitizeScale(body.ess, 8, 3, 'ess', errors);
+  const isiRequired = body.insomniaCurrent === 'yes' || data.treatments.includes('cbti');
+  const noseRequired = body.nasalCurrent === 'yes' || data.treatments.includes('nasal');
+  data.isi = sanitizeScale(body.isi, 7, 4, 'isi', errors, isiRequired);
+  data.nose = sanitizeScale(body.nose, 5, 4, 'nose', errors, noseRequired);
+
+  if (body.weightLbs !== null && body.weightLbs !== undefined) {
+    if (!isNumInRange(body.weightLbs, 50, 700)) errors.push('weightLbs');
+    else data.weightLbs = body.weightLbs;
+  } else data.weightLbs = null;
+
+  if (data.treatments.includes('pap')) {
+    const pap = body.pap && typeof body.pap === 'object' ? body.pap : {};
+    const mode = String(pap.mode || 'unsure').trim();
+    if (!FOLLOWUP_VALUES.papMode.has(mode)) errors.push('pap.mode');
+    const nights = pap.nightsPerWeek;
+    const hours = pap.hoursPerNight;
+    if (nights !== null && nights !== undefined && !isIntInRange(nights, 0, 7)) errors.push('pap.nightsPerWeek');
+    if (hours !== null && hours !== undefined && !isNumInRange(hours, 0, 12)) errors.push('pap.hoursPerNight');
+    data.pap = { mode, nightsPerWeek: nights ?? null, hoursPerNight: hours ?? null };
+  } else data.pap = null;
+
+  return errors.length ? { valid: false, errors } : { valid: true, data };
+}
+
+function followupLabel(code) {
+  return ({
+    pap: 'PAP', 'oral-appliance': 'Oral appliance', hgns: 'Hypoglossal stimulation', positional: 'Positional therapy',
+    nasal: 'Nasal treatment', 'weight-glp1': 'Weight / GLP-1', cbti: 'CBT-I', 'surgery-recovery': 'Airway surgery', none: 'Observation / other',
+  })[code] || 'Observation / other';
+}
+
+function followupResponseLabel(code) {
+  return ({ 'much-better': 'Better', better: 'Better', same: 'No meaningful change', worse: 'Worse', 'much-worse': 'Worse' })[code] || 'Not assessed';
+}
+
+function followupAdherenceLabel(code) {
+  return ({ 'as-planned': 'Using as planned', partial: 'Partial use', 'not-using': 'Not using', 'not-applicable': 'Not applicable' })[code] || 'Not applicable';
+}
+
+async function handlePostQuestionnaire(event, rawToken, rawBody) {
+  const tokenValidation = await lookupAndValidateToken(rawToken, null);
+  if (!tokenValidation.valid) return fail(event, TOKEN_INVALID_MSG, 403);
+  const questionnaireType = tokenValidation.record.tokenType || TOKEN_TYPE_INTAKE;
+  if (questionnaireType === TOKEN_TYPE_FOLLOWUP) {
+    return handlePostFollowup(event, rawBody, tokenValidation);
+  }
+  return handlePostIntake(event, rawBody, tokenValidation);
+}
+
 /* ── POST /intake/{token} ────────────────────────────────── */
 
-async function handlePostIntake(event, rawToken, rawBody) {
-  // ── 1. Validate token ────────────────────────────────────
-  const { valid: tokenValid, record: tokenRecord, tokenHash } =
-    await lookupAndValidateToken(rawToken, TOKEN_TYPE_INTAKE);
-
-  if (!tokenValid) {
-    return fail(event, TOKEN_INVALID_MSG, 403);
-  }
+async function handlePostIntake(event, rawBody, tokenValidation) {
+  const { record: tokenRecord, tokenHash } = tokenValidation;
 
   // Check if already used (separate from generic validation so we
   // can return a distinct 409 to help the patient)
@@ -1219,4 +1340,110 @@ async function handlePostIntake(event, rawToken, rawBody) {
     success: true,
     message: 'Thank you! Your responses have been received.',
   });
+}
+
+async function handlePostFollowup(event, rawBody, tokenValidation) {
+  const { record: tokenRecord, tokenHash } = tokenValidation;
+  let body;
+  try {
+    body = JSON.parse(rawBody || '{}');
+  } catch (_) {
+    return fail(event, 'Please check your responses and try again.', 400);
+  }
+
+  const validation = validateFollowupData(body);
+  if (!validation.valid) {
+    console.log(JSON.stringify({
+      action: 'followup_questionnaire_validation_failed',
+      patientId: tokenRecord.patientId,
+      invalidFields: validation.errors,
+      timestamp: new Date().toISOString(),
+    }));
+    return fail(event, 'Please check your responses and try again.', 400);
+  }
+
+  const data = validation.data;
+  const now = new Date().toISOString();
+  const { Item: patient } = await ddb.send(new GetCommand({
+    TableName: PATIENT_TABLE,
+    Key: { patientId: tokenRecord.patientId },
+    ProjectionExpression: 'patientId, followups, isDeleted, #v',
+    ExpressionAttributeNames: { '#v': 'version' },
+  }));
+  if (!patient || patient.isDeleted) return fail(event, TOKEN_INVALID_MSG, 403);
+
+  const ess = data.ess.reduce((sum, value) => sum + value, 0);
+  const isi = Array.isArray(data.isi) ? data.isi.reduce((sum, value) => sum + value, 0) : null;
+  const nose = Array.isArray(data.nose) ? data.nose.reduce((sum, value) => sum + value, 0) * 5 : null;
+  const entry = {
+    followupId: randomUUID(),
+    date: data.visitDate,
+    treatment: followupLabel(data.primaryTreatment),
+    status: data.primaryTreatment === 'none' ? 'Planned' : 'Active',
+    response: followupResponseLabel(data.overallChange),
+    adherence: followupAdherenceLabel(data.treatmentUse),
+    nextAction: 'No action documented',
+    weight: data.weightLbs,
+    ess,
+    isi,
+    nose,
+    recordedAt: now,
+    recordedBy: 'patient-followup',
+    schemaVersion: 2,
+    patientSubmitted: true,
+    reviewStatus: 'pending',
+    questionnaire: data,
+  };
+  const followups = Array.isArray(patient.followups) ? patient.followups.slice() : [];
+  followups.push(entry);
+  const retainedFollowups = followups.slice(-FOLLOWUP_LIMIT);
+  const pendingCount = retainedFollowups.filter(item => item?.patientSubmitted && item.reviewStatus !== 'reviewed').length;
+  const currentVersion = Number.isInteger(patient.version) ? patient.version : 1;
+  const patientCondition = Number.isInteger(patient.version)
+    ? 'attribute_exists(patientId) AND #version = :expectedVersion'
+    : 'attribute_exists(patientId) AND attribute_not_exists(#version)';
+
+  try {
+    await ddb.send(new TransactWriteCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: TOKEN_TABLE,
+            Key: { tokenHash },
+            UpdateExpression: 'SET #s = :used, usedAt = :now',
+            ConditionExpression: '#s = :active',
+            ExpressionAttributeNames: { '#s': 'status' },
+            ExpressionAttributeValues: { ':used': 'used', ':active': 'active', ':now': now },
+          },
+        },
+        {
+          Update: {
+            TableName: PATIENT_TABLE,
+            Key: { patientId: tokenRecord.patientId },
+            UpdateExpression: 'SET #followups = :followups, #followupCount = :count, #latestFollowupAt = :now, #pendingCount = :pendingCount, #updatedAt = :now, #updatedBy = :updatedBy, #visits = list_append(if_not_exists(#visits, :emptyList), :visit), #version = :nextVersion',
+            ConditionExpression: patientCondition,
+            ExpressionAttributeNames: {
+              '#followups': 'followups', '#followupCount': 'followupCount', '#latestFollowupAt': 'latestFollowupAt',
+              '#pendingCount': 'followupQuestionnairePendingCount', '#updatedAt': 'updatedAt', '#updatedBy': 'updatedBy',
+              '#visits': 'visits', '#version': 'version',
+            },
+            ExpressionAttributeValues: {
+              ':followups': retainedFollowups, ':count': retainedFollowups.length, ':pendingCount': pendingCount,
+              ':now': now, ':updatedBy': 'patient-followup', ':emptyList': [], ':visit': [{ date: now, user: 'patient-followup', action: 'Patient follow-up questionnaire submitted' }],
+              ':expectedVersion': currentVersion, ':nextVersion': currentVersion + 1,
+            },
+          },
+        },
+      ],
+    }));
+  } catch (err) {
+    if (err.name === 'TransactionCanceledException' || err.name === 'ConditionalCheckFailedException') {
+      console.log(JSON.stringify({ action: 'followup_questionnaire_transaction_conflict', patientId: tokenRecord.patientId, timestamp: now }));
+      return fail(event, 'We could not save your responses. Please try again.', 409);
+    }
+    throw err;
+  }
+
+  console.log(JSON.stringify({ action: 'followup_questionnaire_submitted', patientId: tokenRecord.patientId, timestamp: now, questionnaireVersion: 1 }));
+  return ok(event, { success: true, message: 'Thank you! Your follow-up has been received.' });
 }

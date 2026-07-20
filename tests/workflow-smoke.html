@@ -16,6 +16,7 @@
 <div id="results"></div>
 <iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
 <iframe id="intakeFrame" src="../intake.html?testMode=workflow&amp;t=workflow-token"></iframe>
+<iframe id="followupIntakeFrame" src="../intake.html?testMode=workflow&amp;questionnaire=followup&amp;t=workflow-followup-token"></iframe>
 <script>
 let passed = 0;
 let failed = 0;
@@ -160,6 +161,9 @@ async function run() {
   await waitFor(() => doc.getElementById('intakeLinkValue').value.includes('/intake.html?t='), 'intake link generated');
   assert(doc.getElementById('intakeLinkValue').value.includes('/intake.html?t='), 'Generated link opens the scoped questionnaire rather than the clinician workspace');
   assert(!doc.getElementById('intakeLinkValue').value.includes('/patients'), 'Generated intake link contains no patient API or roster route');
+  click(win, '#btnGenerateFollowupLink');
+  await waitFor(() => doc.getElementById('intakeLinkExpiry').textContent.includes('Follow-up questionnaire'), 'follow-up link generated');
+  assert(doc.getElementById('intakeTokenList').textContent.includes('Follow-up'), 'Token history distinguishes follow-up questionnaires from new-patient intake');
   win.bootstrap.Modal.getInstance(doc.getElementById('intakeLinkModal')).hide();
 
   click(win, '#form button[type="submit"]');
@@ -323,6 +327,59 @@ async function run() {
   assert(!Object.prototype.hasOwnProperty.call(intakeSubmission.payload, 'age'), 'Patient intake does not ask for age that is already derived from chart DOB');
   assertEqual(intakeDoc.getElementById('weight').value, '', 'Submitted responses are cleared from the handed iPad');
   assert(!intakeWin.location.search.includes('t='), 'Used intake token is removed from the iPad address bar');
+
+  const followupFrame = document.getElementById('followupIntakeFrame');
+  await waitFor(() => followupFrame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'patient follow-up questionnaire');
+  const followupWin = followupFrame.contentWindow;
+  const followupDoc = followupFrame.contentDocument;
+  assertEqual(followupDoc.getElementById('questionnaireTitle').textContent.trim(), 'Sleep Follow-up Questionnaire', 'Returning patients receive a dedicated follow-up questionnaire');
+  assert(followupDoc.getElementById('intakeForm').classList.contains('d-none'), 'Follow-up visits do not repeat the full new-patient intake');
+  setValue(followupWin, '#fuVisitGoal', 'working');
+  chooseRadio(followupWin, 'fuOverallChange', 'better');
+  click(followupWin, 'input[name="fuConcern"][value="treatment"]');
+  click(followupWin, 'input[name="fuTreatment"][value="none"]');
+  assert(followupDoc.getElementById('fuActiveTreatmentDetails').classList.contains('d-none'), 'No-treatment follow-up skips irrelevant use, benefit, and barrier questions');
+  click(followupWin, 'input[name="fuTreatment"][value="pap"]');
+  click(followupWin, 'input[name="fuTreatment"][value="nasal"]');
+  setValue(followupWin, '#fuPrimaryTreatment', 'pap');
+  chooseRadio(followupWin, 'fuTreatmentUse', 'partial');
+  chooseRadio(followupWin, 'fuTreatmentBenefit', 'yes');
+  assert(followupDoc.getElementById('fuPapDetails').classList.contains('intake-conditional--visible'), 'PAP follow-up reveals focused PAP-use questions');
+  setValue(followupWin, '#fuPapMode', 'apap');
+  setValue(followupWin, '#fuPapNights', '6');
+  setValue(followupWin, '#fuPapHours', '6.5');
+  click(followupWin, 'input[name="fuTreatmentProblem"][value="mask-pressure-dryness"]');
+  for (let i = 1; i <= 8; i++) chooseRadio(followupWin, `fuEss${i}`, '1');
+  chooseRadio(followupWin, 'fuInsomniaCurrent', 'no');
+  assert(!followupDoc.getElementById('fuIsiDetails').classList.contains('intake-conditional--visible'), 'Follow-up skips the full insomnia scale when it is not clinically relevant');
+  chooseRadio(followupWin, 'fuNasalCurrent', 'yes');
+  assert(followupDoc.getElementById('fuNoseDetails').classList.contains('intake-conditional--visible'), 'Current nasal symptoms reveal the longitudinal NOSE scale');
+  for (let i = 1; i <= 5; i++) chooseRadio(followupWin, `fuNose${i}`, '2');
+  setValue(followupWin, '#fuWeight', '181');
+  chooseRadio(followupWin, 'fuDrowsyDriving', 'no');
+  click(followupWin, 'input[name="fuHealthChange"][value="none"]');
+  click(followupWin, '#followupSubmitBtn');
+  await waitFor(() => followupDoc.getElementById('stateThankYou').classList.contains('intake-state--active'), 'patient follow-up submitted');
+  const followupSubmission = followupWin.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();
+  assertEqual(followupSubmission.questionnaireType, 'followup', 'Scoped token selects the follow-up workflow');
+  assertEqual(followupSubmission.payload.pap.mode, 'apap', 'Follow-up captures current PAP modality');
+  assertEqual(followupSubmission.payload.isi, null, 'Irrelevant symptom scales are omitted rather than filled with false zeroes');
+  assertEqual(Object.keys(followupSubmission.payload.nose).length, 5, 'Relevant nasal symptom scale is captured longitudinally');
+
+  const pendingEntry = {
+    date: followupSubmission.payload.visitDate,
+    treatment: 'PAP', status: 'Active', response: 'Better', adherence: 'Partial use', nextAction: 'No action documented',
+    weight: 181, ess: 8, isi: null, nose: 50, patientSubmitted: true, reviewStatus: 'pending', schemaVersion: 2,
+    questionnaire: followupSubmission.payload,
+  };
+  win.__OSA_WORKFLOW_TEST__.injectPatientFollowup(patientId, pendingEntry);
+  await win.OSAWorkspace.openChart(patientId);
+  click(win, '#btnFollowups');
+  await waitFor(() => doc.getElementById('followupHistory').textContent.includes('Review needed'), 'pending follow-up review');
+  assert(doc.getElementById('followupHistory').textContent.includes('mask, pressure, leak, or dryness'), 'Clinician review names the treatment problem reported by the patient');
+  click(win, '.btn-review-patient-followup');
+  await waitFor(() => doc.getElementById('followupHistory').textContent.includes('Reviewed'), 'follow-up marked reviewed');
+  assertEqual(win.__OSA_WORKFLOW_TEST__.getPatient(patientId).followupQuestionnairePendingCount, 0, 'Clinician review clears the pending questionnaire count');
 }
 
 function render() {

@@ -140,6 +140,35 @@
     return new Date(`${value}T12:00:00`).toLocaleDateString();
   }
 
+  function followupLabels(values, labels) {
+    return (Array.isArray(values) ? values : [])
+      .filter(value => value !== 'none')
+      .map(value => labels[value] || value)
+      .join(', ');
+  }
+
+  const FOLLOWUP_CONCERN_LABELS = {
+    sleepiness: 'sleepiness or fatigue', snoring: 'bothersome snoring', breathing: 'breathing pauses or gasping',
+    insomnia: 'insomnia symptoms', nasal: 'nasal symptoms', treatment: 'treatment comfort or use', weight: 'weight or metabolic treatment',
+  };
+  const FOLLOWUP_PROBLEM_LABELS = {
+    'mask-pressure-dryness': 'mask, pressure, leak, or dryness', 'jaw-teeth': 'jaw, teeth, or oral-appliance discomfort',
+    stimulation: 'stimulation or device concern', nasal: 'nasal symptoms', medication: 'medication issue',
+    'sleep-program': 'sleep-program difficulty', recovery: 'procedure or recovery concern',
+  };
+  const FOLLOWUP_HEALTH_LABELS = {
+    'heart-lung-neurologic': 'new heart, lung, stroke, or neuromuscular diagnosis', hospitalization: 'hospital or emergency visit',
+    opioid: 'new regular opioid use', 'oxygen-support': 'new oxygen or nighttime breathing support', medication: 'important medication change',
+  };
+  const FOLLOWUP_TREATMENT_LABELS = {
+    pap: 'PAP', 'oral-appliance': 'oral appliance', hgns: 'hypoglossal nerve stimulation', positional: 'positional therapy',
+    nasal: 'nasal treatment', 'weight-glp1': 'weight or GLP-1 treatment', cbti: 'CBT-I', 'surgery-recovery': 'surgery or recovery',
+  };
+  const FOLLOWUP_GOAL_LABELS = {
+    routine: 'routine follow-up', results: 'review results', working: 'review treatment response', comfort: 'address comfort or side effects',
+    symptoms: 'address persistent or new symptoms', 'change-treatment': 'discuss a treatment change',
+  };
+
   function renderFollowups(patient) {
     const root = document.getElementById('followupHistory');
     if (!root) return;
@@ -153,19 +182,49 @@
         entry.weight != null ? `Weight ${entry.weight} lb` : '',
         entry.ess != null ? `ESS ${entry.ess}` : '',
         entry.isi != null ? `ISI ${entry.isi}` : '',
+        entry.nose != null ? `NOSE ${entry.nose}` : '',
         entry.ahi != null ? `AHI ${entry.ahi}` : '',
       ].filter(Boolean);
+      const questionnaire = entry.questionnaire || {};
+      const details = entry.patientSubmitted ? [
+        questionnaire.visitGoal ? `Visit goal: ${FOLLOWUP_GOAL_LABELS[questionnaire.visitGoal] || questionnaire.visitGoal}` : '',
+        followupLabels(questionnaire.treatments, FOLLOWUP_TREATMENT_LABELS) ? `Current treatments: ${followupLabels(questionnaire.treatments, FOLLOWUP_TREATMENT_LABELS)}` : '',
+        questionnaire.pap ? `PAP: ${(questionnaire.pap.mode || 'unsure').toUpperCase()}, ${questionnaire.pap.nightsPerWeek ?? 'unknown'} nights per week, ${questionnaire.pap.hoursPerNight ?? 'unknown'} hours per night` : '',
+        followupLabels(questionnaire.concerns, FOLLOWUP_CONCERN_LABELS) ? `Concerns: ${followupLabels(questionnaire.concerns, FOLLOWUP_CONCERN_LABELS)}` : '',
+        followupLabels(questionnaire.treatmentProblems, FOLLOWUP_PROBLEM_LABELS) ? `Treatment issues: ${followupLabels(questionnaire.treatmentProblems, FOLLOWUP_PROBLEM_LABELS)}` : '',
+        followupLabels(questionnaire.healthChanges, FOLLOWUP_HEALTH_LABELS) ? `Health changes: ${followupLabels(questionnaire.healthChanges, FOLLOWUP_HEALTH_LABELS)}` : '',
+        questionnaire.drowsyDriving === 'yes' ? 'Safety flag: drowsy driving' : '',
+      ].filter(Boolean) : [];
+      const reviewBadge = entry.patientSubmitted
+        ? `<span class="badge ${entry.reviewStatus === 'reviewed' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} ms-2">${entry.reviewStatus === 'reviewed' ? 'Reviewed' : 'Review needed'}</span>`
+        : '';
+      const reviewButton = entry.patientSubmitted && entry.reviewStatus !== 'reviewed'
+        ? `<button type="button" class="btn btn-outline-primary btn-sm btn-review-patient-followup" data-followup-id="${escapeHtml(entry.followupId)}">Mark reviewed</button>`
+        : '';
       return `
         <article class="precision-followup-row">
           <div class="precision-followup-date">${escapeHtml(formatFollowupDate(entry.date))}</div>
           <div>
-            <strong>${escapeHtml(entry.treatment)}</strong>
+            <strong>${escapeHtml(entry.treatment)}</strong>${reviewBadge}
             <div class="small text-muted">${escapeHtml(entry.status)} · ${escapeHtml(entry.response)} · ${escapeHtml(entry.adherence)}</div>
             ${metrics.length ? `<div class="precision-followup-metrics">${metrics.map((metric) => `<span>${escapeHtml(metric)}</span>`).join('')}</div>` : ''}
+            ${details.length ? `<div class="small mt-2">${details.map(detail => `<div>${escapeHtml(detail)}</div>`).join('')}</div>` : ''}
           </div>
-          <div class="precision-followup-action"><span>Next</span>${escapeHtml(entry.nextAction)}</div>
+          <div class="precision-followup-action"><span>Next</span>${escapeHtml(entry.nextAction)}${reviewButton}</div>
         </article>`;
     }).join('');
+    root.querySelectorAll('.btn-review-patient-followup').forEach(button => {
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const updatedPatient = await window.OSAWorkspace.reviewFollowupQuestionnaire(button.dataset.followupId);
+          renderFollowups(updatedPatient);
+        } catch (err) {
+          button.disabled = false;
+          window.alert(err.message || 'Could not mark this questionnaire as reviewed.');
+        }
+      });
+    });
   }
 
   function resetFollowupForm() {

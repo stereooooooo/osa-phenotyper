@@ -179,6 +179,7 @@
       reportSnapshotCount: 0,
       followups: [],
       followupCount: 0,
+      followupQuestionnairePendingCount: 0,
       isDeleted: false,
       deletedAt: null,
     };
@@ -250,6 +251,15 @@
         patient.latestFollowupAt = updatedAt;
       }
 
+      if (data && data.followupQuestionnaireReviewId !== undefined) {
+        const entry = (patient.followups || []).find(item => item.followupId === data.followupQuestionnaireReviewId && item.patientSubmitted);
+        if (!entry) throw new Error('Follow-up questionnaire not found.');
+        entry.reviewStatus = 'reviewed';
+        entry.reviewedAt = updatedAt;
+        entry.reviewedBy = actor();
+        patient.followupQuestionnairePendingCount = patient.followups.filter(item => item.patientSubmitted && item.reviewStatus !== 'reviewed').length;
+      }
+
       if (data && Object.prototype.hasOwnProperty.call(data, 'name')) patient.name = data.name || '';
       if (data && Object.prototype.hasOwnProperty.call(data, 'dob')) patient.dob = data.dob || '';
       if (data && Object.prototype.hasOwnProperty.call(data, 'mrn')) patient.mrn = data.mrn || '';
@@ -312,6 +322,9 @@
       persistTestState();
       return patientClone(patient);
     },
+    async reviewFollowupQuestionnaire(id, version, followupId) {
+      return workflowDb.updatePatient(id, { version, followupQuestionnaireReviewId: followupId });
+    },
     async restorePatient(id) {
       return workflowDb.updatePatient(id, { restore: true, version: getPatientOrThrow(id).version });
     },
@@ -334,14 +347,14 @@
       const exactNameMatches = patients.filter((patient) => String(patient.name || '').trim().toLowerCase() === needle);
       return (exactNameMatches.length ? exactNameMatches : patients).slice(0, 10);
     },
-    async createIntakeToken(patientId) {
+    async createIntakeToken(patientId, questionnaireType = 'intake') {
       getPatientOrThrow(patientId);
-      const rawToken = `workflow-intake-${intakeTokenSeq++}`;
+      const rawToken = `workflow-${questionnaireType}-${intakeTokenSeq++}`;
       const tokenHash = `workflow-hash-${rawToken}`;
       const createdAt = nowIso();
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-      intakeTokens.set(tokenHash, { tokenHash, patientId, status: 'active', createdAt, createdBy: actor(), expiresAt });
-      return { token: rawToken, expiresAt };
+      intakeTokens.set(tokenHash, { tokenHash, patientId, questionnaireType, status: 'active', createdAt, createdBy: actor(), expiresAt });
+      return { token: rawToken, questionnaireType, expiresAt };
     },
     async listIntakeTokens(patientId) {
       return [...intakeTokens.values()].filter(token => token.patientId === patientId).map(clone);
@@ -382,6 +395,18 @@
     },
     getPatient(id) {
       return patientClone(getPatientOrThrow(id));
+    },
+    injectPatientFollowup(id, entry) {
+      const patient = getPatientOrThrow(id);
+      const next = clone(entry);
+      next.followupId = next.followupId || `followup-${followupSeq++}`;
+      next.recordedAt = next.recordedAt || nowIso();
+      patient.followups = [...(patient.followups || []), next].slice(-20);
+      patient.followupCount = patient.followups.length;
+      patient.followupQuestionnairePendingCount = patient.followups.filter(item => item.patientSubmitted && item.reviewStatus !== 'reviewed').length;
+      patient.version += 1;
+      persistTestState();
+      return patientClone(patient);
     },
     clear() {
       store.clear();

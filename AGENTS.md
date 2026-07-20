@@ -90,8 +90,8 @@ Recommendations use tags (e.g., `CPAP`, `MAD-FAVORABLE`, `HNS`, `CBTI`) that map
 - **Magic-link tokens**: Staff generates a 72-hour, single-use token via "Intake Link" button → copies URL → sends to patient via HIPAA-compliant channel
 - **Token security**: 256-bit random tokens, SHA-256 hashed before DB storage, 5-attempt lockout, single-use enforcement
 - **Intake page** (`intake.html`): Standalone, zero third-party scripts, CSP headers, `Referrer-Policy: no-referrer`
-- **Separate Lambda** (`intake.mjs`) with restricted IAM: only `UpdateItem` on patient `formData` — cannot list, delete, or read full records
-- **Field mapping**: Intake Lambda maps patient responses to exact `formData` keys used by `app.js` and `populateForm()`. Boolean fields use `'on'`/`''` to match HTML checkbox behavior.
+- **Separate Lambda** (`intake.mjs`) with a least-privilege role scoped to the patient and questionnaire-token tables. It can `GetItem`, `UpdateItem`, and `TransactWriteItems` on those tables but cannot `Scan`, `Query`, `DeleteItem`, or access any other table. Application code limits patient reads and writes to the explicit attributes needed for intake merging or pending follow-up checkpoints.
+- **Field mapping**: Initial intake maps responses to exact `formData` keys used by `app.js` and `populateForm()`. Follow-up questionnaires append a `patientSubmitted` checkpoint with `reviewStatus: pending`; they must never overwrite baseline `formData` or alter clinical recommendations before clinician review. Boolean intake fields use `'on'`/`''` to match HTML checkbox behavior.
 - **Audit**: CloudTrail logs all DynamoDB data-plane events, CloudWatch logs retained 7 years (2557 days), no PHI in any log
 - **HIPAA**: Full compliance checklist in `docs/plans/staged-bubbling-cosmos.md`. All AWS services are HIPAA-eligible with active BAA.
 - **WAF**: Rate limiting (100 req/5min/IP) + AWS managed rule groups on intake endpoints

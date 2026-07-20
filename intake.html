@@ -63,7 +63,7 @@
   <!-- Header -->
   <div class="intake-header">
     <img src="capentlogo.svg" alt="Capital ENT &amp; Sinus Center" class="intake-header__logo">
-    <h1 class="intake-header__title">Sleep Health Questionnaire</h1>
+    <h1 class="intake-header__title" id="questionnaireTitle">Sleep Health Questionnaire</h1>
     <p class="intake-header__greeting">Welcome, <span id="greetingName"></span></p>
     <p class="intake-header__expiry" id="expiryNotice"></p>
     <p class="intake-header__runtime d-none" id="intakeRuntimeMeta"></p>
@@ -712,6 +712,211 @@
     </div><!-- /intake-container -->
   </form>
 
+  <form id="followupQuestionnaireForm" class="d-none" novalidate>
+    <div class="intake-container">
+      <section class="intake-section" data-followup-section="1">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 1 of 4</div>
+          <h2 class="intake-section__title">Since Your Last Visit</h2>
+        </div>
+        <div class="intake-section__body">
+          <div class="intake-field-group">
+            <label for="fuVisitGoal" class="intake-label intake-label--required">What is the most important reason for today's visit?</label>
+            <select id="fuVisitGoal" class="intake-select" required>
+              <option value="">Select</option>
+              <option value="routine">Routine sleep follow-up</option>
+              <option value="results">Review test or treatment results</option>
+              <option value="working">Check whether treatment is working</option>
+              <option value="comfort">Improve treatment comfort or use</option>
+              <option value="symptoms">Discuss new or persistent symptoms</option>
+              <option value="change-treatment">Consider a different treatment</option>
+            </select>
+            <div class="intake-error" id="fuVisitGoalError">Please select the main reason for today's visit.</div>
+          </div>
+          <div class="intake-question">
+            <div class="intake-question__text">Overall, how is your sleep compared with your last visit?</div>
+            <div class="intake-radio-group">
+              <input type="radio" name="fuOverallChange" value="much-better" id="fuChangeMuchBetter" class="intake-radio"><label for="fuChangeMuchBetter" class="intake-radio-label">Much better</label>
+              <input type="radio" name="fuOverallChange" value="better" id="fuChangeBetter" class="intake-radio"><label for="fuChangeBetter" class="intake-radio-label">Better</label>
+              <input type="radio" name="fuOverallChange" value="same" id="fuChangeSame" class="intake-radio"><label for="fuChangeSame" class="intake-radio-label">About the same</label>
+              <input type="radio" name="fuOverallChange" value="worse" id="fuChangeWorse" class="intake-radio"><label for="fuChangeWorse" class="intake-radio-label">Worse</label>
+              <input type="radio" name="fuOverallChange" value="much-worse" id="fuChangeMuchWorse" class="intake-radio"><label for="fuChangeMuchWorse" class="intake-radio-label">Much worse</label>
+            </div>
+            <div class="intake-error" id="fuOverallChangeError">Please select one answer.</div>
+          </div>
+          <div class="intake-question">
+            <div class="intake-question__text">What concerns would you like the care team to address today? Select all that apply.</div>
+            <div class="intake-checkbox-group intake-checkbox-group--two-column" id="fuConcerns">
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="sleepiness"><span class="intake-checkbox-text">Daytime sleepiness or fatigue</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="snoring"><span class="intake-checkbox-text">Loud or bothersome snoring</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="breathing"><span class="intake-checkbox-text">Pauses, choking, or gasping during sleep</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="insomnia"><span class="intake-checkbox-text">Trouble falling or staying asleep</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="nasal"><span class="intake-checkbox-text">Nasal blockage or mouth breathing</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="treatment"><span class="intake-checkbox-text">Treatment comfort, use, or side effects</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="weight"><span class="intake-checkbox-text">Weight or metabolic treatment</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuConcern" class="intake-checkbox" value="none"><span class="intake-checkbox-text">No specific concern</span></label>
+            </div>
+            <div class="intake-error" id="fuConcernsError">Please select at least one option.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="intake-section" data-followup-section="2">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 2 of 4</div>
+          <h2 class="intake-section__title">Current Treatment</h2>
+        </div>
+        <div class="intake-section__body">
+          <div class="intake-question">
+            <div class="intake-question__text">Which sleep treatments are you currently using? Select all that apply.</div>
+            <div class="intake-checkbox-group intake-checkbox-group--two-column" id="fuTreatments">
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="pap"><span class="intake-checkbox-text">PAP, CPAP, APAP, or BiPAP</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="oral-appliance"><span class="intake-checkbox-text">Oral appliance</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="hgns"><span class="intake-checkbox-text">Hypoglossal nerve stimulator</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="positional"><span class="intake-checkbox-text">Positional therapy</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="nasal"><span class="intake-checkbox-text">Nasal treatment</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="weight-glp1"><span class="intake-checkbox-text">Weight program or GLP-1 medication</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="cbti"><span class="intake-checkbox-text">Cognitive behavioral therapy for insomnia</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="surgery-recovery"><span class="intake-checkbox-text">Recovering from sleep or nasal surgery</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatment" class="intake-checkbox" value="none"><span class="intake-checkbox-text">Not currently using a sleep treatment</span></label>
+            </div>
+            <div class="intake-error" id="fuTreatmentsError">Please select at least one option.</div>
+          </div>
+          <div id="fuActiveTreatmentDetails">
+          <div class="intake-field-row intake-field-row--responsive">
+            <div class="intake-field-group">
+              <label for="fuPrimaryTreatment" class="intake-label intake-label--required">Which treatment is the main focus today?</label>
+              <select id="fuPrimaryTreatment" class="intake-select" required>
+                <option value="">Select</option>
+                <option value="pap">PAP</option>
+                <option value="oral-appliance">Oral appliance</option>
+                <option value="hgns">Nerve stimulation</option>
+                <option value="positional">Positional therapy</option>
+                <option value="nasal">Nasal treatment</option>
+                <option value="weight-glp1">Weight or GLP-1 treatment</option>
+                <option value="cbti">CBT-I</option>
+                <option value="surgery-recovery">Surgery or recovery</option>
+                <option value="none">No active treatment</option>
+              </select>
+              <div class="intake-error" id="fuPrimaryTreatmentError">Please select the main treatment focus.</div>
+            </div>
+          </div>
+          <div class="intake-question">
+            <div class="intake-question__text">How consistently are you using your main treatment?</div>
+            <div class="intake-radio-group">
+              <input type="radio" name="fuTreatmentUse" value="as-planned" id="fuUsePlanned" class="intake-radio"><label for="fuUsePlanned" class="intake-radio-label">As planned</label>
+              <input type="radio" name="fuTreatmentUse" value="partial" id="fuUsePartial" class="intake-radio"><label for="fuUsePartial" class="intake-radio-label">Some of the time</label>
+              <input type="radio" name="fuTreatmentUse" value="not-using" id="fuUseNone" class="intake-radio"><label for="fuUseNone" class="intake-radio-label">Not using it</label>
+              <input type="radio" name="fuTreatmentUse" value="not-applicable" id="fuUseNa" class="intake-radio"><label for="fuUseNa" class="intake-radio-label">Not applicable</label>
+            </div>
+            <div class="intake-error" id="fuTreatmentUseError">Please select one answer.</div>
+          </div>
+          <div class="intake-question">
+            <div class="intake-question__text">Has your main treatment helped your sleep, symptoms, or sleep apnea?</div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="fuTreatmentBenefit" value="yes" id="fuBenefitYes" class="intake-radio"><label for="fuBenefitYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="fuTreatmentBenefit" value="no" id="fuBenefitNo" class="intake-radio"><label for="fuBenefitNo" class="intake-radio-label">No</label>
+              <input type="radio" name="fuTreatmentBenefit" value="unsure" id="fuBenefitUnsure" class="intake-radio"><label for="fuBenefitUnsure" class="intake-radio-label">Not sure yet</label>
+              <input type="radio" name="fuTreatmentBenefit" value="not-applicable" id="fuBenefitNa" class="intake-radio"><label for="fuBenefitNa" class="intake-radio-label">Not applicable</label>
+            </div>
+            <div class="intake-error" id="fuTreatmentBenefitError">Please select one answer.</div>
+          </div>
+          <div class="intake-conditional" id="fuPapDetails">
+            <div class="intake-conditional__title">PAP details</div>
+            <div class="intake-field-row intake-field-row--responsive">
+              <div class="intake-field-group"><label for="fuPapMode" class="intake-label">Machine type</label><select id="fuPapMode" class="intake-select"><option value="">Select</option><option value="cpap">CPAP</option><option value="apap">APAP</option><option value="bipap">BiPAP</option><option value="unsure">Not sure</option></select></div>
+              <div class="intake-field-group"><label for="fuPapNights" class="intake-label">Nights used in a usual week</label><input id="fuPapNights" type="number" class="intake-input" min="0" max="7" inputmode="numeric"></div>
+              <div class="intake-field-group"><label for="fuPapHours" class="intake-label">Hours used on a usual night</label><input id="fuPapHours" type="number" class="intake-input" min="0" max="12" step="0.5" inputmode="decimal"></div>
+            </div>
+          </div>
+          <div class="intake-question">
+            <div class="intake-question__text">Are you having any treatment problems or side effects? Select all that apply.</div>
+            <div class="intake-checkbox-group intake-checkbox-group--two-column" id="fuTreatmentProblems">
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="mask-pressure-dryness"><span class="intake-checkbox-text">Mask, pressure, leak, or dryness</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="jaw-teeth"><span class="intake-checkbox-text">Jaw, teeth, bite, or oral-appliance discomfort</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="stimulation"><span class="intake-checkbox-text">Stimulation discomfort or device problem</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="nasal"><span class="intake-checkbox-text">Nasal blockage, drainage, or irritation</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="medication"><span class="intake-checkbox-text">Medication side effect, cost, or access</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="sleep-program"><span class="intake-checkbox-text">Difficulty following the sleep program</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="recovery"><span class="intake-checkbox-text">Procedure or recovery concern</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuTreatmentProblem" class="intake-checkbox" value="none"><span class="intake-checkbox-text">No treatment problem</span></label>
+            </div>
+            <div class="intake-error" id="fuTreatmentProblemsError">Please select at least one option.</div>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="intake-section" data-followup-section="3">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 3 of 4</div>
+          <h2 class="intake-section__title">How You Are Doing Now</h2>
+        </div>
+        <div class="intake-section__body">
+          <p class="intake-section__intro">Please answer the daytime sleepiness questions based on your usual life recently.</p>
+          <div id="fuEssQuestions"></div>
+          <div class="intake-score"><span>Sleepiness score:</span><span class="intake-score__value"><span id="fuEssScore">0</span> / 24</span></div>
+          <div class="intake-question">
+            <div class="intake-question__text">Are trouble falling asleep, staying asleep, or waking too early current concerns?</div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="fuInsomniaCurrent" value="yes" id="fuInsomniaYes" class="intake-radio"><label for="fuInsomniaYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="fuInsomniaCurrent" value="no" id="fuInsomniaNo" class="intake-radio"><label for="fuInsomniaNo" class="intake-radio-label">No</label>
+              <input type="radio" name="fuInsomniaCurrent" value="unsure" id="fuInsomniaUnsure" class="intake-radio"><label for="fuInsomniaUnsure" class="intake-radio-label">Not sure</label>
+            </div>
+            <div class="intake-error" id="fuInsomniaCurrentError">Please select one answer.</div>
+          </div>
+          <div class="intake-conditional" id="fuIsiDetails"><div class="intake-conditional__title">Current insomnia symptoms</div><div id="fuIsiQuestions"></div><div class="intake-score"><span>Insomnia score:</span><span class="intake-score__value"><span id="fuIsiScore">0</span> / 28</span></div></div>
+          <div class="intake-question">
+            <div class="intake-question__text">Is nasal blockage currently affecting your sleep, breathing, or treatment comfort?</div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="fuNasalCurrent" value="yes" id="fuNasalYes" class="intake-radio"><label for="fuNasalYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="fuNasalCurrent" value="no" id="fuNasalNo" class="intake-radio"><label for="fuNasalNo" class="intake-radio-label">No</label>
+              <input type="radio" name="fuNasalCurrent" value="unsure" id="fuNasalUnsure" class="intake-radio"><label for="fuNasalUnsure" class="intake-radio-label">Not sure</label>
+            </div>
+            <div class="intake-error" id="fuNasalCurrentError">Please select one answer.</div>
+          </div>
+          <div class="intake-conditional" id="fuNoseDetails"><div class="intake-conditional__title">Current nasal symptoms</div><div id="fuNoseQuestions"></div><div class="intake-score"><span>Nasal symptom score:</span><span class="intake-score__value"><span id="fuNoseScore">0</span> / 100</span></div></div>
+          <div class="intake-field-group" style="max-width:220px;"><label for="fuWeight" class="intake-label">Current weight in pounds (optional)</label><input id="fuWeight" type="number" class="intake-input" min="50" max="700" step="0.1" inputmode="decimal"></div>
+        </div>
+      </section>
+
+      <section class="intake-section" data-followup-section="4">
+        <div class="intake-section__header">
+          <div class="intake-section__step">Step 4 of 4</div>
+          <h2 class="intake-section__title">Safety and Health Changes</h2>
+        </div>
+        <div class="intake-section__body">
+          <div class="intake-question">
+            <div class="intake-question__text">In the past month, have you felt too sleepy to drive safely?</div>
+            <div class="intake-toggle-group">
+              <input type="radio" name="fuDrowsyDriving" value="yes" id="fuDriveYes" class="intake-radio"><label for="fuDriveYes" class="intake-radio-label">Yes</label>
+              <input type="radio" name="fuDrowsyDriving" value="no" id="fuDriveNo" class="intake-radio"><label for="fuDriveNo" class="intake-radio-label">No</label>
+              <input type="radio" name="fuDrowsyDriving" value="not-driving" id="fuDriveNa" class="intake-radio"><label for="fuDriveNa" class="intake-radio-label">I do not drive</label>
+            </div>
+            <div class="intake-error" id="fuDrowsyDrivingError">Please select one answer.</div>
+          </div>
+          <div class="intake-question">
+            <div class="intake-question__text">Since your last sleep visit, have any of these occurred? Select all that apply.</div>
+            <div class="intake-checkbox-group intake-checkbox-group--two-column" id="fuHealthChanges">
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuHealthChange" class="intake-checkbox" value="heart-lung-neurologic"><span class="intake-checkbox-text">New heart, lung, stroke, or nerve or muscle diagnosis</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuHealthChange" class="intake-checkbox" value="hospitalization"><span class="intake-checkbox-text">Hospitalization or emergency visit</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuHealthChange" class="intake-checkbox" value="opioid"><span class="intake-checkbox-text">Started regular opioid pain medicine</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuHealthChange" class="intake-checkbox" value="oxygen-support"><span class="intake-checkbox-text">Started oxygen or nighttime breathing support for another condition</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuHealthChange" class="intake-checkbox" value="medication"><span class="intake-checkbox-text">Important medication change</span></label>
+              <label class="intake-checkbox-wrap"><input type="checkbox" name="fuHealthChange" class="intake-checkbox" value="none"><span class="intake-checkbox-text">None of these</span></label>
+            </div>
+            <div class="intake-error" id="fuHealthChangesError">Please select at least one option.</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="intake-submit">
+        <button type="submit" class="intake-submit__btn" id="followupSubmitBtn">Submit My Follow-up</button>
+        <p class="intake-submit__note">Your care team will review these responses before making changes to your treatment.</p>
+      </div>
+    </div>
+  </form>
+
 </div><!-- /stateForm -->
 
 <script>
@@ -726,6 +931,8 @@
   const API_URL = (document.body.dataset.apiUrl || '').trim();
   const params = new URLSearchParams(window.location.search);
   const token = params.get('t');
+  const requestedWorkflowQuestionnaire = params.get('questionnaire') === 'followup' ? 'followup' : 'intake';
+  let activeQuestionnaireType = 'intake';
   const workflowTestMode = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
     && params.get('testMode') === 'workflow';
   const workflowTestState = window.__OSA_INTAKE_WORKFLOW_TEST__ = window.__OSA_INTAKE_WORKFLOW_TEST__ || {
@@ -816,7 +1023,9 @@
   const thankYouName   = document.getElementById('thankYouName');
   const expiryNotice   = document.getElementById('expiryNotice');
   const intakeForm     = document.getElementById('intakeForm');
+  const followupQuestionnaireForm = document.getElementById('followupQuestionnaireForm');
   const submitBtn      = document.getElementById('submitBtn');
+  const followupSubmitBtn = document.getElementById('followupSubmitBtn');
   const validationSummary = document.getElementById('validationSummary');
   const progressFill   = document.getElementById('progressFill');
   const progressLabel  = document.getElementById('progressLabel');
@@ -873,21 +1082,14 @@
 
   function showWorkflowToken() {
     if (window.history && window.history.replaceState) {
-      window.history.replaceState({}, document.title, window.location.pathname + '?testMode=workflow');
+      window.history.replaceState({}, document.title, window.location.pathname + '?testMode=workflow' + (requestedWorkflowQuestionnaire === 'followup' ? '&questionnaire=followup' : ''));
     }
     greetingName.textContent = 'Workflow Test';
     thankYouName.textContent = 'Workflow Test';
     expiryNotice.textContent = 'Workflow test token active on localhost.';
 
-    buildESS();
-    buildISI();
-    buildNOSE();
-    setupPriorTreatments();
-    setupSleepStudyHistory();
-    setupPreferences();
-    setupCardiovascular();
-    setupWeightMedicationHistory();
-    attachListeners();
+    activeQuestionnaireType = requestedWorkflowQuestionnaire;
+    setupActiveQuestionnaire();
     showState(stateForm);
   }
 
@@ -895,6 +1097,7 @@
     workflowTestState.submissions.push({
       submittedAt: new Date().toISOString(),
       token: token,
+      questionnaireType: activeQuestionnaireType,
       payload: payload
     });
     return { ok: true };
@@ -1074,6 +1277,139 @@
 
       container.appendChild(div);
     });
+  }
+
+  function buildFollowupScale(containerId, prefix, questions, maxValue, labels) {
+    var container = document.getElementById(containerId);
+    if (!container || container.children.length) return;
+    questions.forEach(function(question, index) {
+      var item = typeof question === 'string' ? { text: question, labels: labels } : question;
+      var num = index + 1;
+      var row = document.createElement('div');
+      row.className = 'intake-question';
+      row.setAttribute('data-' + prefix.toLowerCase(), num);
+
+      var questionText = document.createElement('div');
+      questionText.className = 'intake-question__text';
+      var number = document.createElement('span');
+      number.className = 'intake-question__number';
+      number.textContent = num;
+      questionText.appendChild(number);
+      questionText.appendChild(document.createTextNode(item.text));
+      row.appendChild(questionText);
+
+      var group = document.createElement('div');
+      group.className = 'intake-radio-group';
+      group.setAttribute('role', 'radiogroup');
+      for (var value = 0; value <= maxValue; value++) {
+        var id = prefix + num + '_' + value;
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = prefix + num;
+        input.value = value;
+        input.id = id;
+        input.className = 'intake-radio';
+        input.setAttribute('aria-label', value + ': ' + (item.labels || labels)[value]);
+        var label = document.createElement('label');
+        label.htmlFor = id;
+        label.className = 'intake-radio-label';
+        label.textContent = value;
+        group.appendChild(input);
+        group.appendChild(label);
+      }
+      row.appendChild(group);
+      var error = document.createElement('div');
+      error.className = 'intake-error';
+      error.id = prefix + num + 'Error';
+      error.textContent = 'Please answer this question.';
+      row.appendChild(error);
+      container.appendChild(row);
+    });
+  }
+
+  function setExclusiveCheckboxGroup(containerId, name) {
+    var container = document.getElementById(containerId);
+    container.addEventListener('change', function(event) {
+      if (event.target.name !== name) return;
+      var none = container.querySelector('input[value="none"]');
+      if (event.target === none && none.checked) {
+        container.querySelectorAll('input[name="' + name + '"]').forEach(function(input) {
+          if (input !== none) input.checked = false;
+        });
+      } else if (event.target.checked && none) {
+        none.checked = false;
+      }
+      updateCheckboxWrapStates(container);
+    });
+  }
+
+  function setupFollowupQuestionnaire() {
+    document.getElementById('questionnaireTitle').textContent = 'Sleep Follow-up Questionnaire';
+    document.title = 'Sleep Follow-up Questionnaire • Capital ENT';
+    document.getElementById('progressBar').classList.add('d-none');
+    intakeForm.classList.add('d-none');
+    followupQuestionnaireForm.classList.remove('d-none');
+
+    buildFollowupScale('fuEssQuestions', 'fuEss', ESS_QUESTIONS, 3, ['Would never doze', 'Slight chance', 'Moderate chance', 'High chance']);
+    buildFollowupScale('fuIsiQuestions', 'fuIsi', ISI_QUESTIONS, 4, []);
+    buildFollowupScale('fuNoseQuestions', 'fuNose', NOSE_QUESTIONS, 4, ['Not a problem', 'Very mild', 'Moderate', 'Fairly bad', 'Severe']);
+
+    ['fuConcerns', 'fuTreatments', 'fuTreatmentProblems', 'fuHealthChanges'].forEach(function(id) {
+      setExclusiveCheckboxGroup(id, id === 'fuConcerns' ? 'fuConcern' : id === 'fuTreatments' ? 'fuTreatment' : id === 'fuTreatmentProblems' ? 'fuTreatmentProblem' : 'fuHealthChange');
+    });
+
+    function selectedFollowupTreatments() {
+      return Array.from(document.querySelectorAll('input[name="fuTreatment"]:checked')).map(function(input) { return input.value; });
+    }
+    function syncFollowupBranches() {
+      var treatments = selectedFollowupTreatments();
+      var noActiveTreatment = treatments.indexOf('none') !== -1;
+      var insomniaInput = document.querySelector('input[name="fuInsomniaCurrent"]:checked');
+      var nasalInput = document.querySelector('input[name="fuNasalCurrent"]:checked');
+      var insomnia = insomniaInput ? insomniaInput.value : '';
+      var nasal = nasalInput ? nasalInput.value : '';
+      document.getElementById('fuActiveTreatmentDetails').classList.toggle('d-none', noActiveTreatment);
+      if (noActiveTreatment) {
+        document.getElementById('fuPrimaryTreatment').value = 'none';
+        document.getElementById('fuUseNa').checked = true;
+        document.getElementById('fuBenefitNa').checked = true;
+        document.querySelectorAll('input[name="fuTreatmentProblem"]').forEach(function(input) { input.checked = input.value === 'none'; });
+      } else if (document.getElementById('fuPrimaryTreatment').value === 'none') {
+        document.getElementById('fuPrimaryTreatment').value = '';
+        document.getElementById('fuUseNa').checked = false;
+        document.getElementById('fuBenefitNa').checked = false;
+        document.getElementById('fuTreatmentProblems').querySelector('input[value="none"]').checked = false;
+      }
+      updateCheckboxWrapStates(document.getElementById('fuTreatmentProblems'));
+      document.getElementById('fuPapDetails').classList.toggle('intake-conditional--visible', treatments.indexOf('pap') !== -1);
+      document.getElementById('fuIsiDetails').classList.toggle('intake-conditional--visible', insomnia === 'yes' || treatments.indexOf('cbti') !== -1);
+      document.getElementById('fuNoseDetails').classList.toggle('intake-conditional--visible', nasal === 'yes' || treatments.indexOf('nasal') !== -1);
+      updateFollowupScores();
+    }
+    followupQuestionnaireForm.addEventListener('change', syncFollowupBranches);
+    followupQuestionnaireForm.addEventListener('input', updateFollowupScores);
+    syncFollowupBranches();
+    attachFollowupSubmission();
+  }
+
+  function setupInitialQuestionnaire() {
+    document.getElementById('questionnaireTitle').textContent = 'Sleep Health Questionnaire';
+    intakeForm.classList.remove('d-none');
+    followupQuestionnaireForm.classList.add('d-none');
+    buildESS();
+    buildISI();
+    buildNOSE();
+    setupPriorTreatments();
+    setupSleepStudyHistory();
+    setupPreferences();
+    setupCardiovascular();
+    setupWeightMedicationHistory();
+    attachListeners();
+  }
+
+  function setupActiveQuestionnaire() {
+    if (activeQuestionnaireType === 'followup') setupFollowupQuestionnaire();
+    else setupInitialQuestionnaire();
   }
 
   // ── Running Score Calculators ───────────────────────────────
@@ -1987,6 +2323,189 @@
     return data;
   }
 
+  function updateFollowupScores() {
+    document.getElementById('fuEssScore').textContent = calcScore('fuEss', 8);
+    document.getElementById('fuIsiScore').textContent = calcScore('fuIsi', 7);
+    document.getElementById('fuNoseScore').textContent = calcScore('fuNose', 5) * 5;
+  }
+
+  function followupRadioValue(name) {
+    var selected = document.querySelector('input[name="' + name + '"]:checked');
+    return selected ? selected.value : '';
+  }
+
+  function followupCheckedValues(name) {
+    return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function(input) { return input.value; });
+  }
+
+  function followupScale(prefix, count) {
+    var values = {};
+    for (var i = 1; i <= count; i++) {
+      var selected = document.querySelector('input[name="' + prefix + i + '"]:checked');
+      values['q' + i] = selected ? Number(selected.value) : null;
+    }
+    return values;
+  }
+
+  function validateFollowupQuestionnaire() {
+    clearErrors();
+    var errors = [];
+    var firstError = null;
+    function requireSelect(id, errorId) {
+      var input = document.getElementById(id);
+      if (input.value) return;
+      showError(id, errorId);
+      errors.push(id);
+      if (!firstError) firstError = input;
+    }
+    function requireRadio(name, errorId) {
+      if (followupRadioValue(name)) return;
+      showRadioGroupError(name, errorId);
+      errors.push(name);
+      if (!firstError) firstError = document.querySelector('input[name="' + name + '"]');
+    }
+    function requireChecks(name, errorId) {
+      if (followupCheckedValues(name).length) return;
+      document.getElementById(errorId).classList.add('intake-error--visible');
+      errors.push(name);
+      if (!firstError) firstError = document.querySelector('input[name="' + name + '"]');
+    }
+    function requireScale(prefix, count) {
+      for (var i = 1; i <= count; i++) {
+        if (document.querySelector('input[name="' + prefix + i + '"]:checked')) continue;
+        showRadioGroupError(prefix + i, prefix + i + 'Error');
+        errors.push(prefix + i);
+        if (!firstError) firstError = document.querySelector('input[name="' + prefix + i + '"]');
+      }
+    }
+
+    requireSelect('fuVisitGoal', 'fuVisitGoalError');
+    requireRadio('fuOverallChange', 'fuOverallChangeError');
+    requireChecks('fuConcern', 'fuConcernsError');
+    requireChecks('fuTreatment', 'fuTreatmentsError');
+    requireSelect('fuPrimaryTreatment', 'fuPrimaryTreatmentError');
+    requireRadio('fuTreatmentUse', 'fuTreatmentUseError');
+    requireRadio('fuTreatmentBenefit', 'fuTreatmentBenefitError');
+    requireChecks('fuTreatmentProblem', 'fuTreatmentProblemsError');
+    requireScale('fuEss', 8);
+    requireRadio('fuInsomniaCurrent', 'fuInsomniaCurrentError');
+    requireRadio('fuNasalCurrent', 'fuNasalCurrentError');
+    requireRadio('fuDrowsyDriving', 'fuDrowsyDrivingError');
+    requireChecks('fuHealthChange', 'fuHealthChangesError');
+
+    var treatments = followupCheckedValues('fuTreatment');
+    var primary = document.getElementById('fuPrimaryTreatment').value;
+    if (primary && treatments.indexOf(primary) === -1) {
+      showError('fuPrimaryTreatment', 'fuPrimaryTreatmentError');
+      errors.push('fuPrimaryTreatment-selection');
+      if (!firstError) firstError = document.getElementById('fuPrimaryTreatment');
+    }
+    var isiNeeded = followupRadioValue('fuInsomniaCurrent') === 'yes' || treatments.indexOf('cbti') !== -1;
+    var noseNeeded = followupRadioValue('fuNasalCurrent') === 'yes' || treatments.indexOf('nasal') !== -1;
+    if (isiNeeded) requireScale('fuIsi', 7);
+    if (noseNeeded) requireScale('fuNose', 5);
+
+    var weight = document.getElementById('fuWeight').value;
+    if (weight !== '' && (Number(weight) < 50 || Number(weight) > 700)) {
+      document.getElementById('fuWeight').classList.add('intake-input--error');
+      errors.push('fuWeight');
+      if (!firstError) firstError = document.getElementById('fuWeight');
+    }
+    var papSelected = treatments.indexOf('pap') !== -1;
+    ['fuPapNights', 'fuPapHours'].forEach(function(id) {
+      var input = document.getElementById(id);
+      if (!papSelected || input.value === '') return;
+      var value = Number(input.value);
+      var max = id === 'fuPapNights' ? 7 : 12;
+      if (!Number.isFinite(value) || value < 0 || value > max) {
+        input.classList.add('intake-input--error');
+        errors.push(id);
+        if (!firstError) firstError = input;
+      }
+    });
+
+    if (errors.length) {
+      validationSummary.textContent = 'Please complete the highlighted follow-up questions before submitting.';
+      validationSummary.classList.add('intake-validation-summary--visible');
+      validationSummary.focus({ preventScroll: true });
+      firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return false;
+    }
+    return true;
+  }
+
+  function collectFollowupQuestionnaire() {
+    var treatments = followupCheckedValues('fuTreatment');
+    var includeIsi = followupRadioValue('fuInsomniaCurrent') === 'yes' || treatments.indexOf('cbti') !== -1;
+    var includeNose = followupRadioValue('fuNasalCurrent') === 'yes' || treatments.indexOf('nasal') !== -1;
+    var weightValue = document.getElementById('fuWeight').value;
+    var papNights = document.getElementById('fuPapNights').value;
+    var papHours = document.getElementById('fuPapHours').value;
+    return {
+      visitDate: new Date().toISOString().slice(0, 10),
+      visitGoal: document.getElementById('fuVisitGoal').value,
+      overallChange: followupRadioValue('fuOverallChange'),
+      concerns: followupCheckedValues('fuConcern'),
+      treatments: treatments,
+      primaryTreatment: document.getElementById('fuPrimaryTreatment').value,
+      treatmentUse: followupRadioValue('fuTreatmentUse'),
+      treatmentBenefit: followupRadioValue('fuTreatmentBenefit'),
+      treatmentProblems: followupCheckedValues('fuTreatmentProblem'),
+      pap: treatments.indexOf('pap') !== -1 ? {
+        mode: document.getElementById('fuPapMode').value || 'unsure',
+        nightsPerWeek: papNights === '' ? null : Number(papNights),
+        hoursPerNight: papHours === '' ? null : Number(papHours)
+      } : null,
+      ess: followupScale('fuEss', 8),
+      insomniaCurrent: followupRadioValue('fuInsomniaCurrent'),
+      isi: includeIsi ? followupScale('fuIsi', 7) : null,
+      nasalCurrent: followupRadioValue('fuNasalCurrent'),
+      nose: includeNose ? followupScale('fuNose', 5) : null,
+      weightLbs: weightValue === '' ? null : Number(weightValue),
+      drowsyDriving: followupRadioValue('fuDrowsyDriving'),
+      healthChanges: followupCheckedValues('fuHealthChange')
+    };
+  }
+
+  function attachFollowupSubmission() {
+    followupQuestionnaireForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      if (!validateFollowupQuestionnaire()) return;
+      followupSubmitBtn.disabled = true;
+      followupSubmitBtn.textContent = 'Submitting...';
+      try {
+        var payload = collectFollowupQuestionnaire();
+        if (workflowTestMode) {
+          await submitWorkflowPayload(payload);
+        } else {
+          var response = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) {
+            var errorData;
+            try { errorData = await response.json(); } catch (_) { errorData = {}; }
+            throw new Error(errorData.error || 'Submission failed');
+          }
+        }
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        followupQuestionnaireForm.reset();
+        document.querySelectorAll('.intake-conditional--visible').forEach(function(element) {
+          element.classList.remove('intake-conditional--visible');
+        });
+        showState(stateThankYou);
+      } catch (error) {
+        followupSubmitBtn.disabled = false;
+        followupSubmitBtn.textContent = 'Submit My Follow-up';
+        validationSummary.textContent = 'Something went wrong. Please try again or call (512) 339-4040 for help.';
+        validationSummary.classList.add('intake-validation-summary--visible');
+      }
+    });
+  }
+
   // ── Expiry Display ─────────────────────────────────────────
   function displayExpiry(expiresAt) {
     if (!expiresAt) return;
@@ -2044,15 +2563,8 @@
       thankYouName.textContent = data.firstName || '';
       displayExpiry(data.expiresAt);
 
-      buildESS();
-      buildISI();
-      buildNOSE();
-      setupPriorTreatments();
-      setupSleepStudyHistory();
-      setupPreferences();
-      setupCardiovascular();
-      setupWeightMedicationHistory();
-      attachListeners();
+      activeQuestionnaireType = data.questionnaireType === 'followup' ? 'followup' : 'intake';
+      setupActiveQuestionnaire();
 
       showState(stateForm);
     } catch (err) {

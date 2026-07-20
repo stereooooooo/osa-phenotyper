@@ -208,10 +208,11 @@
       <span class="text-muted small" id="patientDobDisplay"></span>
       <span class="text-muted small" id="patientMrnDisplay"></span>
       <span id="intakeStatusBadge" class="d-none"></span>
+      <span id="followupReviewBadge" class="d-none"></span>
       <span id="lvefNeededBadge" class="d-none"></span>
       <span class="ms-auto d-flex align-items-center gap-2 flex-wrap justify-content-end">
         <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnIntakeLink" title="Open a patient-specific questionnaire on the clinic iPad">
-          <i class="bi bi-tablet"></i> iPad Intake
+          <i class="bi bi-tablet"></i> iPad Questionnaire
         </button>
         <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnReviewIntake" title="Review patient intake fields that conflict with the chart">
           <i class="bi bi-clipboard2-check"></i> Review Intake
@@ -528,6 +529,7 @@
             <div class="col-12"><hr class="my-1"></div>
             <div class="col-12">
               <div class="small fw-semibold text-muted text-uppercase">Sleep study selection risks <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="AASM recommends in-lab polysomnography rather than home testing when certain conditions could make home testing incomplete or unsafe to rely on. Patient answers should be verified clinically."></i></div>
+              <div class="small text-muted mt-1">The first three answers may come from the patient questionnaire and require clinical verification. The checkboxes below are clinician assessments.</div>
             </div>
             <div class="col-md-4">
               <label class="form-label small mb-1" for="chronicOpioidUse">Regular opioid medicine use</label>
@@ -972,14 +974,17 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="intakeLinkLabel"><i class="bi bi-tablet"></i> Clinic iPad Intake</h5>
+        <h5 class="modal-title" id="intakeLinkLabel"><i class="bi bi-tablet"></i> Clinic iPad Questionnaire</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="alert alert-info small">
           Generate this on a staff workstation, then open the link on the clinic iPad. Do not sign the clinician workspace into an iPad that will be handed to a patient. The link is patient-specific, single-use, and expires after 72 hours.
         </div>
-        <button type="button" class="btn btn-primary" id="btnGenerateIntakeLink"><i class="bi bi-link-45deg"></i> Generate Intake Link</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary" id="btnGenerateIntakeLink"><i class="bi bi-person-plus"></i> New Patient Intake</button>
+          <button type="button" class="btn btn-outline-primary" id="btnGenerateFollowupLink"><i class="bi bi-arrow-repeat"></i> Follow-up Questionnaire</button>
+        </div>
         <div id="intakeLinkResult" class="d-none mt-3">
           <label class="form-label small fw-semibold" for="intakeLinkValue">Patient-specific link</label>
           <div class="input-group">
@@ -2123,6 +2128,10 @@ function applyRuntimeMeta(meta) {
       ? patient.followupCount
       : (Array.isArray(patient.followups) ? patient.followups.length : 0);
     followupButton.innerHTML = `<i class="bi bi-arrow-repeat"></i> Follow-ups${followupCount ? ` (${followupCount})` : ''}`;
+    const pendingFollowups = Number(patient.followupQuestionnairePendingCount || 0);
+    const followupReviewBadge = document.getElementById('followupReviewBadge');
+    followupReviewBadge.className = pendingFollowups ? 'badge bg-warning text-dark' : 'd-none';
+    followupReviewBadge.textContent = pendingFollowups ? `Follow-up Review Needed (${pendingFollowups})` : '';
   }
 
   function updateLvefFollowupState() {
@@ -2723,8 +2732,10 @@ function applyRuntimeMeta(meta) {
       const revoke = token.status === 'active'
         ? `<button type="button" class="btn btn-outline-danger btn-sm btn-revoke-intake" data-hash="${escHtml(token.tokenHash)}">Revoke</button>`
         : '';
+      const typeLabel = token.questionnaireType === 'followup' ? 'Follow-up' : 'New intake';
       return `<div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2 gap-2">
         <div><span class="badge bg-${statusClass}">${escHtml(token.status)}</span>
+        <span class="badge bg-light text-dark ms-1">${typeLabel}</span>
         <span class="ms-2">Created ${escHtml(new Date(token.createdAt).toLocaleString())}</span></div>${revoke}</div>`;
     }).join('');
     container.querySelectorAll('.btn-revoke-intake').forEach(button => {
@@ -2753,23 +2764,31 @@ function applyRuntimeMeta(meta) {
     }
   });
 
-  document.getElementById('btnGenerateIntakeLink').addEventListener('click', async (event) => {
-    const button = event.currentTarget;
+  async function generateQuestionnaireLink(questionnaireType, button) {
     if (!currentPatientId) return;
     button.disabled = true;
     try {
-      const result = await OSADatabase.createIntakeToken(currentPatientId);
+      const result = await OSADatabase.createIntakeToken(currentPatientId, questionnaireType);
       const appBase = String(AWS_CONFIG.appUrl || window.location.origin).replace(/\/$/, '');
       const link = `${appBase}/intake.html?t=${encodeURIComponent(result.token)}`;
       document.getElementById('intakeLinkValue').value = link;
-      document.getElementById('intakeLinkExpiry').textContent = `Expires ${new Date(result.expiresAt).toLocaleString()}. It becomes unusable immediately after submission.`;
+      const label = questionnaireType === 'followup' ? 'Follow-up questionnaire' : 'New patient intake';
+      document.getElementById('intakeLinkExpiry').textContent = `${label}. Expires ${new Date(result.expiresAt).toLocaleString()}. It becomes unusable immediately after submission.`;
       document.getElementById('intakeLinkResult').classList.remove('d-none');
       renderIntakeTokens(await OSADatabase.listIntakeTokens(currentPatientId));
     } catch (err) {
-      alert('Could not generate intake link: ' + err.message);
+      alert('Could not generate questionnaire link: ' + err.message);
     } finally {
       button.disabled = false;
     }
+  }
+
+  document.getElementById('btnGenerateIntakeLink').addEventListener('click', async (event) => {
+    await generateQuestionnaireLink('intake', event.currentTarget);
+  });
+
+  document.getElementById('btnGenerateFollowupLink').addEventListener('click', async (event) => {
+    await generateQuestionnaireLink('followup', event.currentTarget);
   });
 
   document.getElementById('btnCopyIntakeLink').addEventListener('click', async () => {
@@ -2821,6 +2840,15 @@ function applyRuntimeMeta(meta) {
     async addFollowup(entry) {
       if (!currentPatientId || !currentPatientRecord) throw new Error('Save or open a patient chart first.');
       const patient = await OSADatabase.addFollowup(currentPatientId, currentPatientVersion, entry);
+      currentPatientRecord = patient;
+      currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
+      updatePatientBar(patient);
+      document.dispatchEvent(new CustomEvent('osa:patient-updated', { detail: { patient } }));
+      return patient;
+    },
+    async reviewFollowupQuestionnaire(followupId) {
+      if (!currentPatientId || !currentPatientRecord) throw new Error('Save or open a patient chart first.');
+      const patient = await OSADatabase.reviewFollowupQuestionnaire(currentPatientId, currentPatientVersion, followupId);
       currentPatientRecord = patient;
       currentPatientVersion = Number.isInteger(patient.version) ? patient.version : currentPatientVersion;
       updatePatientBar(patient);

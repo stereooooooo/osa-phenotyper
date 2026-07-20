@@ -1576,3 +1576,15 @@
 - both the established PAP plan and the new HGNS-only plan remain within the accepted one-to-two-page rendered PDF range
 - the complete headless suite passed **1,845 assertions**
 **Finding:** fixed. The HGNS-only handout now matches the detail and visual hierarchy of the other major plan modules while preserving device-specific uncertainty and clinician control. No clinical threshold or eligibility rule changed. Clinician review and deployment remain pending.
+
+### Tests 215-219: Returning-patient iPad follow-up
+**Status:** local workflow, security-boundary, branching, clinician-review, syntax, lint, and full regression testing complete
+**Result:** passed after adding the dedicated follow-up workflow ✅
+**Verification:**
+- the initial questionnaire directly captures regular opioid use, neuromuscular breathing weakness, and hypoventilation concern; the three interpretive sleep-study-selection checkboxes remain explicitly clinician assessments
+- staff can generate separate single-use links for a new-patient intake or a follow-up questionnaire without signing the clinician workspace into the handed iPad
+- the follow-up fast path does not repeat demographics or prior-treatment history and always captures ESS, treatment use, benefit, barriers, safety changes, and the primary goal for the visit
+- PAP fields appear only for current PAP; ISI and NOSE are repeated only when corresponding symptoms or treatments make them relevant; omitted scales remain null rather than becoming false zeroes
+- a patient submission appends a structured checkpoint with Review needed status, does not overwrite baseline chart fields, and can be marked reviewed by an authorized clinician
+- the complete headless suite passed **1,859 assertions**
+**Finding:** implemented locally. This is a workflow and longitudinal-measurement change, not a new diagnostic or treatment rule. Clinician review and deployment remain pending.

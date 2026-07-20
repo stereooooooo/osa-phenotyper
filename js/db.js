@@ -83,6 +83,13 @@ const OSADatabase = (function () {
     });
   }
 
+  async function reviewFollowupQuestionnaire(id, version, followupId) {
+    return updatePatient(id, {
+      version,
+      followupQuestionnaireReviewId: followupId,
+    });
+  }
+
   async function restorePatient(id) {
     return apiFetch(`/patients/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -101,10 +108,10 @@ const OSADatabase = (function () {
     return apiFetch(`/patients/search?q=${encodeURIComponent(query)}${archivedParam}`);
   }
 
-  async function createIntakeToken(patientId) {
+  async function createIntakeToken(patientId, questionnaireType = 'intake') {
     return apiFetch('/intake-tokens', {
       method: 'POST',
-      body: JSON.stringify({ patientId }),
+      body: JSON.stringify({ patientId, questionnaireType }),
     });
   }
 
@@ -197,6 +204,7 @@ const OSADatabase = (function () {
     updatePatient,
     addFollowup,
     reviewIntakeChanges,
+    reviewFollowupQuestionnaire,
     restorePatient,
     deletePatient,
     searchPatients,

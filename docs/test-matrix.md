@@ -434,3 +434,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 |---|----------|----------|
 | 213 | Clinician-confirmed HGNS-only evaluation for a patient without an implant | Render a full nerve-stimulation module that explains why the option is being evaluated, reviews PAP history, study, health, anatomy, and device requirements, makes DISE or updated testing conditional on the selected device and clinician question, and explicitly avoids promising eligibility or success. The generic supporting-action fallback should be absent. |
 | 214 | Existing implanted HGNS with reported benefit, no benefit, or severe residual oxygen findings | Use the existing-device branch rather than new-candidacy instructions. Confirm device, activation, use, programming, and barriers; call for clinician-selected objective treatment-effect verification; make testing prompt when severe residual breathing or oxygen findings require timely confirmation; do not repeat DISE or eligibility claims. |
+
+### Group 48: Returning-Patient iPad Follow-up
+| # | Name | Key Features |
+|---|---|---|
+| 215 | Sleep-study risk source boundary | Initial intake directly captures regular opioid use, neuromuscular respiratory weakness, and hypoventilation concern. Severe insomnia likely to compromise HSAT, suspected night-to-night variability, and need for exact severity remain clinician assessments. |
+| 216 | State-aware PAP and nasal follow-up | Current PAP and nasal treatment reveal focused PAP-use inputs and the NOSE scale, while treatment benefit, barriers, ESS, weight, and safety changes are captured without repeating the full new-patient history. |
+| 217 | Uncomplicated stable follow-up counterexample | A returning patient without current insomnia or nasal symptoms does not receive ISI or NOSE, and omitted scales remain null rather than being stored as false zeroes. |
+| 218 | Pending clinician-review boundary | A patient-submitted follow-up appends a versioned checkpoint marked Review needed. It cannot overwrite baseline form data, select a treatment, or alter patient instructions before clinician review. |
+| 219 | Single-use questionnaire separation | Staff can generate either a new-patient or follow-up token from the same chart. Token history identifies the questionnaire type, and both remain patient-specific, single-use, and time-limited without exposing the clinician workspace or roster. |

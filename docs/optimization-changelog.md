@@ -39,6 +39,14 @@ single-use intake link and receive clinician-approved reports rather than access
   review, conditional testing, procedure and follow-up discussion, and uncertainty without promising
   candidacy or response. Existing implants receive a distinct use, programming, barrier, and
   objective-efficacy review pathway instead of new-device candidacy instructions.
+- A distinct returning-patient iPad questionnaire using the existing patient-specific, 72-hour,
+  single-use link boundary. It captures visit goal, treatment use and benefit, barriers, safety
+  changes, ESS, and conditional ISI and NOSE without repeating the full intake. Submissions append
+  a pending longitudinal checkpoint and cannot overwrite baseline chart data or affect clinical
+  recommendations before clinician review.
+- Clear source labeling in Sleep Study Selection Risks: opioid, neuromuscular, and hypoventilation
+  answers may originate from the patient questionnaire and require verification; insomnia-related
+  HSAT adequacy, suspected night variability, and exact-severity need remain clinician assessments.
 
 ### Changed — clinical evidence calibration
 - Separated event-linked hypoxic burden from ODI, T90, nadir, and area below 90%. HB remains a

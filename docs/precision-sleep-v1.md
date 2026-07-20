@@ -2,7 +2,7 @@
 
 ## Product decision
 
-V1 is a clinician-controlled operating layer for an OSA-centered Precision Sleep pilot. It keeps the validated phenotyping and report engine, adds a qualitative six-domain profile, structured longitudinal follow-ups, and a narrowly scoped single-use patient intake questionnaire. It does not add patient accounts or a patient portal, replace the EHR, or launch every future sleep service.
+V1 is a clinician-controlled operating layer for an OSA-centered Precision Sleep pilot. It keeps the validated phenotyping and report engine, adds a qualitative six-domain profile, structured longitudinal follow-ups, and narrowly scoped single-use new-patient and follow-up questionnaires. It does not add patient accounts or a patient portal, replace the EHR, or launch every future sleep service. Patient-submitted follow-ups remain pending until clinician review and do not overwrite baseline chart data.
 
 ## Interface thesis
 
