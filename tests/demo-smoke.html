@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OSA Phenotyper - Inspire Demo Smoke Suite</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
+  .pass { color: #198754; } .fail { color: #dc3545; }
+  .summary { padding: 1rem; border-radius: 8px; background: #fff; }
+  pre { background: #fff; padding: .5rem; border: 1px solid #dee2e6; margin: .25rem 0; }
+  iframe { position: absolute; left: -9999px; width: 1440px; height: 2400px; border: 0; }
+</style>
+</head>
+<body>
+<h1>Inspire Demo Smoke Suite</h1>
+<div id="results"></div>
+<iframe id="appFrame" src="../index.html?demo=inspire"></iframe>
+<iframe id="intakeFrame" src="../intake.html?demo=inspire&amp;t=demo-token"></iframe>
+<script>
+let passed = 0;
+let failed = 0;
+const results = [];
+
+function assert(condition, message) {
+  if (condition) passed++; else failed++;
+  results.push({ pass: Boolean(condition), message });
+}
+
+function assertEqual(actual, expected, message) {
+  assert(actual === expected, `${message}${actual === expected ? '' : ` (got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)})`}`);
+}
+
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+async function waitFor(predicate, label, timeout = 12000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    try { const value = predicate(); if (value) return value; } catch (_) {}
+    await wait(50);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+
+function click(win, selector) {
+  const element = win.document.querySelector(selector);
+  if (!element) throw new Error(`Missing element ${selector}`);
+  element.click();
+}
+
+async function run() {
+  const appFrame = document.getElementById('appFrame');
+  await waitFor(() => appFrame.contentWindow?.OSAInspireDemo?.getMainPatientId(), 'synthetic patient seed');
+  const appWin = appFrame.contentWindow;
+  const appDoc = appFrame.contentDocument;
+  appWin.alert = () => {};
+  appWin.confirm = () => true;
+
+  assertEqual(appDoc.getElementById('runtimeEnvBadge').textContent.trim(), 'INSPIRE DEMO', 'Demo runtime is unmistakably labeled');
+  assert(appDoc.getElementById('runtimeEnvironmentBanner').textContent.includes('Synthetic'), 'Demo explains that all patient data is synthetic and local');
+  assert(!!appDoc.getElementById('osaDemoGuide'), 'Demo guide presents the patient, staff, clinician, and report sequence');
+  assertEqual(appDoc.getElementById('patientName').value, 'LEE, Morgan', 'Demo opens the primary synthetic patient chart');
+  assertEqual(appWin.__OSA_WORKFLOW_TEST__.listPatients(false).length, 2, 'Demo seeds a main journey and a separate safety counterexample');
+
+  click(appWin, '#btnIntakeLink');
+  await waitFor(() => appDoc.getElementById('intakeLinkModal').classList.contains('show'), 'questionnaire modal');
+  click(appWin, '#btnGenerateIntakeLink');
+  await waitFor(() => appDoc.getElementById('intakeLinkValue').value.includes('demo=inspire'), 'demo questionnaire link');
+  assert(appDoc.getElementById('intakeLinkValue').value.includes('demo=inspire'), 'Generated questionnaire link stays in synthetic demo mode');
+  assert(!appDoc.getElementById('btnOpenIntakeLink').classList.contains('d-none'), 'Demo can open the real questionnaire directly');
+  appWin.bootstrap.Modal.getInstance(appDoc.getElementById('intakeLinkModal')).hide();
+
+  click(appWin, '[data-demo-action="prep"]');
+  assertEqual(appWin.OSAWorkspaceView.getMode(), 'prep', 'Demo guide switches to the staff preparation workspace');
+  click(appWin, '#btnDemoWatchpat');
+  await waitFor(() => appDoc.getElementById('pdfReviewModal').classList.contains('show'), 'synthetic WatchPAT review');
+  assertEqual(appDoc.querySelectorAll('#pdfReviewTable tbody tr').length, 21, 'Synthetic WatchPAT import uses the real field-review table');
+  click(appWin, '#btnApplyPdf');
+  assertEqual(appDoc.querySelector('[name="pahi"]').value, '28', 'Approved synthetic WatchPAT values use the real form mapping');
+
+  const intakeFrame = document.getElementById('intakeFrame');
+  await waitFor(() => intakeFrame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'demo questionnaire');
+  const intakeWin = intakeFrame.contentWindow;
+  const intakeDoc = intakeFrame.contentDocument;
+  assert(intakeDoc.getElementById('intakeRuntimeBanner').textContent.includes('browser memory only'), 'Questionnaire explains demo privacy boundary');
+  assert(!!intakeDoc.getElementById('btnFillDemoAnswers'), 'Questionnaire offers a localhost-only answer helper');
+  click(intakeWin, '#btnFillDemoAnswers');
+  assertEqual(intakeDoc.getElementById('visitReason').value, 'inspire', 'Answer helper creates an Inspire discussion scenario');
+  assert(intakeDoc.querySelector('input[name="prefInspire"]').checked, 'Answer helper preserves the patient preference signal');
+  assert(intakeDoc.getElementById('progressLabel').textContent.includes('8 of 8'), 'Answer helper completes every required questionnaire section');
+  click(intakeWin, '#submitBtn');
+  await waitFor(() => intakeDoc.getElementById('stateThankYou').classList.contains('intake-state--active'), 'demo questionnaire submission');
+  const submission = intakeWin.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();
+  assertEqual(submission.payload.cpapHistory.retryWilling, 'No', 'Synthetic patient reports CPAP failure without willingness to retry');
+
+  appWin.postMessage({
+    type: 'osa-demo-intake-submitted',
+    token: 'demo-token',
+    questionnaireType: 'intake',
+    payload: submission.payload,
+  }, window.location.origin);
+  await waitFor(() => appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId()).intakePendingFieldCount > 0, 'intake pending review');
+  assertEqual(appWin.OSAWorkspaceView.getMode(), 'prep', 'Submitted questionnaire returns the journey to staff review');
+  assert(appDoc.getElementById('osaDemoStatus').textContent.includes('Questionnaire received'), 'Demo guide advances after questionnaire submission');
+
+  click(appWin, '[data-demo-action="counterexample"]');
+  await waitFor(() => appDoc.getElementById('patientName').value === 'DEMO, Safety Boundary', 'safety counterexample');
+  assertEqual(appDoc.querySelector('[name="vPat"]').value, 'Concentric', 'Safety counterexample carries complete concentric collapse data');
+}
+
+function render() {
+  const container = document.getElementById('results');
+  const summary = document.createElement('div');
+  summary.className = 'summary';
+  summary.innerHTML = `<strong>${passed} passed</strong>, <strong>${failed} failed</strong>`;
+  container.appendChild(summary);
+  results.forEach(result => {
+    const row = document.createElement('pre');
+    row.className = result.pass ? 'pass' : 'fail';
+    row.textContent = `${result.pass ? 'PASS' : 'FAIL'}: ${result.message}`;
+    container.appendChild(row);
+  });
+}
+
+(async () => {
+  try { await run(); }
+  catch (error) { failed++; results.push({ pass: false, message: `Unhandled demo-suite error: ${error.message}` }); }
+  render();
+})();
+</script>
+</body>
+</html>

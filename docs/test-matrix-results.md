@@ -1,9 +1,26 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** July 20, 2026
-**Latest tested build:** `e12734f`, deployed to the clinician-only clinical pilot for acceptance testing
-**Latest complete result:** 1,910 headless assertions passed with no failures
+**Latest smoke test:** August 12, 2026
+**Latest tested build:** local meeting candidate on `codex/precision-sleep-v1` (not deployed)
+**Latest complete result:** 2,046 headless assertions passed with no failures
 
 ---
+
+## 2026-08-12 Inspire meeting demo and presentation hierarchy
+
+**Status at review:** local implementation and complete regression verification finished. No deployment was requested or performed.
+
+**Result:** passed 2,046 headless assertions with no failures.
+
+**Verified behavior:**
+
+- a localhost-only synthetic demo covers the real patient questionnaire, pending staff review, verified synthetic WatchPAT import, clinician review, clinician guide, Today's Sleep Plan, Full Sleep Profile, and an Inspire candidacy counterexample
+- demo records remain in browser memory and both patient and clinician surfaces clearly state the synthetic privacy boundary
+- the patient reports lead with a plain-language finding and next step before terminology and supporting detail without removing existing clinical content
+- the clinician view and clinician guide lead with treatment priorities, missing information, safety constraints, and guardrails before the complete supporting evidence
+- the clinician guide supports browser preview and download
+- output-parity matrices, evidence documentation, intake branching, parser integration, PAP compliance, the synthetic demo, and patient and clinician PDF pagination all pass
+- visual inspection of the generated two-page patient plan and three-page clinician guide found no clipped or overlapping content
+- no clinical threshold, phenotype rule, treatment rank, candidacy rule, diagnostic route, or questionnaire content changed
 
 ## 2026-07-19 Non-PAP treatment-response calibration
 

@@ -27,6 +27,12 @@ const OSAPdfExport = (() => {
     tmp.querySelectorAll('details').forEach(d => {
       d.setAttribute('open', '');
     });
+    // Clinician detail sections are collapsed in the interactive UI, but the
+    // guide PDF includes them. Expand them before measuring page boundaries so
+    // the live DOM and html2canvas clone have identical content geometry.
+    tmp.querySelectorAll('.collapse').forEach(section => {
+      section.classList.add('show');
+    });
     return tmp.innerHTML;
   }
 
@@ -74,7 +80,7 @@ const OSAPdfExport = (() => {
     .text-success { color: #198754; }
     .text-danger { color: #dc3545; }
     .text-muted { color: #6c757d; }
-    .small { font-size: 0.85em; }
+    small, .small { font-size: 0.85em; }
     .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; }
     .alert-success { background: #d1e7dd; border: 1px solid #badbcc; }
     .alert-warning { background: #fff3cd; border: 1px solid #ffecb5; }
@@ -103,6 +109,9 @@ const OSAPdfExport = (() => {
     .osa-clin-rec { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; margin-bottom: 5px; border-radius: 5px; font-size: 13px; line-height: 1.5; background: #f8f9fa; border-left: 3px solid #dee2e6; }
     .osa-clin-rec.osa-rec-priority { background: #f0f2f6; border-left-color: #1F3A5C; }
     .osa-clin-rec-num { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 50%; background: #1F3A5C; color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .osa-clin-priority-brief { padding: 14px 16px; margin-bottom: 14px; background: #f3f7fa; border: 1px solid #cbd7e3; border-radius: 8px; }
+    .osa-clin-priority-label { margin: 0 0 5px; color: #C8102E; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .osa-clin-supporting-title { color: #1F3A5C; }
 
     /* HGNS table */
     #hgnsAssessment .table { table-layout: fixed; }
@@ -124,6 +133,10 @@ const OSAPdfExport = (() => {
     .patient-report .report-patient-name { font-weight: 600; color: #374151; }
     .patient-report .report-section { display: block; margin: 0; padding: 0; }
     .patient-report .report-title { font-size: 20px; font-weight: 700; color: #1F3A5C; margin-bottom: 4px; }
+    .report-orientation { margin: 0 0 20px; padding: 14px 16px; background: #eef6f3; border: 1px solid #b9d8cc; border-radius: 8px; }
+    .report-orientation-label { margin: 0 0 5px; color: #246452; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .report-orientation-finding { margin: 0; color: #173a31; font-size: 15px; line-height: 1.5; }
+    .report-orientation-action { margin: 8px 0 0; color: #284f45; font-size: 13px; line-height: 1.55; }
     .patient-report h2 { font-size: 16px; font-weight: 700; color: #1F3A5C; margin-top: 26px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
     .report-terms { margin: 0 0 22px; padding: 11px 0 13px; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; }
     .report-terms h2 { margin: 0 0 9px; padding: 0; border: 0; font-size: 13px; }
@@ -245,13 +258,17 @@ const OSAPdfExport = (() => {
    */
   function findBreakPoints(container, canvasScale) {
     const structuredBlocks = container.querySelectorAll(
-      '.report-header, .report-section, .report-terms, .report-term, .report-summary-card, .care-pathway, .care-summary-card, .ahi-scale, ' +
-      '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-footer'
+      '.report-header, .report-section, .report-orientation, .report-terms, .report-term, .report-summary-card, .care-pathway, .care-summary-card, .ahi-scale, ' +
+      '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-footer, ' +
+      '.osa-clin-priority-brief, .osa-clin-rec, .osa-clin-metrics-row, .osa-clin-section-header, .osa-clin-section-body > *, .alert, .card-header, .card-body > *, .table-responsive'
     );
     const flowBlocks = container.querySelectorAll(
-      'h2, h3, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, p, ul, ol'
+      'h2, h3, h4, h5, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, tr, p, ul, ol, li'
     );
     const containerTop = container.getBoundingClientRect().top;
+    /* Keep a hook for format-specific boundary guards. Expanded clinician
+       sections are measured before rendering, so no extra offset is needed. */
+    const clinicianBoundaryGuard = 0;
     const points = [0];
 
     structuredBlocks.forEach(el => {
@@ -281,9 +298,12 @@ const OSAPdfExport = (() => {
       points.push(bottomY);
     });
 
-    return [...new Set(points)]
-      .filter(point => Number.isFinite(point))
-      .sort((a, b) => a - b);
+    return {
+      points: [...new Set(points)]
+        .filter(point => Number.isFinite(point))
+        .sort((a, b) => a - b),
+      boundaryGuard: clinicianBoundaryGuard,
+    };
   }
 
   /**
@@ -291,12 +311,12 @@ const OSAPdfExport = (() => {
    * find the best break point that doesn't exceed the target by too much.
    * Prefers the largest break point that fits within the page.
    */
-  function bestBreak(breakPoints, targetY, minY) {
+  function bestBreak(breakPoints, targetY, minY, boundaryGuard = 0) {
     // Find the largest break point that is <= targetY and > minY
     let best = minY;
     for (const bp of breakPoints) {
       if (bp <= minY) continue;
-      if (bp <= targetY) best = bp;
+      if (bp + boundaryGuard <= targetY) best = bp;
       else break;  // sorted, so no more candidates
     }
     // If no good break found (e.g., a single element taller than a page), fall back to target
@@ -740,7 +760,7 @@ const OSAPdfExport = (() => {
     const report = shell.querySelector('.patient-report');
     if (!report) return;
     const chunks = [];
-    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-disclaimer, .pdf-section-continuation';
+    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-orientation, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-disclaimer, .pdf-section-continuation';
     const walk = node => {
       if (node.nodeType === Node.TEXT_NODE) {
         chunks.push(node.nodeValue || '');
@@ -778,7 +798,10 @@ const OSAPdfExport = (() => {
       pdf.save(filename);
       return result;
     }
-    return Object.assign(result, { dataUri: pdf.output('datauristring') });
+    return Object.assign(result, {
+      dataUri: pdf.output('datauristring'),
+      blobUrl: URL.createObjectURL(pdf.output('blob')),
+    });
   }
 
   async function exportFromHTML(html, filename, addFooter = false, footerDate = null, download = true) {
@@ -851,7 +874,7 @@ const OSAPdfExport = (() => {
       }
 
       // Collect break points from the DOM before html2canvas renders
-      const breakPoints = findBreakPoints(container, canvasScale);
+      const breakInfo = findBreakPoints(container, canvasScale);
 
       const canvas = await html2canvas(container, {
         scale: canvasScale,
@@ -887,7 +910,7 @@ const OSAPdfExport = (() => {
           cutY = canvas.height;
         } else {
           // Find best break point near the ideal end
-          cutY = bestBreak(breakPoints, idealEnd, srcY);
+          cutY = bestBreak(breakInfo.points, idealEnd, srcY, breakInfo.boundaryGuard);
         }
 
         const startY = Math.max(0, Math.floor(srcY));
@@ -930,7 +953,7 @@ const OSAPdfExport = (() => {
   /**
    * Build and export the clinician decision-support PDF.
    */
-  function exportClinicianPDF() {
+  function exportClinicianPDF(options = {}) {
     const reportEl = document.getElementById('clinicianReport');
     if (!reportEl || !reportEl.innerHTML.trim()) {
       alert('Generate reports first before exporting.');
@@ -962,7 +985,35 @@ const OSAPdfExport = (() => {
       </div>
     `;
 
-    return exportFromHTML(html, `OSA-Clinician-Report-${new Date().toISOString().slice(0,10)}.pdf`);
+    return exportFromHTML(
+      html,
+      `OSA-Clinician-Report-${new Date().toISOString().slice(0,10)}.pdf`,
+      false,
+      null,
+      options.download !== false
+    );
+  }
+
+  async function previewClinicianPDF() {
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) {
+      alert('Allow pop-ups for this site to preview the clinician guide.');
+      return;
+    }
+    previewWindow.opener = null;
+    previewWindow.document.title = 'Preparing clinician guide';
+    previewWindow.document.body.innerHTML = '<p style="font-family:system-ui;padding:2rem;color:#334155">Preparing clinician guide...</p>';
+    try {
+      const result = await exportClinicianPDF({ download: false });
+      const previewUrl = result?.blobUrl || result?.dataUri;
+      if (!previewUrl) throw new Error('PDF preview was not generated.');
+      previewWindow.location.replace(previewUrl);
+      return result;
+    } catch (error) {
+      previewWindow.close();
+      alert(`Unable to preview the clinician guide: ${error.message}`);
+      return;
+    }
   }
 
   /**
@@ -1000,5 +1051,7 @@ const OSAPdfExport = (() => {
     return exportFromHTML(exportHtml, filename, true, dateStr, options.download !== false);
   }
 
-  return { exportClinicianPDF, exportPatientReportPDF };
+  const api = { exportClinicianPDF, previewClinicianPDF, exportPatientReportPDF };
+  window.OSAPdfExport = api;
+  return api;
 })();

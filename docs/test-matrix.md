@@ -482,3 +482,15 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 239 | Uncertain cardiovascular history preservation | Patient intake answer unsure maps to the unresolved cardiovascular-history chart flag. It does not create confirmed CVD, an LVEF value, or an autonomous diagnostic or treatment decision. |
 | 240 | Clinician-edited report integrity | A clinician edit containing macOS smart punctuation is normalized before snapshot and PDF. Closing unsaved edits warns; downloading an edited report requires saving the final version first; a successful snapshot clears the unsaved-edit state. |
 | 241 | Intake reload and answer-loss boundary | Validation removes the token from the visible URL but retains a session-scoped recovery token. Navigation with entered answers warns. Reload can reopen a blank form; successful submission removes the recovery token and clears responses. |
+
+### Group 53: Inspire Meeting Demo And Report Hierarchy
+
+| # | Name | Key Features |
+|---|---|---|
+| 242 | Local synthetic demo boundary | `?demo=inspire` activates only on localhost, labels both clinician and questionnaire screens as synthetic, keeps records in browser memory, and leaves hosted clinical behavior unchanged. |
+| 243 | Questionnaire-to-staff handoff | The real patient questionnaire can be opened from the synthetic chart, a localhost-only helper fills remaining demo answers, submission returns a pending intake review to Staff Prep, and no questionnaire content is changed. |
+| 244 | Synthetic WatchPAT verification | The meeting helper routes synthetic study values through the same field-review and apply modal used by the WatchPAT parser rather than bypassing staff verification. |
+| 245 | Patient report orientation | Today's Sleep Plan and Full Sleep Profile begin with a plain-language finding and next step before the conditional terminology guide; the orientation contains no unexplained clinical acronyms and all detailed content remains present. |
+| 246 | Clinician decision-first hierarchy | Live clinician output and the clinician guide PDF present safety findings, insufficient data, prioritized actions, and guardrails before supporting evidence while preserving full technical detail. |
+| 247 | Clinician guide preview and pagination | The guide can be previewed in-browser or downloaded; collapsed detail is expanded before PDF measurement; the synthetic fixture remains within two to four readable pages without clipped blocks. |
+| 248 | Inspire safety counterexample | A separate synthetic chart with complete concentric collapse exercises the existing unilateral Inspire guardrail without altering eligibility logic, treatment ranking, or patient instructions. |

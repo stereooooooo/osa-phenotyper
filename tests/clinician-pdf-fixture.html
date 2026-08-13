@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clinician PDF fixture</title>
+<style>iframe { position:absolute; left:-9999px; width:1440px; height:2600px; border:0; }</style>
+</head>
+<body>
+<iframe id="appFrame" src="../index.html?testMode=workflow"></iframe>
+<script>
+const frame = document.getElementById('appFrame');
+const params = new URLSearchParams(window.location.search);
+
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+async function waitFor(predicate, timeout = 12000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    try { const value = predicate(); if (value) return value; } catch (_) {}
+    await wait(50);
+  }
+  throw new Error('Fixture timed out');
+}
+function setValue(win, selector, value) {
+  const element = win.document.querySelector(selector);
+  element.value = value;
+  element.dispatchEvent(new win.Event('input', { bubbles: true }));
+  element.dispatchEvent(new win.Event('change', { bubbles: true }));
+}
+function check(win, selector) {
+  const element = win.document.querySelector(selector);
+  if (!element.checked) element.click();
+}
+
+let fixtureStage = 'loading app';
+(async () => {
+  const win = frame.contentWindow;
+  await waitFor(() => win.document.getElementById('appContainer') && !win.document.getElementById('appContainer').classList.contains('d-none'));
+  fixtureStage = 'filling form';
+  win.alert = () => {};
+  win.confirm = () => true;
+  setValue(win, '#patientName', 'TESTPATIENT, Clinician Guide');
+  setValue(win, '#patientDob', '1978-05-14');
+  setValue(win, '[name="visitReason"]', 'inspire');
+  setValue(win, '[name="sex"]', 'M');
+  setValue(win, '[name="bmi"]', '28.6');
+  setValue(win, '[name="neck"]', '16.5');
+  setValue(win, '[name="tonsils"]', '2');
+  setValue(win, '[name="ftp"]', 'III');
+  setValue(win, '[name="pahi"]', '28');
+  setValue(win, '[name="tst"]', '6.2');
+  setValue(win, '[name="remPercent"]', '22');
+  setValue(win, '[name="remPahi"]', '41');
+  setValue(win, '[name="nremPahi"]', '23');
+  setValue(win, '[name="supPahi"]', '39');
+  setValue(win, '[name="nonSupPahi"]', '16');
+  setValue(win, '[name="odi"]', '25');
+  setValue(win, '[name="nadir"]', '83');
+  setValue(win, '[name="ess"]', '12');
+  setValue(win, '[name="isi"]', '8');
+  setValue(win, '[name="noseScore"]', '30');
+  check(win, '#priorCpap');
+  check(win, '#prefInspire');
+  check(win, '#planInspire');
+  setValue(win, '#planSummary', 'Complete the device-specific nerve-stimulation evaluation.');
+  check(win, '#planConfirmed');
+  fixtureStage = 'generating report';
+  win.document.querySelector('#form button[type="submit"]').click();
+  await waitFor(() => win.document.getElementById('clinicianReport').textContent.includes('Treatment priorities'));
+  fixtureStage = 'exporting PDF';
+  const result = await win.OSAPdfExport.exportClinicianPDF({ download: false });
+  if (params.get('summary') !== '1') {
+    const textarea = document.createElement('textarea');
+    textarea.id = 'generatedPdfData';
+    textarea.hidden = true;
+    textarea.textContent = result.dataUri || '';
+    document.body.appendChild(textarea);
+  }
+  document.documentElement.setAttribute('data-pdf-pages', String(result.pageCount || ''));
+  document.documentElement.setAttribute('data-pdf-ready', 'true');
+})().catch(error => {
+  document.documentElement.setAttribute('data-pdf-error', `${fixtureStage}: ${error.message}`);
+});
+</script>
+</body>
+</html>

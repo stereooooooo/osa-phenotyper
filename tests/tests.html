@@ -1036,6 +1036,11 @@ assert(reportHtml.includes('Planning Your Treatment') && !reportHtml.includes('S
 
 const terminologyIndex = terminologyReportHtml.indexOf('Terms used in this report');
 const summaryIndex = terminologyReportHtml.indexOf('report-summary-card');
+const orientationIndex = terminologyReportHtml.indexOf('report-orientation');
+assert(orientationIndex >= 0 && orientationIndex < terminologyIndex, 'Plain-language orientation appears before the terminology reference');
+const orientationHTML = terminologyReportHtml.slice(orientationIndex, terminologyIndex);
+assert(orientationHTML.includes('What matters most'), 'Patient report leads with a clearly labeled clinical orientation');
+assert(!/\b(AHI|OSA|PAP|CPAP|APAP|CBT-I|COMISA|BMI|DISE|HGNS|HNS)\b/.test(orientationHTML), 'Orientation avoids unexplained clinical acronyms before the terminology reference');
 assert(terminologyIndex >= 0 && terminologyIndex < summaryIndex, 'Conditional terminology guide appears before the clinical narrative');
 ['AHI', 'PAP', 'CBT-I', 'COMISA', 'BMI', 'DISE', 'Oral appliance', 'Nerve stimulation'].forEach(term => {
   const terminologyHTML = terminologyReportHtml.slice(terminologyIndex, summaryIndex);

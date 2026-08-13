@@ -342,6 +342,16 @@ document.addEventListener('DOMContentLoaded', () => {
     btnApply.addEventListener('click', handler);
   }
 
+  document.addEventListener('osa:demo-watchpat', event => {
+    if (!window.__OSA_DEMO_MODE__) return;
+    const result = {
+      fields: Array.isArray(event.detail?.fields) ? event.detail.fields : [],
+      notFound: Array.isArray(event.detail?.notFound) ? event.detail.notFound : [],
+    };
+    showReviewModal(result);
+    status.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> ${result.fields.length} synthetic fields ready for review.</span>`;
+  });
+
   function applyPdfValues(fields, tbody) {
     const form = document.getElementById('form');
     let count = 0;

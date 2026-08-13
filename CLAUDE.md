@@ -133,3 +133,14 @@ that produces no logic change must still be recorded in `docs/evidence-review-lo
 - `app.js` uses `const` declarations inside the form submit handler — variables declared later in the handler cannot be referenced earlier (temporal dead zone). If adding new computed values, declare them before any code that uses them.
 - The patient report overlay uses `position: fixed` — preview screenshot tools may not capture it. Use DOM inspection via `preview_eval` instead.
 - `html2canvas` cannot parse modern CSS functions (`color()`, `oklch`). The PDF pipeline strips external stylesheets and uses inline `PDF_STYLES`.
+
+## Agent skills
+
+- Linear workspace: `rbrown`
+- Linear team: `Precision Sleep` (`OSA`)
+- Linear project: `OSA Phenotyper`
+- Use the shared vocabulary in `docs/agents/domain.md` in product copy, specifications, and issue titles.
+- Use the triage contract in `docs/agents/triage-labels.md`; every issue should have exactly one type label and may add workflow labels.
+- Read `CONTEXT.md` before implementation work. Keep it as the concise current handoff rather than an activity log.
+- Clinical changes must pass the evidence gate above. Presentation-only work still requires output-parity regression coverage.
+- The meeting demo is synthetic, localhost-only, and browser-memory-only. Never enter real patient information in demo mode.

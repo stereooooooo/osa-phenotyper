@@ -3,9 +3,11 @@
 
   const params = new URLSearchParams(window.location.search);
   const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-  const active = isLocalHost && params.get('testMode') === 'workflow';
+  const inspireDemoMode = isLocalHost && params.get('demo') === 'inspire';
+  const active = isLocalHost && (params.get('testMode') === 'workflow' || inspireDemoMode);
 
   if (!active) return;
+  window.__OSA_DEMO_MODE__ = inspireDemoMode;
 
   function clone(value) {
     if (typeof structuredClone === 'function') return structuredClone(value);
@@ -17,7 +19,7 @@
   }
 
   function actor() {
-    return 'workflow-test@localhost';
+    return inspireDemoMode ? 'inspire-demo@localhost' : 'workflow-test@localhost';
   }
 
   function ensureBootstrapStub() {
@@ -80,6 +82,7 @@
   let followupSeq = 1;
   let intakeTokenSeq = 1;
   const intakeTokens = new Map();
+  const intakeTokenPatients = new Map();
 
   function needsLvefFollowup(formData) {
     const hasHeartFailure = formData?.cvdHeartFailure === true || formData?.cvdHeartFailure === 'on' || formData?.cvdHeartFailure === 'true';
@@ -354,6 +357,7 @@
       const createdAt = nowIso();
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
       intakeTokens.set(tokenHash, { tokenHash, patientId, questionnaireType, status: 'active', createdAt, createdBy: actor(), expiresAt });
+      intakeTokenPatients.set(rawToken, patientId);
       return { token: rawToken, questionnaireType, expiresAt };
     },
     async listIntakeTokens(patientId) {
@@ -438,6 +442,9 @@
       patient.updatedAt = updatedAt;
       persistTestState();
       return patientClone(patient);
+    },
+    resolveIntakePatientId(rawToken) {
+      return intakeTokenPatients.get(String(rawToken || '')) || null;
     },
   };
 

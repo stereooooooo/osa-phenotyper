@@ -888,6 +888,26 @@ fieldset legend {
   margin-top: 1px;
 }
 
+/* The clinician report starts with the decision, safety boundaries, and ranked
+   plan. The full evidence remains available immediately below. */
+.osa-clin-priority-brief {
+  padding: 1rem 1.1rem;
+  background: #f3f7fa;
+  border: 1px solid #cbd7e3;
+  border-radius: 8px;
+}
+.osa-clin-priority-label {
+  margin: 0 0 0.35rem;
+  color: var(--osa-crimson);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.osa-clin-supporting-title {
+  color: var(--osa-navy);
+}
+
 /* Evidence tooltips are clinician-only, compact, and reserved for concepts
    that materially change interpretation. */
 .osa-evidence-tooltip {
@@ -1008,6 +1028,46 @@ fieldset legend {
   line-height: 1.4;
 }
 .osa-care-summary i { color: var(--osa-crimson); font-size: 1rem; }
+
+/* Local synthetic meeting guide. The script that creates this element is
+   guarded by localhost plus ?demo=inspire, so it cannot appear in production. */
+.osa-demo-guide {
+  position: sticky;
+  top: 0;
+  z-index: 1040;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  background: #ffffff;
+  border: 1px solid #cbd7e3;
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(31, 58, 92, 0.09);
+}
+.osa-demo-guide__intro {
+  display: flex;
+  flex-direction: column;
+  min-width: 15rem;
+  color: #42566e;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.osa-demo-guide__intro strong {
+  color: var(--osa-navy);
+  font-size: 0.88rem;
+}
+.osa-demo-guide__steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+@media (max-width: 900px) {
+  .osa-demo-guide { align-items: stretch; flex-direction: column; }
+  .osa-demo-guide__steps { justify-content: flex-start; }
+}
 
 /* ── Finalize Today's Plan suggestions ───────────────────────── */
 .osa-plan-suggestions {

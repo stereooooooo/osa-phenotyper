@@ -256,6 +256,18 @@ async function run() {
   click(win, '#form button[type="submit"]');
   await waitFor(() => win.OSAReportState && win.OSAReportState.getLastAnalysisData(), 'analysis');
   assertEqual(win.OSAReportState.getLastAnalysisData().primaryAHI, 28, 'Clinical analysis still runs');
+  const clinicianHtml = doc.getElementById('clinicianReport').innerHTML;
+  assert(clinicianHtml.indexOf('Treatment priorities') < clinicianHtml.indexOf('Supporting evidence'), 'Clinician guide leads with treatment priorities before supporting evidence');
+  assert(!!doc.getElementById('btnPreviewClinicianPdf'), 'Clinician guide offers an in-browser PDF preview');
+  let clinicianPreviewAlert = '';
+  const originalOpen = win.open;
+  const originalAlertForPreview = win.alert;
+  win.open = () => null;
+  win.alert = message => { clinicianPreviewAlert = message; };
+  click(win, '#btnPreviewClinicianPdf');
+  assert(clinicianPreviewAlert.includes('Allow pop-ups'), 'Preview action is wired to the clinician PDF preview workflow');
+  win.open = originalOpen;
+  win.alert = originalAlertForPreview;
   await waitFor(() => doc.querySelectorAll('#precisionSleepProfile .precision-profile-row').length === 6, 'precision sleep profile');
   assert(doc.getElementById('precisionSleepProfile').textContent.includes('Qualitative clinical signals'), 'Profile explicitly avoids causal percentages');
   assert(doc.getElementById('precisionSleepProfile').textContent.includes('Weight & metabolic'), 'Profile organizes the assessment into patient-friendly domains');

@@ -1926,7 +1926,10 @@ function buildClinicianReport(f, m, T){
     const cHTML = `
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h2 class="h4 osa-section-title mb-0">Clinician Decision Support</h2>
-        <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-success btn-sm" id="btnPreviewClinicianPdf"><i class="bi bi-eye"></i> Preview clinician guide</button>
+          <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-download"></i> Download PDF</button>
+        </div>
       </div>
       <div class="osa-care-summary mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>Pre-study evaluation${contextItems.length ? ` · ${contextItems.join(' · ')}` : ''}</div>
       <div class="alert ${encounter.planConfirmed ? 'alert-success' : 'alert-info'} py-2 px-3 mb-3">
@@ -1936,8 +1939,11 @@ function buildClinicianReport(f, m, T){
       </div>
       <div class="alert alert-secondary py-2 px-3 mb-3"><strong>Diagnostic boundary:</strong> OSA is not yet confirmed. Keep PAP, oral appliance, nerve stimulation, and airway surgery outside the active plan until diagnostic results are reviewed, unless another established diagnosis provides a separate indication.</div>
       ${lvefFollowupNeeded ? '<div class="alert alert-warning py-2 px-3 mb-3"><strong>Echo/LVEF Needed:</strong> Heart failure/cardiomyopathy or a prior echocardiogram was reported without a documented left ventricular ejection fraction. Request the latest echocardiogram before advanced PAP or cardiopulmonary treatment decisions that depend on systolic function.</div>' : ''}
-      <h5 class="mb-2">Plan Before Diagnosis</h5>
-      ${preStudyPlan}
+      <section class="osa-clin-priority-brief mb-3">
+        <p class="osa-clin-priority-label">Treatment priorities</p>
+        <h5 class="mb-2">Plan Before Diagnosis</h5>
+        ${preStudyPlan}
+      </section>
       <div class="osa-clin-section mt-3">
         <div class="osa-clin-section-header" aria-expanded="true"><span><i class="bi bi-calendar-check me-2"></i>Follow-up Plan</span></div>
         <div class="osa-clin-section-body"><ul class="mb-0"><li>${priorSleepStudyAnswer === 'yes' ? 'Obtain and review the actual prior sleep-study report, then decide whether updated testing is needed.' : 'Review the sleep-study result with the patient.'}</li><li>Update phenotype, treatment candidacy, and the confirmed plan only after diagnostic data are available.</li></ul></div>
@@ -2256,21 +2262,31 @@ function buildClinicianReport(f, m, T){
   let cHTML = `
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
       <h2 class="h4 osa-section-title mb-0">Clinician Decision Support</h2>
-      <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-success btn-sm" id="btnPreviewClinicianPdf"><i class="bi bi-eye"></i> Preview clinician guide</button>
+        <button class="btn btn-outline-success btn-sm" id="btnDownloadClinicianPdf"><i class="bi bi-download"></i> Download PDF</button>
+      </div>
     </div>
     ${pathwayHTML}
     ${careSummaryHTML}
     ${encounterPlanHTML}
     ${normalStudyContextHTML}
-    ${lvefFollowupHTML}
+    <section class="osa-clin-priority-brief mb-3">
+      <p class="osa-clin-priority-label">Treatment priorities</p>
+      ${lvefFollowupHTML}
+      ${insufficientDataHTML}
+      ${treatmentSafetyHTML}
+      <h5 class="mb-2">Prioritized plan</h5>
+      ${rankedPlan}
+      ${guardrails.length?`<div class="alert alert-warning mt-3 mb-2"><strong>Guardrails</strong>${guardrails.map(g => g.startsWith('<strong>') ? `<div class="mt-2">${g}</div>` : `<ul class="mb-1"><li>${g}</li></ul>`).join('')}</div>`:''}
+    </section>
+    <h5 class="osa-clin-supporting-title mt-3 mb-2">Supporting evidence</h5>
     ${historyContextHTML}
     <p class="mb-2"><strong>Subtype:</strong> ${subtype} (ESS ${exists(ess)?ess:'\u2014'}, ISI ${exists(isi)?isi:'\u2014'})</p>
     ${cpapFailed ? `<p class="mb-2"><strong>PAP History:</strong> Prior trial ${cpapHelped === 'Yes' ? '(helped but discontinued)' : cpapHelped === 'No' ? '(did not help)' : '(efficacy unclear)'} — ${cpapWillRetry ? 'willing to retry' : 'not willing to retry'}${cpapReasons.length ? '. Issues: ' + cpapReasons.map(r => (CPAP_ISSUE_LABELS[r]||r)).join(', ') : ''}</p>` : cpapCurrent ? `<p class="mb-2"><strong>PAP History:</strong> Currently using ${papMode || 'PAP'}</p>` : ''}
     ${keyNumsGrid}
     ${hstValidityHTML}
     ${nextTestGuidanceHTML}
-    ${insufficientDataHTML}
-    ${treatmentSafetyHTML}
     ${out.phen.length ? `
       <div class="table-responsive mt-3">
         <table class="table table-sm align-middle osa-report-table">
@@ -2280,10 +2296,6 @@ function buildClinicianReport(f, m, T){
         <p class="small text-muted mb-0">Signal strength reflects internal rule support and should not be interpreted as a validated probability score.</p>
       </div>` : ''
     }
-
-    <h5 class="mt-3 mb-2">Treatment Plan</h5>
-    ${rankedPlan}
-    ${guardrails.length?`<div class="alert alert-warning mt-3 mb-2"><strong>Guardrails</strong>${guardrails.map(g => g.startsWith('<strong>') ? `<div class="mt-2">${g}</div>` : `<ul class="mb-1"><li>${g}</li></ul>`).join('')}</div>`:''}
 
     ${clinAnalysisParts.length ? `
     <div class="osa-clin-section mt-3">
@@ -2749,6 +2761,8 @@ document.getElementById('form').addEventListener('submit', e => {
   /* Wire clinician PDF download button */
   const btnCliPdf = document.getElementById('btnDownloadClinicianPdf');
   if(btnCliPdf) btnCliPdf.addEventListener('click', ()=> OSAPdfExport.exportClinicianPDF());
+  const btnPreviewCliPdf = document.getElementById('btnPreviewClinicianPdf');
+  if(btnPreviewCliPdf) btnPreviewCliPdf.addEventListener('click', ()=> OSAPdfExport.previewClinicianPDF());
 
   document.dispatchEvent(new CustomEvent('osa:analysis-complete', {
     detail: { analysisData: lastAnalysisData },

@@ -807,6 +807,49 @@ var PatientReport = (() => {
     return 'Review your treatment plan below with your doctor and choose a first step together.';
   }
 
+  /* Keep the first screenful understandable before the terminology reference.
+     This is a presentation-only restatement of the existing finding and next
+     step; the detailed, clinically specific language remains unchanged below. */
+  function plainLanguageNextStep(data) {
+    return summaryNextStep(data)
+      .replace(/Cognitive Behavioral Therapy for Insomnia|CBT-I/gi, 'structured insomnia treatment')
+      .replace(/\b(?:APAP|BiPAP|CPAP|PAP)\b/gi, 'breathing-machine treatment')
+      .replace(/\b(?:DISE|drug-induced sleep endoscopy)\b/gi, 'a sleep endoscopy')
+      .replace(/\b(?:HGNS|HNS|Inspire|Genio)\b/gi, 'an implanted airway-stimulation treatment')
+      .replace(/\b(?:PSG|polysomnography)\b/gi, 'an in-lab sleep study')
+      .replace(/\bENT\b/g, 'ear, nose, and throat clinician')
+      .replace(/\bBMI\b/g, 'body-size measure')
+      .replace(/\bCOMISA\b/g, 'insomnia and breathing interruptions during sleep')
+      .replace(/\bOSA\b/g, 'breathing interruptions during sleep')
+      .replace(/\boral appliance\b/gi, 'custom dental sleep device')
+      .replace(/\bnerve[- ]stimulation\b/gi, 'implanted airway-stimulation treatment');
+  }
+
+  function renderPlainLanguageOrientation(data) {
+    const stage = getReportStage(data);
+    const ahi = data.primaryAHI;
+    let finding;
+    if (stage === 'pre-study') {
+      finding = data.priorSleepStudyAnswer === 'yes'
+        ? 'Your next decision depends on reviewing your previous overnight study.'
+        : 'An overnight study is the next step toward understanding your breathing during sleep.';
+    } else if (data.nondiagnosticHstNeedsPsg) {
+      finding = 'Your home study suggested possible breathing interruptions, but it did not provide enough reliable information for a final answer.';
+    } else if (exists(ahi) && ahi < 5) {
+      finding = 'Your study recorded breathing in the usual range.';
+    } else {
+      const severity = ahiSeverityLabel(ahi);
+      finding = `Your study recorded <strong>${severity} breathing interruptions during sleep</strong>.`;
+    }
+
+    return `
+<div class="report-orientation">
+  <p class="report-orientation-label">What matters most</p>
+  <p class="report-orientation-finding">${finding}</p>
+  <p class="report-orientation-action"><strong>Your next step:</strong> ${plainLanguageNextStep(data)}</p>
+</div>`;
+  }
+
   function renderSummaryCard(data) {
     const stage = getReportStage(data);
     const ahi = data.primaryAHI;
@@ -2488,6 +2531,7 @@ ${items.join('')}`;
     ].filter(Boolean);
     const sections = [
       renderTodayPlanHeader(data),
+      renderPlainLanguageOrientation(data),
       renderTerminologyGuide(bodySections.join('')),
       ...bodySections,
     ].filter(Boolean).map((sectionHtml, index) =>
@@ -2518,6 +2562,7 @@ ${items.join('')}`;
     ].filter(Boolean);
     const sections = [
       renderHeader(data),
+      renderPlainLanguageOrientation(data),
       renderTerminologyGuide(reportBodySections.join('')),
       ...reportBodySections,
     ].filter(Boolean).map((sectionHtml, index) =>

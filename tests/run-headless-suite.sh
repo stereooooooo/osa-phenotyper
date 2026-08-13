@@ -168,6 +168,36 @@ run_today_plan_pdf_suite() {
   printf '1\n'
 }
 
+run_clinician_pdf_suite() {
+  local url="http://${HOST}:${PORT}/tests/clinician-pdf-fixture.html?summary=1"
+
+  if ! "${CHROME}" \
+    --headless \
+    --disable-gpu \
+    --no-sandbox \
+    --virtual-time-budget=25000 \
+    --dump-dom \
+    "${url}" > "${DOM_FILE}" 2>"${CHROME_LOG}"; then
+    echo "Chrome failed while running clinician PDF regression." >&2
+    cat "${CHROME_LOG}" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -q 'data-pdf-ready="true"' "${DOM_FILE}"; then
+    echo "Clinician PDF regression did not finish rendering." >&2
+    grep -Eo 'data-pdf-error="[^"]*"' "${DOM_FILE}" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -Eq 'data-pdf-pages="(2|3|4)"' "${DOM_FILE}"; then
+    echo "Clinician guide exceeded the accepted two-to-four-page range." >&2
+    grep -Eo 'data-pdf-pages="[^"]*"' "${DOM_FILE}" >&2 || true
+    exit 1
+  fi
+
+  printf '1\n'
+}
+
 TOTAL_PASSED=0
 
 EVIDENCE_PASSED="$(node "${REPO_ROOT}/tests/evidence-documentation.cjs")"
@@ -184,6 +214,9 @@ TOTAL_PASSED=$((TOTAL_PASSED + CORE_PASSED))
 
 WORKFLOW_PASSED="$(run_suite "tests/workflow-smoke.html" "workflow smoke suite" 15000)"
 TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
+
+DEMO_PASSED="$(run_suite "tests/demo-smoke.html" "Inspire demo smoke suite" 15000)"
+TOTAL_PASSED=$((TOTAL_PASSED + DEMO_PASSED))
 
 INTAKE_BRANCHING_PASSED="$(run_suite "tests/intake-branching-matrix.html" "patient intake branching matrix" 15000)"
 TOTAL_PASSED=$((TOTAL_PASSED + INTAKE_BRANCHING_PASSED))
@@ -202,5 +235,8 @@ TOTAL_PASSED=$((TOTAL_PASSED + TODAY_PLAN_PAP_PDF_PASSED))
 
 TODAY_PLAN_HGNS_PDF_PASSED="$(run_today_plan_pdf_suite "today-plan-hgns-evaluation" "HGNS evaluation")"
 TOTAL_PASSED=$((TOTAL_PASSED + TODAY_PLAN_HGNS_PDF_PASSED))
+
+CLINICIAN_PDF_PASSED="$(run_clinician_pdf_suite)"
+TOTAL_PASSED=$((TOTAL_PASSED + CLINICIAN_PDF_PASSED))
 
 echo "Headless suite passed: ${TOTAL_PASSED} assertions"

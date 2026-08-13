@@ -1092,6 +1092,7 @@
           <div class="input-group">
             <input type="text" class="form-control" id="intakeLinkValue" readonly>
             <button type="button" class="btn btn-outline-primary" id="btnCopyIntakeLink"><i class="bi bi-clipboard"></i> Copy</button>
+            <button type="button" class="btn btn-primary d-none" id="btnOpenIntakeLink"><i class="bi bi-box-arrow-up-right"></i> Open questionnaire</button>
           </div>
           <div class="small text-muted mt-2" id="intakeLinkExpiry"></div>
         </div>
@@ -1312,6 +1313,7 @@ window.OSALibs = (function () {
 <script src="js/home.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/precision-sleep.js?v=__OSA_BUILD_ID__"></script>
 <script src="js/workspace-view.js?v=__OSA_BUILD_ID__"></script>
+<script src="js/inspire-demo.js?v=__OSA_BUILD_ID__"></script>
 <script>
 /* ── Hide form fields for disabled features (e.g. ΔHR) ─────────── */
 if (!(typeof OSA_CONFIG !== 'undefined' && OSA_CONFIG.features && OSA_CONFIG.features.deltaHeartRate)) {
@@ -1662,6 +1664,9 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
    Authentication & Patient Database Orchestration
    ══════════════════════════════════════════════════════════════ */
 function inferRuntimeEnvironment(config, workflowTestMode) {
+  if (window.__OSA_DEMO_MODE__) {
+    return { code: 'inspire-demo', label: 'INSPIRE DEMO', tone: 'info' };
+  }
   if (workflowTestMode) {
     return { code: 'workflow-test', label: 'WORKFLOW TEST', tone: 'secondary' };
   }
@@ -1706,7 +1711,9 @@ function buildRuntimeMeta(config, workflowTestMode) {
   if (config && config.region) footerParts.push(config.region);
 
   let bannerText = '';
-  if (environment.code === 'workflow-test') {
+  if (environment.code === 'inspire-demo') {
+    bannerText = 'Synthetic Inspire demo — all patient data stays in this browser session.';
+  } else if (environment.code === 'workflow-test') {
     bannerText = 'Workflow test mode — clinician and intake actions stay in browser memory only.';
   } else if (environment.code === 'local') {
     bannerText = 'Local mode — AWS auth and patient database are not configured in this session.';
@@ -2905,11 +2912,13 @@ function applyRuntimeMeta(meta) {
     try {
       const result = await OSADatabase.createIntakeToken(currentPatientId, questionnaireType);
       const appBase = String(AWS_CONFIG.appUrl || window.location.origin).replace(/\/$/, '');
-      const link = `${appBase}/intake.html?t=${encodeURIComponent(result.token)}`;
+      const demoQuery = window.__OSA_DEMO_MODE__ ? 'demo=inspire&' : '';
+      const link = `${appBase}/intake.html?${demoQuery}t=${encodeURIComponent(result.token)}`;
       document.getElementById('intakeLinkValue').value = link;
       const label = questionnaireType === 'followup' ? 'Follow-up questionnaire' : 'New patient intake';
       document.getElementById('intakeLinkExpiry').textContent = `${label}. Expires ${new Date(result.expiresAt).toLocaleString()}. It becomes unusable immediately after submission.`;
       document.getElementById('intakeLinkResult').classList.remove('d-none');
+      document.getElementById('btnOpenIntakeLink').classList.toggle('d-none', !window.__OSA_DEMO_MODE__);
       renderIntakeTokens(await OSADatabase.listIntakeTokens(currentPatientId));
     } catch (err) {
       alert('Could not generate questionnaire link: ' + err.message);
@@ -2937,6 +2946,11 @@ function applyRuntimeMeta(meta) {
       document.execCommand('copy');
     }
     document.getElementById('btnCopyIntakeLink').innerHTML = '<i class="bi bi-check2"></i> Copied';
+  });
+
+  document.getElementById('btnOpenIntakeLink').addEventListener('click', () => {
+    const value = document.getElementById('intakeLinkValue').value;
+    if (value) window.open(value, 'osa-patient-questionnaire');
   });
 
   // Show intake status badge when loading a patient

@@ -956,8 +956,11 @@
   let activeQuestionnaireType = 'intake';
   const workflowTestMode = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
     && params.get('testMode') === 'workflow';
+  const inspireDemoMode = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+    && params.get('demo') === 'inspire';
+  const localHarnessMode = workflowTestMode || inspireDemoMode;
   const workflowTestState = window.__OSA_INTAKE_WORKFLOW_TEST__ = window.__OSA_INTAKE_WORKFLOW_TEST__ || {
-    active: workflowTestMode,
+    active: localHarnessMode,
     submissions: [],
     getSubmissions: function() {
       return this.submissions.slice();
@@ -968,6 +971,9 @@
   };
 
   function inferRuntimeEnvironment() {
+    if (inspireDemoMode) {
+      return { code: 'inspire-demo', label: 'INSPIRE DEMO', tone: 'info' };
+    }
     if (workflowTestMode) {
       return { code: 'workflow-test', label: 'WORKFLOW TEST', tone: 'secondary' };
     }
@@ -1014,7 +1020,9 @@
     if (deployedAt) footerParts.push(`deployed ${formatRuntimeDeployTime(deployedAt)}`);
 
     let bannerText = '';
-    if (environment.code === 'workflow-test') {
+    if (environment.code === 'inspire-demo') {
+      bannerText = 'Synthetic Inspire demo — responses stay in browser memory only.';
+    } else if (environment.code === 'workflow-test') {
       bannerText = 'Workflow test mode — responses stay in browser memory only.';
     } else if (environment.code === 'local') {
       bannerText = 'Local mode — this intake page is not connected to the live intake backend.';
@@ -1115,11 +1123,12 @@
 
   function showWorkflowToken() {
     if (window.history && window.history.replaceState) {
-      window.history.replaceState(historyStateWithToken(), document.title, window.location.pathname + '?testMode=workflow' + (requestedWorkflowQuestionnaire === 'followup' ? '&questionnaire=followup' : ''));
+      const harnessQuery = inspireDemoMode ? '?demo=inspire' : '?testMode=workflow';
+      window.history.replaceState(historyStateWithToken(), document.title, window.location.pathname + harnessQuery + (requestedWorkflowQuestionnaire === 'followup' ? '&questionnaire=followup' : ''));
     }
-    greetingName.textContent = 'Workflow Test';
-    thankYouName.textContent = 'Workflow Test';
-    expiryNotice.textContent = 'Workflow test token active on localhost.';
+    greetingName.textContent = inspireDemoMode ? 'Morgan' : 'Workflow Test';
+    thankYouName.textContent = inspireDemoMode ? 'Morgan' : 'Workflow Test';
+    expiryNotice.textContent = inspireDemoMode ? 'Synthetic demo questionnaire on localhost.' : 'Workflow test token active on localhost.';
 
     activeQuestionnaireType = requestedWorkflowQuestionnaire;
     setupActiveQuestionnaire();
@@ -1133,6 +1142,14 @@
       questionnaireType: activeQuestionnaireType,
       payload: payload
     });
+    if (inspireDemoMode && window.opener && !window.opener.closed) {
+      window.opener.postMessage({
+        type: 'osa-demo-intake-submitted',
+        token: token,
+        questionnaireType: activeQuestionnaireType,
+        payload: payload
+      }, window.location.origin);
+    }
     return { ok: true };
   }
 
@@ -2519,7 +2536,7 @@
       followupSubmitBtn.textContent = 'Submitting...';
       try {
         var payload = collectFollowupQuestionnaire();
-        if (workflowTestMode) {
+        if (localHarnessMode) {
           await submitWorkflowPayload(payload);
         } else {
           var response = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
@@ -2574,7 +2591,7 @@
       showState(stateError);
       return;
     }
-    if (workflowTestMode) {
+    if (localHarnessMode) {
       showWorkflowToken();
       return;
     }
@@ -2653,7 +2670,7 @@
 
       try {
         var payload = collectData();
-        if (workflowTestMode) {
+        if (localHarnessMode) {
           await submitWorkflowPayload(payload);
         } else {
           var resp = await fetch(API_URL + '/intake/' + encodeURIComponent(token), {
@@ -2702,6 +2719,7 @@
 
 })();
 </script>
+<script src="js/intake-demo.js?v=__OSA_BUILD_ID__"></script>
 
 </body>
 </html>

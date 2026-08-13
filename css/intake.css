@@ -39,6 +39,37 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.intake-demo-control {
+  max-width: 760px;
+  margin: 0 auto 1rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #173a31;
+  background: #eef6f3;
+  border: 1px solid #b9d8cc;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.intake-demo-control button {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.8rem;
+  color: #fff;
+  background: #1f3a5c;
+  border: 0;
+  border-radius: 7px;
+  font-weight: 700;
+}
+.intake-demo-control button:disabled {
+  background: #55708e;
+}
+@media (max-width: 640px) {
+  .intake-demo-control { align-items: stretch; flex-direction: column; }
+}
+
 /* ── Progress Bar (sticky top) ───────────────────────────────── */
 .intake-progress {
   position: sticky;
