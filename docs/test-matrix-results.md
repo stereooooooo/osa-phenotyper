@@ -1,7 +1,32 @@
 # Patient Report Test Matrix — Results
-**Latest smoke test:** August 12, 2026
-**Latest tested build:** local meeting candidate on `codex/precision-sleep-v1` (not deployed)
-**Latest complete result:** 2,063 headless assertions passed with no failures
+**Latest smoke test:** August 13, 2026
+**Latest tested build:** local evidence-documentation candidate on `codex/precision-sleep-v1` (not deployed)
+**Latest complete result:** 2,081 headless assertions passed with no failures
+
+---
+
+## 2026-08-13 scientific rationale and primary-source review
+
+**Status at review:** documentation-only implementation and complete regression verification
+finished. No deployment was requested or performed.
+
+**Result:** passed 2,081 headless assertions with no failures.
+
+**Verified behavior:**
+
+- the new prose rationale accurately maps data provenance, diagnostic boundaries, phenotype and
+  treatment context, missing-data and safety guardrails, visit alignment, clinician confirmation,
+  patient communication, and objective follow-up to the current implementation
+- the targeted primary-source review separates FDA Inspire labeling, AASM guidance, CMS coverage,
+  observational response associations, and Capital ENT local governance
+- the evidence register, citation library, review log, prose rationale, and research note are
+  mutually linked, and all local Markdown targets resolve
+- no application JavaScript, HTML, CSS, threshold, questionnaire, or report-generation file changed
+- lint, evidence-document integrity, parser integration, PAP compliance, core regression, workflow,
+  demo, intake branching, phenotype characterization, plan suggestions, patient PDF pagination,
+  Today's Sleep Plan, and the three-page clinician guide all passed
+- no diagnostic route, phenotype rule, treatment rank, candidacy behavior, safety action, patient
+  instruction, or rendered report changed
 
 ---
 

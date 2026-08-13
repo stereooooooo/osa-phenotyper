@@ -18,6 +18,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 
 | Review ID | Review date | Evidence cutoff | Scope | Sources reviewed | Conclusion | Affected Logic IDs | Code/build effect |
 |---|---|---|---|---|---|---|---|
+| ER-2026-08-13-SCIENTIFIC-RATIONALE | 2026-08-13 | 2026-08-13 | Prose decision rationale; adult diagnostic testing and HSAT adequacy; unilateral Inspire labeling, DISE, payer separation, response context, and objective follow-up | AASM diagnostic guideline and arousal-scoring statement; AASM HSAT position statement; Zhang 2020 and Tschopp 2021 PAT studies; FDA Inspire P130008/S090 SSED and labeling; STAR; Vanderveken 2013; Huyett 2021; ADHERE analyses; AASM surgical-referral and longitudinal-testing guidance; CMS LCD L38276; HOME pathway trial. Full source links and limitations are recorded in `research/scientific-rationale-primary-sources.md`. | Created a readable account of how data provenance, diagnostic boundaries, treatment context, guardrails, clinician confirmation, and follow-up interact. Confirmed the current diagnostic architecture and device-specific HGNS separation. Clarified that BMI above 40 is an FDA insufficient-study warning boundary in the reviewed Inspire labeling while the app's BMI 40 automatic referral boundary is local governance. Identified the symptomatic negative-HSAT nasal-first option as local governance with an explicit evidence gap. No decision threshold, treatment ranking, safety action, or patient instruction changed. | DX-01, DX-02, DX-03, DX-04, TX-02, TX-03, PAP-01, PAP-02, PAP-03 | Documentation and evidence classification only; no application code changed; lint and 2,081 regression assertions passed with exact output parity |
 | ER-2026-06-11 | 2026-06-11 | 2026-06-11 | Full clinical evidence and confidence-calibration audit | Existing primary literature, guidelines, regulatory sources, and expert review documented in `citations.md` and `optimization-roadmap.md` | Several rules were directionally useful but overstated certainty. Hypoxic burden was separated from automatic urgency at moderate levels; numeric loop gain was removed; partial arousal-threshold and muscle-response confidence were reduced; HNS response percentages were removed from output. | PH-02, PH-03, PH-04, PH-07, TX-03 | Shipped in the Phase 2 confidence-calibration release; see `optimization-changelog.md` |
 | ER-2026-07-15 | 2026-07-15 | 2026-07-15 | Device-specific HGNS labeling and complete concentric collapse | FDA Inspire P130008/S090; FDA Genio P240024 labeling and SSED; supporting HGNS literature in `citations.md` | Complete concentric collapse remains a device-specific contraindication for unilateral Inspire. Genio is not an automatic alternative because current US evidence and labeling do not establish safety/effectiveness in that subgroup. BMI 40 remains a local referral guardrail, not a universal device rule. | TX-03 | Device-specific logic and patient wording updated; see `phenotype-baseline-review.md` v5 |
 | ER-2026-07-19 | 2026-07-19 | 2026-07-19 | Negative HSAT, arousal-based scoring, UARS terminology, nasal-first sequencing, and WatchPAT sleep staging | Kapur et al. 2017 AASM diagnostic guideline; Malhotra et al. 2018 AASM position statement; Zhang et al. 2020 WatchPAT validation; nasal-treatment evidence already cataloged in `citations.md` | AASM supports PSG rather than a second HSAT when OSA remains suspected after a negative, inconclusive, or inadequate HSAT. UARS is presented within the OSA spectrum and evaluated with PSG using arousal-based scoring. Nasal-first sequencing remains a clinician-controlled option with an explicit evidence gap. WatchPAT is not described as a recording-time-only device. | DX-01, DX-02, TX-05 | Clinician tooltips and UARS wording shipped in build `bb4d319`; patient PSG action still requires clinician selection and confirmation |
@@ -34,6 +35,51 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 | ER-2026-07-19-COMISA | 2026-07-19 | 2026-07-19 | CBT-I and PAP sequencing, PAP adherence, bedtime-restriction safety, PAP-setting claims, and medication boundaries in COMISA | Sweetman et al. 2019 and 2020; Ong et al. MATRICS 2020; Alessi et al. 2021; Sweetman et al. 2023 meta-analysis; Turner et al. 2023; Zhang et al. 2026 network meta-analysis | Retained early CBT-I with individualized concurrent or sequential PAP. Removed the universal APAP, EPR, ramp, and pressure-range recipe; replaced unsafe/contraindicated sleep-restriction wording with transient-sleepiness monitoring; and withheld automated hypnotic guidance. | TX-01, SAF-01 | Clinician guidance, threshold notes, evidence documents, and paired regressions updated; 1,542 assertions passed at review; included in pilot build `e12734f`; formal clinician evidence signoff remains open |
 | ER-2026-07-19-RC-STRESS | 2026-07-19 | 2026-07-19 | Combined release-candidate regression across COMISA, HB, PAP-download interpretation, limited and negative WatchPAT routing, nasal-first sequencing, conventional hypoxemia, positional OSA, oral-appliance history, and HGNS context | Previously verified primary sources and reviews listed in ER-2026-07-19-WATCHPAT, PAP, HB, NONPAP-PREDICTION, and COMISA; no new literature claim introduced | Ten cross-cutting cases found no contradictory routing, unsupported response tier, patient leakage of technical study-quality warnings, autonomous PAP action, HB-driven treatment allocation, or inappropriate reactivation of an unselected prior treatment. One communication defect in the first batch was corrected so an unspecified PAP mode remains generic rather than being labeled CPAP. | DX-01, DX-02, DX-04, PH-05, PH-07, SAF-01, SAF-03, TX-01, TX-02, TX-03, TX-05, PAP-01, PAP-02, PAP-03 | Tests 203-212 and all prior regressions passed; included in pilot build `e12734f`; clinician acceptance testing remains open |
 | ER-2026-07-19-HGNS-PLAN | 2026-07-19 | 2026-07-19 | Patient communication for a clinician-confirmed HGNS-only visit plan | Previously verified FDA labeling, Kent et al. 2019, and response-context sources cataloged under TX-03; no new efficacy, eligibility, or response-prediction claim introduced | Replaced the sparse generic action with a dedicated patient module. New-device evaluation and existing-implant follow-up are separate pathways. The module explains the reason, concrete next steps, conditional testing, follow-up, and uncertainty; it does not promise candidacy, success, or a universal DISE requirement. Existing implants use objective efficacy verification and do not repeat new-device candidacy steps. | TX-03 | Tests 213-214, counterexamples in Tests 172 and 176, no-typographic-dash checks, and two rendered Today's Plan PDF pacing fixtures passed; included in pilot build `e12734f`; clinician acceptance testing remains open |
+
+### ER-2026-08-13-SCIENTIFIC-RATIONALE: Diagnostic and Inspire rationale
+
+- **Reviewer:** Codex primary-source review for Capital ENT clinician review
+- **Review date and evidence cutoff:** 2026-08-13
+- **Reason for review:** Create a readable, collaborator-facing explanation of how Precision Sleep
+  makes decisions and verify the most clinically consequential diagnostic and Inspire boundaries
+  before further evidence-system optimization.
+- **Affected Logic IDs:** DX-01, DX-02, DX-03, DX-04, TX-02, TX-03, PAP-01, PAP-02, and PAP-03.
+- **Official sources searched:** FDA PMA database and labeling, CMS Medicare Coverage Database,
+  AASM guidelines and position statements, PubMed, PubMed Central, and the primary journals.
+- **Search concepts:** adult OSA diagnostic testing, technically adequate HSAT, negative or
+  inconclusive HSAT, arousal-based scoring, PAT validation, night-to-night variability, Inspire
+  P130008/S090 indication and warnings, PAP intolerance, central mixed event percentage, BMI,
+  DISE complete concentric collapse, lateral-wall collapse, ADHERE response associations, payer
+  coverage, and objective HGNS follow-up.
+- **Inclusion criteria:** Current U.S. regulatory labeling and payer policy; current or controlling
+  professional guidance; pivotal or prospective device studies; multicenter cohorts; and original
+  follow-up-pathway studies. Secondary summaries were not used as evidence for an app decision.
+- **Exclusion criteria:** Marketing summaries, unsourced clinical overviews, studies without a
+  decision-relevant endpoint, and predictors that could not be separated from selection bias or
+  translated without inventing an individual response model.
+- **Key findings:** A technically adequate conventional HSAT requires at least four hours of
+  adequate flow and oximetry but can still be inadequate for a specific REM, position, central, or
+  hypoventilation question. PSG is the guideline-supported next study after a negative,
+  inconclusive, or inadequate HSAT when concern remains. Inspire labeling, payer criteria, and local
+  referral governance are distinct. The reviewed label uses AHI 15-100 and excludes more than 25%
+  central plus mixed events and palatal complete concentric collapse; BMI above 40 is a warning and
+  evidence boundary rather than a listed universal contraindication. Other DISE and registry
+  features are response context, not a validated probability.
+- **Clinical decision:** Preserve the current clinical behavior. Add a central prose rationale,
+  direct source links, and explicit classification of the symptomatic negative-HSAT nasal-first
+  option and BMI 40 automatic referral boundary as local governance. Do not create a new candidacy
+  score, treatment rank, diagnostic threshold, or patient instruction.
+- **Implementation:** Added `scientific-rationale-and-decision-logic.md` and the reproducible source
+  note `research/scientific-rationale-primary-sources.md`; cross-linked the evidence register and
+  citation library; corrected the citation library's description of the Inspire BMI boundary.
+- **Verification result:** Documentation integrity, local-link validation, lint, and the full
+  browser regression suite passed. The suite completed 2,081 assertions, including the demo,
+  intake, phenotype and plan matrices, patient PDFs, and the reviewed three-page clinician guide.
+  Because no application code changed, observed behavior remained exact output parity.
+- **Clinician signoff still required:** The local BMI 40 referral boundary, decision-specific REM
+  and position sampling thresholds, the symptomatic negative-HSAT nasal-first option, pairing DISE
+  with another indicated procedure, and post-HGNS testing modality and timing remain governance or
+  individualized clinical decisions.
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 

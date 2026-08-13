@@ -4,12 +4,14 @@
 |---|---|
 | Application | Capital ENT Precision Sleep Clinical Hub |
 | Document status | Living pre-validation evidence register |
-| Register version | 2.1 |
-| Clinical logic reviewed through | `ER-2026-07-20-AUDIT-REMEDIATION`; build `16cbd81` deployed for clinician acceptance testing; formal acceptance pending; 2,020 regression assertions passed |
+| Register version | 2.2 |
+| Clinical logic reviewed through | `ER-2026-07-20-AUDIT-REMEDIATION`; targeted documentation review `ER-2026-08-13-SCIENTIFIC-RATIONALE`; application behavior unchanged; formal acceptance pending; see [`test-matrix-results.md`](test-matrix-results.md) for current regression results |
 | Last comprehensive review | 2026-06-11 |
-| Last targeted review | 2026-07-20 |
+| Last targeted review | 2026-08-13 |
 | Next scheduled review | 2027-01-19, or sooner after a major guideline, regulatory, or safety update |
+| Readable scientific rationale | [`scientific-rationale-and-decision-logic.md`](scientific-rationale-and-decision-logic.md) |
 | Detailed source library | [`citations.md`](citations.md) |
+| Targeted primary-source review | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md) |
 | Review history | [`evidence-review-log.md`](evidence-review-log.md) |
 | Executable scenario inventory | [`test-matrix.md`](test-matrix.md) |
 | Current threshold implementation | [`../js/config.js`](../js/config.js) |
@@ -24,6 +26,10 @@ logic is implemented, and what still requires clinical validation. It is intende
 - transparent description of the algorithm in a manuscript;
 - periodic surveillance for new evidence that may change app logic; and
 - reconstruction of the exact evidence basis for any frozen study build.
+
+For a prose explanation of how the system turns inputs into a clinician-reviewed plan, start with
+[`scientific-rationale-and-decision-logic.md`](scientific-rationale-and-decision-logic.md). This
+register remains the controlling claim-by-claim audit record.
 
 This register does not establish that the app is clinically validated. The app remains a
 clinician-facing decision-support tool. Its phenotype labels, confidence labels, treatment ranking,
