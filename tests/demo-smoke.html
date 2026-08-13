@@ -65,7 +65,9 @@ async function run() {
   await waitFor(() => appDoc.getElementById('intakeLinkModal').classList.contains('show'), 'questionnaire modal');
   click(appWin, '#btnGenerateIntakeLink');
   await waitFor(() => appDoc.getElementById('intakeLinkValue').value.includes('demo=inspire'), 'demo questionnaire link');
-  assert(appDoc.getElementById('intakeLinkValue').value.includes('demo=inspire'), 'Generated questionnaire link stays in synthetic demo mode');
+  const questionnaireUrl = new URL(appDoc.getElementById('intakeLinkValue').value);
+  assert(questionnaireUrl.searchParams.get('demo') === 'inspire', 'Generated questionnaire link stays in synthetic demo mode');
+  assertEqual(questionnaireUrl.origin, appWin.location.origin, 'Demo questionnaire stays on the local app origin');
   assert(!appDoc.getElementById('btnOpenIntakeLink').classList.contains('d-none'), 'Demo can open the real questionnaire directly');
   appWin.bootstrap.Modal.getInstance(appDoc.getElementById('intakeLinkModal')).hide();
 
@@ -82,11 +84,11 @@ async function run() {
   const intakeWin = intakeFrame.contentWindow;
   const intakeDoc = intakeFrame.contentDocument;
   assert(intakeDoc.getElementById('intakeRuntimeBanner').textContent.includes('browser memory only'), 'Questionnaire explains demo privacy boundary');
-  assert(!!intakeDoc.getElementById('btnFillDemoAnswers'), 'Questionnaire offers a localhost-only answer helper');
-  click(intakeWin, '#btnFillDemoAnswers');
-  assertEqual(intakeDoc.getElementById('visitReason').value, 'inspire', 'Answer helper creates an Inspire discussion scenario');
-  assert(intakeDoc.querySelector('input[name="prefInspire"]').checked, 'Answer helper preserves the patient preference signal');
-  assert(intakeDoc.getElementById('progressLabel').textContent.includes('8 of 8'), 'Answer helper completes every required questionnaire section');
+  const demoAnswersWerePrefilled = intakeDoc.getElementById('visitReason').value === 'inspire';
+  assert(demoAnswersWerePrefilled, 'Demo questionnaire opens with synthetic answers prefilled');
+  if (!demoAnswersWerePrefilled) click(intakeWin, '#btnFillDemoAnswers');
+  assert(intakeDoc.querySelector('input[name="prefInspire"]').checked, 'Prefilled answers preserve the patient preference signal');
+  assert(intakeDoc.getElementById('progressLabel').textContent.includes('8 of 8'), 'Prefilled answers complete every required questionnaire section');
   click(intakeWin, '#submitBtn');
   await waitFor(() => intakeDoc.getElementById('stateThankYou').classList.contains('intake-state--active'), 'demo questionnaire submission');
   const submission = intakeWin.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();

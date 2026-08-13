@@ -67,14 +67,8 @@
     choose('weightInterest', 'thinking');
     choose('glp1Status', 'never');
 
-    const button = document.getElementById('btnFillDemoAnswers');
-    if (button) {
-      button.textContent = 'Demo answers filled';
-      button.disabled = true;
-    }
     const note = document.getElementById('demoAnswerNote');
-    if (note) note.textContent = 'Review any section you want, then submit the real questionnaire.';
-    document.getElementById('submitBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (note) note.textContent = 'Synthetic answers are prefilled. Review any section you want, then submit the real questionnaire.';
   }
 
   function installDemoControl() {
@@ -84,12 +78,11 @@
     panel.className = 'intake-demo-control';
     panel.innerHTML = `
       <div>
-        <strong>Synthetic meeting demo</strong>
-        <div id="demoAnswerNote">Answer a few questions manually, then fill the rest when you are ready.</div>
-      </div>
-      <button type="button" id="btnFillDemoAnswers">Fill remaining demo answers</button>`;
+        <strong>Demo questionnaire</strong>
+        <div id="demoAnswerNote">Preparing synthetic answers...</div>
+      </div>`;
     runtimeBanner.insertAdjacentElement('afterend', panel);
-    panel.querySelector('#btnFillDemoAnswers').addEventListener('click', fillDemoAnswers);
+    fillDemoAnswers();
   }
 
   installDemoControl();

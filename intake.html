@@ -2709,7 +2709,10 @@
   }
 
   window.addEventListener('beforeunload', function(event) {
-    if (!questionnaireDirty || !stateForm.classList.contains('intake-form-view--active')) return;
+    // Demo answers are populated automatically and never leave this browser;
+    // closing the demo questionnaire should not show a misleading unsaved-data
+    // warning before the presenter has interacted with it.
+    if (inspireDemoMode || !questionnaireDirty || !stateForm.classList.contains('intake-form-view--active')) return;
     event.preventDefault();
     event.returnValue = '';
   });

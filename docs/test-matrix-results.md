@@ -14,6 +14,7 @@
 **Verified behavior:**
 
 - a localhost-only synthetic demo covers the real patient questionnaire, pending staff review, verified synthetic WatchPAT import, clinician review, clinician guide, Today's Sleep Plan, Full Sleep Profile, and an Inspire candidacy counterexample
+- demo questionnaire links remain on the current localhost origin instead of routing browser-memory tokens to the deployed intake app, and all synthetic questionnaire answers are prefilled on open
 - demo records remain in browser memory and both patient and clinician surfaces clearly state the synthetic privacy boundary
 - the patient reports lead with a plain-language finding and next step before terminology and supporting detail without removing existing clinical content
 - the clinician view and clinician guide lead with treatment priorities, missing information, safety constraints, and guardrails before the complete supporting evidence
