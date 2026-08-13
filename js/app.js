@@ -257,15 +257,6 @@ function buildInsufficientDataAssessment(ctx) {
     });
   }
 
-  const detailedEventBreakdownExpected = ctx.studyType === 'psg' || ctx.studyType === 'both';
-  if (!exists(ctx.fHypopneas) && moderateSevere && detailedEventBreakdownExpected) {
-    domains.push({
-      key: 'endotyping',
-      clinician: 'Apnea/hypopnea breakdown is unavailable. Collapsibility estimate, full Edwards arousal-threshold scoring, and point-of-care loop-gain estimation are incomplete; do not treat the absence of those endotypes as exclusion.',
-      patient: 'Some of the more detailed breathing-pattern estimates still need a fuller breakdown of how many events were apneas versus hypopneas, so a few parts of your endotype-based treatment matching may still be refined.',
-    });
-  }
-
   const anatomyMissing = [];
   if (!exists(ctx.bmi)) anatomyMissing.push('BMI');
   if (!exists(ctx.tons)) anatomyMissing.push('tonsil size');
@@ -375,36 +366,30 @@ function buildTreatmentSafetyAssessment(ctx) {
     });
   }
 
-  // ASV requires preserved or documented-safe systolic function (SERVE-HF guardrail).
-  if (tags.has('HLG-ADV')) {
-    if (exists(ctx.lvef) && ctx.lvef <= 45) {
-      alerts.push({
-        key: 'asv-contra',
-        clinician: `Documented LVEF ${ctx.lvef}% is at or below the SERVE-HF safety threshold. Suppress ASV-specific routing and treat persistent central-instability management as specialist review territory instead.`,
-        patient: 'Your documented heart-pumping function is below the safety range for ASV, so that device should not be treated as a routine option in your plan unless a specialist says otherwise.',
-      });
-    } else if (!exists(ctx.lvef)) {
-      alerts.push({
-        key: 'asv-safety',
-        clinician: 'If ASV is being considered, document LVEF >45% first. ASV is contraindicated in HFrEF with LVEF \u226445%.',
-        patient: 'If an advanced PAP device such as ASV is being considered, your care team may need to confirm your heart function first because not every PAP device is safe for every heart condition.',
-      });
-    }
-  }
-
-  // WatchPAT-derived central/CSR signals can raise suspicion for central instability,
-  // but PSG remains the confirmation step before central-apnea-directed therapy is finalized.
+  // SAF-02: central/periodic-breathing signals are diagnostic and safety findings,
+  // not loop-gain measurements. Home-study signals require confirmation; PSG CAI
+  // prompts etiologic review. No PAP mode, medication, oxygen, or ASV is selected here.
   const hasHomeStudyCentralSignals =
     (ctx.studyType === 'watchpat' || ctx.studyType === 'both') &&
-    [ctx.csr, ctx.pahic3, ctx.pahic4].some(exists);
+    (ctx.centralConfirmationNeeded === true ||
+      (ctx.csr || 0) >= T.loopGain.csr ||
+      (ctx.pahic3 || 0) >= T.loopGain.pahic3 ||
+      (ctx.pahic4 || 0) >= T.loopGain.pahic4);
   const hasPSGCentralConfirmation =
     ctx.studyType === 'psg' ||
     ((ctx.studyType === 'both' || ctx.studyType === 'psg') && exists(ctx.cai));
-  if (tags.has('HLG-ADV') && hasHomeStudyCentralSignals && !hasPSGCentralConfirmation) {
+  if (hasHomeStudyCentralSignals && !hasPSGCentralConfirmation) {
     alerts.push({
       key: 'central-psg-workup',
-      clinician: 'WatchPAT-derived central or periodic-breathing signals should be confirmed with in-lab PSG before choosing central-apnea-directed therapy such as ASV, oxygen, or acetazolamide.',
-      patient: 'Your home sleep study suggested some breathing-instability patterns that may need a full in-lab sleep study before advanced central-apnea treatments are chosen.',
+      clinician: 'Home-study central or periodic-breathing signals require clinical review and, when clinically important, in-lab PSG confirmation. Do not label loop gain or select central-apnea therapy from the home-study estimate.',
+      patient: 'Your home sleep study suggested a breathing pattern that may need a full in-lab sleep study before your care team decides what it means or whether it needs treatment.',
+    });
+  }
+  if (hasPSGCentralConfirmation && exists(ctx.cai) && ctx.cai >= T.papCompliance.centralIndexReview) {
+    alerts.push({
+      key: 'central-etiology-review',
+      clinician: `PSG CAI ${ctx.cai}/h warrants review of the central-apnea pattern, symptoms, comorbidities, medications, and underlying cause. Select any treatment by confirmed CSA etiology and current device-specific guidance; do not infer loop gain or choose a therapy from CAI alone.`,
+      patient: 'Your lab sleep study showed some pauses in breathing that may not be caused by airway blockage. Your sleep specialist should review the pattern and possible causes before choosing treatment.',
     });
   }
 
@@ -480,13 +465,6 @@ function applyInsufficientDataGuardrails(recEntries, insufficientDataDomains) {
     prependedEntries.push({
       text: 'Review REM/NREM staging data before concluding that REM-specific worsening is absent.',
       tag: 'SLEEP-STAGE-WORKUP',
-    });
-  }
-
-  if (domainKeys.has('endotyping')) {
-    prependedEntries.push({
-      text: 'Review the detailed apnea-versus-hypopnea scoring before treating collapsibility, arousal-threshold, or loop-gain estimates as complete.',
-      tag: 'ENDOTYPE-WORKUP',
     });
   }
 
@@ -589,25 +567,16 @@ function applyTreatmentSafetyGuardrails(recEntries, safetyAlerts) {
   }
 
   if (safetyKeys.has('central-psg-workup')) {
-    suppressedTags.add('HLG-ADV');
     prependedEntries.push({
-      text: 'Because the central-breathing instability was inferred from a home sleep test, confirm it on in-lab PSG before finalizing ASV or other central-directed therapy.',
+      text: 'Review the home-study central or periodic-breathing signal and obtain in-lab PSG when needed before diagnosing central sleep apnea or selecting central-directed treatment.',
       tag: 'CENTRAL-PSG-WORKUP',
     });
   }
 
-  if (safetyKeys.has('asv-safety')) {
+  if (safetyKeys.has('central-etiology-review')) {
     prependedEntries.push({
-      text: 'If ASV is being considered, confirm LVEF is above 45% first because ASV is contraindicated in reduced ejection fraction heart failure.',
-      tag: 'ASV-SAFETY',
-    });
-  }
-
-  if (safetyKeys.has('asv-contra')) {
-    suppressedTags.add('HLG-ADV');
-    prependedEntries.push({
-      text: 'Documented reduced ejection fraction makes ASV unsafe right now, so persistent central-breathing treatment should stay in specialist-review territory rather than a routine recommendation.',
-      tag: 'ASV-CONTRA',
+      text: 'Review the confirmed central-apnea pattern and its underlying cause before selecting an etiology-specific treatment.',
+      tag: 'CENTRAL-ETIOLOGY-REVIEW',
     });
   }
 
@@ -967,8 +936,8 @@ function renderHGNSHTML(hgns) {
 /* ── Phenotype detection — pure function extracted from the submit handler.
    `m` is a metrics object of already-parsed/computed inputs; `T` is the
    thresholds. Returns { phen: [tags], why: {tag: [reason strings]} } with no
-   DOM access or shared state. Behavior verified byte-identical against
-   tests/phenotype-matrix.html (all 9 phenotypes + reason strings). ── */
+   DOM access or shared state. Active and retired-signal boundaries are verified
+   against tests/phenotype-matrix.html. ── */
 function detectPhenotypes(m, T){
   const phen = [];
   const why = {};
@@ -994,36 +963,23 @@ function detectPhenotypes(m, T){
     ]);
   }
 
-  if(m.edwardsArTH && m.edwardsArTH.score >= T.arousal.scoreLikely){
+  // PH-02: only the complete three-variable Edwards classifier is active.
+  // The published performance does not apply to a truncated 2-of-2 score.
+  if(m.edwardsArTH && !m.edwardsArTH.partial && m.edwardsArTH.score >= T.arousal.scoreLikely){
     add('Low Arousal Threshold',[
       `Edwards ${m.edwardsArTH.score}/${m.edwardsArTH.maxScore}`,
       ...m.edwardsArTH.details,
-      m.edwardsArTH.partial ? 'Hypopnea fraction unavailable' : ''
+      'exploratory screening classifier, not a measured trait'
     ]);
   }
 
-  /* Qualitative loop-gain flag: ≥2 central / periodic-breathing signals suggest possible
-     ventilatory instability (no numeric estimate; see config.js loopGain note). */
-  const highLoopGainDetected = m.loopGainSupportCount >= T.loopGain.supportMin;
   const remStageRatio = ratio(m.remAhi, m.nremAhi);
   const supNonSupRatio = ratio(m.sup, m.nons);
-  if(highLoopGainDetected){
-    add('High Loop Gain',[
-      m.csr?`CSR ${m.csr}%`:'',
-      exists(m.pahic3)?`pAHIc 3% ${m.pahic3}/h`:'',
-      exists(m.pahic4)?`pAHIc 4% ${m.pahic4}/h`:'',
-      exists(m.cai)?`CAI ${m.cai}/h`:'',
-      m.cvd?'CVD present (confidence modifier only)':''
-    ]);
-  }
-
-  if( m.ahi >= T.muscleResponse.ahiMin &&
-      exists(remStageRatio) &&
-      exists(m.nremAhi) &&
-      m.nremAhi >= T.muscleResponse.nremFloor &&
-      remStageRatio > T.muscleResponse.remNremRatio ){
-    add('Poor Muscle Responsiveness',[`REM/NREM ${formatRatio(remStageRatio)}`, `NREM AHI ${m.nremAhi}`, `AHI ${m.ahi}`, 'inferred surrogate (not a measured trait)']);
-  }
+  /* PH-03 / PH-04 inactive (ER-2026-08-13-PHYSIOLOGY-ENDOTYPES):
+     central/periodic-breathing summary fields are not loop-gain measurements, and a
+     REM/NREM AHI ratio is not a validated muscle-responsiveness measurement. Those
+     observations remain available in their standard diagnostic pathways but cannot
+     create physiology-endotype labels or treatment routing. */
 
   const positionalPattern = OSAReportShared.classifyPositionalPattern({
     supineAhi: m.sup,
@@ -1281,17 +1237,6 @@ function mapTreatments(f, m, T){
         }
         if(exists(isi) && isi >= 15) {
           pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Insomnia symptoms can make PAP adaptation more difficult for some patients, but they do not predict individual PAP failure. Consider a sleep psychology referral or a validated digital CBT-I program when appropriate and available.','CBTI');
-        }
-        break;
-      case 'High Loop Gain':
-        if(cpapCurrent || (!cpapFailed && !prefAvoidCpap)) {
-          pushRec(recs,'Favor fixed-pressure CPAP initially; monitor for treatment-emergent central apneas.','CPAP-FIXED');
-        }
-        pushRec(recs,'If centrals persist: consider nocturnal oxygen, acetazolamide, or ASV (only if LVEF > 45%).','HLG-ADV');
-        break;
-      case 'Poor Muscle Responsiveness':
-        if(cpapFailed && exists(ahi) && ahi >= T.hgns.ahiMin && ahi <= T.hgns.ahiMax && !(exists(bmi) && bmi > T.hgns.bmiMax)) {
-          pushRec(recs,'A device-specific hypoglossal-nerve stimulation evaluation may be considered after documented PAP intolerance. Final candidacy depends on AHI, central-event burden, BMI, DISE pattern, current labeling, and payer criteria.','HNS');
         }
         break;
       case 'Positional OSA':
@@ -1907,6 +1852,7 @@ function buildClinicianReport(f, m, T){
     pahic3,
     pahic4,
     cai,
+    centralConfirmationNeeded: diagnosticSignals.centralConfirmationNeeded,
     lvef,
     madDentition,
     madProtrusion,
@@ -2049,16 +1995,6 @@ function buildClinicianReport(f, m, T){
       notes.push(`<div class="alert alert-danger mt-2 py-2 px-3"><strong>Substantial Nocturnal Hypoxemia</strong><ul class="mb-1 mt-1"><li><strong>Triggers:</strong> ${triggers.join('; ')}</li><li>These conventional oxygen metrics are clinically important, but they are not event-linked hypoxic burden.</li><li>Treat confirmed OSA effectively, consider contributors not fully explained by OSA, and objectively confirm oxygen control.</li></ul></div>`);
     }
     return notes.join('');
-  })();
-
-  /* ── ATS 2025 Triage Note ──────────────────────────────── */
-  const atsTriage = (() => {
-    const hasAnat = out.phen.includes('High Anatomical Contribution');
-    const hasNonanat = out.phen.includes('Low Arousal Threshold') || out.phen.includes('High Loop Gain') || out.phen.includes('Poor Muscle Responsiveness');
-    if (hasAnat && hasNonanat) {
-      return `<div class="alert alert-info mt-2 py-2 px-3"><strong>ATS 2025 Triage: Anatomy + Nonanatomic Endotypes</strong><ul class="mb-0 mt-1"><li>Address collapsibility (anatomy) first</li><li>ArTH / LG targeting unlikely to succeed if airway is highly collapsible</li></ul></div>`;
-    }
-    return '';
   })();
 
   /* ── Treatment plan with numbered badges ─────────────────── */
@@ -2234,28 +2170,20 @@ function buildClinicianReport(f, m, T){
   /* ── Build collapsible clinical analysis content ──────── */
   const clinAnalysisParts = [];
   if (edwardsArTH && !edwardsArTH.partial && out.phen.includes('Low Arousal Threshold'))
-    clinAnalysisParts.push(`<div class="alert alert-info py-2 px-3 mb-2"><strong>Edwards ArTH Score: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> — ${edwardsArTH.prediction} (${edwardsArTH.details.join(', ')})${edwardsArTH.partial ? ' <small class="text-muted">[Hypopnea fraction unavailable from WatchPAT — score based on 2 of 3 variables. Enter Apnea Index + Hypopnea Index in Lab PSG section for full score.]</small>' : ''}</div>`);
-  if (!exists(fHypopneas) && (studyType === 'psg' || studyType === 'both')) {
-    clinAnalysisParts.push('<div class="alert alert-secondary py-2 px-3 mb-2"><strong>Detailed Endotyping Incomplete</strong> <small class="text-muted">(Vena 2022; Edwards 2014; Schmickl 2022)</small><ul class="mb-0 mt-1"><li>Apnea/hypopnea breakdown not entered</li><li>Collapsibility estimate and point-of-care loop gain estimate remain incomplete</li><li>Low-arousal-threshold scoring may be partial rather than fully scored</li></ul></div>');
-  }
+    clinAnalysisParts.push(`<div class="alert alert-info py-2 px-3 mb-2"><strong>Exploratory Edwards low-arousal-threshold screen: ${edwardsArTH.score}/${edwardsArTH.maxScore}</strong> (${edwardsArTH.details.join(', ')})<br><small class="text-muted">Complete three-variable screening classifier, not a direct trait measurement or treatment-selection rule. Published performance was internally validated and still requires external clinical validation.</small></div>`);
   if (exists(fHypopneas)) {
-    const collLabel = collapsibility === 'high' ? 'High' : collapsibility === 'moderate' ? 'Moderate' : 'Low';
-    const collImplication = collapsibility === 'high' ? 'Anatomy-directed therapy (CPAP, surgery, HNS) prioritized' : collapsibility === 'low' ? 'Non-CPAP therapies (MAD, positional, weight loss) more likely to succeed' : 'Mixed pattern — both anatomic and nonanatomic therapies may be effective';
-    clinAnalysisParts.push(`<div class="alert alert-${collapsibility === 'high' ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Collapsibility: ${collLabel}</strong> <small class="text-muted">(Vena 2022)</small><ul class="mb-0 mt-1"><li>F(hypopneas) = ${fHypopneas.toFixed(0)}%</li><li>${collImplication}</li></ul></div>`);
+    clinAnalysisParts.push(`<div class="alert alert-light border py-2 px-3 mb-2"><strong>Exploratory F(hypopneas) context</strong> <small class="text-muted">(Vena 2022)</small><ul class="mb-0 mt-1"><li>Hypopneas account for ${fHypopneas.toFixed(0)}% of scored apneas plus hypopneas.</li><li>This summary-field surrogate is associated with physiologic collapsibility at the group level, but it is not a direct measurement, a validated individual category, or a treatment-ranking rule.</li></ul></div>`);
   }
   if (loopGainSupportCount >= 1) {
-    const lgSuspected = loopGainSupportCount >= T.loopGain.supportMin;
     const lgSignals = [
       csr ? `Cheyne-Stokes / periodic breathing ${csr}%` : '',
       exists(pahic3) ? `pAHIc 3% ${pahic3}/h` : '',
       exists(pahic4) ? `pAHIc 4% ${pahic4}/h` : '',
       exists(cai) ? `CAI ${cai}/h` : '',
     ].filter(Boolean).map(s => `<li>${s}</li>`).join('');
-    const lgAction = lgSuspected ? '<li>If centrals persist on therapy: consider O₂ or acetazolamide (confirm with in-lab PSG first)</li>' : '';
-    clinAnalysisParts.push(`<div class="alert alert-${lgSuspected ? 'warning' : 'info'} py-2 px-3 mb-2"><strong>Ventilatory instability (loop gain): ${lgSuspected ? 'suspected' : 'possible'}</strong> <small class="text-muted">(qualitative — central/periodic-breathing signals; no validated point estimate)</small><ul class="mb-0 mt-1">${lgSignals}${lgAction}</ul></div>`);
+    clinAnalysisParts.push(`<div class="alert alert-warning py-2 px-3 mb-2"><strong>Central or periodic-breathing signal</strong><ul class="mb-0 mt-1">${lgSignals}<li>These findings are not a loop-gain measurement. Confirm and classify clinically, then select treatment by the underlying cause and current guidance.</li></ul></div>`);
   }
   if (hbTreatmentNote) clinAnalysisParts.push(hbTreatmentNote.replace(/mt-2/g, 'mb-2'));
-  if (atsTriage) clinAnalysisParts.push(atsTriage.replace(/mt-2/g, 'mb-2'));
 
   /* ── Build collapsible treatment candidacy content ───── */
   const txCandidacyParts = [];
@@ -2289,9 +2217,9 @@ function buildClinicianReport(f, m, T){
 
   /* ── Summary badges for collapsed headers ───────────── */
   const analysisBadges = [
-    exists(fHypopneas) ? `Collapsibility: ${collapsibility}` : null,
-    loopGainSupportCount >= 1 ? `Loop gain: ${loopGainSupportCount >= T.loopGain.supportMin ? 'suspected' : 'possible'}` : null,
-    edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `Low Arousal Threshold (${edwardsArTH.score}/${edwardsArTH.maxScore} criteria)` : null,
+    exists(fHypopneas) ? `F(hypopneas): ${fHypopneas.toFixed(0)}% (research context)` : null,
+    loopGainSupportCount >= 1 ? 'Central/periodic signal: review' : null,
+    edwardsArTH && out.phen.includes('Low Arousal Threshold') ? `Exploratory Edwards screen (${edwardsArTH.score}/${edwardsArTH.maxScore})` : null,
     hbTreatmentNote ? 'Oxygen and HB context' : null,
   ].filter(Boolean);
 
@@ -2524,27 +2452,23 @@ document.getElementById('form').addEventListener('submit', e => {
     ? (hypopneaIndex / (apneaIndex + hypopneaIndex)) * 100
     : null;
 
-  /* ── Collapsibility estimate from F(hypopneas) (Vena 2022) ── */
-  /* F_hyp <50% (more apneas) → high collapsibility → anatomy-directed therapy
-     F_hyp ≥50% (mostly hypopneas) → mild-moderate collapsibility → non-CPAP may work */
-  const collapsibility = exists(fHypopneas)
-    ? (fHypopneas < 50 ? 'high' : fHypopneas < 70 ? 'moderate' : 'low')
-    : null;
+  /* PH-01 research boundary: F(hypopneas) is retained as a clinician-facing
+     continuous research signal. It does not create a categorical collapsibility
+     result or rank treatment. Keep this legacy field null so saved report data
+     cannot expose the retired high/moderate/low categories. */
+  const collapsibility = null;
 
-  /* ── Loop Gain: qualitative only (no numeric estimate) ──
-     The Schmickl 2022 regression (LG = β·AHI − β·Hyp%) has NO published intercept and
-     only r=0.48 / AUC 0.73, so a per-patient point estimate over-implies precision and
-     was removed (Phase 2, 2026-06). Possible ventilatory instability is now flagged
-     qualitatively from the central / periodic-breathing signals below (see
-     loopGainSupportCount). */
+  /* PH-03: no loop-gain estimate or phenotype is produced. The count below is
+     used only to decide whether central/periodic findings should be summarized
+     for standard diagnostic and safety review. */
 
   /* ── Edwards ArTH Score (Edwards 2014) ──────────────────── */
   /* 3-variable clinical prediction of low arousal threshold:
      AHI <30 (+1), Nadir SpO₂ >82.5% (+1), Hypopnea fraction >58.3% (+1)
-     Score ≥2 of 3 = likely low ArTH (84% accuracy). NOTE: that validated accuracy applies
-     to the FULL 3-variable score. When the hypopnea fraction is unavailable (routine
-     WatchPAT), a 2-of-3 partial score is computed and reported at LOW confidence — the 84%
-     figure does not carry to the truncated score. */
+     Score ≥2 of 3 was reported with 84.1% apparent accuracy after internal leave-one-out
+     validation. Only the COMPLETE classifier can create an exploratory signal. When the
+     hypopnea fraction is unavailable, the partial tally is retained only to describe which
+     inputs are present and cannot create a phenotype, confidence claim, or treatment rule. */
   const edwardsArTH = (() => {
     if (!exists(ahi)) return null;
     let score = 0;
@@ -2557,7 +2481,9 @@ document.getElementById('form').addEventListener('submit', e => {
       else { details.push(`F(hyp) ${fHypopneas.toFixed(0)}% ≤${T.arousal.hypFraction}%`); }
     }
     const maxScore = hypFractionAvailable ? 3 : 2;
-    const prediction = score >= T.arousal.scoreLikely ? 'Likely low ArTH' : score === 1 ? 'Possible low ArTH' : 'Low ArTH unlikely';
+    const prediction = !hypFractionAvailable
+      ? 'Incomplete screen'
+      : score >= T.arousal.scoreLikely ? 'Exploratory low-ArTH screen positive' : 'Screen not positive';
     return { score, maxScore, prediction, details, partial: !hypFractionAvailable };
   })();
 

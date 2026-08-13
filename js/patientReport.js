@@ -1340,7 +1340,16 @@ ${renderSectionG(data)}`;
     /* Low-arousal-threshold screening is an indirect clinician signal, not a
        patient-actionable diagnosis. Keep it out of the handout so a partial
        Edwards score cannot imply a treatment that the visit did not select. */
-    const riskOnlyPhenotypes = new Set(['High Hypoxic Burden', 'Elevated Delta Heart Rate', 'Low Arousal Threshold']);
+    // Physiology endotype labels are clinician-only research context. Legacy saved
+    // snapshots may still contain them, so suppress them rather than exposing an
+    // inferred trait as a patient-level finding.
+    const riskOnlyPhenotypes = new Set([
+      'High Hypoxic Burden',
+      'Elevated Delta Heart Rate',
+      'Low Arousal Threshold',
+      'High Loop Gain',
+      'Poor Muscle Responsiveness',
+    ]);
     const phen = (data.phen || []).filter(name => !riskOnlyPhenotypes.has(name));
     if (hasPatientRecTag(data, 'SOFT-TISSUE-STRONG') && !phen.includes('High Anatomical Contribution')) {
       phen.unshift('High Anatomical Contribution');
@@ -1470,16 +1479,17 @@ ${items}`;
     'OXYGEN-WORKUP': `<strong>Complete the Oxygen Review</strong> — Part of your overnight oxygen information is still incomplete or has not yet been reviewed in full. Your care team should review the complete study before describing how strongly breathing interruptions affected oxygen levels.`,
     'POSITION-WORKUP': `<strong>Review Positional Data Before Ruling Position In or Out</strong> — Your available sleep-study report does not clearly show how your breathing changed on your back compared with your side. Before we decide that positional therapy is irrelevant, your care team may need to review the full study or repeat testing with better positional tracking.`,
     'SLEEP-STAGE-WORKUP': `<strong>Review REM-Sleep Data Before Ruling Out REM Worsening</strong> — Some patients breathe much worse during REM (dream) sleep than during the rest of the night. Your available data do not clearly separate REM from non-REM breathing yet, so REM-specific treatment decisions should stay flexible until that part of the study is confirmed.`,
-    'ENDOTYPE-WORKUP': `<strong>Complete the Detailed Event Breakdown Before Final Endotype Matching</strong> — Some of the more advanced breathing-pattern estimates in sleep apnea depend on knowing how many events were full apneas versus partial obstructions (hypopneas). That breakdown is not fully available yet, so some of the finer endotype-based treatment matching still needs the detailed scoring report before it should be treated as complete.`,
+    'ENDOTYPE-WORKUP': null,  // Inactive legacy tag; missing research endotyping is not a care prerequisite
     'ANATOMY-WORKUP': `<strong>Complete Airway Exam Before Finalizing Anatomy-Based Treatments</strong> — Some anatomy-based options depend on a fuller airway exam than we have documented so far. Before we commit to surgery-focused plans or decide how strong a candidate you are for certain devices, your ENT team should complete and document the key airway findings such as tonsil size, Friedman tongue position, and body-size measures used for treatment matching.`,
     'HNS-WORKUP': `<strong>Complete the Nerve-Stimulation Evaluation First</strong> — Nerve stimulation remains a possibility—not a recommendation—until prior-treatment history, AHI and central events, BMI, anatomy, current device labeling, insurance criteria, and any device-required airway evaluation are reviewed. Depending on the device and procedure being considered, that evaluation may include sleep endoscopy (DISE).`,
     'AIRWAY-PROCEDURE-WORKUP': `<strong>Complete the Procedure-Specific Airway Evaluation First</strong> — Before choosing airway surgery or nerve stimulation, your ENT team should review the complete airway exam, prior treatments, sleep-study findings, and current device or procedure requirements. That evaluation may include sleep endoscopy (DISE), depending on the option being considered.`,
     'NASAL-WORKUP': `<strong>Complete Nasal Assessment Before Ruling Nasal Treatment In or Out</strong> — A blocked or narrow nose can worsen mouth breathing and make CPAP, oral appliances, and surgery recovery harder. Because your nasal symptom and exam data are still incomplete, your ENT team should finish documenting nasal symptoms and anatomy before treating nasal contribution as absent.`,
     'MAD-WORKUP': `<strong>Confirm Oral Appliance Safety First</strong> — Before an oral appliance is finalized, a sleep dentist should confirm that your teeth, jaw movement, and jaw joints make it a safe fit. That includes checking that there is enough healthy tooth support, enough lower-jaw movement, and no major TMJ problem that would make the device hard to tolerate.`,
     'MAD-SAFETY-LIMIT': `<strong>Oral Appliance May Not Be a Safe Fit Right Now</strong> — Your current dental or jaw findings make an oral appliance less likely to be a safe or practical treatment at this stage. Problems such as limited tooth support, limited jaw movement, or significant TMJ disease can make a mandibular advancement device hard to fit or hard to tolerate. Your care team may still revisit it later if a sleep dentist feels those concerns can be addressed safely.`,
-    'CENTRAL-PSG-WORKUP': `<strong>Confirm Central-Breathing Findings With a Lab Sleep Study</strong> — Your home sleep study showed breathing-instability signals that can suggest central sleep apnea or periodic breathing, but those findings are usually confirmed with a full in-lab sleep study before advanced treatments such as ASV are chosen. That extra step helps your care team make sure the pattern is truly central and that the treatment is matched safely.`,
-    'ASV-SAFETY': `<strong>Confirm Heart-Function Safety Before ASV</strong> — Some advanced PAP devices, especially ASV, are only appropriate after your care team confirms that your heart function is in a safe range. If ASV comes up as an option, your sleep specialist may review a recent echocardiogram or ask for heart-function testing first.`,
-    'ASV-CONTRA': `<strong>Reduced Heart Function Makes ASV Unsafe Right Now</strong> — One type of advanced PAP therapy, ASV, is not considered safe when the heart’s pumping function is reduced below the accepted safety range. If your plan still needs help for central-breathing instability, that discussion should stay with your sleep specialist and heart team rather than treating ASV as a routine option.`,
+    'CENTRAL-PSG-WORKUP': `<strong>Confirm Central-Breathing Findings With a Lab Sleep Study</strong> — Your home sleep study showed a breathing pattern that may suggest central sleep apnea or periodic breathing. A full in-lab sleep study can clarify whether the pattern is truly central and help your sleep specialist evaluate possible causes before choosing treatment.`,
+    'CENTRAL-ETIOLOGY-REVIEW': `<strong>Review the Central-Breathing Pattern</strong> — Your lab study showed breathing pauses that may have causes other than airway blockage. Your sleep specialist should review the pattern, health conditions, and medicines before choosing a treatment.`,
+    'ASV-SAFETY': null,  // Inactive legacy tag; current device-specific review belongs with the treating specialist
+    'ASV-CONTRA': null,  // Inactive legacy tag; blanket LVEF-based ASV wording was superseded by AASM 2025
     'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
     'HNS': `<strong>Upper-Airway Nerve Stimulation</strong> — An implanted device activates tongue muscles during sleep. It is considered only for selected patients after standard treatments have not controlled sleep apnea or could not be used. A full workup is needed because anatomy, BMI, neck size, AHI, prior treatment, and other health conditions can affect both eligibility and the chance of response.`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is an important modifiable contributor to sleep apnea for many people. A reduction in body weight can reduce breathing-event frequency and may improve how well other treatments work, although response varies. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
@@ -1489,7 +1499,7 @@ ${items}`;
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — Enlarged tonsils can narrow the throat during sleep. In selected adults, tonsillectomy may substantially reduce that obstruction and improve sleep apnea. Your ENT should review expected benefit, risks, recovery, and whether another treatment may still be needed.`,
     'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — This recommended insomnia treatment changes the habits and thoughts that keep insomnia going. It can be delivered by a trained therapist or a validated digital program.`,
     'SURGALT': `<strong>Airway Surgery</strong> — Surgery may help when the procedure is matched to the site and pattern of collapse. Your exam, prior treatment, and often a sleep endoscopy (DISE) guide that decision.`,
-    'HLG-ADV': `<strong>Alternative PAP Therapy</strong> — When standard CPAP is not the best fit, other positive airway pressure devices may work better. BiPAP (bilevel) uses different pressures for breathing in and out, which some people find more comfortable. ASV (adaptive servo-ventilation) automatically adjusts to your breathing pattern and is especially helpful for certain types of breathing instability during sleep. Your sleep specialist will determine which device is right for you, and if ASV is being considered they may need to confirm that your heart function is in a safe range first.`,
+    'HLG-ADV': null,  // Inactive legacy tag; central findings no longer infer loop gain or select therapy
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
     'OXYGEN-URG': null,  // Urgency note woven into Why This Matters
@@ -1533,6 +1543,7 @@ ${items}`;
     'MAD-SAFETY-LIMIT',
     'NEG-HST-PSG',
     'CENTRAL-PSG-WORKUP',
+    'CENTRAL-ETIOLOGY-REVIEW',
     'ASV-SAFETY',
     'SURGERY-WORKUP',
   ]);

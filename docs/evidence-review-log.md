@@ -18,6 +18,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 
 | Review ID | Review date | Evidence cutoff | Scope | Sources reviewed | Conclusion | Affected Logic IDs | Code/build effect |
 |---|---|---|---|---|---|---|---|
+| ER-2026-08-13-PHYSIOLOGY-ENDOTYPES | 2026-08-13 | 2026-08-13 | Low arousal threshold, loop gain, upper-airway muscle responsiveness, F(hypopneas), central-event safety, and ASV framing | Edwards 2014; Wellman 2011; Eckert 2013; Terrill 2015; Sands 2018; Finnsson 2021; Messineo 2021; Vena 2022; ATS 2025 endophenotyping research statement; AASM 2025 adult CSA guideline. Full method and links are in `research/physiology-phenotypes-primary-sources.md`. | Keep only the complete Edwards classifier as Moderate clinician-only research context. Retire partial Edwards labeling, central/periodic summary fields as loop gain, REM/NREM AHI as muscle responsiveness, treatment routing from those inferred traits, anatomy-first ATS triage, and endotype-completeness workup. Preserve central findings as diagnostic/safety signals and F(hypopneas) as non-ranking research context. Replace obsolete blanket ASV/LVEF automation with etiology- and device-specific specialist review. | PH-02, PH-03, PH-04, SAF-01, SAF-02 | Narrow safety and certainty correction; paired regressions updated; complete headless suite passed 2,164 assertions; not deployed |
 | ER-2026-08-13-ISI-PAP-SNORING-SIGNOFF | 2026-08-13 | 2026-08-13 | ISI/COMISA terminology; PAP adherence support; investigational HB boundary; conventional oxygen safety bands; weight loss and snoring; Zepbound wording | Morin and Bastien ISI validation; AASM insomnia criteria; published COMISA operational definitions; AASM PAP guideline; early-use and barrier studies; PAP prediction reviews; Braver 1995 and longitudinal snoring evidence; current FDA Zepbound label. Full method and limitations are in `research/isi-comisa-pap-adherence-snoring-primary-sources.md`. | Raymond Brown, MD approved the six policies with evidence-dependent refinements. ISI ≥15 is described as clinically significant moderate-to-severe insomnia symptoms; ISI ≥15 plus objective AHI ≥5 is a COMISA screening phenotype, not by itself chronic insomnia disorder. PAP receives a clinician-only support-needs flag based on documented remediable barriers, never a failure probability or treatment demotion. HB remains investigational without diagnosis or treatment allocation; conventional oxygen bands remain local safety triggers. Weight management may reduce snoring, but the fixed 5-7 pound claim is removed. Zepbound wording now distinguishes dual GIP/GLP-1 pharmacology, the OSA indication, and prescriber authority. | PH-02, PH-07, TX-01, TX-04, TX-06, PAP-04, SAF-03 | Narrow clinician and patient wording plus clinician-only PAP support logic; paired regression and counterexample added; 193 evidence assertions and 2,149 complete headless-suite assertions passed |
 | ER-2026-08-13-COMISA-HYPOXEMIA-WEIGHT | 2026-08-13 | 2026-08-13 | COMISA screening and sequencing; conventional nocturnal hypoxemia versus event-linked hypoxic burden; weight management and tirzepatide | ISI validation and AASM insomnia guidance; Sweetman, MATRICS, and Alessi randomized trials; Azarbarzin, Trzepizur, Labarca, Esmaeili, Pinilla, and related HB sources; conventional-hypoxemia cohorts; ATS weight guidance; Sleep AHEAD; SURMOUNT-OSA; current FDA Zepbound labeling; AASM longitudinal guidance. Full method and links are in `research/comisa-hypoxemia-weight-primary-sources.md`. | Confirmed the conservative architecture: COMISA remains a screen with individualized sequencing; HB remains research context; conventional oxygen bands remain local safety triggers; weight management remains adjunctive and Zepbound OSA labeling remains distinct from general weight eligibility. Corrected source metadata and expanded rationale. Identified unsupported runtime wording for clinician signoff rather than changing output silently. | PH-07, TX-01, TX-04, SAF-03 | Documentation and source-comment correction only; no threshold, recommendation, ranking, safety action, or patient instruction changed; clinician signoff pending for runtime wording corrections |
 | ER-2026-08-13-GOVERNANCE-SIGNOFF | 2026-08-13 | 2026-08-13 | Clinician decision on six local-governance policies identified by the scientific-rationale review | Previously verified sources and limitations in `research/scientific-rationale-primary-sources.md`; no new external source was required | Raymond Brown, MD approved all six policies. Five preserve current behavior. For persistent concern after a negative HSAT, PSG is now the promoted draft default; contributor-first sequencing remains available only through explicit clinician confirmation. | DX-01, DX-02, DX-04, TX-03, TX-05 | Narrow diagnostic-routing and guidance change; paired default and override regressions added; lint and 2,091 assertions passed; not deployed |
@@ -615,6 +616,43 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Next review trigger:** Externally validated and transportable PAP-adherence model with clinical
   utility evidence; updated AASM insomnia/COMISA guidance; stronger randomized adult snoring data;
   FDA Zepbound label change; or the next scheduled comprehensive review.
+
+### ER-2026-08-13-PHYSIOLOGY-ENDOTYPES: Routine-summary endotype boundary
+
+- **Reviewer:** Raymond Brown, MD, with Codex primary-source review
+- **Review date and evidence cutoff:** 2026-08-13
+- **Reason for review:** Continue optimizing the decision evidence without breaking stable clinical
+  workflows, starting with the highest-risk physiology inferences.
+- **Affected Logic IDs:** PH-02, PH-03, PH-04, SAF-01, and SAF-02.
+- **Sources and method:** Targeted PubMed, DOI/journal, ATS, and AASM review with source hierarchy,
+  current-code audit, limitations, and implementation decisions recorded in
+  `research/physiology-phenotypes-primary-sources.md`.
+- **Key findings:** The complete Edwards classifier has only internal validation and is a screen,
+  not a measured trait; its published performance cannot be transferred to a partial 2-of-2 score.
+  Central and periodic-breathing summaries do not measure loop gain. REM/NREM AHI is not a validated
+  muscle-responsiveness measure. F(hypopneas) has group-level association with Pcrit but does not
+  validate universal collapsibility categories or treatment ranking. The ATS statement is a
+  research roadmap, not an anatomy-first treatment guideline. The current AASM CSA guideline calls
+  for etiology-specific, individualized treatment and supersedes a blanket current-device
+  interpretation of the historical SERVE-HF ASV signal.
+- **Clinician decision:** Raymond Brown, MD authorized proceeding with this audit and implementation.
+  The conservative rule is to preserve observed safety findings and standard diagnostic patterns
+  while retiring unsupported physiology labels and treatment consequences.
+- **Code and report effect:** Partial Edwards scores no longer create a phenotype. Complete scores
+  remain Moderate clinician-only research context. High Loop Gain and Poor Muscle Responsiveness
+  are inactive for routine summary inputs. Central findings still produce PSG-confirmation or
+  etiologic-review guidance, but no mode, oxygen, drug, or ASV is selected. F(hypopneas) is shown
+  without a category or treatment implication. Missing research endotyping no longer crowds the
+  treatment plan. Legacy patient snapshots suppress obsolete endotype and ASV content.
+- **Regression scenario and counterexample:** Complete Edwards versus partial Edwards; central home
+  signals versus confirmed PSG CAI; REM-heavy OSA versus muscle responsiveness; present versus
+  missing F(hypopneas). Existing core, workflow, demo, intake, phenotype, plan-suggestion, and PDF
+  regressions remain green.
+- **Verification and build:** ESLint and `git diff --check` passed. The complete headless suite
+  passed 2,164 assertions. Not deployed.
+- **Next review trigger:** External validation and prospective clinical-utility evidence for a
+  specific raw-signal endotype method; new AASM/ATS guidance; device-specific ASV labeling or
+  safety update; or the next scheduled comprehensive review.
 
 ## Review template
 

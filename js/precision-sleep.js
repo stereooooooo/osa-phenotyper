@@ -59,17 +59,10 @@
       hasPhenotype('Positional OSA') ? 'position' : '',
       hasPhenotype('REM-Predominant OSA') ? 'REM sleep' : '',
     ].filter(Boolean);
-    const physiologyNames = [
-      hasPhenotype('High Loop Gain') ? 'breathing-control instability' : '',
-      hasPhenotype('Low Arousal Threshold') ? 'arousal sensitivity' : '',
-      hasPhenotype('Poor Muscle Responsiveness') ? 'airway muscle responsiveness' : '',
-    ].filter(Boolean);
     if (ahi == null) {
       items.push(profileItem('Breathing pattern', 'Awaiting study', 'A diagnostic sleep study is needed before classifying the breathing pattern.', 'pending'));
     } else if (patternNames.length) {
       items.push(profileItem('Breathing pattern', 'Actionable pattern', `The study shows clinically useful variation related to ${patternNames.join(' and ')}.`, 'strong'));
-    } else if (physiologyNames.length) {
-      items.push(profileItem('Breathing pattern', 'Supportive signal', `The available data suggest ${physiologyNames.join(' and ')}; confidence remains limited by the source data.`, 'relevant'));
     } else {
       items.push(profileItem('Breathing pattern', 'No dominant subtype', 'No strong positional, REM, or breathing-control subtype was identified.', 'quiet'));
     }

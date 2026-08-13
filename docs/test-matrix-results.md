@@ -1745,3 +1745,17 @@ finished. No deployment was requested or performed.
 - investigational event-linked hypoxic-burden behavior and conventional-oxygen local safety triggers remain unchanged
 - evidence-documentation integrity passed **193 assertions**; the complete headless suite passed **2,149 assertions**
 **Finding:** the six clinician-approved policies are implemented without an adherence probability, PAP demotion, HB diagnosis, fixed snoring-response threshold, or autonomous medication decision. Deployment remains pending commit and push.
+
+### Tests 256-259: Physiology-endotype safety boundary
+
+**Status:** primary-source review, clinician-authorized runtime correction, evidence-gate documentation, lint, and full regression testing complete
+**Result:** passed after separating observed clinical findings from research physiology ✅
+**Verification:**
+- the complete three-variable Edwards classifier remains a Moderate clinician-only exploratory signal; a partial 2-of-2 score creates no phenotype or treatment consequence
+- home-study central or periodic-breathing signals retain appropriate PSG-confirmation guidance, and confirmed PSG CAI can prompt etiologic review without a loop-gain label
+- fixed CPAP, oxygen, acetazolamide, BPAP, ASV, and HGNS are no longer selected from inferred loop gain or REM/NREM muscle responsiveness
+- REM-predominant OSA remains independently available under its existing stage-sampling rules
+- F(hypopneas) is rendered only as non-ranking clinician research context; missing F(hypopneas) no longer produces an endotype-completeness workup or patient action
+- legacy saved-report tags are suppressed rather than exposing obsolete ASV or physiology claims
+- ESLint and `git diff --check` passed; the complete headless suite passed **2,164 assertions**
+**Finding:** unsupported physiology labels and downstream treatment automation are retired while clinically important central findings and standard diagnostic pathways remain intact. Not deployed.

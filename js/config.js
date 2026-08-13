@@ -36,16 +36,16 @@ const OSA_CONFIG = {
       ahiMax:         30,       // Edwards 2014: AHI <30
       nadirMin:       82.5,     // Edwards 2014: nadir SpO2 >82.5%
       hypFraction:    58.3,     // Edwards 2014: hypopnea fraction >58.3%
-      scoreLikely:    2         // Score >=2 indicates likely low arousal threshold
+      // PH-02: score >=2 is shown only when all three variables are available.
+      // It is an exploratory screening signal, capped at Moderate, not a measured trait.
+      scoreLikely:    2
     },
 
     loopGain: {
-      // DEPRECATED (Phase 2, 2026-06): the numeric loop-gain point estimate was removed.
-      // The Schmickl 2022 regression has no published intercept and only AUC 0.73, so a
-      // per-patient point estimate over-implied precision. Loop gain is now a QUALITATIVE
-      // "possible ventilatory instability" flag driven by the central/periodic-breathing
-      // signals below (CSR, pAHIc, CAI). estimateHigh/estimateBorderline are retained only
-      // for reference and are no longer used by the engine.
+      // PH-03 INACTIVE (ER-2026-08-13-PHYSIOLOGY-ENDOTYPES): these values identify
+      // central/periodic-breathing signals for diagnostic review only. They must not
+      // create a loop-gain phenotype or select treatment. Numeric estimate values are
+      // retained solely for legacy reference and are not used by the engine.
       estimateHigh:   0.7,      // [deprecated] Schmickl 2022: LG >0.7 = high
       estimateBorderline: 0.6,  // [deprecated] borderline instability
       csr:            10,       // central/periodic-breathing signal (Cheyne-Stokes %)
@@ -59,6 +59,9 @@ const OSA_CONFIG = {
     },
 
     muscleResponse: {
+      // PH-04 INACTIVE (ER-2026-08-13-PHYSIOLOGY-ENDOTYPES): REM/NREM AHI is not a
+      // validated measure of upper-airway muscle responsiveness. Values remain only
+      // for legacy snapshot compatibility and are not used by phenotype detection.
       ahiMin:             15,   // Lowered from 30; Eckert 2013 PALM IQR 19-56, Sands 2018 validated at AHI≥15
       ahiHigh:            30,   // High confidence only at AHI≥30 (original PALM severe range)
       remNremRatio:       2.0,
@@ -109,9 +112,12 @@ const OSA_CONFIG = {
     },
 
     collapsibility: {
-      fHypHigh:       50,   // F(hypopneas) <50% → high collapsibility (Vena 2022)
-      fHypModerate:   70,   // F(hypopneas) 50-70% → moderate; >70% → low
-      lgHighThreshold: 0.7  // Loop gain >0.7 = high (Schmickl 2022, AUC 0.73)
+      // Research-context bands retained for legacy data only. F(hypopneas) has a
+      // group-level association with Pcrit but does not create a validated category
+      // or treatment ranking in the active app (Vena 2022; ATS 2025 statement).
+      fHypHigh:       50,
+      fHypModerate:   70,
+      lgHighThreshold: 0.7
     },
 
     deltaHeartRate: {

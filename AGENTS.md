@@ -34,12 +34,13 @@ A client-side clinical decision-support tool for obstructive sleep apnea (OSA). 
 | `infrastructure/lambda/intake.mjs` | Intake Lambda: token validation, form submission (restricted IAM) |
 | `infrastructure/deploy.sh` | AWS deployment script |
 
-## 9 Phenotypes
-High Anatomical Contribution, Low Arousal Threshold, High Loop Gain, Poor Muscle Responsiveness, Positional OSA, REM-Predominant OSA, High Hypoxic Burden, Nasal-Resistance Contributor, Elevated Delta Heart Rate
+## Phenotype and contributor signals
+Active outputs include High Anatomical Contribution, complete-score exploratory Low Arousal Threshold signal, Positional OSA, REM-Predominant OSA, event-linked High Hypoxic Burden research signal, Nasal-Resistance Contributor, and manual/inactive-by-device Elevated Delta Heart Rate. High Loop Gain from central/periodic summary fields and Poor Muscle Responsiveness from REM/NREM AHI are inactive research concepts, not patient phenotypes.
 
 ## Clinical Logic — Key Rules
 - **Delta Heart Rate** is manual entry only. WatchPAT does NOT calculate it. Do NOT derive from pulse rate Max-Mean.
-- **CVD alone does NOT trigger High Loop Gain** — only boosts confidence (Low → Moderate).
+- **Central or periodic-breathing summaries do NOT trigger High Loop Gain** — preserve them as diagnostic/safety findings, confirm when needed, and select treatment by confirmed CSA etiology rather than an inferred endotype.
+- **REM/NREM AHI does NOT measure muscle responsiveness** — keep REM-predominant OSA separate and never route HGNS from the retired surrogate.
 - **Hypoxic Burden is event-linked only**: HB 30 is an exploratory elevated-signal boundary; HB 73.1 and 87.1 are descriptive research-cohort context only. ODI, T90, nadir, and area below 90% feed a separate substantial-nocturnal-hypoxemia safety pathway and cannot create the HB phenotype.
 - **Friedman Stage** auto-calculated from FTP + tonsils + BMI. Stage I → strong UPPP candidate. Stage III → suppress UPPP, recommend tongue base/HNS/MMA.
 - **Oral appliance response context is not a candidacy score**. Population-level associations such as age, BMI, neck size, sex, severity, anatomy, and research endotypes cannot create favorable/poor tiers, a probability, or treatment ranking. Route by preference, PAP tolerance, dental/TMJ safety, prior response, and objective follow-up testing.

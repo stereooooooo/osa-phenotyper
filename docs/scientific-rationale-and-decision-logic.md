@@ -703,19 +703,30 @@ that group averages do not guarantee remission.
 
 ## Cross-cutting phenotype signals
 
-Precision Sleep includes nine phenotype or contributor labels: high anatomical contribution, low
-arousal-threshold signal, possible ventilatory instability or high-loop-gain signal, poor muscle
-responsiveness signal, positional OSA, REM-predominant OSA, event-linked hypoxic-burden signal, nasal
-resistance contributor, and elevated delta heart rate.
+Precision Sleep distinguishes observed clinical patterns from research physiology. Active
+patient-level contributors include anatomy, positional and REM patterns with sampling constraints,
+nasal resistance, COMISA screening context, conventional oxygen safety findings, and selected
+research signals such as event-linked hypoxic burden. These do not all have the same evidentiary
+status, and none is an individual treatment-success probability.
 
-They do not all have the same evidentiary status. Positional and REM patterns are study-derived
-classifications with sampling constraints. Nasal obstruction is a treatment-relevant contributor.
-Several physiology-oriented labels are exploratory surrogates rather than direct measurements. The
-event-linked hypoxic-burden pathway is kept separate from conventional nocturnal hypoxemia, and
-delta heart rate is manual or inactive for device workflows that do not provide the required metric.
+Three physiology rules are intentionally narrower:
 
-The phenotype layer should answer “what might matter when discussing treatment or follow-up?” It
-should not answer “what treatment is guaranteed to work?”
+- the complete three-variable Edwards score may appear only as a clinician-facing exploratory
+  low-arousal-threshold screening signal, capped at Moderate; a partial 2-of-2 score is inactive;
+- central apnea and periodic-breathing findings remain diagnostic and safety signals, but they do
+  not measure loop gain and cannot automatically select fixed CPAP, oxygen, acetazolamide, BPAP, or
+  adaptive servo-ventilation; and
+- REM/NREM AHI may characterize REM-predominant OSA, but it does not measure upper-airway muscle
+  responsiveness and cannot route nerve stimulation.
+
+F(hypopneas) may be shown to clinicians as group-level collapsibility research context when the
+event breakdown is available. It does not create a validated collapsibility category or treatment
+ranking, and its absence is not a clinical workup deficiency. These boundaries follow the 2025 ATS
+research statement, which describes endophenotyping as a research-stage field requiring method
+standards, external validation, reproducibility, and prospective clinical-utility trials.
+
+The phenotype layer should answer “what observed features may matter when discussing treatment or
+follow-up?” It must not convert routine summary fields into a measured physiology trait.
 
 ## How clinician and patient reports differ
 
@@ -733,8 +744,8 @@ eligibility determination, or treatment recommendation that the clinical pipelin
 ## Known limitations
 
 1. Precision Sleep has not yet completed prospective clinical validation.
-2. Some phenotype signals use indirect clinical surrogates rather than direct physiologic
-   measurement.
+2. The remaining research signals use indirect clinical surrogates rather than direct physiologic
+   measurement; routine-summary loop-gain and muscle-responsiveness labels are inactive.
 3. Treatment-response studies often have heterogeneous definitions, selected populations, and
    limited external validation.
 4. Home-study and PAP-device algorithms are proprietary and may change.

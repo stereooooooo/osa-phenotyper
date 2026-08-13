@@ -511,3 +511,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 253 | Active or planned PAP with a remediable barrier | Mask/interface problems, leak, dryness, claustrophobia, sleep-onset difficulty, clinically significant insomnia symptoms, or symptomatic nasal obstruction can produce a clinician-only support-needs flag. The output explicitly says this is not a prediction of PAP failure, recommends targeted support and early objective review, remains suppressed from the patient report, and does not change treatment ranking. |
 | 254 | Completed PAP trial without retry intent counterexample | A documented historical PAP barrier does not create an active adherence-support flag when PAP is no longer active, planned, or being retried. The selected alternatives pathway remains unchanged. |
 | 255 | Weight management and snoring language | When overweight or obesity is relevant, patient guidance says weight management may reduce snoring but response varies and no number of pounds guarantees benefit. The prior fixed 5-7 pound claim is absent, and Zepbound wording is limited to eligible adults with obesity and moderate-to-severe OSA under prescriber review. |
+
+### Group 56: Physiology-Endotype Safety Boundary
+
+| # | Name | Key Features |
+|---|---|---|
+| 256 | Complete versus partial Edwards screen | A complete three-variable Edwards score at least 2 may create a Moderate clinician-only exploratory low-arousal-threshold signal. A partial 2-of-2 score without F(hypopneas) creates no phenotype, confidence claim, or treatment consequence. |
+| 257 | Central and periodic-breathing signals without loop-gain inference | Clinically important home-study central or periodic signals retain PSG-confirmation guidance, while confirmed PSG CAI at least 5/h prompts etiologic review. Neither pathway labels high loop gain or automatically selects fixed CPAP, oxygen, acetazolamide, BPAP, or ASV. |
+| 258 | REM-heavy OSA counterexample | REM/NREM AHI may create REM-predominant OSA when the separate criteria and sampling rules are met, but it cannot create poor muscle responsiveness or route HGNS. |
+| 259 | F(hypopneas) research context and missing-data counterexample | When present, F(hypopneas) is clinician-only research context without high/moderate/low collapsibility categories or treatment ranking. When absent, it does not add an endotype-workup caveat or patient action. |

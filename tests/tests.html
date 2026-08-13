@@ -247,7 +247,7 @@ assertEqual(
 group('Low Arousal Threshold Confidence');
 assertEqual(
   confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 3, edwardsArTHMaxScore: 3 } }),
-  'High', 'Edwards score 3/3 → High'
+  'Moderate', 'Edwards score 3/3 remains an exploratory screening signal capped at Moderate'
 );
 assertEqual(
   confidenceFor('Low Arousal Threshold', { metrics: { edwardsArTHScore: 2, edwardsArTHMaxScore: 3 } }),
@@ -262,15 +262,15 @@ assertEqual(
   'Low', 'Edwards score below threshold → Low'
 );
 
-// ── High Loop Gain Confidence (Phase 2: qualitative, capped at Moderate) ──────
-group('High Loop Gain Confidence');
+// ── Inactive physiology-endotype labels ─────────────────────
+group('Inactive Physiology Endotype Confidence');
 assertEqual(
   confidenceFor('High Loop Gain', { metrics: { csr: 22, pahic3: 12, pahic4: 0, cai: 0, cvd: false } }),
-  'Moderate', 'Two signals incl. one strong (CSR≥20) → Moderate (capped; never High)'
+  'Low', 'Central/periodic signals do not create a loop-gain phenotype'
 );
 assertEqual(
   confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 12, pahic4: 0, cai: 0, cvd: true } }),
-  'Moderate', 'Two moderate signals + CVD modifier → Moderate'
+  'Low', 'CVD plus central/periodic signals still does not measure loop gain'
 );
 assertEqual(
   confidenceFor('High Loop Gain', { metrics: { csr: 12, pahic3: 12, pahic4: 0, cai: 0, cvd: false } }),
@@ -460,15 +460,15 @@ assertEqual(
   'Low', 'NOSE 10 < 15 → Low'
 );
 
-// ── Poor Muscle Responsiveness Confidence ─────────────────────
-group('Poor Muscle Responsiveness Confidence');
+// ── Retired muscle-responsiveness surrogate ──────────────────
+group('Retired Muscle Responsiveness Surrogate');
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 35, remAhi: 56, nremAhi: 20 } }),
-  'Moderate', 'AHI≥30, ratio 2.8, NREM≥20 → Moderate (Phase 2: inferred surrogate capped at Moderate, no High path)'
+  'Low', 'REM/NREM AHI does not create a muscle-responsiveness phenotype'
 );
 assertEqual(
   confidenceFor('Poor Muscle Responsiveness', { metrics: { ahi: 20, remAhi: 50, nremAhi: 20 } }),
-  'Moderate', 'ratio 2.5 (>2), AHI≥15, NREM≥15 → Moderate'
+  'Low', 'REM-heavy OSA remains a stage pattern, not a muscle-responsiveness measurement'
 );
 
 // ── Cross-field validation ────────────────────────────────────
@@ -834,15 +834,18 @@ assert(reportHtml.includes('make an oral appliance a poor fit'), 'MAD safety-lim
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ASV-SAFETY', text: 'If ASV is being considered, confirm LVEF is above 45% first.' }],
 }));
-assert(reportHtml.includes('Confirm Heart-Function Safety Before ASV'), 'ASV safety tag renders a patient-friendly safety explanation');
-assert(reportHtml.includes('echocardiogram') || reportHtml.includes('heart-function result'), 'ASV safety tag adds a practical checklist step');
-assert(reportHtml.indexOf('<dt>ASV</dt>') >= 0 && reportHtml.indexOf('<dt>ASV</dt>') < reportHtml.indexOf('report-summary-card') && reportHtml.indexOf('<dt>Echocardiogram</dt>') >= 0 && reportHtml.indexOf('<dt>Echocardiogram</dt>') < reportHtml.indexOf('report-summary-card'), 'ASV and echocardiogram are defined before their clinical use');
+assert(!reportHtml.includes('Confirm Heart-Function Safety Before ASV'), 'Inactive blanket ASV safety tag does not render legacy guidance');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'ASV-CONTRA', text: 'Documented reduced ejection fraction makes ASV unsafe right now.' }],
 }));
-assert(reportHtml.includes('Reduced Heart Function Makes ASV Unsafe Right Now'), 'ASV contraindication tag renders a patient-friendly safety explanation');
-assert(reportHtml.includes('non-ASV options') || reportHtml.includes('cardiology review'), 'ASV contraindication tag adds a practical checklist step');
+assert(!reportHtml.includes('Reduced Heart Function Makes ASV Unsafe Right Now'), 'Inactive blanket ASV contraindication tag does not render legacy guidance');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  studyType: 'psg',
+  recTags: [{ tag: 'CENTRAL-ETIOLOGY-REVIEW', text: 'Review the confirmed central-apnea pattern and its cause.' }],
+}));
+assert(reportHtml.includes('Review the Central-Breathing Pattern'), 'Confirmed PSG central signal renders an etiologic-review explanation');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   studyType: 'watchpat',
@@ -856,7 +859,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   studyType: 'watchpat',
   recTags: [
     { tag: 'CPAP', text: 'Start PAP.' },
-    { tag: 'ASV-SAFETY', text: 'Confirm heart-function safety before ASV.' },
+    { tag: 'CENTRAL-ETIOLOGY-REVIEW', text: 'Review central-apnea etiology.' },
     { tag: 'MAD', text: 'Consider an oral appliance.' },
     { tag: 'MAD-WORKUP', text: 'Confirm oral-appliance safety.' },
     { tag: 'CENTRAL-PSG-WORKUP', text: 'Confirm home-study central signals in the sleep laboratory.' },
@@ -868,10 +871,9 @@ const centralChecklistStart = reportHtml.indexOf('Your First 30 Days');
 const centralPlanHtml = reportHtml.slice(centralPlanStart, centralChecklistStart);
 const centralChecklistHtml = reportHtml.slice(centralChecklistStart);
 assert(centralPlanHtml.includes('Confirm Central-Breathing Findings With a Lab Sleep Study'), 'Central confirmation survives the two-workup display limit when several prerequisites fire');
-assert(centralPlanHtml.indexOf('Confirm Central-Breathing Findings With a Lab Sleep Study') < centralPlanHtml.indexOf('Confirm Heart-Function Safety Before ASV'), 'Central confirmation is shown before ASV heart-safety review');
+assert(!centralPlanHtml.includes('Confirm Heart-Function Safety Before ASV'), 'Central pathway does not inject obsolete blanket ASV heart-safety guidance');
 assert(reportHtml.includes('Your most important next step:</strong> Ask whether the central-breathing signals'), 'Central confirmation becomes the report\'s most important next step');
-assert(centralChecklistHtml.includes('central-breathing signals from the home study') && centralChecklistHtml.includes('recent echocardiogram'), 'Central and ASV safety actions both remain in the 30-day checklist');
-assert(centralChecklistHtml.indexOf('central-breathing signals from the home study') < centralChecklistHtml.indexOf('recent echocardiogram'), 'Checklist sequences lab confirmation before ASV heart-safety review');
+assert(centralChecklistHtml.includes('central-breathing signals from the home study'), 'Central confirmation remains in the 30-day checklist');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   priorMAD: true,

@@ -42,37 +42,19 @@
         const score = m.edwardsArTHScore || 0;
         const maxScore = m.edwardsArTHMaxScore || 0;
         // Full 3-variable Edwards score carries the published 84% accuracy (Edwards 2014).
-        if (score >= T.arousal.scoreLikely && maxScore === 3) return score === 3 ? 'High' : 'Moderate';
-        // Partial 2-of-3 (hypopnea fraction unavailable, e.g. routine WatchPAT): the validated
-        // accuracy does NOT apply to the truncated score — report as low-confidence/incomplete.
-        if (score >= T.arousal.scoreLikely && maxScore === 2) return 'Low';
+        // The complete Edwards score is an internally validated screening classifier,
+        // not a measured endotype or treatment-selection rule. Cap at Moderate.
+        if (score >= T.arousal.scoreLikely && maxScore === 3) return 'Moderate';
         return 'Low';
       }
       case 'High Loop Gain': {
-        // Qualitative ventilatory-instability flag (no numeric estimate). Driven only by the
-        // central / periodic-breathing signals the study reports; capped at Moderate because
-        // these are supportive signals, not a validated loop-gain measurement.
-        const supportCount =
-          ((m.csr||0) >= T.loopGain.csr ? 1 : 0) +
-          ((m.pahic3||0) >= T.loopGain.pahic3 ? 1 : 0) +
-          ((m.pahic4||0) >= T.loopGain.pahic4 ? 1 : 0) +
-          ((m.cai||0) >= T.loopGain.pahic3 ? 1 : 0);
-        const strong =
-          ((m.csr||0) >= T.loopGain.csrHigh ? 1 : 0) +
-          ((m.pahic3||0) >= T.loopGain.pahic3High ? 1 : 0) +
-          ((m.pahic4||0) >= T.loopGain.pahic4High ? 1 : 0);
-        if(supportCount >= 2 && strong >= 1) return 'Moderate';
-        if(supportCount >= 2) return m.cvd ? 'Moderate' : 'Low';
-        if(supportCount >= 1 && m.cvd) return 'Low';
+        // Inactive legacy label. Central and periodic-breathing findings remain
+        // diagnostic/safety signals but are not loop-gain measurements.
         return 'Low';
       }
       case 'Poor Muscle Responsiveness': {
-        const remNrem = ratio(m.remAhi, m.nremAhi) ?? 0;
-        const nrem = exists(m.nremAhi) ? m.nremAhi : 0;
-        // Inferred from the REM/NREM event distribution — a surrogate, not a measured
-        // pharyngeal-muscle trait. Capped at Moderate confidence (Sands 2018 validated muscle
-        // compensation via PSG airflow/Pcrit, not via a REM/NREM ratio).
-        if((m.ahi||0) >= T.muscleResponse.ahiMin && remNrem > T.muscleResponse.remNremRatio && nrem >= T.muscleResponse.nremFloor) return 'Moderate';
+        // Inactive legacy label. REM/NREM AHI is not a validated measure of
+        // upper-airway muscle compensation.
         return 'Low';
       }
       case 'Positional OSA': {
