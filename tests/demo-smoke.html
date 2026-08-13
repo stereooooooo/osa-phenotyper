@@ -73,11 +73,13 @@ async function run() {
 
   click(appWin, '[data-demo-action="prep"]');
   assertEqual(appWin.OSAWorkspaceView.getMode(), 'prep', 'Demo guide switches to the staff preparation workspace');
-  click(appWin, '#btnDemoWatchpat');
-  await waitFor(() => appDoc.getElementById('pdfReviewModal').classList.contains('show'), 'synthetic WatchPAT review');
-  assertEqual(appDoc.querySelectorAll('#pdfReviewTable tbody tr').length, 21, 'Synthetic WatchPAT import uses the real field-review table');
-  click(appWin, '#btnApplyPdf');
-  assertEqual(appDoc.querySelector('[name="pahi"]').value, '28', 'Approved synthetic WatchPAT values use the real form mapping');
+  assertEqual(appDoc.querySelector('[name="pahi"]').value, '28', 'Demo chart starts with documented WatchPAT results');
+  assert(appDoc.querySelector('[name="ctTurbs"]').checked, 'Demo chart documents turbinate hypertrophy');
+  assert(appDoc.querySelector('[name="planInspire"]').checked, 'Demo plan prioritizes nerve-stimulation evaluation');
+  assert(!appDoc.querySelector('[name="planNasal"]').checked, 'Demo does not let generic nasal care outrank the Inspire workup');
+  assert(!appDoc.querySelector('[name="planWeight"]').checked, 'Demo plan does not promote weight management for this encounter');
+  assert(appDoc.querySelector('[name="planSummary"]').value.startsWith('Complete DISE'), 'Demo plan names DISE as the most important next step');
+  assert(appDoc.querySelector('[name="planSummary"]').value.includes('turbinate reduction'), 'Demo plan keeps turbinate reduction as a secondary same-anesthetic step');
 
   const intakeFrame = document.getElementById('intakeFrame');
   await waitFor(() => intakeFrame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'demo questionnaire');
@@ -97,7 +99,7 @@ async function run() {
   await waitFor(() => appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId()).intakePendingFieldCount > 0, 'intake pending review');
   const submittedPatient = appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId());
   assertEqual(submittedPatient.formData.sex, 'M', 'Demo intake applies patient sex to an empty chart field');
-  assertEqual(submittedPatient.formData.bmi, 28.6, 'Demo intake applies calculated BMI to an empty chart field');
+  assertEqual(String(submittedPatient.formData.bmi), '28.6', 'Demo intake preserves the documented BMI');
   assertEqual(appDoc.querySelector('[name="sex"]').value, 'M', 'Submitted patient sex is visible in the clinician form');
   assert(appDoc.querySelector('[name="priorCpap"]').checked, 'Submitted CPAP history is visible in the clinician form');
   assert(appDoc.querySelector('[name="prefInspire"]').checked, 'Submitted treatment preference is visible in the clinician form');

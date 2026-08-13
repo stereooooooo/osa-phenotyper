@@ -9,7 +9,7 @@ Create these under the dedicated `Precision Sleep` team and `OSA Phenotyper` pro
 - Type: `feature`
 - Labels: `meeting-ready`, `patient-facing`, `staff-workflow`, `clinician-facing`, `privacy`
 - Outcome: demonstrate the real questionnaire, staff verification, clinician review, both patient reports, and clinician guide without PHI or a deployment dependency.
-- Acceptance: localhost-only `?demo=inspire`; synthetic browser-memory data; real intake form and import-review UI; candidacy counterexample; automated smoke coverage.
+- Acceptance: localhost-only `?demo=inspire`; synthetic browser-memory data; real intake form; documented moderate WatchPAT fixture; DISE-first Inspire pathway with secondary turbinate reduction; candidacy counterexample; automated smoke coverage.
 
 ### Distill the patient-report opening hierarchy
 

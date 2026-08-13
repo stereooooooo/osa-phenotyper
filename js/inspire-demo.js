@@ -12,14 +12,14 @@
   const WATCHPAT_FIELDS = [
     ['age', 'Age', '48'], ['sex', 'Sex', 'M'], ['bmi', 'BMI', '28.6'],
     ['neck', 'Neck Circ (in)', '16.5'], ['ess', 'Epworth (ESS)', '12'],
-    ['pahi', 'pAHI (overall)', '28'], ['remPahi', 'pAHI REM', '41'],
-    ['nremPahi', 'pAHI NREM', '23'], ['odi', 'ODI 4%', '25'],
-    ['patRdi', 'PAT RDI', '31'], ['pahic', 'pAHIc 3%', '0.8'],
+    ['pahi', 'pAHI (overall)', '28'], ['remPahi', 'pAHI REM', '32'],
+    ['nremPahi', 'pAHI NREM', '27'], ['odi', 'ODI 4%', '25'],
+    ['patRdi', 'PAT RDI', '30'], ['pahic', 'pAHIc 3%', '0.8'],
     ['pahic4', 'pAHIc 4%', '0.4'], ['csr', '% CSR', '0'],
-    ['nadir', 'Min SpO2 (%)', '83'], ['hbAreaPH', 'HB per hour', '36'],
-    ['hbUnder90PH', 'Area <90% per hour', '1.1'], ['tst', 'Total Sleep Time (hrs)', '6.2'],
-    ['remPercent', 'REM sleep (%)', '22'], ['supPahi', 'Supine pAHI', '39'],
-    ['nonSupPahi', 'Non-Supine pAHI', '16'], ['snoreIdx', 'Snoring (dB mean)', '47'],
+    ['nadir', 'Min SpO2 (%)', '83'], ['hbAreaPH', 'HB per hour', '24'],
+    ['hbUnder90PH', 'Area <90% per hour', '0.6'], ['tst', 'Total Sleep Time (hrs)', '6.2'],
+    ['remPercent', 'REM sleep (%)', '22'], ['supPahi', 'Supine pAHI', '31'],
+    ['nonSupPahi', 'Non-Supine pAHI', '26'], ['snoreIdx', 'Snoring (dB mean)', '47'],
   ].map(([name, label, value]) => ({ name, label, value, confidence: 'high' }));
 
   function totalScale(scale) {
@@ -108,7 +108,7 @@
       </div>
       <div class="osa-demo-guide__steps">
         <button type="button" class="btn btn-sm btn-primary" data-demo-action="questionnaire">1. Patient questionnaire</button>
-        <button type="button" class="btn btn-sm btn-outline-primary" data-demo-action="prep">2. Staff prep</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-demo-action="prep">2. Staff review</button>
         <button type="button" class="btn btn-sm btn-outline-primary" data-demo-action="clinician">3. Clinician review</button>
         <button type="button" class="btn btn-sm btn-outline-primary" data-demo-action="reports">4. Reports</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-demo-action="counterexample">Safety counterexample</button>
@@ -123,7 +123,8 @@
         document.getElementById('btnIntakeLink')?.click();
       } else if (action === 'prep') {
         window.OSAWorkspaceView?.setMode('prep');
-        document.getElementById('pdfImportSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('sleepStudyWatchpat')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        updateDemoStatus('Staff review: the prior WatchPAT results are already entered and ready for clinician review.');
       } else if (action === 'clinician') {
         window.OSAWorkspaceView?.setMode('clinician');
         document.getElementById('clinicianBriefing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -138,31 +139,21 @@
     });
   }
 
-  function installSyntheticImport() {
-    const status = document.getElementById('pdfStatus');
-    if (!status || document.getElementById('btnDemoWatchpat')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.id = 'btnDemoWatchpat';
-    button.className = 'btn btn-sm btn-outline-primary mt-2';
-    button.innerHTML = '<i class="bi bi-stars"></i> Review synthetic WatchPAT values';
-    status.insertAdjacentElement('afterend', button);
-    button.addEventListener('click', () => {
-      document.dispatchEvent(new CustomEvent('osa:demo-watchpat', {
-        detail: { fields: WATCHPAT_FIELDS, notFound: [] },
-      }));
-    });
-  }
-
   async function seedDemo() {
     installGuide();
-    installSyntheticImport();
+    const documentedWatchpat = Object.fromEntries(
+      WATCHPAT_FIELDS.map(field => [field.name, field.value])
+    );
     const main = await OSADatabase.createPatient({
-      name: 'LEE, Morgan', dob: '1978-05-14', mrn: 'DEMO-001', status: 'Initial Eval',
-      milestones: ['Initial Eval'],
+      name: 'LEE, Morgan', dob: '1978-05-14', mrn: 'DEMO-001', status: 'Study Reviewed',
+      milestones: ['Initial Eval', 'Study Reviewed'],
       formData: {
+        ...documentedWatchpat,
         visitReason: 'inspire', tonsils: '2', ftp: 'III', neck: '16.5',
-        retrognathia: 'mild', alcoholNearBed: 'none',
+        retrognathia: 'mild', ctTurbs: 'on', studyType: 'watchpat',
+        alcoholNearBed: 'none',
+        planInspire: 'on', planConfirmed: 'on',
+        planSummary: 'Complete DISE and the device-specific Inspire candidacy evaluation; if proceeding, perform turbinate reduction during the same anesthetic.',
       },
     });
     const safety = await OSADatabase.createPatient({
@@ -186,10 +177,16 @@
     const patientId = window.__OSA_WORKFLOW_TEST__?.resolveIntakePatientId(data.token) || state.mainPatientId;
     if (!patientId || data.questionnaireType !== 'intake') return;
     const pending = mapIntakeToFormData(data.payload || {});
+    // The chart already contains the actual WatchPAT report. Keep the demo
+    // focused on those documented results rather than separately presenting
+    // the patient's recollection of that same study or an unrelated weight
+    // conversation during this Inspire-focused encounter.
+    ['priorSleepStudy', 'priorSleepStudyAnswer', 'priorSleepStudyType', 'priorSleepStudyYear',
+      'weightLossReadiness', 'glp1Status'].forEach(field => delete pending[field]);
     window.__OSA_WORKFLOW_TEST__.injectIntakeSubmission(patientId, pending);
     await window.OSAWorkspace.openChart(patientId);
     window.OSAWorkspaceView?.setMode('prep');
-    updateDemoStatus('Questionnaire received. Staff can review patient-reported changes, then import the synthetic sleep study.');
+    updateDemoStatus('Questionnaire received. Staff can review patient-reported changes alongside the documented WatchPAT results.');
   }
 
   window.addEventListener('message', async event => {

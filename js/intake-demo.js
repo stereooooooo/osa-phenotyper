@@ -64,7 +64,7 @@
     choose('chronicOpioidUse', 'no');
     choose('neuromuscularRespiratoryRisk', 'no');
     choose('hypoventilationRisk', 'no');
-    choose('weightInterest', 'thinking');
+    choose('weightInterest', 'not-now');
     choose('glp1Status', 'never');
 
     const note = document.getElementById('demoAnswerNote');
