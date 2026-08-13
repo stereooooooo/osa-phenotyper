@@ -488,7 +488,7 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | # | Name | Key Features |
 |---|---|---|
 | 242 | Local synthetic demo boundary | `?demo=inspire` activates only on localhost, labels both clinician and questionnaire screens as synthetic, keeps records in browser memory, and leaves hosted clinical behavior unchanged. |
-| 243 | Questionnaire-to-staff handoff | The real patient questionnaire opens on the same localhost origin with synthetic answers already filled, submission returns a pending intake review to Staff Prep, and no questionnaire content is changed. |
+| 243 | Questionnaire-to-staff handoff | The real patient questionnaire opens on the same localhost origin with synthetic answers already filled; submission visibly populates empty chart fields, preserves only genuine conflicts for Staff Prep review, and changes no questionnaire content. |
 | 244 | Synthetic WatchPAT verification | The meeting helper routes synthetic study values through the same field-review and apply modal used by the WatchPAT parser rather than bypassing staff verification. |
 | 245 | Patient report orientation | Today's Sleep Plan and Full Sleep Profile begin with a plain-language finding and next step before the conditional terminology guide; the orientation contains no unexplained clinical acronyms and all detailed content remains present. |
 | 246 | Clinician decision-first hierarchy | Live clinician output and the clinician guide PDF present safety findings, insufficient data, prioritized actions, and guardrails before supporting evidence while preserving full technical detail. |

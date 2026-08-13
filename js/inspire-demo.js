@@ -160,7 +160,10 @@
     const main = await OSADatabase.createPatient({
       name: 'LEE, Morgan', dob: '1978-05-14', mrn: 'DEMO-001', status: 'Initial Eval',
       milestones: ['Initial Eval'],
-      formData: { visitReason: 'inspire', tonsils: '2', ftp: 'III', neck: '16.5', retrognathia: 'mild' },
+      formData: {
+        visitReason: 'inspire', tonsils: '2', ftp: 'III', neck: '16.5',
+        retrognathia: 'mild', alcoholNearBed: 'none',
+      },
     });
     const safety = await OSADatabase.createPatient({
       name: 'DEMO, Safety Boundary', dob: '1970-02-18', mrn: 'DEMO-CCC', status: 'Treatment Planning',
@@ -183,7 +186,7 @@
     const patientId = window.__OSA_WORKFLOW_TEST__?.resolveIntakePatientId(event.data.token) || state.mainPatientId;
     if (!patientId || event.data.questionnaireType !== 'intake') return;
     const pending = mapIntakeToFormData(event.data.payload || {});
-    window.__OSA_WORKFLOW_TEST__.injectPendingIntake(patientId, pending);
+    window.__OSA_WORKFLOW_TEST__.injectIntakeSubmission(patientId, pending);
     await window.OSAWorkspace.openChart(patientId);
     window.OSAWorkspaceView?.setMode('prep');
     updateDemoStatus('Questionnaire received. Staff can review patient-reported changes, then import the synthetic sleep study.');

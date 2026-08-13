@@ -101,6 +101,12 @@ async function run() {
     payload: submission.payload,
   }, window.location.origin);
   await waitFor(() => appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId()).intakePendingFieldCount > 0, 'intake pending review');
+  const submittedPatient = appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId());
+  assertEqual(submittedPatient.formData.sex, 'M', 'Demo intake applies patient sex to an empty chart field');
+  assertEqual(submittedPatient.formData.bmi, 28.6, 'Demo intake applies calculated BMI to an empty chart field');
+  assertEqual(appDoc.querySelector('[name="sex"]').value, 'M', 'Submitted patient sex is visible in the clinician form');
+  assert(appDoc.querySelector('[name="priorCpap"]').checked, 'Submitted CPAP history is visible in the clinician form');
+  assert(appDoc.querySelector('[name="prefInspire"]').checked, 'Submitted treatment preference is visible in the clinician form');
   assertEqual(appWin.OSAWorkspaceView.getMode(), 'prep', 'Submitted questionnaire returns the journey to staff review');
   assert(appDoc.getElementById('osaDemoStatus').textContent.includes('Questionnaire received'), 'Demo guide advances after questionnaire submission');
 

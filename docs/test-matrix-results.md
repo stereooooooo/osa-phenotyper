@@ -1,7 +1,7 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** August 12, 2026
 **Latest tested build:** local meeting candidate on `codex/precision-sleep-v1` (not deployed)
-**Latest complete result:** 2,046 headless assertions passed with no failures
+**Latest complete result:** 2,051 headless assertions passed with no failures
 
 ---
 
@@ -9,12 +9,13 @@
 
 **Status at review:** local implementation and complete regression verification finished. No deployment was requested or performed.
 
-**Result:** passed 2,046 headless assertions with no failures.
+**Result:** passed 2,051 headless assertions with no failures.
 
 **Verified behavior:**
 
 - a localhost-only synthetic demo covers the real patient questionnaire, pending staff review, verified synthetic WatchPAT import, clinician review, clinician guide, Today's Sleep Plan, Full Sleep Profile, and an Inspire candidacy counterexample
 - demo questionnaire links remain on the current localhost origin instead of routing browser-memory tokens to the deployed intake app, and all synthetic questionnaire answers are prefilled on open
+- submitted demo answers populate previously empty chart fields and the visible clinician form; only a deliberate existing-value conflict remains pending for Staff Prep review, matching the production intake merge boundary
 - demo records remain in browser memory and both patient and clinician surfaces clearly state the synthetic privacy boundary
 - the patient reports lead with a plain-language finding and next step before terminology and supporting detail without removing existing clinical content
 - the clinician view and clinician guide lead with treatment priorities, missing information, safety constraints, and guardrails before the complete supporting evidence

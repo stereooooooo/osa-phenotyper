@@ -115,6 +115,34 @@
     return value;
   }
 
+  // Mirror the production intake Lambda's empty-field merge semantics. Demo
+  // submissions should populate blank chart fields immediately and reserve
+  // clinician review for genuine conflicts, just like the live intake flow.
+  const INTAKE_CHECKBOX_STYLE_FORM_KEYS = new Set([
+    'nasalObs', 'snoringReported', 'prefAvoidCpap', 'prefSurgery', 'prefInspire',
+    'priorUPPP', 'priorNasal', 'priorSinus', 'priorJaw', 'priorInspire', 'priorMAD',
+    'priorCpap', 'cpapCurrent', 'cpapMask', 'cpapClaustro', 'cpapDry', 'cpapLeaks',
+    'cpapSleep', 'cpapSkin', 'cpapNoImprove', 'cpapTravel', 'cvd',
+    'priorSleepStudy',
+  ]);
+
+  function isEmptyIntakeValue(value) {
+    return value === null || value === undefined || value === '' || value === false || value === 'false';
+  }
+
+  function canonicalIntakeValue(value) {
+    if (value === true || value === 'on' || value === 'true') return 'bool:true';
+    if (isEmptyIntakeValue(value)) return 'bool:false';
+    if (typeof value === 'number') return `num:${value}`;
+    if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value.trim())) return `num:${Number(value.trim())}`;
+    return `str:${String(value).trim()}`;
+  }
+
+  function isMeaningfulIntakeValue(field, value) {
+    if (INTAKE_CHECKBOX_STYLE_FORM_KEYS.has(field)) return value !== undefined && value !== null;
+    return !isEmptyIntakeValue(value);
+  }
+
   function appendHistory(patient, field, entry) {
     if (!patient.fieldProvenanceHistory[field]) patient.fieldProvenanceHistory[field] = [];
     patient.fieldProvenanceHistory[field].push(entry);
@@ -440,6 +468,54 @@
       patient.intakeStatus = patient.intakePendingFieldCount ? 'review-needed' : patient.intakeStatus;
       patient.intakeReceivedAt = updatedAt;
       patient.updatedAt = updatedAt;
+      persistTestState();
+      return patientClone(patient);
+    },
+    injectIntakeSubmission(id, intakeFormData) {
+      const patient = getPatientOrThrow(id);
+      const updatedAt = nowIso();
+
+      Object.entries(intakeFormData || {}).forEach(([field, rawValue]) => {
+        const value = normalizeValue(rawValue);
+        const hasCurrentField = Object.prototype.hasOwnProperty.call(patient.formData, field);
+        const currentValue = patient.formData[field];
+
+        if (isMeaningfulIntakeValue(field, value) && (!hasCurrentField || isEmptyIntakeValue(currentValue))) {
+          applyChartChanges(patient, { [field]: value }, 'patient-intake', 'intake-applied', updatedAt, 'patient-intake');
+          delete patient.intakePendingOverrides[field];
+          delete patient.intakePendingProvenance[field];
+          return;
+        }
+
+        if (hasCurrentField && canonicalIntakeValue(currentValue) === canonicalIntakeValue(value)) {
+          delete patient.intakePendingOverrides[field];
+          delete patient.intakePendingProvenance[field];
+          return;
+        }
+
+        if (!isMeaningfulIntakeValue(field, value)) return;
+        patient.intakePendingOverrides[field] = value;
+        patient.intakePendingProvenance[field] = {
+          source: 'patient-intake-pending',
+          updatedAt,
+          updatedBy: 'patient-intake',
+        };
+        appendHistory(patient, field, {
+          source: 'patient-intake-pending',
+          updatedAt,
+          updatedBy: 'patient-intake',
+          event: 'pending-review',
+          value,
+          currentChartValue: currentValue,
+        });
+      });
+
+      patient.intakePendingFieldCount = Object.keys(patient.intakePendingOverrides).length;
+      patient.intakeStatus = patient.intakePendingFieldCount ? 'review-needed' : 'received';
+      patient.intakeReceivedAt = updatedAt;
+      patient.updatedAt = updatedAt;
+      patient.version += 1;
+      patient.lvefFollowupNeeded = needsLvefFollowup(patient.formData);
       persistTestState();
       return patientClone(patient);
     },
