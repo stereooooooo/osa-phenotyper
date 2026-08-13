@@ -18,6 +18,8 @@
 - the patient reports lead with a plain-language finding and next step before terminology and supporting detail without removing existing clinical content
 - the clinician view and clinician guide lead with treatment priorities, missing information, safety constraints, and guardrails before the complete supporting evidence
 - the clinician guide supports browser preview and download
+- clinician workflow markers retain readable spacing in print, and interactive tooltip/disclosure controls are flattened without browser-default button chrome
+- the patient treatment-plan heading remains with its introduction and first recommendation instead of becoming an orphaned page ending
 - output-parity matrices, evidence documentation, intake branching, parser integration, PAP compliance, the synthetic demo, and patient and clinician PDF pagination all pass
 - visual inspection of the generated two-page patient plan and three-page clinician guide found no clipped or overlapping content
 - no clinical threshold, phenotype rule, treatment rank, candidacy rule, diagnostic route, or questionnaire content changed

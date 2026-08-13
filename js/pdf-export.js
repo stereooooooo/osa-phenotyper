@@ -23,6 +23,21 @@ const OSAPdfExport = (() => {
     if (btns) btns.remove();
     // Remove any other no-print elements
     tmp.querySelectorAll('.no-print').forEach(el => el.remove());
+    // Tooltip triggers are interactive controls whose supporting text is only
+    // available on hover/focus. A flattened PDF cannot use them, and without
+    // Bootstrap's button reset they render as heavy default browser boxes.
+    // The visible clinical statement remains in the guide.
+    tmp.querySelectorAll('.osa-evidence-tooltip').forEach(el => el.remove());
+    // Flatten collapsible section controls into print headings. Keeping a
+    // button in a static guide exposes browser chrome and an irrelevant
+    // disclosure chevron after Bootstrap styles are removed.
+    tmp.querySelectorAll('button.osa-clin-section-header').forEach(button => {
+      const heading = document.createElement('div');
+      heading.className = button.className;
+      heading.innerHTML = button.innerHTML;
+      button.replaceWith(heading);
+    });
+    tmp.querySelectorAll('.osa-collapse-icon').forEach(el => el.remove());
     // Remove <details> wrappers but keep content open for PDF
     tmp.querySelectorAll('details').forEach(d => {
       d.setAttribute('open', '');
@@ -106,12 +121,60 @@ const OSAPdfExport = (() => {
     .osa-clin-metric-lbl { font-size: 10px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.02em; margin-top: 2px; text-align: center; white-space: nowrap; }
 
     /* Ranked treatment plan */
-    .osa-clin-rec { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; margin-bottom: 5px; border-radius: 5px; font-size: 13px; line-height: 1.5; background: #f8f9fa; border-left: 3px solid #dee2e6; }
-    .osa-clin-rec.osa-rec-priority { background: #f0f2f6; border-left-color: #1F3A5C; }
+    .osa-clin-rec { display: flex; align-items: flex-start; gap: 10px; padding: 9px 11px; margin-bottom: 6px; border: 1px solid #dbe3ec; border-radius: 6px; font-size: 13px; line-height: 1.5; background: #fff; }
+    .osa-clin-rec.osa-rec-priority { background: #eef3f8; border-color: #b8c8d9; }
     .osa-clin-rec-num { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 50%; background: #1F3A5C; color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
     .osa-clin-priority-brief { padding: 14px 16px; margin-bottom: 14px; background: #f3f7fa; border: 1px solid #cbd7e3; border-radius: 8px; }
     .osa-clin-priority-label { margin: 0 0 5px; color: #C8102E; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
     .osa-clin-supporting-title { color: #1F3A5C; }
+
+    /* Clinician care journey and summary. These use clinician-only class names
+       and therefore need their own print definitions after app CSS is removed. */
+    .osa-care-pathway { display: flex; align-items: center; justify-content: center; gap: 0; margin: 0 0 12px; padding: 9px 11px; background: #f8fafc; border: 1px solid #dbe3ec; border-radius: 8px; }
+    .osa-pathway-step { display: inline-flex; align-items: center; min-height: 26px; padding: 4px 8px; border-radius: 13px; color: #526173; font-size: 11px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
+    .osa-pathway-step > i { display: inline-flex; align-items: center; justify-content: center; width: 12px; margin-right: 6px; font-size: 10px; line-height: 1; flex: 0 0 12px; }
+    .osa-pathway-completed { color: #1F3A5C; background: #eef6f3; }
+    .osa-pathway-completed > i { color: #198754; }
+    .osa-pathway-active { color: #fff; background: #1F3A5C; }
+    .osa-pathway-active > i { color: #fff; }
+    .osa-pathway-upcoming { color: #64748b; background: #fff; }
+    .osa-pathway-upcoming > i { color: #94a3b8; }
+    .osa-pathway-connector { width: 22px; height: 2px; background: #cbd5e1; flex: 0 1 22px; min-width: 10px; }
+    .osa-pathway-completed + .osa-pathway-connector { background: #7fc7a4; }
+    .osa-care-summary { display: flex; align-items: center; margin: 0 0 14px; padding: 8px 11px; background: #eef6f3; border: 1px solid #bdd9cf; border-radius: 6px; color: #173a31; font-size: 12px; line-height: 1.45; }
+    .osa-care-summary > i { display: inline-flex; width: 14px; margin-right: 8px; color: #C8102E; font-size: 13px; line-height: 1; flex: 0 0 14px; }
+    .osa-evidence-tooltip { display: none !important; }
+
+    /* Decision-support modules are flattened into calm print sections rather
+       than retaining interactive button and disclosure styling. */
+    .osa-next-test-guidance { margin: 12px 0 16px; padding: 12px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 7px; color: #344054; }
+    .osa-next-test-guidance__kicker { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; color: #667085; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .osa-next-test-guidance__kicker span { display: inline-block; padding: 2px 7px; border-radius: 10px; background: #ecfdf3; color: #027a48; font-size: 10px; letter-spacing: 0; }
+    .osa-next-test-guidance__body { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.9fr); gap: 12px; align-items: start; }
+    .osa-next-test-guidance h3 { margin: 0 0 4px; color: #1F3A5C; font-size: 15px; line-height: 1.35; }
+    .osa-next-test-guidance p { margin: 0; color: #475467; font-size: 12px; line-height: 1.5; }
+    .osa-next-test-guidance__action { display: grid; gap: 2px; margin: 0; padding: 8px 10px; background: #fff; border: 1px solid #dbe3ec; border-radius: 5px; color: #475467; font-size: 11px; line-height: 1.4; }
+    .osa-next-test-guidance__action strong { color: #344054; }
+    .osa-next-test-guidance details { margin-top: 9px; padding-top: 8px; border-top: 1px solid #dbe3ec; color: #667085; }
+    .osa-next-test-guidance summary { display: block; margin: 0 0 4px; color: #475467; font-size: 11px; font-weight: 700; list-style: none; }
+    .osa-next-test-guidance summary::marker, .osa-next-test-guidance summary::-webkit-details-marker { display: none; content: ''; }
+    .osa-next-test-guidance details p { font-size: 11px; line-height: 1.45; }
+    .osa-clin-section { margin-top: 10px; border: 1px solid #dbe3ec; border-radius: 7px; overflow: hidden; }
+    .osa-clin-section-header, button.osa-clin-section-header { appearance: none; display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 9px 12px; background: #f3f6f9; border: 0; border-bottom: 1px solid #dbe3ec; border-radius: 0; color: #1F3A5C; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 13px; font-weight: 700; line-height: 1.3; text-align: left; }
+    .osa-clin-section-header > span:first-child { flex: 0 0 auto; }
+    .osa-clin-section-header i { margin-right: 5px; color: #C8102E; }
+    .osa-clin-section-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-left: 4px; }
+    .osa-clin-section-badges .badge { background: #eef3f8; color: #344054; border: 0; }
+    .osa-clin-section-body { padding: 12px 14px; font-size: 12px; line-height: 1.5; }
+    .pdf-clinician-compact > div { font-size: 12px !important; line-height: 1.38 !important; }
+    .pdf-clinician-compact p, .pdf-clinician-compact li { line-height: 1.38; }
+    .pdf-clinician-compact .alert { padding: 8px 12px; }
+    .pdf-clinician-compact .osa-clin-priority-brief { padding: 12px 14px; }
+    .pdf-clinician-compact .osa-clin-section { margin-top: 8px; }
+    .pdf-clinician-compact .osa-clin-section-body, .pdf-clinician-compact .card-body { padding: 8px 11px; }
+    .pdf-clinician-compact .osa-clin-section-body { font-size: 11.5px; line-height: 1.4; }
+    .pdf-clinician-compact .table th, .pdf-clinician-compact .table td { padding: 4px 6px; font-size: 11.5px; line-height: 1.35; }
+    .pdf-clinician-compact .table thead th { font-size: 10.5px; }
 
     /* HGNS table */
     #hgnsAssessment .table { table-layout: fixed; }
@@ -178,7 +241,7 @@ const OSAPdfExport = (() => {
 
     /* Today's Sleep Plan */
     .today-plan-subtitle { margin-top: 2px; color: #64748b; font-size: 11px; }
-    .today-plan-focus { margin: 0 0 16px; padding: 11px 14px; background: #eef3f8; border-left: 4px solid #C8102E; color: #1a2b42; }
+    .today-plan-focus { margin: 0 0 16px; padding: 11px 14px; background: #eef3f8; border: 1px solid #c4d1df; border-radius: 6px; color: #1a2b42; }
     .today-plan-focus p { margin: 0; }
     .today-plan-focus .today-plan-visit { margin-bottom: 4px; color: #526173; font-size: 11px; }
     .today-plan-module { margin: 0 0 17px; padding: 0 0 15px; border-bottom: 1px solid #dbe3ec; }
@@ -260,18 +323,30 @@ const OSAPdfExport = (() => {
     const structuredBlocks = container.querySelectorAll(
       '.report-header, .report-section, .report-orientation, .report-terms, .report-term, .report-summary-card, .care-pathway, .care-summary-card, .ahi-scale, ' +
       '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-footer, ' +
-      '.osa-clin-priority-brief, .osa-clin-rec, .osa-clin-metrics-row, .osa-clin-section-header, .osa-clin-section-body > *, .alert, .card-header, .card-body > *, .table-responsive'
+      '.osa-clin-priority-brief, .osa-clin-rec, .osa-clin-metrics-row, .osa-care-pathway, .osa-pathway-step, .osa-care-summary, .osa-next-test-guidance, .osa-clin-section, .osa-clin-section-header, .osa-clin-section-body > *, .alert, .card-header, .card-body > *, .table-responsive'
     );
     const flowBlocks = container.querySelectorAll(
       'h2, h3, h4, h5, .treatment-group-label, .checklist-group-label, .checklist-group-subtitle, table, tr, p, ul, ol, li'
     );
     const containerTop = container.getBoundingClientRect().top;
+    const atomicSelector = '.osa-clin-priority-brief, .osa-clin-rec, .osa-clin-metrics-row, .osa-care-pathway, .osa-care-summary, .osa-next-test-guidance, .alert';
+    const nestedInAtomicBlock = element => {
+      const atomicAncestor = element.closest(atomicSelector);
+      if (atomicAncestor && atomicAncestor !== element) return true;
+      const clinicianSection = element.closest('.osa-clin-section');
+      return Boolean(
+        clinicianSection &&
+        clinicianSection !== element &&
+        clinicianSection.getBoundingClientRect().height <= 700
+      );
+    };
     /* Keep a hook for format-specific boundary guards. Expanded clinician
        sections are measured before rendering, so no extra offset is needed. */
-    const clinicianBoundaryGuard = 0;
+    const clinicianBoundaryGuard = 20;
     const points = [0];
 
     structuredBlocks.forEach(el => {
+      if (nestedInAtomicBlock(el)) return;
       const rect = el.getBoundingClientRect();
       const styles = window.getComputedStyle(el);
       const marginTop = parseFloat(styles.marginTop || '0') || 0;
@@ -288,6 +363,7 @@ const OSAPdfExport = (() => {
     });
 
     flowBlocks.forEach(el => {
+      if (nestedInAtomicBlock(el)) return;
       const rect = el.getBoundingClientRect();
       const styles = window.getComputedStyle(el);
       const marginBottom = parseFloat(styles.marginBottom || '0') || 0;
@@ -331,6 +407,13 @@ const OSAPdfExport = (() => {
     style.textContent = PDF_STYLES;
     shell.appendChild(style);
     return shell;
+  }
+
+  function keepStylesheetDuringPdfClone(href) {
+    return href.includes('fonts.googleapis') ||
+      href.includes('fonts.gstatic') ||
+      href.includes('/vendor/inter/') ||
+      href.includes('/vendor/bootstrap-icons/');
   }
 
   function createPatientPageShell(sourceRoot, densityClass = '') {
@@ -439,6 +522,20 @@ const OSAPdfExport = (() => {
               nodes.push(children[i + 1]);
               i++;
             }
+          }
+          /* A treatment-plan title is not useful by itself at the foot of a
+             page. Keep its short introduction and first actionable option in
+             the same semantic unit, while allowing later options to paginate
+             independently. */
+          if (
+            sectionLabel === 'Your Treatment Plan' &&
+            children[i + 1] instanceof HTMLElement &&
+            children[i + 1].matches('.treatment-group-label') &&
+            children[i + 2] instanceof HTMLElement &&
+            children[i + 2].matches('.rec-item')
+          ) {
+            nodes.push(children[i + 1], children[i + 2]);
+            i += 2;
           }
           if (children[i + 1] instanceof HTMLElement && children[i + 1].matches('.comisa-callout')) {
             nodes.push(children[i + 1]);
@@ -727,7 +824,7 @@ const OSAPdfExport = (() => {
         onclone: (clonedDoc) => {
           clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
             const href = link.href || '';
-            if (href.includes('fonts.googleapis') || href.includes('fonts.gstatic')) return;
+            if (keepStylesheetDuringPdfClone(href)) return;
             link.remove();
           });
         }
@@ -804,6 +901,22 @@ const OSAPdfExport = (() => {
     });
   }
 
+  function findRenderedContentBottom(canvas) {
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return canvas.height;
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let y = canvas.height - 1; y >= 0; y--) {
+      const row = y * canvas.width * 4;
+      for (let x = 0; x < canvas.width; x += 3) {
+        const offset = row + x * 4;
+        if (pixels[offset + 3] > 8 && (pixels[offset] < 246 || pixels[offset + 1] < 246 || pixels[offset + 2] < 246)) {
+          return y + 1;
+        }
+      }
+    }
+    return canvas.height;
+  }
+
   async function exportFromHTML(html, filename, addFooter = false, footerDate = null, download = true) {
     if (window.OSALibs && window.OSALibs.loadPdfExport) {
       try { await window.OSALibs.loadPdfExport(); } catch (e) { /* fall through to the guard below */ }
@@ -873,6 +986,12 @@ const OSAPdfExport = (() => {
         return finalizePdf(pdf, filename, download);
       }
 
+      // The clinician guide deliberately gives the decision brief more visual
+      // weight than its evidence appendix. A slightly tighter detail layer
+      // keeps citations and follow-up guidance together without shrinking the
+      // high-priority plan or adding a nearly empty final sheet.
+      container.classList.add('pdf-clinician-compact');
+
       // Collect break points from the DOM before html2canvas renders
       const breakInfo = findBreakPoints(container, canvasScale);
 
@@ -885,11 +1004,18 @@ const OSAPdfExport = (() => {
         onclone: (clonedDoc) => {
           clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
             const href = link.href || '';
-            if (href.includes('fonts.googleapis') || href.includes('fonts.gstatic')) return;
+            if (keepStylesheetDuringPdfClone(href)) return;
             link.remove();
           });
         }
       });
+      // html2canvas includes the off-screen container's trailing white padding.
+      // Trim it before pagination so a few blank pixels cannot create an empty
+      // final page in a clinician guide near a page boundary.
+      const renderedContentBottom = Math.min(
+        canvas.height,
+        findRenderedContentBottom(canvas) + Math.round(4 * canvasScale)
+      );
 
       // Scale factor: how many canvas pixels per mm of PDF
       const pxPerMm = canvas.width / usableWidth;
@@ -898,23 +1024,23 @@ const OSAPdfExport = (() => {
       let srcY = 0;  // current position in canvas pixels
       let pageNum = 0;
 
-      while (srcY < canvas.height) {
+      while (srcY < renderedContentBottom) {
         if (pageNum > 0) pdf.addPage();
 
         // Find the ideal cut point for this page
-        const idealEnd = Math.min(canvas.height, srcY + pageHeightPx);
+        const idealEnd = Math.min(renderedContentBottom, srcY + pageHeightPx);
         let cutY;
 
-        if (idealEnd >= canvas.height) {
+        if (idealEnd >= renderedContentBottom) {
           // Last page — take everything remaining
-          cutY = canvas.height;
+          cutY = renderedContentBottom;
         } else {
           // Find best break point near the ideal end
           cutY = bestBreak(breakInfo.points, idealEnd, srcY, breakInfo.boundaryGuard);
         }
 
         const startY = Math.max(0, Math.floor(srcY));
-        const endY = Math.min(canvas.height, Math.max(startY + 1, Math.round(cutY)));
+        const endY = Math.min(renderedContentBottom, Math.max(startY + 1, Math.round(cutY)));
         const sliceH = endY - startY;
         if (sliceH <= 0) break;  // safety
 

@@ -861,17 +861,17 @@ fieldset legend {
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
-  padding: 0.5rem 0.7rem;
-  margin-bottom: 0.35rem;
-  border-radius: 5px;
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.4rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 6px;
   font-size: 0.88rem;
   line-height: 1.5;
-  background: #f8f9fa;
-  border-left: 3px solid #dee2e6;
+  background: #fff;
 }
 .osa-clin-rec.osa-rec-priority {
-  background: #f0f2f6; /* ~6% navy mix with white */
-  border-left-color: var(--osa-navy);
+  background: #eef3f8;
+  border-color: #b8c8d9;
 }
 .osa-clin-rec-num {
   display: inline-flex;

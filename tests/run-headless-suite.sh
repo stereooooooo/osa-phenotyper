@@ -189,8 +189,8 @@ run_clinician_pdf_suite() {
     exit 1
   fi
 
-  if ! grep -Eq 'data-pdf-pages="(2|3|4)"' "${DOM_FILE}"; then
-    echo "Clinician guide exceeded the accepted two-to-four-page range." >&2
+  if ! grep -q 'data-pdf-pages="3"' "${DOM_FILE}"; then
+    echo "Clinician guide did not preserve the reviewed three-page layout." >&2
     grep -Eo 'data-pdf-pages="[^"]*"' "${DOM_FILE}" >&2 || true
     exit 1
   fi

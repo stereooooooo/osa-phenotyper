@@ -470,7 +470,8 @@ body.report-preview-open {
   margin: 0 0 1.5rem;
   padding: 1rem 1.2rem;
   background: #eef3f8;
-  border-left: 4px solid #C8102E;
+  border: 1px solid #c4d1df;
+  border-radius: 6px;
   color: #1a2b42;
 }
 .patient-report .today-plan-focus p {
