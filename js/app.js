@@ -1668,7 +1668,7 @@ function buildClinicianReport(f, m, T){
       <div class="osa-next-test-guidance__body">
         <div>
           <h3>${escapeHtml(nextTestGuidance.title)}</h3>
-          <p>${escapeHtml(nextTestGuidance.reason)}.</p>
+          <p>${escapeHtml(nextTestGuidance.reason)}</p>
         </div>
         <div class="osa-next-test-guidance__action"><strong>Clinician action</strong><span>${escapeHtml(nextTestGuidance.action)}</span></div>
       </div>
