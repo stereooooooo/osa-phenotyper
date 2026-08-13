@@ -18,6 +18,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 
 | Review ID | Review date | Evidence cutoff | Scope | Sources reviewed | Conclusion | Affected Logic IDs | Code/build effect |
 |---|---|---|---|---|---|---|---|
+| ER-2026-08-13-COMISA-HYPOXEMIA-WEIGHT | 2026-08-13 | 2026-08-13 | COMISA screening and sequencing; conventional nocturnal hypoxemia versus event-linked hypoxic burden; weight management and tirzepatide | ISI validation and AASM insomnia guidance; Sweetman, MATRICS, and Alessi randomized trials; Azarbarzin, Trzepizur, Labarca, Esmaeili, Pinilla, and related HB sources; conventional-hypoxemia cohorts; ATS weight guidance; Sleep AHEAD; SURMOUNT-OSA; current FDA Zepbound labeling; AASM longitudinal guidance. Full method and links are in `research/comisa-hypoxemia-weight-primary-sources.md`. | Confirmed the conservative architecture: COMISA remains a screen with individualized sequencing; HB remains research context; conventional oxygen bands remain local safety triggers; weight management remains adjunctive and Zepbound OSA labeling remains distinct from general weight eligibility. Corrected source metadata and expanded rationale. Identified unsupported runtime wording for clinician signoff rather than changing output silently. | PH-07, TX-01, TX-04, SAF-03 | Documentation and source-comment correction only; no threshold, recommendation, ranking, safety action, or patient instruction changed; clinician signoff pending for runtime wording corrections |
 | ER-2026-08-13-GOVERNANCE-SIGNOFF | 2026-08-13 | 2026-08-13 | Clinician decision on six local-governance policies identified by the scientific-rationale review | Previously verified sources and limitations in `research/scientific-rationale-primary-sources.md`; no new external source was required | Raymond Brown, MD approved all six policies. Five preserve current behavior. For persistent concern after a negative HSAT, PSG is now the promoted draft default; contributor-first sequencing remains available only through explicit clinician confirmation. | DX-01, DX-02, DX-04, TX-03, TX-05 | Narrow diagnostic-routing and guidance change; paired default and override regressions added; lint and 2,091 assertions passed; not deployed |
 | ER-2026-08-13-SCIENTIFIC-RATIONALE | 2026-08-13 | 2026-08-13 | Prose decision rationale; adult diagnostic testing and HSAT adequacy; unilateral Inspire labeling, DISE, payer separation, response context, and objective follow-up | AASM diagnostic guideline and arousal-scoring statement; AASM HSAT position statement; Zhang 2020 and Tschopp 2021 PAT studies; FDA Inspire P130008/S090 SSED and labeling; STAR; Vanderveken 2013; Huyett 2021; ADHERE analyses; AASM surgical-referral and longitudinal-testing guidance; CMS LCD L38276; HOME pathway trial. Full source links and limitations are recorded in `research/scientific-rationale-primary-sources.md`. | Created a readable account of how data provenance, diagnostic boundaries, treatment context, guardrails, clinician confirmation, and follow-up interact. Confirmed the current diagnostic architecture and device-specific HGNS separation. Clarified that BMI above 40 is an FDA insufficient-study warning boundary in the reviewed Inspire labeling while the app's BMI 40 automatic referral boundary is local governance. Identified the symptomatic negative-HSAT nasal-first option as local governance with an explicit evidence gap. No decision threshold, treatment ranking, safety action, or patient instruction changed. | DX-01, DX-02, DX-03, DX-04, TX-02, TX-03, PAP-01, PAP-02, PAP-03 | Documentation and evidence classification only; no application code changed; lint and 2,081 regression assertions passed with exact output parity |
 | ER-2026-06-11 | 2026-06-11 | 2026-06-11 | Full clinical evidence and confidence-calibration audit | Existing primary literature, guidelines, regulatory sources, and expert review documented in `citations.md` and `optimization-roadmap.md` | Several rules were directionally useful but overstated certainty. Hypoxic burden was separated from automatic urgency at moderate levels; numeric loop gain was removed; partial arousal-threshold and muscle-response confidence were reduced; HNS response percentages were removed from output. | PH-02, PH-03, PH-04, PH-07, TX-03 | Shipped in the Phase 2 confidence-calibration release; see `optimization-changelog.md` |
@@ -529,6 +530,51 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Commit:** This audit-remediation change set; exact hash recorded in Git history
 - **Deployed build:** `16cbd81`, verified on the clinical pilot 2026-07-20
 - **Next review trigger or due date:** Clinician acceptance; any AASM diagnostic-testing update; externally validated WatchPAT adequacy rule; or validated positional-treatment selection rule.
+
+### ER-2026-08-13-COMISA-HYPOXEMIA-WEIGHT: Targeted rationale expansion
+
+- **Reviewer:** Codex primary-source review for Capital ENT clinician review
+- **Review date and evidence cutoff:** 2026-08-13
+- **Reason for review:** Continue optimizing the decision evidence after the diagnostic and Inspire
+  review, while preserving current application behavior until new clinical policies are approved.
+- **Affected Logic IDs:** PH-07, TX-01, TX-04, and SAF-03.
+- **Sources searched:** PubMed/MEDLINE, FDA Drugs@FDA labeling, AASM and ATS guidance, DOI and
+  journal records, and reference lists of the decision-relevant primary sources.
+- **Search concepts:** COMISA CBT-I/PAP sequencing and safety; ISI diagnostic limits; event-linked
+  hypoxic burden, ODI, T90, nadir, and method interchangeability; weight intervention and objective
+  reassessment; SURMOUNT-OSA; and current tirzepatide labeling.
+- **Inclusion criteria:** Primary randomized trials, primary outcome cohorts, current regulatory
+  labeling, and official professional guidance directly relevant to a current or proposed app use.
+- **Key findings:** ISI at least 15 plus AHI at least 5 is defensible only as a local screen. CBT-I
+  should be offered early, but no universal PAP sequence or individual adherence prediction is
+  supported. Conventional oxygen metrics, scored-event HB, and oximetry-derived burden must remain
+  separate; the app's exact safety trigger set is local. Weight management is adjunctive, and the
+  Zepbound OSA indication is adults with obesity and moderate-to-severe OSA, alongside diet and
+  activity. Objective reassessment is appropriate before treatment de-escalation after meaningful
+  weight change.
+- **Source corrections:** Replaced an incorrect conventional-hypoxemia bibliography with Labarca
+  2019 and the correct Oldenburg 2016 *European Heart Journal* citation; corrected Parekh to 2024;
+  and updated the Zepbound label link to the current FDA file reviewed 2026-08-13.
+- **Runtime discrepancies found:** Sweetman 2019 does not support calling untreated insomnia the
+  “strongest predictor” of PAP nonadherence. The fixed “5-7 pounds can noticeably reduce snoring”
+  statement was not supported by the audited primary evidence. Some report language can also make
+  the numerical COMISA screen sound like a confirmed insomnia diagnosis, and tirzepatide shorthand
+  should distinguish dual GIP/GLP-1 pharmacology and the Zepbound OSA indication from Mounjaro and
+  general weight-management eligibility.
+- **Conclusion:** Documentation and source correction only in this review. Preserve current
+  thresholds and routing. Do not silently alter clinician or patient guidance; bring the identified
+  wording, provenance, and follow-up policies to the clinician for signoff.
+- **Code and patient-report effect:** No executable behavior or output changed. Only a source-year
+  comment in `js/config.js` was corrected.
+- **Regression scenarios:** Existing COMISA, HB, conventional-hypoxemia, and weight scenarios remain
+  controlling. New paired wording and follow-up regressions are required in the same change set if
+  the pending runtime corrections are approved.
+- **Clinician reviewer and decision:** Raymond Brown, MD, pending on the new runtime wording and
+  follow-up decisions. Prior 2026-07-19 HB behavior approval remains in force.
+- **Commit and deployed build:** To be recorded after verification; not deployed.
+- **Next review trigger:** Clinician signoff; FDA label or AASM/ATS guidance change; validated
+  commercial burden-method comparison; prospective HB-guided treatment trial; or the next scheduled
+  review.
 
 ## Review template
 

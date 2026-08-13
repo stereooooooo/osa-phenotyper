@@ -88,7 +88,7 @@ const OSA_CONFIG = {
       // with ODI, T90, nadir SpO2, or area below 90%. No universally validated clinical
       // low/moderate/high categories exist. These values are retained only to describe
       // research-cohort context, never as stand-alone treatment-allocation thresholds.
-      // See Azarbarzin 2019; Pinilla 2023; Esmaeili 2023; ATS workshop 2024; Parekh 2026.
+      // See Azarbarzin 2019; Pinilla 2023; Esmaeili 2023; ATS workshop; Parekh 2024.
       signalBoundary:          30,    // exploratory app signal; cohort-derived, not a clinical category
       isaaccCohortContext:     73.1,  // post hoc ISAACC subgroup cut point, descriptive only
       pooledTrialContext:      87.1,  // pooled post hoc trial subgroup cut point, descriptive only

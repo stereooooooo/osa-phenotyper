@@ -4,12 +4,13 @@
 |---|---|
 | Application | Capital ENT Precision Sleep Clinical Hub |
 | Document status | Living clinical rationale for clinician and collaborator review |
-| Scope of this version | Decision framework, diagnostic study assessment, hypoglossal nerve stimulation, oral appliance therapy, and PAP optimization |
+| Scope of this version | Decision framework, diagnostic study assessment, hypoglossal nerve stimulation, oral appliance therapy, PAP optimization, COMISA, oxygen metrics, and weight management |
 | Evidence cutoff | 2026-08-13 targeted review, with continuing surveillance required |
 | Formal evidence register | [`evidence-basis.md`](evidence-basis.md) |
 | Annotated primary-source library | [`citations.md`](citations.md) |
 | Review and decision history | [`evidence-review-log.md`](evidence-review-log.md) |
 | Targeted primary-source review | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md) |
+| COMISA, oxygen, and weight source review | [`research/comisa-hypoxemia-weight-primary-sources.md`](research/comisa-hypoxemia-weight-primary-sources.md) |
 | Executable scenario inventory | [`test-matrix.md`](test-matrix.md) |
 
 ## Executive summary
@@ -498,6 +499,181 @@ device settings. Validation should measure agreement with expert download review
 identified barriers, change in whole-sleep-period usage, symptoms, independent residual disease or
 hypoxemia when tested, inappropriate retesting, and clinician override rate.
 
+## Decision area 5: insomnia plus OSA (COMISA)
+
+### Clinical question
+
+When clinically important insomnia symptoms coexist with OSA, how should the app identify the
+pattern, present cognitive behavioral therapy for insomnia (CBT-I), and sequence insomnia and OSA
+treatment without converting a questionnaire result into a diagnosis or delaying urgent care?
+
+### The app uses an operational screen, not an insomnia diagnosis
+
+The Insomnia Severity Index (ISI) is a validated symptom and outcome questionnaire. It does not by
+itself establish the duration, frequency, adequate opportunity for sleep, daytime consequences, or
+differential diagnosis required for chronic insomnia disorder. Precision Sleep currently uses ISI
+at least 15 plus AHI at least 5 as a local operational screen for an insomnia-plus-OSA pattern. The
+screen should trigger clinician review and treatment discussion; it should not be presented as a
+standalone diagnosis.
+
+This distinction is especially important because the most directly relevant sequencing trials
+generally enrolled participants with confirmed insomnia and moderate-to-severe OSA. Extending the
+screen to mild OSA is a conservative workflow choice, not a claim that the trial populations and
+effects are identical.
+
+### What the randomized trials support
+
+The available randomized evidence supports offering CBT-I early, either before PAP or alongside it:
+
+- Sweetman et al. found that CBT-I before CPAP improved acceptance and average nightly use in the
+  enrolled population.
+- MATRICS found better insomnia outcomes with CBT-I plus PAP, but no significant PAP-adherence
+  advantage and no significant difference between sequential and concurrent CBT-I delivery.
+- An integrated trial in veterans supports combining insomnia treatment with practical PAP support,
+  but its population and multicomponent intervention limit broad extrapolation.
+
+These trials do not identify one best sequence for every patient. OSA severity, substantial
+nocturnal hypoxemia, sleepiness, driving or safety-sensitive work, access, prior treatment,
+preference, and clinician assessment determine whether PAP begins before, during, or after CBT-I.
+Insomnia should not automatically delay effective treatment when OSA urgency is high.
+
+An early sleep-restriction component can temporarily increase sleepiness. The evidence supports
+monitoring and individualized pacing, not a blanket contraindication or a universal ESS cutoff.
+The app does not prescribe a sleep window, choose a digital or clinician-delivered CBT-I protocol,
+or automate hypnotic selection.
+
+### What Precision Sleep must not claim
+
+The app cannot determine the cause of an elevated ISI, predict an individual's CBT-I response,
+predict PAP adherence, or claim that untreated insomnia is the strongest predictor of PAP
+nonadherence. The Sweetman 2019 randomized trial did not compare predictors and does not support
+that ranking. A source-verified wording correction is pending clinician approval before runtime
+copy is changed.
+
+### Key limitations and validation needs
+
+COMISA trials differ in diagnostic confirmation, OSA severity, intervention delivery, PAP support,
+and population. Validation should measure clinician confirmation of the screen, sequence chosen,
+ISI change, PAP uptake and whole-sleep-period use, sleepiness trajectory, safety events, patient
+understanding, and clinician override rate.
+
+## Decision area 6: conventional nocturnal hypoxemia and event-linked hypoxic burden
+
+### Clinical question
+
+How should the app use oxygen findings to identify a safety concern or add prognostic context while
+avoiding false equivalence between different metrics, causal claims, or unsupported treatment
+allocation?
+
+### Three questions, not one oxygen score
+
+Precision Sleep keeps three concepts separate:
+
+1. **Conventional oxygen metrics:** oxygen desaturation index (ODI), oxygen nadir, time below 90%
+   (T90), and area below 90%. These describe different aspects of intermittent or sustained
+   nocturnal hypoxemia and vary with the device, scoring rule, denominator, and artifact handling.
+2. **Respiratory-event-linked hypoxic burden:** the summed area under desaturation curves attributed
+   to scored respiratory events and normalized by sleep time. This is the construct used in the
+   foundational cardiovascular-outcome cohorts.
+3. **Oximetry-derived burden methods:** algorithms that estimate burden from the oxygen signal
+   without the same scored-event linkage. They may correlate with event-linked burden but are not
+   automatically numerically interchangeable.
+
+A low or absent value in one construct cannot be used to declare another normal. Method provenance
+must be known before a value is compared with a published research cutoff. In particular, a
+commercial WatchPAT value must not be assumed equivalent to a custom published algorithm merely
+because both are called hypoxic burden.
+
+### Prognostic context does not establish treatment allocation
+
+Observational cohorts associate higher event-linked hypoxic burden with cardiovascular outcomes.
+Post hoc trial analyses have explored whether burden modifies treatment effect, but no prospective
+biomarker-stratified trial validates a universal threshold for selecting, withholding, or ranking
+PAP or another OSA treatment.
+
+Precision Sleep therefore treats:
+
+- 30 %min/h as an exploratory app signal boundary;
+- 73.1 and 87.1 as descriptive, post hoc cohort or pooled-trial context only; and
+- the entire event-linked pathway as a research signal whose confidence is capped at Moderate.
+
+These values are not low, moderate, or high clinical categories. Hypoxic burden cannot determine
+eligibility, promise cardiovascular benefit, or suppress treatment below a cutoff.
+
+### Conventional oxygen bands are local safety review triggers
+
+ODI above 50/hour, T90 above 20%, nadir below 75%, or area below 90% above 2/hour currently triggers
+a separate substantial-nocturnal-hypoxemia review pathway. The T90 and nadir boundaries have
+directional cohort context, but the four-part trigger set is not a prospectively validated joint
+rule. It is a conservative local safety boundary.
+
+The resulting action is deliberately broader than “treat OSA harder.” It asks the clinician to
+review study quality, begin or expedite effective treatment for confirmed OSA when appropriate,
+consider non-OSA contributors such as cardiopulmonary disease or hypoventilation, and objectively
+confirm oxygen control. The metrics do not prove that OSA is the sole cause.
+
+### Key limitations and validation needs
+
+Oximeters, averaging times, event definitions, denominators, and burden algorithms vary. Published
+thresholds are cohort- and method-specific. Validation should measure source and method agreement,
+false-alert rate, non-OSA diagnosis yield, clinician response, objective follow-up oxygen control,
+and whether the research signal adds information without causing inappropriate treatment ranking.
+
+## Decision area 7: weight management and tirzepatide
+
+### Clinical question
+
+When should weight management be part of the OSA plan, when is the Zepbound OSA indication relevant,
+and what follow-up is needed before reducing another active OSA treatment?
+
+### Weight management is adjunctive and individualized
+
+Excess adiposity is an important contributor to OSA for many patients, but it is not the only cause.
+Guideline-supported care includes comprehensive lifestyle intervention for patients with overweight
+or obesity. Randomized and longitudinal studies show average improvement in AHI with weight loss,
+with substantial individual variation and incomplete remission. Precision Sleep must not predict a
+fixed AHI or snoring improvement from a specified number of pounds.
+
+The weight pathway should be non-stigmatizing, consider readiness and prior treatment, and remain
+compatible with PAP, an oral appliance, surgery, nerve stimulation, positional treatment, and
+other appropriate care. Weight management does not become a reason to delay effective OSA treatment
+when immediate control is needed.
+
+### The OSA-specific Zepbound indication is narrower than general weight management
+
+Current U.S. prescribing information indicates Zepbound (tirzepatide) for moderate-to-severe OSA in
+adults with obesity, in combination with a reduced-calorie diet and increased physical activity.
+This differs from the separate chronic-weight-management indication, which also covers some adults
+with overweight and a weight-related condition. Only Zepbound carries the OSA indication; a history
+of Mounjaro use can be documented because it contains tirzepatide, but Mounjaro must not be described
+as FDA approved for OSA.
+
+SURMOUNT-OSA demonstrated substantial average improvements in AHI and weight over 52 weeks in adults
+with obesity and moderate-to-severe OSA. It did not establish an individual response probability,
+long-term durability, comparative superiority to airway therapy, or a rule for stopping PAP. The
+FDA label explicitly notes that the pivotal trials did not evaluate the timing or appropriateness
+of PAP discontinuation.
+
+Medication eligibility, contraindications, dosing, interactions, monitoring, and tolerability
+remain prescriber decisions. Tirzepatide is a dual GIP/GLP-1 receptor agonist; “GLP-1” alone is
+common shorthand but pharmacologically incomplete.
+
+### Objective reassessment closes the loop
+
+When clinically significant weight change could alter OSA management, clinician-directed PSG or
+HSAT is appropriate before de-escalating treatment. The AASM longitudinal guidance intentionally
+does not impose one universal weight-change percentage or testing schedule. Baseline severity,
+oxygen findings, symptoms, current treatment, and the contemplated decision should determine timing
+and modality.
+
+### Key limitations and validation needs
+
+Weight-loss trials vary in population, diabetes status, OSA severity, treatment use, intervention,
+and duration. Medication labeling changes and full safety assessment is outside the app's current
+input set. Validation should measure weight and AHI change, symptoms, adverse effects, persistence,
+objective reassessment before de-escalation, clinician overrides, and whether patients understand
+that group averages do not guarantee remission.
+
 ## Cross-cutting phenotype signals
 
 Precision Sleep includes nine phenotype or contributor labels: high anatomical contribution, low
@@ -574,15 +750,14 @@ validation.
 | Formal logic register | [`evidence-basis.md`](evidence-basis.md) |
 | Exact source use and limitations | [`citations.md`](citations.md) |
 | Review decisions and surveillance | [`evidence-review-log.md`](evidence-review-log.md) |
-| Targeted source review for this narrative | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md) |
+| Targeted source reviews for this narrative | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md); [`research/comisa-hypoxemia-weight-primary-sources.md`](research/comisa-hypoxemia-weight-primary-sources.md) |
 | Regression scenarios and counterexamples | [`test-matrix.md`](test-matrix.md) |
 
 ## Planned chapters
 
-Later versions should add the same level of reasoning detail for insomnia plus OSA, positional and
-REM-predominant OSA, nocturnal hypoxemia and event-linked hypoxic burden, nasal treatment, upper
-airway surgery, weight management and anti-obesity medication, primary snoring and upper airway
-resistance syndrome, longitudinal follow-up, and validation governance.
+Later versions should add the same level of reasoning detail for positional and REM-predominant OSA,
+nasal treatment, upper-airway surgery, primary snoring and upper-airway resistance syndrome,
+longitudinal follow-up, and validation governance.
 
 ## Maintenance rule
 
