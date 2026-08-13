@@ -198,6 +198,10 @@ var OSAReportShared = (() => {
     if (signals.centralConfirmationNeeded) psgReasons.push('central or periodic-breathing signals require laboratory confirmation');
     if (signals.uars?.isUARS) psgReasons.push('arousal-based scoring is needed to evaluate possible upper airway resistance syndrome');
     if (signals.psgPreferredComorbidity) psgReasons.push(...signals.psgPreferredReasons);
+    // AASM recommends PSG after a negative HSAT when clinical concern remains.
+    // Promote PSG as the draft default; a contributor-first sequence remains
+    // available only when the clinician explicitly confirms that alternative.
+    if (signals.negativeHstNeedsPsg) psgReasons.push('the home study is negative, but symptoms or clinical concern remain unexplained');
 
     if (psgReasons.length) {
       return {
@@ -211,7 +215,6 @@ var OSAReportShared = (() => {
     }
 
     const considerReasons = [];
-    if (signals.negativeHstNeedsPsg) considerReasons.push('the home study is negative, but symptoms or clinical concern remain unexplained');
     if (input.severityPrecisionNeeded && signals.watchpatSeverityUncertain) considerReasons.push('a different mild-versus-moderate severity category would materially change management, eligibility, or risk assessment');
     if (input.ahiRdiDiscordanceConcern) considerReasons.push('AHI and RDI are substantially discordant and the result does not fit the clinical picture');
     if (signals.limitedRemSampling && input.severityPrecisionNeeded) considerReasons.push('REM sampling is limited and REM-specific severity would change management');
@@ -222,10 +225,8 @@ var OSAReportShared = (() => {
         label: 'Consider PSG',
         title: 'In-lab polysomnography is reasonable to consider',
         reason: considerReasons.join('; '),
-        action: signals.negativeHstNeedsPsg
-          ? 'Decide whether to obtain PSG now or first treat another plausible contributor, such as nasal obstruction, then reassess persistent symptoms. Confirm the choice before patient reporting.'
-          : 'Decide whether laboratory confirmation would change today\'s management enough to justify testing, then confirm or dismiss the draft suggestion.',
-        evidence: 'AASM supports PSG when suspicion remains after a negative home test. WatchPAT severity agreement is weakest in mild and moderate OSA, which supports selective rather than automatic confirmation.',
+        action: 'Decide whether laboratory confirmation would change today\'s management enough to justify testing, then confirm or dismiss the draft suggestion.',
+        evidence: 'WatchPAT severity agreement is weakest in mild and moderate OSA, which supports selective rather than automatic confirmation.',
       };
     }
 

@@ -1165,8 +1165,8 @@ function buildHstFlags(m, T){
     flags.push({
       severity: 'warning',
       flag: 'Negative home sleep test with persistent symptoms',
-      detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. If clinical suspicion remains after the full evaluation, AASM guidance supports in-lab PSG; the clinician should decide whether to test now or reassess after treating another plausible contributor.`,
-      tooltip: 'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected; simply repeating another home test is generally not recommended. Most home tests cannot score EEG arousals or respiratory effort-related arousals. Treating another plausible contributor first is an individualized sequencing decision, not a proven substitute for PSG.',
+      detail: `AHI ${m.ahi} is in the normal range, but ${symptomContext}. A home study can miss milder or different sleep-disordered breathing. When clinical suspicion remains after the full evaluation, AASM guidance supports in-lab PSG as the next diagnostic step. Alternative contributor-first sequencing requires explicit clinician confirmation and follow-up of persistent symptoms.`,
+      tooltip: 'AASM recommends in-lab polysomnography after a negative, inconclusive, or technically inadequate home sleep apnea test when OSA remains suspected; simply repeating another home test is generally not recommended. Most home tests cannot score EEG arousals or respiratory effort-related arousals. Treating another independently indicated contributor first is an explicit clinician override, not a proven substitute for PSG.',
     });
   }
 
@@ -1488,7 +1488,7 @@ function mapTreatments(f, m, T){
       // respiratory effort-related arousals that most HSATs cannot score.
       pushRec(recs,'Possible UARS (upper airway resistance syndrome): consider in-lab polysomnography with arousal-based scoring for definitive evaluation.','UARS-EVAL');
     } else if (negativeHstNeedsPsg) {
-      pushRec(recs,'Negative home sleep apnea test with persistent symptoms or clinical concern: consider in-lab polysomnography if suspicion remains. The clinician may test now or first treat another plausible contributor and reassess persistent symptoms.','NEG-HST-PSG');
+      pushRec(recs,'Negative home sleep apnea test with persistent symptoms or clinical concern: in-lab polysomnography is the recommended next diagnostic step. Alternative contributor-first sequencing requires explicit clinician selection and reassessment if symptoms persist.','NEG-HST-PSG');
     }
     if (hasSnoring || (exists(n(f.get('snoringReported'))) || yes(f,'snoringReported'))) {
       /* Snoring-specific recommendations */

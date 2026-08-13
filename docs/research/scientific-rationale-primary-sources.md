@@ -227,16 +227,27 @@ This structure prevents three recurring errors:
 - Turning payer limits into universal biological or regulatory contraindications.
 - Turning observational response associations into a personalized success probability.
 
-## 4. Local-governance items requiring Raymond's explicit clinical signoff
+## 4. Local-governance decisions approved by Raymond Brown, MD
 
-These can be reasonable, but the reviewed sources do not make them universal rules:
+Raymond Brown, MD approved all six policies on 2026-08-13. They remain local or individualized
+clinical decisions where the reviewed sources do not establish a universal rule:
 
-- Capital ENT's current choice to suppress an automatic patient-facing Inspire pathway above BMI 40. The FDA label describes uncertainty above BMI 40; it does not list BMI above 40 as a contraindication.
-- Any automatic minimum REM minutes, positional minutes, or total estimated sleep time beyond the AASM four-hour flow/oximetry technical minimum.
-- When a positive but limited HSAT should be accepted versus repeated with PSG because the missing sample could change diagnosis, treatment eligibility, or risk assessment.
-- Whether a recent HSAT can satisfy local preoperative clinical review even when a payer specifically requires PSG.
-- Whether DISE should be paired with another indicated nasal or airway procedure; that is an individualized operative plan, not an Inspire-label requirement.
-- The exact timing and modality of on-therapy efficacy testing after activation and programming.
+1. **BMI above 40 and Inspire:** retain BMI 40 as Capital ENT's boundary for automatically
+   promoting an Inspire evaluation. It is a local referral guardrail, not an FDA contraindication.
+2. **Short or poorly sampled home studies:** retain the four-hour warning, decision-specific REM and
+   positional sampling guardrails, suppression of unsupported conclusions, and PSG escalation when
+   the limitation could change diagnosis or treatment eligibility.
+3. **Negative HSAT with persistent symptoms:** promote PSG as the default clinician draft. Retain
+   contributor-first sequencing only as an explicit clinician-confirmed override with reassessment.
+4. **Sleep-study requirements before Inspire:** do not require PSG universally when a recent,
+   adequate HSAT provides the needed information and the applicable payer permits it. Verify the
+   source report and current device and payer requirements.
+5. **Combining DISE with another procedure:** permit a combined procedure only when the additional
+   procedure has an independent indication and the clinician explicitly confirms the combined plan.
+   The app must not infer the combination automatically.
+6. **Testing after HGNS:** require clinician-selected objective on-therapy verification after
+   activation and optimization, while leaving PSG versus HSAT and timing dependent on the clinical
+   question rather than hard-coding one universal protocol.
 
 ## 5. Evidence gaps and surveillance targets
 

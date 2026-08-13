@@ -495,3 +495,10 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 247 | Clinician guide preview and pagination | The guide can be previewed in-browser or downloaded; collapsed detail is expanded before PDF measurement; the synthetic fixture remains within two to four readable pages without clipped blocks. |
 | 248 | Inspire safety counterexample | A separate synthetic chart with complete concentric collapse exercises the existing unilateral Inspire guardrail without altering eligibility logic, treatment ranking, or patient instructions. |
 | 249 | Confirmed DISE and turbinate procedure prominence | The clinician guide, full patient profile, Today's Sleep Plan, and first-30-day checklist all identify drug-induced sleep endoscopy (DISE) plus inferior turbinate reduction during the same anesthetic as the selected next step. Later generic workup language cannot weaken the plan into a question about whether DISE is required, and the main Reports step always returns from the optional safety case to Morgan. |
+
+### Group 54: Clinician-Approved Diagnostic Governance
+
+| # | Name | Key Features |
+|---|---|---|
+| 250 | Symptomatic negative HSAT promotes PSG | An adequate negative home study with persistent symptoms enters the PSG-recommended next-test state, and the clinician draft identifies in-lab PSG as the recommended diagnostic next step rather than an equal-choice consideration. |
+| 251 | Explicit contributor-first override | When independently indicated nasal treatment is selected and confirmed without Diagnostic Testing, the clinician retains the negative-HSAT warning and PSG default rationale, but the patient plan follows the explicit nasal-first choice, describes PSG only as a possible later step, and never claims a study was ordered. |

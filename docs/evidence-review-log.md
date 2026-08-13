@@ -18,6 +18,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 
 | Review ID | Review date | Evidence cutoff | Scope | Sources reviewed | Conclusion | Affected Logic IDs | Code/build effect |
 |---|---|---|---|---|---|---|---|
+| ER-2026-08-13-GOVERNANCE-SIGNOFF | 2026-08-13 | 2026-08-13 | Clinician decision on six local-governance policies identified by the scientific-rationale review | Previously verified sources and limitations in `research/scientific-rationale-primary-sources.md`; no new external source was required | Raymond Brown, MD approved all six policies. Five preserve current behavior. For persistent concern after a negative HSAT, PSG is now the promoted draft default; contributor-first sequencing remains available only through explicit clinician confirmation. | DX-01, DX-02, DX-04, TX-03, TX-05 | Narrow diagnostic-routing and guidance change; paired default and override regressions added; lint and 2,091 assertions passed; not deployed |
 | ER-2026-08-13-SCIENTIFIC-RATIONALE | 2026-08-13 | 2026-08-13 | Prose decision rationale; adult diagnostic testing and HSAT adequacy; unilateral Inspire labeling, DISE, payer separation, response context, and objective follow-up | AASM diagnostic guideline and arousal-scoring statement; AASM HSAT position statement; Zhang 2020 and Tschopp 2021 PAT studies; FDA Inspire P130008/S090 SSED and labeling; STAR; Vanderveken 2013; Huyett 2021; ADHERE analyses; AASM surgical-referral and longitudinal-testing guidance; CMS LCD L38276; HOME pathway trial. Full source links and limitations are recorded in `research/scientific-rationale-primary-sources.md`. | Created a readable account of how data provenance, diagnostic boundaries, treatment context, guardrails, clinician confirmation, and follow-up interact. Confirmed the current diagnostic architecture and device-specific HGNS separation. Clarified that BMI above 40 is an FDA insufficient-study warning boundary in the reviewed Inspire labeling while the app's BMI 40 automatic referral boundary is local governance. Identified the symptomatic negative-HSAT nasal-first option as local governance with an explicit evidence gap. No decision threshold, treatment ranking, safety action, or patient instruction changed. | DX-01, DX-02, DX-03, DX-04, TX-02, TX-03, PAP-01, PAP-02, PAP-03 | Documentation and evidence classification only; no application code changed; lint and 2,081 regression assertions passed with exact output parity |
 | ER-2026-06-11 | 2026-06-11 | 2026-06-11 | Full clinical evidence and confidence-calibration audit | Existing primary literature, guidelines, regulatory sources, and expert review documented in `citations.md` and `optimization-roadmap.md` | Several rules were directionally useful but overstated certainty. Hypoxic burden was separated from automatic urgency at moderate levels; numeric loop gain was removed; partial arousal-threshold and muscle-response confidence were reduced; HNS response percentages were removed from output. | PH-02, PH-03, PH-04, PH-07, TX-03 | Shipped in the Phase 2 confidence-calibration release; see `optimization-changelog.md` |
 | ER-2026-07-15 | 2026-07-15 | 2026-07-15 | Device-specific HGNS labeling and complete concentric collapse | FDA Inspire P130008/S090; FDA Genio P240024 labeling and SSED; supporting HGNS literature in `citations.md` | Complete concentric collapse remains a device-specific contraindication for unilateral Inspire. Genio is not an automatic alternative because current US evidence and labeling do not establish safety/effectiveness in that subgroup. BMI 40 remains a local referral guardrail, not a universal device rule. | TX-03 | Device-specific logic and patient wording updated; see `phenotype-baseline-review.md` v5 |
@@ -76,10 +77,46 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
   browser regression suite passed. The suite completed 2,081 assertions, including the demo,
   intake, phenotype and plan matrices, patient PDFs, and the reviewed three-page clinician guide.
   Because no application code changed, observed behavior remained exact output parity.
-- **Clinician signoff still required:** The local BMI 40 referral boundary, decision-specific REM
-  and position sampling thresholds, the symptomatic negative-HSAT nasal-first option, pairing DISE
-  with another indicated procedure, and post-HGNS testing modality and timing remain governance or
-  individualized clinical decisions.
+- **Clinician signoff status at this review:** These policies still required a decision when the
+  source review closed. Raymond Brown, MD subsequently approved all six on 2026-08-13 in
+  ER-2026-08-13-GOVERNANCE-SIGNOFF.
+
+### ER-2026-08-13-GOVERNANCE-SIGNOFF: Six clinician-approved policies
+
+- **Clinical reviewer:** Raymond Brown, MD
+- **Decision date:** 2026-08-13
+- **Evidence cutoff:** 2026-08-13 targeted primary-source review
+- **Reason for review:** Resolve the six local or individualized clinical-policy choices identified
+  in ER-2026-08-13-SCIENTIFIC-RATIONALE before expanding the evidence system.
+- **Affected Logic IDs:** DX-01, DX-02, DX-04, TX-03, and TX-05.
+- **Decision 1, BMI above 40:** Approved retaining BMI 40 as Capital ENT's boundary for automatic
+  Inspire-pathway promotion. It remains local governance, not an FDA contraindication.
+- **Decision 2, home-study sampling:** Approved the existing short-recording and decision-specific
+  REM and positional sampling guardrails. The app suppresses unsupported conclusions and escalates
+  when inadequate sampling could materially change care.
+- **Decision 3, symptomatic negative HSAT:** Approved PSG as the promoted draft default. Treating an
+  independently indicated contributor first remains available only when the clinician explicitly
+  confirms that plan; it is not presented as equivalent guideline guidance.
+- **Decision 4, pre-Inspire study type:** Approved a device- and payer-specific approach. A recent,
+  adequate HSAT may supply the needed clinical data when allowed; the app does not impose universal
+  PSG when current payer policy or the clinical question does not require it.
+- **Decision 5, combined DISE and procedure:** Approved only when the additional procedure has an
+  independent indication and the clinician explicitly confirms the combination. The app does not
+  infer a combined procedure automatically.
+- **Decision 6, post-HGNS testing:** Approved objective on-therapy verification after activation and
+  optimization, with modality and timing selected for the clinical question rather than hard-coded.
+- **Implementation:** Moved `negativeHstNeedsPsg` into the PSG-recommended branch of the shared
+  next-test helper; updated clinician flags, recommendations, and draft-plan language; retained the
+  confirmed-plan filter that prevents an unselected test from becoming a patient instruction.
+- **Regression design:** Test 250 requires the PSG-recommended default. Test 251 and existing nasal
+  scenarios require the explicit nasal-first counterexample to preserve the clinician override and
+  prevent false patient reporting that PSG was ordered.
+- **Residual uncertainty:** The contributor-first pathway lacks direct comparative evidence. Track
+  override reason, diagnostic delay, eventual PSG yield, missed disease, symptom response, and
+  patient preference during validation.
+- **Verification and deployment status:** Lint and all 2,091 evidence, browser, workflow, demo,
+  intake, phenotype, plan, and PDF assertions passed. The change was not deployed during this
+  review.
 
 ### ER-2026-07-19-NASAL: Septoplasty and nasal-surgery response predictors
 

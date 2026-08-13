@@ -1,7 +1,38 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** August 13, 2026
-**Latest tested build:** local evidence-documentation candidate on `codex/precision-sleep-v1` (not deployed)
-**Latest complete result:** 2,081 headless assertions passed with no failures
+**Latest tested build:** local clinician-approved governance candidate on `codex/precision-sleep-v1` (not deployed)
+**Latest complete result:** 2,091 headless assertions passed with no failures
+
+---
+
+## 2026-08-13 clinician-approved diagnostic governance
+
+**Status at review:** Raymond Brown, MD approved all six local-governance policies identified in
+the scientific-rationale review. The one behavior change and all required evidence updates are
+implemented and verified locally. No deployment was requested or performed.
+
+**Result:** passed 2,091 headless assertions with no failures.
+
+**Verified behavior:**
+
+- an adequate negative home study with persistent symptoms or clinical concern enters the
+  PSG-recommended next-test state rather than the consider-PSG state
+- the clinician draft identifies in-lab PSG as the recommended diagnostic next step and explains
+  that repeating another home test is generally not the AASM-supported route
+- an independently indicated nasal-first plan remains possible only when the clinician explicitly
+  selects and confirms Nasal Treatment without Diagnostic Testing
+- the override counterexamples retain the negative-HSAT warning and PSG rationale for the clinician
+  while the patient handout describes PSG only as a possible later step and does not say it was
+  ordered
+- the other five approved policies preserve existing behavior: the local BMI 40 Inspire referral
+  boundary; decision-specific home-study sampling guardrails; device- and payer-specific pre-Inspire
+  study requirements; clinician-confirmed combined DISE procedures; and clinician-selected objective
+  post-HGNS verification
+- evidence register version 2.3, the citation library, source review, rationale, review history,
+  threshold notes, and paired regression scenarios document the same policy boundaries
+- lint, evidence integrity, parser integration, PAP compliance, core regression, workflow, demo,
+  intake branching, phenotype characterization, plan suggestions, patient PDF pagination, Today's
+  Sleep Plan, and the reviewed three-page clinician guide all passed
 
 ---
 

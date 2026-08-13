@@ -349,8 +349,8 @@ assertEqual(
 );
 assertEqual(
   OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 3, tst: 6, remPercent: 20, visitReason: 'symptoms' }, T).state,
-  'psg-consider',
-  'Adequate negative home study with persistent symptoms produces consider-PSG guidance'
+  'psg-recommended',
+  'Adequate negative home study with persistent symptoms promotes PSG-recommended guidance'
 );
 assertEqual(
   OSAReportShared.buildNextTestGuidance({ studyType: 'watchpat', ahi: 7, tst: 6, remPercent: 20, visitReason: 'snoring', nightVariabilityConcern: true }, T).state,

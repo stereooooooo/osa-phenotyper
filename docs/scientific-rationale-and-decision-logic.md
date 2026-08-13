@@ -234,10 +234,11 @@ For a completed study, the diagnostic module drafts one of four clinician-facing
 
 This module never orders a test or confirms the diagnostic plan on its own.
 
-One local workflow distinction should remain visible: for a symptomatic negative home test, AASM
-guidance supports PSG, while the current app allows the clinician to choose PSG now or address a
-separate plausible contributor and reassess. That nasal-first alternative is local governance with
-an explicit evidence gap; it is not presented as equivalent guideline guidance.
+One local workflow distinction remains visible: for a symptomatic negative home test, the app now
+promotes the AASM-supported PSG pathway as the recommended draft default. The clinician can still
+explicitly confirm treatment of a separate, independently indicated contributor and reassess. That
+nasal-first alternative is a clinician-approved local override with an explicit evidence gap; it is
+not presented as equivalent guideline guidance.
 
 ### Examples of important distinctions
 
