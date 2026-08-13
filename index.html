@@ -1665,7 +1665,7 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
    ══════════════════════════════════════════════════════════════ */
 function inferRuntimeEnvironment(config, workflowTestMode) {
   if (window.__OSA_DEMO_MODE__) {
-    return { code: 'inspire-demo', label: 'INSPIRE DEMO', tone: 'info' };
+    return { code: 'inspire-demo', label: 'DEMO', tone: 'info' };
   }
   if (workflowTestMode) {
     return { code: 'workflow-test', label: 'WORKFLOW TEST', tone: 'secondary' };
@@ -1712,7 +1712,7 @@ function buildRuntimeMeta(config, workflowTestMode) {
 
   let bannerText = '';
   if (environment.code === 'inspire-demo') {
-    bannerText = 'Synthetic Inspire demo — all patient data stays in this browser session.';
+    bannerText = 'Demo — all patient data is synthetic and stays in this browser session.';
   } else if (environment.code === 'workflow-test') {
     bannerText = 'Workflow test mode — clinician and intake actions stay in browser memory only.';
   } else if (environment.code === 'local') {

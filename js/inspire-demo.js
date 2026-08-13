@@ -103,7 +103,7 @@
     guide.setAttribute('aria-label', 'Synthetic demo guide');
     guide.innerHTML = `
       <div class="osa-demo-guide__intro">
-        <strong>Synthetic Inspire demo</strong>
+        <strong>Demo</strong>
         <span id="osaDemoStatus">Morgan Lee is ready for the patient questionnaire.</span>
       </div>
       <div class="osa-demo-guide__steps">

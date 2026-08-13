@@ -31,7 +31,7 @@ Write each issue so a clinician, designer, or engineer can understand the outcom
 - Done: acceptance criteria and required regression/evidence gates are complete.
 - Canceled: intentionally not pursuing; preserve the reason.
 
-Meeting polish should not silently broaden into deployment. The Inspire demo remains local until Raymond explicitly requests a hosted release.
+Meeting polish should not silently broaden into deployment. The demo remains local until Raymond explicitly requests a hosted release.
 
 ## Current backlog themes
 

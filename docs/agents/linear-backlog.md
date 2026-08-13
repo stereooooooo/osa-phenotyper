@@ -43,7 +43,7 @@ Create these under the dedicated `Precision Sleep` team and `OSA Phenotyper` pro
 - Exclude: generative-AI upload, cloud OCR without an approved HIPAA architecture and BAA, silent inference of missing fields, or direct recommendation changes from unverified values.
 - Exit criteria: representative deidentified format inventory, field schema, threat model, extraction benchmark, failure modes, and a clinician-approved verification prototype.
 
-### Observe and simplify staff and clinician workflows after the Inspire demo
+### Observe and simplify staff and clinician workflows after the demo
 
 - Type: `research`
 - Labels: `usability`, `staff-workflow`, `clinician-facing`

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>OSA Phenotyper - Inspire Demo Smoke Suite</title>
+<title>OSA Phenotyper - Demo Smoke Suite</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8f9fa; }
   .pass { color: #198754; } .fail { color: #dc3545; }
@@ -12,7 +12,7 @@
 </style>
 </head>
 <body>
-<h1>Inspire Demo Smoke Suite</h1>
+<h1>Demo Smoke Suite</h1>
 <div id="results"></div>
 <iframe id="appFrame" src="../index.html?demo=inspire"></iframe>
 <iframe id="intakeFrame" src="../intake.html?demo=inspire&amp;t=demo-token"></iframe>
@@ -55,8 +55,8 @@ async function run() {
   appWin.alert = () => {};
   appWin.confirm = () => true;
 
-  assertEqual(appDoc.getElementById('runtimeEnvBadge').textContent.trim(), 'INSPIRE DEMO', 'Demo runtime is unmistakably labeled');
-  assert(appDoc.getElementById('runtimeEnvironmentBanner').textContent.includes('Synthetic'), 'Demo explains that all patient data is synthetic and local');
+  assertEqual(appDoc.getElementById('runtimeEnvBadge').textContent.trim(), 'DEMO', 'Demo runtime is unmistakably labeled');
+  assert(appDoc.getElementById('runtimeEnvironmentBanner').textContent.toLowerCase().includes('synthetic'), 'Demo explains that all patient data is synthetic and local');
   assert(!!appDoc.getElementById('osaDemoGuide'), 'Demo guide presents the patient, staff, clinician, and report sequence');
   assertEqual(appDoc.getElementById('patientName').value, 'LEE, Morgan', 'Demo opens the primary synthetic patient chart');
   assertEqual(appWin.__OSA_WORKFLOW_TEST__.listPatients(false).length, 2, 'Demo seeds a main journey and a separate safety counterexample');

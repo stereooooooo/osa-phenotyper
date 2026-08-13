@@ -215,7 +215,7 @@ TOTAL_PASSED=$((TOTAL_PASSED + CORE_PASSED))
 WORKFLOW_PASSED="$(run_suite "tests/workflow-smoke.html" "workflow smoke suite" 15000)"
 TOTAL_PASSED=$((TOTAL_PASSED + WORKFLOW_PASSED))
 
-DEMO_PASSED="$(run_suite "tests/demo-smoke.html" "Inspire demo smoke suite" 15000)"
+DEMO_PASSED="$(run_suite "tests/demo-smoke.html" "Demo smoke suite" 15000)"
 TOTAL_PASSED=$((TOTAL_PASSED + DEMO_PASSED))
 
 INTAKE_BRANCHING_PASSED="$(run_suite "tests/intake-branching-matrix.html" "patient intake branching matrix" 15000)"

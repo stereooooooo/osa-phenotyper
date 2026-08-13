@@ -972,7 +972,7 @@
 
   function inferRuntimeEnvironment() {
     if (inspireDemoMode) {
-      return { code: 'inspire-demo', label: 'INSPIRE DEMO', tone: 'info' };
+      return { code: 'inspire-demo', label: 'DEMO', tone: 'info' };
     }
     if (workflowTestMode) {
       return { code: 'workflow-test', label: 'WORKFLOW TEST', tone: 'secondary' };
@@ -1021,7 +1021,7 @@
 
     let bannerText = '';
     if (environment.code === 'inspire-demo') {
-      bannerText = 'Synthetic Inspire demo — responses stay in browser memory only.';
+      bannerText = 'Demo — responses are synthetic and stay in browser memory only.';
     } else if (environment.code === 'workflow-test') {
       bannerText = 'Workflow test mode — responses stay in browser memory only.';
     } else if (environment.code === 'local') {
