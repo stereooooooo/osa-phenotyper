@@ -22,6 +22,11 @@ const OSA_CONFIG = {
   thresholds: {
 
     anatomical: {
+      // PH-01 is an exploratory contributor composite, not a validated surgical
+      // target or response score. TX-07 must not use this composite alone to
+      // trigger surgery. Friedman stage is limited to historical isolated-palatal-
+      // surgery context and cannot route tongue-base surgery, HGNS, MMA, or DISE.
+      // See ER-2026-08-13-ANATOMY-SURGERY.
       bmi:            30,       // trigger (WHO obesity class I)
       bmiHigh:        35,       // high-confidence (class II+)
       neck:           { male: 17, female: 16 },   // inches; Friedman 2002

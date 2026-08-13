@@ -1,7 +1,36 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** August 13, 2026
-**Latest tested build:** local clinician-approved governance candidate on `codex/precision-sleep-v1` (not deployed)
-**Latest complete result:** 2,091 headless assertions passed with no failures
+**Latest tested build:** local anatomy and surgical-selection evidence candidate on `codex/precision-sleep-v1` (not deployed)
+**Latest complete result:** 2,194 headless assertions passed with no failures
+
+---
+
+## 2026-08-13 anatomy and surgical-selection evidence boundary
+
+**Status at review:** primary-source review, runtime correction, evidence-gate documentation, and
+complete regression testing are finished. Clinician acceptance and deployment remain pending.
+
+**Result:** passed 2,194 headless assertions with no failures.
+
+**Verified behavior:**
+
+- Friedman Stage I and III remain visible as directional historical context for selected isolated
+  palatal surgery, without exact success percentages or patient-specific probabilities
+- Stage III without a demonstrated target no longer emits tongue-base surgery, HGNS, MMA, generic
+  surgery, or a mandatory-DISE workup
+- grade 3-4 tonsils can produce an adult tonsillectomy consultation that discusses risk, residual
+  OSA, and objective follow-up without automatically adding expansion pharyngoplasty
+- the exploratory High Anatomical Contribution composite and nasal-contributor phenotype no longer
+  independently trigger generic pharyngeal surgery or create an inferred surgical target
+- revision after prior throat surgery prompts operative-report and current-anatomy review; DISE is
+  conditional on a device/procedure requirement or a specific question expected to change planning
+- DISE remains firm for current unilateral-Inspire CCC exclusion and for a clinician-confirmed plan;
+  the demo still names DISE plus inferior turbinate reduction as the exact next step
+- the secondary AAFP MMA citation was replaced by the primary Zaghi meta-analysis and ERS guideline,
+  with observational and very-low-certainty limitations preserved
+- evidence integrity, parser and PAP modules, core regression, workflow, intake, phenotype and plan
+  matrices, demo smoke tests, patient PDF pacing, Today's Sleep Plan, and the reviewed three-page
+  clinician guide all passed
 
 ---
 

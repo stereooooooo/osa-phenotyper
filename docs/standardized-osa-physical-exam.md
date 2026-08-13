@@ -77,7 +77,7 @@
   - **FTP IV:** Only hard palate visible
 - **Key distinction from Mallampati:** Mallampati has the patient protrude the tongue. FTP does NOT — tongue stays relaxed. FTP better predicts surgical outcomes.
 - **Record:** I, II, III, or IV
-- **Clinical significance:** FTP I-II = "low tongue position" = favorable for UPPP. FTP III-IV = "high tongue position" = poor UPPP candidate, consider tongue base surgery, HNS, or MMA.
+- **Clinical significance:** FTP contributes to historical Friedman staging for isolated palatal surgery. FTP I-II is directionally more supportive and FTP III-IV less supportive of isolated UPPP in selected cohorts, but FTP does not identify a tongue-base target or select tongue-base surgery, HGNS, MMA, or DISE.
 
 ### Mallampati Score (Modified)
 - **How:** Patient seated, mouth open maximally, tongue PROTRUDED as far as possible. No phonation.
@@ -96,7 +96,7 @@
   - **Grade 3:** Tonsils extending beyond the pillars (50-75% of width)
   - **Grade 4:** Tonsils touching or "kissing" (>75% of width)
 - **Record:** 0, 1, 2, 3, or 4
-- **Clinical significance:** Grade 3-4 = strong tonsillectomy indication, especially with FTP I-II (Friedman Stage I → 80% UPPP success).
+- **Clinical significance:** Grade 3-4 tonsils can support an adult tonsillectomy consultation when the clinician judges them to be a dominant obstruction. This finding does not guarantee OSA control or establish that a palatal procedure should be added.
 
 ### Palate Assessment
 - **How:** With mouth open, assess:
@@ -190,11 +190,10 @@ Drug-Induced Sleep Endoscopy provides dynamic assessment not possible during awa
 - **T (Tongue base):** Degree (0-2) + Pattern (AP)
 - **E (Epiglottis):** Degree (0-2) + Pattern (AP / Lateral)
 
-### Critical DISE Findings for Treatment Selection
-- Complete concentric collapse at velum → **Contraindication for HNS** (Inspire)
-- Tongue base AP collapse → **Favorable for HNS**
-- Lateral wall collapse → **Consider expansion sphincter pharyngoplasty**
-- Epiglottic collapse → **Consider epiglottoplasty**
+### Important DISE interpretation boundaries
+- Complete concentric collapse at the velum is a device-specific contraindication for unilateral Inspire under current labeling.
+- Other collapse findings can inform a procedure-specific discussion, but they do not create a validated general response score or automatically select HGNS, expansion pharyngoplasty, tongue-base surgery, epiglottoplasty, or MMA.
+- DISE is used when required by a selected device/procedure or when an unresolved collapse-mapping question is expected to change management; it is not a universal prerequisite for airway surgery.
 
 ---
 
@@ -202,12 +201,12 @@ Drug-Induced Sleep Endoscopy provides dynamic assessment not possible during awa
 
 Derived from FTP + Tonsil Size + BMI:
 
-| Stage | Criteria | UPPP Success |
-|-------|----------|-------------|
-| I | FTP I-II + Tonsils 3-4 + BMI <40 | ~80% |
-| II | FTP I-II + Tonsils 0-2, OR FTP III-IV + Tonsils 3-4 | ~37-74% |
-| III | FTP III-IV + Tonsils 0-2 | ~8% |
-| IV | Any FTP + BMI ≥40 or significant skeletal deformity | Poor candidate |
+| Stage | Criteria | Appropriate interpretation |
+|-------|----------|----------------------------|
+| I | FTP I-II + Tonsils 3-4 + BMI <40 | Historical group evidence is more supportive of selected isolated palatal surgery; no individual probability |
+| II | FTP I-II + Tonsils 0-2, OR FTP III-IV + Tonsils 3-4 | Intermediate historical palatal-surgery context; requires procedure-specific assessment |
+| III | FTP III-IV + Tonsils 0-2 | Historical group evidence is less supportive of isolated palatal surgery; does not select another target or procedure |
+| IV | Any FTP + BMI ≥40 or significant skeletal deformity | Original framework category; requires comprehensive, current treatment assessment |
 
 ---
 

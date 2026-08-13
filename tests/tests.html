@@ -810,7 +810,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
     { tag: 'HNS-WORKUP', text: 'Complete the device-specific workup first.' },
   ],
 }));
-assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'BMI guardrail preserves the independent surgery workup when nerve stimulation is suppressed');
+assert(reportHtml.includes('Complete the Procedure-Specific Airway Review First'), 'BMI guardrail preserves the independent surgery workup when nerve stimulation is suppressed');
 assert(!reportHtml.includes('Complete the Procedure-Specific Airway Evaluation First') && !reportHtml.includes('Complete the Nerve-Stimulation Evaluation First'), 'BMI guardrail does not reintroduce nerve stimulation through a combined workup card');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
@@ -890,8 +890,8 @@ assert(!reportHtml.includes('Oral Appliance Therapy') && !reportHtml.includes('C
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   recTags: [{ tag: 'SURGERY-WORKUP', text: 'Complete DISE-guided surgical planning before finalizing a specific airway procedure target.' }],
 }));
-assert(reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'Surgery workup tag renders a patient-friendly safety explanation');
-assert(reportHtml.includes('sleep endoscopy (DISE) before choosing a specific airway surgery'), 'Surgery workup tag adds a practical checklist step');
+assert(reportHtml.includes('Complete the Procedure-Specific Airway Review First'), 'Surgery workup tag renders a patient-friendly safety explanation');
+assert(reportHtml.includes('use sleep endoscopy (DISE) only if it would answer a specific planning question'), 'Surgery workup tag adds a conditional, practical checklist step');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   hasCOMISA: true,
@@ -909,7 +909,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('If PAP Remains Difficult'), 'Backup therapy and related workup render under the conditional PAP pathway');
 assert(reportHtml.indexOf('Start Now') < reportHtml.indexOf('If PAP Remains Difficult'), 'Actual treatment actions lead before conditional alternatives');
-assert(reportHtml.indexOf('CPAP Therapy') < reportHtml.indexOf('Complete DISE-Guided Surgical Planning First'), 'Primary therapies appear before workup items in the treatment plan');
+assert(reportHtml.indexOf('CPAP Therapy') < reportHtml.indexOf('Complete the Procedure-Specific Airway Review First'), 'Primary therapies appear before workup items in the treatment plan');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 33,
@@ -1016,7 +1016,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 }));
 assert(reportHtml.includes('non-PAP options below') && !reportHtml.includes('Begin both pathways in parallel'), 'COMISA guidance respects a completed PAP trial without retry intent');
 assert(reportHtml.includes('Oral Appliance Therapy</strong>') && reportHtml.includes('Airway Surgery</strong>'), 'PAP-declined plan retains actual non-PAP treatment options');
-assert(reportHtml.includes('Confirm Oral Appliance Safety First') && reportHtml.includes('Complete DISE-Guided Surgical Planning First'), 'PAP-declined plan retains distinct safety workups');
+assert(reportHtml.includes('Confirm Oral Appliance Safety First') && reportHtml.includes('Complete the Procedure-Specific Airway Review First'), 'PAP-declined plan retains distinct safety workups');
 assert(!reportHtml.includes('If PAP remains difficult, your ENT'), 'PAP-declined surgery copy does not describe the completed PAP trial as a future condition');
 assert(reportHtml.includes('Schedule an ENT visit to discuss which airway procedures'), 'PAP-declined checklist operationalizes the surgery discussion');
 
@@ -1042,9 +1042,9 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
 const surgicalStartIndex = reportHtml.indexOf('Start Now');
 const surgicalWorkupIndex = reportHtml.indexOf('Complete Before Finalizing Other Options');
 const surgicalDiscussIndex = reportHtml.indexOf('Discuss With Your Doctor');
-assert(reportHtml.includes('Schedule an ENT visit to review tonsil and palate surgery'), 'Anatomy-forward summary turns surgical preference into a consultation action');
+assert(reportHtml.includes('Schedule an ENT visit to discuss whether tonsillectomy fits your anatomy'), 'Anatomy-forward summary turns surgical preference into a consultation action');
 assert(reportHtml.includes('enlarged tonsils') && reportHtml.includes('The shape of your airway'), 'Strong tonsil anatomy appears in the contributor explanation even without the broad anatomy phenotype');
-assert(reportHtml.slice(surgicalStartIndex, surgicalWorkupIndex).includes('Tonsil and Palate Surgery Consultation'), 'Strong anatomy and surgical preference place consultation under Start Now');
+assert(reportHtml.slice(surgicalStartIndex, surgicalWorkupIndex).includes('Tonsillectomy Consultation'), 'Strong anatomy and surgical preference place consultation under Start Now');
 assert(surgicalDiscussIndex >= 0 && reportHtml.slice(surgicalDiscussIndex).includes('PAP Therapy'), 'Surgery-forward report still presents PAP for shared decision-making');
 assert(reportHtml.includes('does not guarantee that surgery will fully control sleep apnea'), 'Surgery-forward report preserves uncertainty and avoids promising cure');
 assert(reportHtml.includes('Planning Your Treatment') && !reportHtml.includes('Starting PAP'), 'Surgery-forward care journey matches the active shared-decision pathway');

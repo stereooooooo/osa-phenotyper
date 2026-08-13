@@ -723,8 +723,8 @@ var PatientReport = (() => {
     'MAD-POOR': 'Talk with your doctor about whether a custom oral appliance is a good fit for you.',
     'HNS': 'Talk with us about whether a device-specific upper-airway nerve-stimulation evaluation belongs in your plan.',
     'INSPIRE-EVAL': 'Schedule a device-specific nerve-stimulation candidacy evaluation.',
-    'SURG': 'Discuss the surgical options in your plan with your ENT.',
-    'SURGALT': 'Discuss the surgical options in your plan with your ENT.',
+    'SURG': 'Discuss anatomically appropriate sleep-surgery options with your ENT.',
+    'SURGALT': 'Discuss anatomically appropriate sleep-surgery options with your ENT.',
     'CBTI': 'Begin CBT-I — the structured treatment for insomnia.',
     'POS': 'Try sleeping on your side (positional therapy) as a first step.',
     'WEIGHT': 'Begin a weight-management plan with your doctor’s support.',
@@ -770,7 +770,7 @@ var PatientReport = (() => {
     if (centralConfirmation) return centralConfirmation;
 
     if (isSurgeryConsultPriority(data)) {
-      return 'Schedule an ENT visit to review tonsil and palate surgery, including expected benefit, risks, recovery, and whether more airway evaluation is needed.';
+      return 'Schedule an ENT visit to discuss whether tonsillectomy fits your anatomy, goals, and treatment history, including expected benefit, risks, recovery, residual sleep apnea, and follow-up testing.';
     }
 
     // Sweetman 2019 supports early CBT-I; MATRICS (Ong 2020) supports concurrent
@@ -1490,7 +1490,7 @@ ${items}`;
     'CENTRAL-ETIOLOGY-REVIEW': `<strong>Review the Central-Breathing Pattern</strong> — Your lab study showed breathing pauses that may have causes other than airway blockage. Your sleep specialist should review the pattern, health conditions, and medicines before choosing a treatment.`,
     'ASV-SAFETY': null,  // Inactive legacy tag; current device-specific review belongs with the treating specialist
     'ASV-CONTRA': null,  // Inactive legacy tag; blanket LVEF-based ASV wording was superseded by AASM 2025
-    'SURGERY-WORKUP': `<strong>Complete DISE-Guided Surgical Planning First</strong> — If surgery is being considered, your ENT team may still need a sleep endoscopy (DISE) to see exactly where your airway collapses during sleep. That helps match the procedure to the actual collapse pattern instead of guessing from symptoms alone.`,
+    'SURGERY-WORKUP': `<strong>Complete the Procedure-Specific Airway Review First</strong> — Before choosing another airway procedure, your ENT team should review the prior operation and current anatomy. A sleep endoscopy (DISE) may be useful when it would answer a specific collapse-mapping question or is required for the selected device or procedure.`,
     'HNS': `<strong>Upper-Airway Nerve Stimulation</strong> — An implanted device activates tongue muscles during sleep. It is considered only for selected patients after standard treatments have not controlled sleep apnea or could not be used. A full workup is needed because anatomy, BMI, neck size, AHI, prior treatment, and other health conditions can affect both eligibility and the chance of response.`,
     'WEIGHT': `<strong>Weight Management</strong> — Excess weight is an important modifiable contributor to sleep apnea for many people. A reduction in body weight can reduce breathing-event frequency and may improve how well other treatments work, although response varies. Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.`,
     'NASAL-OPT': `<strong>Nasal Treatment</strong> — Medication, allergy care, nasal dilators, or surgery may improve airflow and treatment comfort. Nasal care usually supports rather than replaces sleep apnea treatment.`,
@@ -1498,7 +1498,7 @@ ${items}`;
     'NASAL-PRIOR': null,  // Merged into NASAL-OPT
     'TONSIL': `<strong>Tonsil Surgery (Tonsillectomy)</strong> — Enlarged tonsils can narrow the throat during sleep. In selected adults, tonsillectomy may substantially reduce that obstruction and improve sleep apnea. Your ENT should review expected benefit, risks, recovery, and whether another treatment may still be needed.`,
     'CBTI': `<strong>CBT-I (Cognitive Behavioral Therapy for Insomnia)</strong> — This recommended insomnia treatment changes the habits and thoughts that keep insomnia going. It can be delivered by a trained therapist or a validated digital program.`,
-    'SURGALT': `<strong>Airway Surgery</strong> — Surgery may help when the procedure is matched to the site and pattern of collapse. Your exam, prior treatment, and often a sleep endoscopy (DISE) guide that decision.`,
+    'SURGALT': `<strong>Airway Surgery</strong> — Surgery may help selected patients when a qualified surgeon identifies a correctable target. Your exam, treatment history, goals, and procedure-specific evaluation guide the decision. Sleep endoscopy (DISE) is used when it answers a specific planning question or is required for a selected device or procedure.`,
     'HLG-ADV': null,  // Inactive legacy tag; central findings no longer infer loop gain or select therapy
     'REM-CHECK': null,  // Clinical detail — not shown as standalone
     'REM-MAD': null,  // Merged into MAD if present
@@ -1513,7 +1513,7 @@ ${items}`;
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
     'COMISA-SRT-CAUTION': null,  // Clinical detail
-    'SURG': `<strong>Airway Surgery</strong> — Surgery may help when the procedure is matched to the site and pattern of collapse. Your exam, prior treatment, and often a sleep endoscopy (DISE) guide that decision.`,
+    'SURG': `<strong>Airway Surgery</strong> — Surgery may help selected patients when a qualified surgeon identifies a correctable target. Your exam, treatment history, goals, and procedure-specific evaluation guide the decision. Sleep endoscopy (DISE) is used when it answers a specific planning question or is required for a selected device or procedure.`,
     'SOFT-TISSUE-REVISION': null,  // Clinical detail
     'SOFT-TISSUE-STRONG': null,  // Merged into tonsil/surgery recs
     'SOFT-TISSUE-CONSIDER': null,
@@ -1611,7 +1611,7 @@ ${items}`;
         const anatomy = data.friedmanStage === 'I'
           ? 'Your enlarged tonsils and Friedman Stage I airway pattern'
           : 'Your enlarged tonsils and airway exam';
-        return `<strong>Tonsil and Palate Surgery Consultation</strong>: ${anatomy} make a surgical consultation especially relevant. This finding does not guarantee that surgery will fully control sleep apnea. Your ENT should review expected benefit, risks, recovery, whether more airway evaluation is needed, and how surgery compares with PAP and other options for you.`;
+        return `<strong>Tonsillectomy Consultation</strong>: ${anatomy} make a tonsil-surgery consultation especially relevant. This finding does not guarantee that surgery will fully control sleep apnea or mean that an added palate procedure is needed. Your ENT should review expected benefit, risks, recovery, residual sleep apnea, follow-up testing, and how surgery compares with PAP and other options for you.`;
       }
       const poorSoftTissue = (data.bmi > 40) ||
         data.friedmanStage === 'III' || data.friedmanStage === 'IV';
@@ -1923,7 +1923,7 @@ ${items}`;
     }
 
     if (surgeryConsultFirst) {
-      add('Schedule an ENT visit to review tonsil and palate surgery, expected benefit, risks, recovery, and whether more airway evaluation is needed.', 0);
+      add('Schedule an ENT visit to discuss whether tonsillectomy fits your anatomy and goals, including expected benefit, risks, recovery, residual sleep apnea, and follow-up testing.', 0);
     } else if (!papFirst && (tags.has('SURG') || tags.has('SURGALT') || tags.has('TONSIL'))) {
       add('Schedule an ENT visit to discuss which airway procedures, if any, fit your anatomy and treatment goals.', 3);
     }
@@ -1970,7 +1970,7 @@ ${items}`;
         ['NASAL-WORKUP', 'Review nasal blockage symptoms and complete a nasal exam before nasal treatment is finalized.'],
         ['MAD-WORKUP', 'Ask the sleep dentist to confirm tooth support, jaw movement, and TMJ safety before an oral appliance is finalized.'],
         ['MAD-SAFETY-LIMIT', 'Ask whether current tooth, jaw-movement, or TMJ findings make an oral appliance a poor fit.'],
-        ['SURGERY-WORKUP', 'Schedule or complete a sleep endoscopy (DISE) before choosing a specific airway surgery.'],
+        ['SURGERY-WORKUP', 'Review the prior operation and current airway anatomy before choosing another procedure; use sleep endoscopy (DISE) only if it would answer a specific planning question or is required for the selected option.'],
       ];
       const match = workupActions.find(([tag]) => tags.has(tag));
       if (match) add(match[1], 0);

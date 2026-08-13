@@ -309,10 +309,28 @@ const ALL_SCENARIOS = [
     checks: ['priorCpap', 'prefSurgery'],
     expectedSuggestions: ['Airway surgery'],
     expectedTags: ['SOFT-TISSUE-STRONG', 'SURG-PREF'],
-    clinicianIncludes: ['Friedman Stage I', 'Anatomy is more supportive of palatal or tonsil surgery', 'not a validated patient-specific probability'],
+    clinicianIncludes: ['Friedman Stage I', 'Historical evidence is more supportive of selected isolated palatal surgery', 'not a validated patient-specific probability'],
     clinicianExcludes: ['Complete DISE-guided surgical planning'],
-    patientIncludes: ['tonsil', 'palate surgery'],
+    patientIncludes: ['tonsillectomy', 'does not guarantee that surgery will fully control sleep apnea', 'or mean that an added palate procedure is needed'],
     patientExcludes: ['Complete the Nerve-Stimulation Evaluation First']
+  },
+  {
+    id: 'stage-three-no-target',
+    name: 'Friedman Stage III without a demonstrated lower-airway target',
+    visitReason: 'new-diagnosis',
+    fields: {
+      sex: 'M', bmi: '27', neck: '15', tonsils: '1', ftp: 'III', ess: '11', isi: '6', noseScore: '8',
+      pahi: '22', tst: '6.5', remPercent: '20', supPahi: '25', nonSupPahi: '19', remPahi: '24',
+      nremPahi: '21', odi: '18', nadir: '85', hbAreaPH: '30', t90: '2'
+    },
+    checks: [],
+    expectedSuggestions: ['PAP management'],
+    expectedTags: ['CPAP'],
+    excludedTags: ['FRIEDMAN-III-ALT', 'SURG', 'SURGERY-WORKUP', 'HNS', 'INSPIRE-EVAL'],
+    clinicianIncludes: ['Friedman Stage III', 'Stage III does not identify a tongue-base target or select HGNS, MMA, or another procedure', 'not a universal prerequisite'],
+    clinicianExcludes: ['Consider tongue-base surgery', 'Complete DISE-guided surgical planning'],
+    patientIncludes: ['PAP Therapy'],
+    patientExcludes: ['Airway Surgery', 'Nerve-Stimulation Candidacy Evaluation', 'maxillomandibular advancement', 'Complete the Procedure-Specific Airway Review First']
   },
   {
     id: 'probable-uars',

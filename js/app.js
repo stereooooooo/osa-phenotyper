@@ -393,10 +393,10 @@ function buildTreatmentSafetyAssessment(ctx) {
     });
   }
 
-  // DISE remains the planning prerequisite before final site-directed airway surgery selection —
-  // EXCEPT a clear tonsillar case (Friedman Stage I, 3-4+ tonsils, non-obese): the obstruction site
-  // is obvious, so tonsillectomy +/- expansion pharyngoplasty proceeds without DISE. Obesity keeps
-  // the DISE prerequisite (higher multilevel-collapse risk). (Clinical review 2026-06.)
+  // TX-07 / ER-2026-08-13-ANATOMY-SURGERY: DISE is procedure-, device-, and
+  // question-specific rather than a universal prerequisite. Current unilateral
+  // Inspire workup remains separate. Revision anatomy gets a conservative local
+  // reassessment prompt, with DISE conditional on whether it will change planning.
   const surgeryReferenced = (!ctx.planConfirmed && ctx.prefSurgery) || [
     'SURG',
     'SURGALT',
@@ -407,22 +407,21 @@ function buildTreatmentSafetyAssessment(ctx) {
     'SOFT-TISSUE-GENERAL',
     'FRIEDMAN-III-ALT',
   ].some(tag => tags.has(tag));
-  const clearTonsillarSurgery = ctx.friedmanStage === 'I' && exists(ctx.tons) && ctx.tons >= T.anatomical.tonsils && exists(ctx.bmi) && ctx.bmi < T.anatomical.bmi;
-  if (surgeryReferenced && !ctx.hasDISEData && !clearTonsillarSurgery) {
+  if (surgeryReferenced && ctx.priorUPPP && !ctx.hasDISEData) {
     const priorSurgeryDidNotHelp = ctx.priorUPPP && ctx.priorUPPPHelped === 'no';
     const priorSurgeryHelped = ctx.priorUPPP && ctx.priorUPPPHelped === 'yes';
     alerts.push({
       key: 'surgery-workup',
       clinician: priorSurgeryDidNotHelp
-        ? 'Prior throat surgery did not clearly improve sleep or snoring. Before selecting revision surgery or a different airway target, review the operative report and current anatomy and complete DISE-guided collapse mapping. Avoid assuming that revision alone will improve OSA.'
+        ? 'Prior throat surgery did not clearly improve sleep or snoring. Before selecting revision surgery or a different airway target, review the operative report and current anatomy. Use DISE when it is expected to answer a device- or procedure-specific planning question. Avoid assuming that revision alone will improve OSA.'
         : priorSurgeryHelped
-          ? 'Prior throat surgery helped, but symptoms or OSA may have recurred. Review the operative report and current anatomy and complete DISE-guided collapse mapping before selecting revision surgery or a different airway target.'
-        : 'Before finalizing site-directed airway surgery, complete DISE to map the collapse pattern and target levels.',
+          ? 'Prior throat surgery helped, but symptoms or OSA may have recurred. Review the operative report and current anatomy before selecting revision surgery or a different airway target. Use DISE when it is expected to answer a device- or procedure-specific planning question.'
+        : 'Complete the procedure-specific airway evaluation before choosing an operation. DISE may be useful when it will answer an unresolved collapse-mapping question.',
       patient: priorSurgeryDidNotHelp
         ? 'Because prior throat surgery did not clearly help, your care team should review what was done and reassess your current airway before choosing another procedure. A sleep endoscopy (DISE) may be needed to map where the airway now collapses.'
         : priorSurgeryHelped
           ? 'Because prior throat surgery helped before symptoms or sleep apnea returned, your care team should review what was done and reassess your current airway before choosing another procedure. A sleep endoscopy (DISE) may be needed to map where the airway now collapses.'
-        : 'If surgery is being considered, a sleep endoscopy (DISE) may still be needed to show exactly where your airway collapses before choosing the procedure.',
+        : 'Before choosing an operation, your care team should complete the evaluation needed for that specific procedure. This may include sleep endoscopy (DISE) when it would change the plan.',
     });
   }
 
@@ -1226,9 +1225,6 @@ function mapTreatments(f, m, T){
     switch(p){
       case 'High Anatomical Contribution':
         cpapRec();
-        if((!cpapFailed && !prefAvoidCpap) || cpapWillRetry) {
-          pushRec(recs,'If CPAP fails or is not tolerated: consider a mandibular-advancement device, site-directed surgery, or device-specific nerve-stimulation evaluation when eligibility criteria are met.','SURGALT');
-        }
         if(cpapFailed && cpapReasons.length) cpapComfortRecs();
         break;
       case 'Low Arousal Threshold':
@@ -1336,29 +1332,26 @@ function mapTreatments(f, m, T){
   const _vDeg = n(f.get('vDeg'));
   const hasConcentricCollapse = _vPat.toLowerCase().includes('concentric') && _vDeg >= 2;
 
-  /* Soft-tissue surgery: tonsillectomy +/- expansion pharyngoplasty (adult) */
-  const ftpIorII = (mall==='I' || mall==='II');
-  const highAnat = out.phen.includes('High Anatomical Contribution');
+  /* TX-07: enlarged tonsils can support an adult tonsillectomy consultation,
+     but Friedman stage is historical isolated-palatal-surgery context. It does
+     not select an added pharyngoplasty or provide an individual probability.
+     See ER-2026-08-13-ANATOMY-SURGERY. */
   if (priorUPPP) {
     const response = priorUPPPHelped === 'yes'
       ? 'Prior throat surgery helped, but symptoms or OSA may have recurred.'
       : priorUPPPHelped === 'no'
         ? 'Prior throat surgery did not clearly improve sleep or snoring.'
         : 'The response to prior throat surgery is uncertain.';
-    pushRec(recs,`${response} Review the operative report and current anatomy before considering revision pharyngoplasty or alternative DISE-directed targets.`,'SOFT-TISSUE-REVISION');
+    pushRec(recs,`${response} Review the operative report and current anatomy before choosing another procedure. Use DISE only when it is expected to answer a device- or procedure-specific planning question.`,'SOFT-TISSUE-REVISION');
   } else if(exists(tons) && tons >= T.anatomical.tonsils){
     if(friedmanStage === 'I'){
-      pushRec(recs,'Consider tonsillectomy with or without expansion pharyngoplasty. Friedman Stage I anatomy is associated with better palatal-surgery outcomes, but it does not provide an individualized success probability.','SOFT-TISSUE-STRONG');
-    } else if(friedmanStage === 'II' && ftpIorII){
-      pushRec(recs,'Consider tonsillectomy with or without expansion pharyngoplasty as part of an anatomy-directed plan. Friedman Stage II provides context but does not predict an individual outcome.','SOFT-TISSUE-CONSIDER');
-    } else if(highAnat && ftpIorII){
-      pushRec(recs,'Consider tonsillectomy +/- expansion pharyngoplasty based on anatomic crowding and large tonsils.','SOFT-TISSUE-GENERAL');
+      pushRec(recs,'Consider an adult tonsillectomy consultation if the tonsils are judged to be a dominant site of obstruction. Friedman Stage I is associated with better outcomes after selected palatal surgery, but it does not provide an individualized success probability or establish that an added palatal procedure is needed.','SOFT-TISSUE-STRONG');
+    } else {
+      pushRec(recs,'Consider an adult tonsillectomy consultation if the enlarged tonsils are judged to be a dominant site of obstruction. Discuss residual OSA, operative risks, and objective follow-up; Friedman stage does not predict this individual result or establish that an added palatal procedure is needed.','SOFT-TISSUE-CONSIDER');
     }
   }
-  /* Friedman Stage III: recommend tongue base procedures / HNS / MMA instead of UPPP */
-  if(friedmanStage === 'III' && exists(ahi) && ahi >= 15){
-    pushRec(recs,'Friedman Stage III (high tongue position, small tonsils) — isolated palatal surgery is unlikely to succeed. Consider tongue-base surgery, device-specific hypoglossal-nerve stimulation evaluation, or MMA depending on DISE findings and candidacy.','FRIEDMAN-III-ALT');
-  }
+  /* Friedman Stage III is a caution against isolated palatal surgery only. It
+     must not auto-route tongue-base surgery, HGNS, MMA, or DISE. */
 
   /* Prior treatment-aware Inspire recommendation */
   if(priorInspire) {
@@ -1467,9 +1460,10 @@ function mapTreatments(f, m, T){
       }
     }
 
-    /* Fix #4: priorMAD + priorUPPP combination — limited remaining options */
+    /* Prior treatments narrow history, not eligibility. Reassess rather than
+       assigning diminishing returns or prioritizing an unrelated modality. */
     if (priorMAD && priorUPPP && cpapFailed) {
-      pushRec(recs,'Prior MAD, UPPP, and CPAP trials documented. Further surgical revision has diminishing returns. Prioritize Inspire evaluation (if eligible), aggressive weight management, or advanced multilevel surgical planning based on DISE.','COMBI-PRIOR');
+      pushRec(recs,'Prior oral-appliance, throat-surgery, and CPAP trials are documented. Review the prior procedures, current anatomy, residual disease, safety, and patient goals before comparing still-eligible options; do not assume revision surgery or any one alternative should be prioritized.','COMBI-PRIOR');
     }
 
     if(cpapCurrent) {
@@ -1508,15 +1502,14 @@ function mapTreatments(f, m, T){
       pushRec(recs,'Consider a custom, titratable oral appliance when the patient prefers an alternative to PAP or cannot tolerate PAP. Population-level response associations are not reliable enough to rank this option for an individual; confirm efficacy with follow-up sleep testing.','MAD');
     }
     /* Only recommend generic surgery when anatomical findings are present */
-    const hasAnatomicalPhenotype = out.phen.includes('High Anatomical Contribution');
-    const hasNasalPhenotype = out.phen.includes('Nasal-Resistance Contributor');
     const hasDISEEntry = [f.get('vDeg'), f.get('oDeg'), f.get('tDeg'), f.get('eDeg')].some(d => d && d !== '0');
-    /* Generic surgery as a lead option requires a real surgical indication —
-       an anatomical/nasal phenotype, DISE findings, a strong Friedman-I airway,
-       or Friedman II at moderate-severe AHI. Mild OSA without those isn't led
-       toward surgery/DISE (clinical review). */
-    if (hasAnatomicalPhenotype || hasNasalPhenotype || hasDISEEntry || friedmanStage === 'I' || (friedmanStage === 'II' && exists(ahi) && ahi >= T.severity.moderate)) {
-      pushRec(recs,'Surgical correction of correctable airway blockage','SURG');
+    const hasLargeTonsils = exists(tons) && tons >= T.anatomical.tonsils;
+    /* TX-07: the exploratory anatomy composite and nasal-contributor phenotype
+       do not identify a pharyngeal surgical target. A generic sleep-surgery
+       discussion requires an actual target, entered DISE findings, or explicit
+       patient/visit intent. Nasal procedures remain in their separate pathway. */
+    if (hasLargeTonsils || hasDISEEntry || prefSurgery) {
+      pushRec(recs,'Discuss anatomically appropriate sleep-surgery options with a qualified surgeon; procedure selection requires a target-specific evaluation and shared decision-making.','SURG');
     }
 
     /* Fix #3: Mild AHI (5-14) with no phenotypes — lifestyle-first approach */
@@ -1748,7 +1741,9 @@ function buildClinicianReport(f, m, T){
     ].filter(Boolean).join(' ');
     if(voteSummary) surgTargets.push(`DISE VOTE: ${voteSummary}`);
   }
-  if(out.phen.includes('High Anatomical Contribution') && !surgTargets.length) surgTargets.push('Pharyngeal levels per exam/DISE as indicated');
+  // PH-01 is an exploratory contributor composite and cannot localize a
+  // surgical target. Only documented nasal anatomy or entered DISE findings
+  // populate this target summary.
 
   // Build DISE VOTE table if data was entered
   let diseTable = '';
@@ -2188,7 +2183,7 @@ function buildClinicianReport(f, m, T){
   /* ── Build collapsible treatment candidacy content ───── */
   const txCandidacyParts = [];
   if (friedmanStage)
-    txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Anatomy is more supportive of palatal or tonsil surgery.' : friedmanStage === 'II' ? 'Intermediate anatomic context; procedure selection requires the complete airway evaluation.' : friedmanStage === 'III' ? 'Isolated palatal surgery is less likely to control OSA; evaluate other airway levels and treatment modalities.' : 'The staging system does not provide a reliable individualized response estimate in this anatomy.'}<br><small class="text-muted">Friedman stage is an evidence-informed anatomic framework, not a validated patient-specific probability. DISE can localize collapse when indicated, but DISE findings do not form a validated general surgical-response score.</small></div>`);
+    txCandidacyParts.push(`<div class="alert alert-${friedmanStage === 'I' ? 'success' : friedmanStage === 'II' ? 'info' : 'warning'} py-2 px-3 mb-2"><strong>Friedman Stage ${friedmanStage}</strong> (FTP ${mall || '?'}, Tonsils ${exists(tons)?tons:'?'}, BMI ${exists(bmi)?bmi.toFixed(1):'?'}) — ${friedmanStage === 'I' ? 'Historical evidence is more supportive of selected isolated palatal surgery; enlarged tonsils can separately support a tonsillectomy consultation.' : friedmanStage === 'II' ? 'Intermediate historical palatal-surgery context; procedure selection requires a target-specific airway evaluation.' : friedmanStage === 'III' ? 'Historical evidence is less supportive of isolated palatal surgery. Stage III does not identify a tongue-base target or select HGNS, MMA, or another procedure.' : 'The staging system does not provide a reliable individualized response estimate in this anatomy.'}<br><small class="text-muted">Friedman stage is procedure-specific historical context, not a validated patient-specific probability or a general airway-localization tool. Examiner agreement is limited. DISE can observe sedated collapse when a device, procedure, or unresolved question calls for it, but it is not a universal prerequisite or validated general surgical-response score.</small></div>`);
   if (hnsStage && !priorInspire) {
     const cccBadge = hasConcentricCollapse ? ' <span class="badge bg-warning text-dark">DISE: CCC — Inspire contraindicated; Genio evidence/labeling not established for CCC</span>' : '';
     const bmiBadge = exists(bmi) && bmi > T.hgns.bmiMax ? ' <span class="badge bg-danger">BMI >40 — above current Capital ENT HGNS referral guardrail</span>' : '';

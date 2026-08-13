@@ -31,8 +31,8 @@
 ### Group 4: Anatomy & Surgery Scenarios
 | # | Name | BMI | Sex | AHI | Tonsils | FTP | Prior Tx | Key Features |
 |---|------|-----|-----|-----|---------|-----|----------|-------------|
-| 15 | Large tonsils, thin | 24 | M | 18 | 4 | I | None | Tonsils 4, FTP I, BMI <30 → strong tonsillectomy candidate |
-| 16 | Large tonsils, obese | 34 | M | 35 | 3 | II | None | Tonsils 3, BMI 30-35 → consider tonsillectomy in multilevel |
+| 15 | Large tonsils, thin | 24 | M | 18 | 4 | I | None | Tonsils 4, FTP I, BMI <30 -> tonsillectomy consultation without a guaranteed result or automatic palatal procedure |
+| 16 | Large tonsils, obese | 34 | M | 35 | 3 | I | None | Tonsils 3, FTP II, BMI 34 -> tonsillectomy consultation remains individualized; residual OSA and follow-up are explicit |
 | 17 | Prior UPPP | 30 | M | 25 | 1 | III | Prior UPPP | Already had palate surgery, persistent OSA |
 | 18 | Prior MAD failed | 28 | F | 15 | 2 | II | Prior MAD | Tried oral appliance, couldn't tolerate |
 
@@ -185,7 +185,7 @@ Normal-AHI wording check: returning post-study summaries should say the study di
 |---|------|-------------|
 | 96 | Oral appliance prerequisite guardrail | OSA reports that surface MAD should also surface sleep-dentist / dentition / TMJ prerequisite messaging rather than presenting MAD as fully finalized |
 | 97 | ASV heart-function guardrail | Alternative PAP / ASV messaging should explicitly require heart-function review before ASV is treated as safe to pursue |
-| 98 | DISE surgery-planning guardrail | Surgery-forward plans without DISE should add a DISE planning prerequisite before site-directed surgery is treated as finalized |
+| 98 | Procedure-specific surgery-planning guardrail | Revision or unresolved surgery plans should require review of prior operations and current anatomy. DISE is conditional on a device/procedure requirement or a specific question expected to change planning, not a universal prerequisite. |
 
 ### Group 18: Expanded Insufficient-Data Guardrails
 | # | Name | Key Features |
@@ -293,7 +293,7 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | # | Name | Key Features |
 |---|------|-------------|
 | 140 | Severe hypoxemia with PAP retry | Severe OSA, substantial nocturnal hypoxemia, PAP comfort barriers, nasal obstruction, and weight readiness should produce a focused PAP-retry plan while preserving the `OXYGEN-URG` safety recommendation in both clinician and patient outputs |
-| 141 | Favorable tonsillar surgery pathway | A non-obese, Friedman Stage I patient with 4+ tonsils and PAP intolerance who requests surgery should receive an airway-surgery draft and tonsil/palate counseling without an unrelated HNS or universal DISE prerequisite |
+| 141 | Favorable tonsillar surgery pathway | A non-obese, Friedman Stage I patient with 4+ tonsils and PAP intolerance who requests surgery should receive an airway-surgery draft and tonsillectomy counseling without an unrelated HNS, automatic palatal procedure, or universal DISE prerequisite |
 | 142 | Probable UARS plan suggestion | Normal pAHI with marked symptoms and PAT RDI elevation should surface diagnostic testing in the MA suggestion layer, not only after the clinician manually selects a plan and runs the analysis |
 | 143 | Limited WatchPAT plan restraint | A three-hour study with very little REM should keep quality flags clinician-facing, suppress REM phenotyping, and make the chart-aware plan draft reflect the need for caution before presenting treatment pathways as definitive |
 | 144 | BiPAP central-safety plan integration | Current BiPAP use with substantial WatchPAT central signals and LVEF at or below 45% should add PSG confirmation to the MA draft, retain BiPAP wording, and suppress unsafe ASV routing |
@@ -399,7 +399,7 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 197 | Supine-predominant OSA | A positional ratio with non-supine AHI 5 or higher remains a positional phenotype, but positional therapy is explicitly adjunctive because OSA persists off the back |
 | 198 | HGNS referral with complete lateral oropharyngeal-wall collapse | Complete collapse appears as negative unilateral-HGNS response context without becoming a universal contraindication, individual probability, or aggregate response tier |
 | 199 | HGNS referral with partial lateral oropharyngeal-wall collapse | Partial collapse is documented but is not relabeled as the same validated adverse predictor as complete collapse |
-| 200 | Stage I tonsillar anatomy and surgical interest | Friedman stage supports anatomy-directed discussion without an exact historical success percentage, a patient-specific probability, or a general DISE response score |
+| 200 | Stage I tonsillar anatomy and surgical interest | Friedman stage supplies historical isolated-palatal-surgery context and enlarged tonsils support a tonsillectomy consultation, without an exact success percentage, patient-specific probability, automatic palatal procedure, or general DISE response score |
 
 ### Group 44: COMISA Sequencing And Safety Calibration
 
@@ -520,3 +520,13 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 | 257 | Central and periodic-breathing signals without loop-gain inference | Clinically important home-study central or periodic signals retain PSG-confirmation guidance, while confirmed PSG CAI at least 5/h prompts etiologic review. Neither pathway labels high loop gain or automatically selects fixed CPAP, oxygen, acetazolamide, BPAP, or ASV. |
 | 258 | REM-heavy OSA counterexample | REM/NREM AHI may create REM-predominant OSA when the separate criteria and sampling rules are met, but it cannot create poor muscle responsiveness or route HGNS. |
 | 259 | F(hypopneas) research context and missing-data counterexample | When present, F(hypopneas) is clinician-only research context without high/moderate/low collapsibility categories or treatment ranking. When absent, it does not add an endotype-workup caveat or patient action. |
+
+### Group 57: Anatomy And Surgical-Selection Evidence Boundary
+
+| # | Name | Key Features |
+|---|---|---|
+| 260 | Friedman Stage III without a demonstrated target | Stage III warns that isolated palatal surgery has less supportive historical evidence but emits no tongue-base surgery, HGNS, MMA, generic surgery, or mandatory-DISE route. PAP and other options remain governed by their own indications. |
+| 261 | Enlarged tonsils with surgical interest | Grade 3-4 tonsils may support an adult tonsillectomy consultation. The output explains operative risk, residual OSA, and objective follow-up and does not automatically add expansion pharyngoplasty. |
+| 262 | Exploratory high-anatomy composite without a correctable target | BMI, neck size, FTP, and AHI can create the exploratory contributor signal but cannot independently emit generic pharyngeal surgery, a target summary, or DISE workup. |
+| 263 | Prior throat surgery with recurrent or persistent OSA | Review the operative report and current anatomy before another operation. DISE may be selected when it answers a procedure-specific revision question, but the app does not claim it is universally required. |
+| 264 | Device-required or clinician-confirmed DISE counterexamples | Current unilateral-Inspire CCC exclusion and the clinician-confirmed demo plan for DISE plus inferior turbinate reduction remain firm and unchanged despite the general conditional-DISE rule. |
