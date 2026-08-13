@@ -663,6 +663,16 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 3,
   ahi: 3,
   severity: 'normal',
+  bmi: 31,
+  recTags: [{ tag: 'SNORE-LIFESTYLE', text: 'Use conservative snoring measures while awaiting results.' }],
+}));
+assert(reportHtml.includes('weight management may reduce snoring') && reportHtml.includes('no specific number of pounds guarantees a response'), 'Patient snoring advice preserves cautious weight-management evidence');
+assert(!/5\s*[-–—]\s*7 pounds/i.test(reportHtml), 'Patient report does not claim a fixed 5-7 pound snoring response');
+
+reportHtml = PatientReport.generateReportHTML(buildReportData({
+  primaryAHI: 3,
+  ahi: 3,
+  severity: 'normal',
   subtype: 'Minimally Symptomatic',
   milestones: ['Initial Eval', 'Study Reviewed'],
 }));
@@ -716,7 +726,7 @@ reportHtml = PatientReport.generateReportHTML(buildReportData({
   weightLossReadiness: 'ready',
   bmi: 32,
 }));
-assert(reportHtml.includes('GLP-1 therapies'), 'BMI 30+ keeps GLP-1 language available in weight rec');
+assert(reportHtml.includes('Zepbound (tirzepatide)') && reportHtml.includes('prescriber'), 'BMI 30+ keeps indication-accurate, prescriber-controlled Zepbound language available in weight rec');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   phen: ['High Hypoxic Burden'],
@@ -942,6 +952,9 @@ assert((reportHtml.match(/class="checklist-item"/g) || []).length <= 5, 'First 3
 assert(!reportHtml.includes('<h2>What If…?</h2>'), 'Condensed patient report omits the repetitive What If section');
 assert(!reportHtml.includes('apnea-versus-hypopnea breakdown needed to interpret'), 'Technical endotype workup stays out of the checklist when treatment actions are already present');
 const terminologyReportHtml = reportHtml;
+assert(reportHtml.includes('clinically significant insomnia symptoms') && reportHtml.includes('clinician will confirm the insomnia diagnosis'), 'COMISA patient wording separates clinically significant symptoms from a confirmed insomnia diagnosis');
+assert(!reportHtml.includes('You have both insomnia and sleep apnea'), 'ISI-only COMISA report avoids an unqualified insomnia diagnosis');
+assert(!reportHtml.includes('PAP adherence support needs'), 'Clinician-only PAP support flag stays out of the patient report');
 
 reportHtml = PatientReport.generateReportHTML(buildReportData({
   primaryAHI: 9,

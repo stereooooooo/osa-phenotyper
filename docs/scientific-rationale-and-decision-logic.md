@@ -11,6 +11,7 @@
 | Review and decision history | [`evidence-review-log.md`](evidence-review-log.md) |
 | Targeted primary-source review | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md) |
 | COMISA, oxygen, and weight source review | [`research/comisa-hypoxemia-weight-primary-sources.md`](research/comisa-hypoxemia-weight-primary-sources.md) |
+| ISI, PAP support, and snoring source review | [`research/isi-comisa-pap-adherence-snoring-primary-sources.md`](research/isi-comisa-pap-adherence-snoring-primary-sources.md) |
 | Executable scenario inventory | [`test-matrix.md`](test-matrix.md) |
 
 ## Executive summary
@@ -473,6 +474,23 @@ Education, behavioral support, troubleshooting, and telemonitoring-guided interv
 components of PAP care. The app proposes categories for review; it does not directly change pressure
 or prescribe a mode.
 
+### Support needs are not an adherence prediction
+
+No transportable, externally validated baseline model was identified that can reliably predict an
+individual patient's PAP acceptance, use, or discontinuation. Baseline severity, sleepiness,
+insomnia, demographics, and exploratory endotypes have heterogeneous associations and must not
+create a favorable/poor PAP tier or move a patient away from PAP.
+
+Observed use during the first days and weeks is the strongest practical signal once treatment has
+started, although it is partly an early measurement of the eventual behavior rather than a causal
+predictor. Precision Sleep therefore uses a clinician-only support-needs flag when active or planned
+PAP intersects with documented, potentially remediable barriers. The flag names the barrier,
+recommends education and targeted troubleshooting, and prompts early review of objective use, leak,
+residual events, comfort, and perceived benefit. It explicitly says the finding is not a prediction
+that PAP will fail. Race, sex, age, socioeconomic labels, and endotype surrogates cannot create the
+flag. Access barriers should be assessed directly and addressed as system needs rather than encoded
+as patient traits.
+
 The central sources are the [AASM PAP guideline](https://doi.org/10.5664/jcsm.7640), the
 [American Thoracic Society PAP-tracking statement](https://doi.org/10.1164/rccm.201307-1282ST), and
 the [ATS policy statement on the four-hour adherence threshold](https://doi.org/10.1164/rccm.202210-1846ST).
@@ -509,12 +527,14 @@ treatment without converting a questionnaire result into a diagnosis or delaying
 
 ### The app uses an operational screen, not an insomnia diagnosis
 
-The Insomnia Severity Index (ISI) is a validated symptom and outcome questionnaire. It does not by
-itself establish the duration, frequency, adequate opportunity for sleep, daytime consequences, or
-differential diagnosis required for chronic insomnia disorder. Precision Sleep currently uses ISI
-at least 15 plus AHI at least 5 as a local operational screen for an insomnia-plus-OSA pattern. The
-screen should trigger clinician review and treatment discussion; it should not be presented as a
-standalone diagnosis.
+The Insomnia Severity Index (ISI) is a validated symptom and outcome questionnaire. ISI at least 15
+is the conventional moderate-to-severe insomnia-symptom range and is appropriately described as
+clinically significant insomnia symptoms. It does not by itself establish the duration, frequency,
+adequate opportunity for sleep, daytime consequences, or differential diagnosis required for
+chronic insomnia disorder. Precision Sleep uses ISI at least 15 plus objectively established AHI at
+least 5 as a COMISA screening phenotype. The app may say “COMISA screen positive” or “clinically
+significant insomnia symptoms and OSA, often called COMISA,” while clinician confirmation remains
+required before chronic insomnia disorder is documented.
 
 This distinction is especially important because the most directly relevant sequencing trials
 generally enrolled participants with confirmed insomnia and moderate-to-severe OSA. Extending the
@@ -547,8 +567,9 @@ or automate hypnotic selection.
 The app cannot determine the cause of an elevated ISI, predict an individual's CBT-I response,
 predict PAP adherence, or claim that untreated insomnia is the strongest predictor of PAP
 nonadherence. The Sweetman 2019 randomized trial did not compare predictors and does not support
-that ranking. A source-verified wording correction is pending clinician approval before runtime
-copy is changed.
+that ranking. Clinician and patient wording therefore separates a screening phenotype from a formal
+insomnia diagnosis and treats insomnia as a potentially modifiable support need, not evidence of
+PAP failure.
 
 ### Key limitations and validation needs
 
@@ -633,6 +654,12 @@ Guideline-supported care includes comprehensive lifestyle intervention for patie
 or obesity. Randomized and longitudinal studies show average improvement in AHI with weight loss,
 with substantial individual variation and incomplete remission. Precision Sleep must not predict a
 fixed AHI or snoring improvement from a specified number of pounds.
+
+Higher weight and weight gain are associated with habitual snoring, and a very small multimodal
+study provides directional evidence that weight loss may reduce snoring in some adults. It does not
+establish that losing 5-7 pounds reliably improves snoring or define a minimum effective amount.
+Patient guidance therefore says weight management may reduce snoring when overweight or obesity is
+present, while explicitly noting that response varies and no number of pounds guarantees benefit.
 
 The weight pathway should be non-stigmatizing, consider readiness and prior treatment, and remain
 compatible with PAP, an oral appliance, surgery, nerve stimulation, positional treatment, and
@@ -750,7 +777,7 @@ validation.
 | Formal logic register | [`evidence-basis.md`](evidence-basis.md) |
 | Exact source use and limitations | [`citations.md`](citations.md) |
 | Review decisions and surveillance | [`evidence-review-log.md`](evidence-review-log.md) |
-| Targeted source reviews for this narrative | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md); [`research/comisa-hypoxemia-weight-primary-sources.md`](research/comisa-hypoxemia-weight-primary-sources.md) |
+| Targeted source reviews for this narrative | [`research/scientific-rationale-primary-sources.md`](research/scientific-rationale-primary-sources.md); [`research/comisa-hypoxemia-weight-primary-sources.md`](research/comisa-hypoxemia-weight-primary-sources.md); [`research/isi-comisa-pap-adherence-snoring-primary-sources.md`](research/isi-comisa-pap-adherence-snoring-primary-sources.md) |
 | Regression scenarios and counterexamples | [`test-matrix.md`](test-matrix.md) |
 
 ## Planned chapters

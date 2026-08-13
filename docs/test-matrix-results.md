@@ -1731,3 +1731,17 @@ finished. No deployment was requested or performed.
 - every generated full report and Today's Sleep Plan in the scenario matrix remains free of typographic dash characters
 - the complete headless suite passed **2,020 assertions** locally; clinician acceptance and deployment remain pending
 **Finding:** the patient-safety contradiction and related consistency gaps are fixed locally. No deferred infrastructure defense-in-depth item was included in this clinical remediation candidate.
+
+### Tests 252-255: ISI/COMISA, PAP support, and weight/snoring evidence alignment
+
+**Status:** primary-source review, clinician signoff, runtime wording, evidence-gate documentation, syntax, lint, and full regression testing complete
+**Result:** passed with a narrow clinician-support and wording change ✅
+**Verification:**
+- ISI at least 15 is described as the validated moderate-to-severe insomnia-symptom range; with objective AHI at least 5 it produces a COMISA screening phenotype while preserving clinician confirmation of chronic insomnia disorder
+- the clinician-only PAP support flag names documented, potentially remediable barriers, states that they do not predict PAP failure, and calls for education, targeted troubleshooting, and early objective data review
+- a completed PAP trial without retry intent provides the counterexample: historical mask difficulty does not reactivate PAP support or alter the selected alternatives pathway
+- the patient report suppresses the technical PAP support flag, avoids an unqualified insomnia diagnosis, and removes the fixed 5-7 pound snoring claim
+- Zepbound is described as tirzepatide, a dual GIP/GLP-1 receptor agonist, with the OSA indication limited to eligible adults with obesity and moderate-to-severe OSA alongside diet and activity; prescribing decisions remain with the prescriber
+- investigational event-linked hypoxic-burden behavior and conventional-oxygen local safety triggers remain unchanged
+- evidence-documentation integrity passed **193 assertions**; the complete headless suite passed **2,149 assertions**
+**Finding:** the six clinician-approved policies are implemented without an adherence probability, PAP demotion, HB diagnosis, fixed snoring-response threshold, or autonomous medication decision. Deployment remains pending commit and push.

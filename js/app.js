@@ -85,7 +85,7 @@ const REC_PRIORITY = {
   'NEG-HST-PSG': 3,
   'CBTI': 5, 'COMISA-PAP': 6, 'COMISA-SRT-CAUTION': 7,
   'OXYGEN-URG': 8,
-  'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11,
+  'CPAP': 10, 'CPAP-FIXED': 10, 'CPAP-OPT': 11, 'PAP-SUPPORT': 11,
   'TONSIL': 15, 'SOFT-TISSUE-STRONG': 16, 'FRIEDMAN-III-ALT': 17,
   'NASAL-OPT': 12,
   'POS': 20,
@@ -119,7 +119,7 @@ const VISIT_REASON_LABELS = {
 };
 
 const PLAN_FIELD_TO_TAGS = {
-  planPap: ['CPAP', 'CPAP-ALT', 'CPAP-PREF', 'CPAP-OPT', 'CPAP-DESENTIZE', 'CPAP-HUMID', 'CPAP-RETITRATE', 'CPAP-FIXED', 'COMISA-PAP', 'COMISA-SRT-CAUTION', 'HLG-ADV', 'ASV-CONTRA'],
+  planPap: ['CPAP', 'CPAP-ALT', 'CPAP-PREF', 'CPAP-OPT', 'CPAP-DESENTIZE', 'CPAP-HUMID', 'CPAP-RETITRATE', 'CPAP-FIXED', 'PAP-SUPPORT', 'COMISA-PAP', 'COMISA-SRT-CAUTION', 'HLG-ADV', 'ASV-CONTRA'],
   planNasal: ['NASAL-OPT', 'NASAL-SURG', 'NASAL-PRIOR', 'NASAL-SINUS-PRIOR'],
   planPositional: ['POS', 'POS-GUARD'],
   planWeight: ['WEIGHT'],
@@ -1280,7 +1280,7 @@ function mapTreatments(f, m, T){
           pushRec(recs,'Optimize CPAP comfort (humidification, auto-ramp, mask fit, desensitization).','CPAP-OPT');
         }
         if(exists(isi) && isi >= 15) {
-          pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Untreated insomnia is the strongest predictor of CPAP non-adherence (Sweetman 2019). Consider a sleep psychology referral or a validated digital CBT-I program when appropriate and available.','CBTI');
+          pushRec(recs,'Initiate CBT-I (cognitive behavioral therapy for insomnia) before or concurrent with PAP therapy. Insomnia symptoms can make PAP adaptation more difficult for some patients, but they do not predict individual PAP failure. Consider a sleep psychology referral or a validated digital CBT-I program when appropriate and available.','CBTI');
         }
         break;
       case 'High Loop Gain':
@@ -1512,10 +1512,11 @@ function mapTreatments(f, m, T){
 
     if (exists(bmi) && bmi >= T.anatomical.bmi) {
       if (exists(ahi) && ahi >= T.severity.moderate) {
-        /* Obesity + moderate-to-severe OSA → name the on-label GLP-1 option.
-           Tirzepatide (Zepbound) FDA-approved for OSA in adults with obesity,
-           SURMOUNT-OSA / FDA Dec 2024 (see docs/citations.md). */
-        pushRec(recs,'Enroll in structured weight management. For obesity with moderate-to-severe OSA, evaluate a GLP-1/tirzepatide (Zepbound) — FDA-approved for OSA in adults with obesity (SURMOUNT-OSA, 2024).','WEIGHT');
+        /* Obesity + moderate-to-severe OSA → name the on-label medication
+           accurately. Zepbound (tirzepatide) is a dual GIP/GLP-1 receptor
+           agonist, not a GLP-1-only drug. Prescriber review remains required.
+           SURMOUNT-OSA / current FDA label (see docs/citations.md). */
+        pushRec(recs,'Enroll in structured weight management. For adults with obesity and moderate-to-severe OSA, evaluate Zepbound (tirzepatide), a dual GIP/GLP-1 receptor agonist FDA-approved for this indication alongside a reduced-calorie diet and increased physical activity. Prescriber review of eligibility, contraindications, interactions, monitoring, and tolerability is required.','WEIGHT');
       } else {
         pushRec(recs,'Enroll in a structured weight-management program.','WEIGHT');
       }
@@ -1588,7 +1589,7 @@ function mapTreatments(f, m, T){
     // without a PAP-adherence difference. Alessi 2021 supports an integrated
     // CBT-I plus adherence program. No trial validates a universal PAP mode,
     // pressure range, ramp, or pressure-relief recipe specifically for COMISA.
-    pushRec(recs, 'COMISA screen positive (ISI \u2265 15 + OSA): offer CBT-I early and start or continue PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Sweetman 2019; Ong/MATRICS 2020; Alessi 2021).', 'CBTI');
+    pushRec(recs, 'COMISA screen positive: ISI \u2265 15 is consistent with clinically significant insomnia symptoms, and the sleep study confirms OSA. Confirm insomnia frequency, duration, daytime impact, sleep opportunity, and alternative causes before documenting chronic insomnia disorder. Offer CBT-I early and start or continue PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, sleepiness, access, and patient preference. Do not delay effective OSA therapy when clinical urgency is high (Morin 2011; Sweetman 2019; Ong/MATRICS 2020; Alessi 2021).', 'CBTI');
     pushRec(recs, 'Individualize PAP mode and settings to the patient and objective PAP data. Address the documented barrier with interface fitting, humidification, ramp, pressure relief, desensitization, or pressure review as appropriate; COMISA alone does not establish APAP over fixed CPAP or a specific pressure range.', 'COMISA-PAP');
     // Sweetman 2020 found a small, transient ESS increase after the first week
     // of bedtime restriction that returned to baseline thereafter. High ESS is
@@ -1596,6 +1597,35 @@ function mapTreatments(f, m, T){
     if (sleepyCOMISA) {
       pushRec(recs, 'CBT-I sleepiness monitoring: high baseline ESS and insomnia warrant close follow-up when bedtime restriction begins. Explain that sleepiness can briefly increase during the first week; assess driving and other safety-sensitive duties, and let the treating CBT-I clinician adjust the pace or use sleep compression when needed.', 'COMISA-SRT-CAUTION');
     }
+  }
+
+  /* PAP adherence support flag, not a prediction score. Baseline adherence is
+     not reliably predictable for an individual. Documented, potentially
+     remediable barriers justify proactive support, and objective early use is
+     the strongest practical signal once PAP begins (AASM 2019; Weaver 2022;
+     Budhiraja 2007). Never use this flag to demote or deny PAP. */
+  const papSupportRelevant = cpapCurrent || cpapWillRetry ||
+    (!cpapFailed && !cpapRefused && !prefAvoidCpap && exists(ahi) && ahi >= T.comisa.ahiFloor);
+  const papSupportNeeds = [];
+  cpapReasons.forEach(reason => {
+    const label = CPAP_ISSUE_LABELS[reason] || reason;
+    if (label && !papSupportNeeds.includes(label)) papSupportNeeds.push(label);
+  });
+  if (cpapDifficulty === 'yes' && papSupportNeeds.length === 0) {
+    papSupportNeeds.push('reported PAP difficulty not yet characterized');
+  }
+  if (cpapDifficulty === 'unsure' && !papSupportNeeds.includes('current PAP difficulty not yet characterized')) {
+    papSupportNeeds.push('current PAP difficulty not yet characterized');
+  }
+  if (hasCOMISA && !papSupportNeeds.includes('clinically significant insomnia symptoms')) {
+    papSupportNeeds.push('clinically significant insomnia symptoms');
+  }
+  if ((nasalObs || (exists(noseScore) && noseScore >= T.nasal.noseMild)) &&
+      !papSupportNeeds.includes('symptomatic nasal obstruction')) {
+    papSupportNeeds.push('symptomatic nasal obstruction');
+  }
+  if (papSupportRelevant && papSupportNeeds.length) {
+    pushRec(recs, `PAP adherence support needs: ${papSupportNeeds.join(', ')}. These are potentially modifiable barriers, not a prediction that PAP will fail. Provide education and targeted troubleshooting, then review objective use, leak, residual events, comfort, and perceived benefit early after initiation; actual early use is the strongest practical signal of later adherence.`, 'PAP-SUPPORT');
   }
 
   return { recs, recTags, friedmanStage, hnsStage, madResponseContext, hasConcentricCollapse, hasCOMISA, sleepyCOMISA };
@@ -1743,9 +1773,10 @@ function buildClinicianReport(f, m, T){
     guardrails.push('Elevated \u0394HR with existing CVD \u2014 consider cardiology monitoring and aggressive PAP adherence targets.');
   }
   if(hasCOMISA){
-    const comisaSeverity = isi >= 22 ? 'Severe insomnia' : 'Moderate insomnia';
-    let comisaBullets = `<strong>COMISA screen positive: ${comisaSeverity} (ISI ${isi}) plus OSA</strong>
+    const comisaSeverity = isi >= 22 ? 'severe' : 'moderate';
+    let comisaBullets = `<strong>COMISA screen positive: ISI ${isi} is in the ${comisaSeverity} insomnia-symptom range, and the sleep study confirms OSA</strong>
       <ul class="mb-1 mt-1">
+        <li>Confirm insomnia frequency, duration, daytime impact, adequate sleep opportunity, and alternative causes before documenting chronic insomnia disorder</li>
         <li>Offer CBT-I early; begin or continue PAP concurrently or sequentially based on OSA severity, substantial nocturnal hypoxemia, access, and patient preference <small class="text-muted">(Sweetman 2019; MATRICS 2020; Alessi 2021)</small></li>
         <li>Do not delay effective OSA treatment when severe disease, substantial hypoxemia, or safety-sensitive sleepiness creates urgency</li>
         <li>Individualize PAP mode and settings using the patient's barriers and objective download data; COMISA alone does not select APAP, fixed CPAP, or a pressure range</li>

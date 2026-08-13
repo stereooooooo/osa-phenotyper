@@ -118,7 +118,7 @@ var PatientReport = (() => {
     {
       label: 'COMISA',
       patterns: [/\bCOMISA\b/],
-      definition: 'Insomnia and sleep apnea occurring together. The care plan needs to address both conditions.',
+      definition: 'Clinically significant insomnia symptoms and sleep apnea occurring together. The questionnaire is a screening result; your clinician confirms whether you have an insomnia disorder.',
     },
     {
       label: 'BMI',
@@ -1184,8 +1184,8 @@ ${severity === 'normal'
 Many people with sleep apnea feel sleepy during the day, and your results suggest this fits you. When your breathing is interrupted repeatedly during the night, your body briefly wakes to reopen the airway. Even if you do not remember these wake-ups, they can fragment sleep. Many people notice meaningful improvement in daytime energy when treatment controls the breathing interruptions.</p>`;
     } else if (!isNormalStudy && (subtype.includes('disturbed') || subtype.includes('comisa'))) {
       subtypeHtml = `
-<p><strong>Your Sleep Apnea Pattern: COMISA (Insomnia + Sleep Apnea)</strong><br>
-You have both insomnia and breathing interruptions during sleep. Your plan addresses both conditions.</p>`;
+<p><strong>Your Screening Pattern: Insomnia Symptoms + Sleep Apnea (COMISA)</strong><br>
+Your questionnaire shows clinically significant insomnia symptoms, and your sleep study shows sleep apnea. These often occur together and are sometimes called COMISA. Your clinician will confirm the insomnia diagnosis and help decide how to address both problems.</p>`;
     } else if (!isNormalStudy && subtype.includes('minimal')) {
       subtypeHtml = `
 <p><strong>Your Sleep Apnea Pattern: Minimally Symptomatic</strong><br>
@@ -1459,6 +1459,7 @@ ${items}`;
     'CPAP-HUMID': null,  // Merged into CPAP context
     'CPAP-RETITRATE': null,  // Merged into CPAP context
     'CPAP-FIXED': null,  // Merged into CPAP context
+    'PAP-SUPPORT': null,  // Clinician-only support-needs flag
     'MAD': `<strong>Oral Appliance Therapy</strong> — A sleep dentist fits a custom device that moves the lower jaw forward during sleep. It is a reasonable option for selected patients, especially when PAP is not tolerated; follow-up sleep testing is needed to confirm effectiveness.`,
     // Legacy aliases are retained for saved snapshots, but no longer communicate a
     // patient-specific response tier. No externally validated prediction rule supports one.
@@ -1497,7 +1498,7 @@ ${items}`;
     'UARS-EVAL': `<strong>Detailed Sleep Evaluation</strong> — Discuss an in-lab sleep study with your doctor. It can measure sleep disruption more directly and help determine whether partial airway narrowing is causing your symptoms.`,
     'NEG-HST-PSG': `<strong>Confirm the Negative Home Test in the Sleep Lab</strong> — Your home sleep study did not show obstructive sleep apnea, but it did not fully explain your ongoing symptoms. An in-lab sleep study measures sleep, breathing, and arousals in more detail and is the recommended next diagnostic step before the home result is treated as definitively negative.`,
     'SNORE-ALCOHOL': `<strong>Avoid Alcohol Before Bed</strong> — Alcohol relaxes the muscles in your throat, making snoring worse and increasing the chance of airway collapse during sleep. Avoiding alcohol within 3 hours of bedtime can noticeably reduce snoring and improve sleep quality.`,
-    'SNORE-LIFESTYLE': `<strong>Reducing Snoring While We Wait for Results</strong> — There are several things you can start doing now to reduce snoring. <strong>Sleep on your side</strong> — snoring is usually worse on your back because gravity pulls the tongue and soft tissues into the airway. A body pillow or positional device can help. <strong>Avoid alcohol within 3 hours of bedtime</strong> — alcohol relaxes the throat muscles, making snoring louder and more frequent. <strong>Maintain a healthy weight</strong> — even modest weight loss (as little as 5–7 pounds) can noticeably reduce snoring by decreasing tissue bulk around the airway. <strong>Stay active</strong> — regular aerobic exercise may reduce snoring independent of weight loss. <strong>Reduce sedative use</strong> — benzodiazepines and other sedating medications relax the airway and worsen snoring when possible to avoid. These steps form the foundation of snoring management and will also help with any sleep apnea treatment we recommend after your sleep study.`,
+    'SNORE-LIFESTYLE': `<strong>Reducing Snoring While We Wait for Results</strong> — There are several things you can start doing now to reduce snoring. <strong>Sleep on your side</strong> — snoring is usually worse on your back because gravity pulls the tongue and soft tissues into the airway. A body pillow or positional device can help. <strong>Avoid alcohol within 3 hours of bedtime</strong> — alcohol relaxes the throat muscles, making snoring louder and more frequent. <strong>Maintain a healthy weight</strong> — if you have overweight or obesity, weight management may reduce snoring and can improve sleep apnea and overall health. The amount of snoring improvement varies, and no specific number of pounds guarantees a response. <strong>Stay active</strong> — regular activity supports overall health and weight management. <strong>Review sedating medicines with your clinician</strong> — some sedating medicines can relax the airway, but do not stop a prescribed medicine without medical guidance.`,
     'INSPIRE-EVAL': `<strong>Nerve-Stimulation Candidacy Evaluation</strong> — You expressed interest in an upper-airway stimulation implant. It is considered only after standard treatments have not worked well enough or could not be used. Device labeling and insurance criteria differ, so your ENT must review the complete treatment history, body-size measures, sleep-study results, anatomy, and any device-required airway evaluation before recommending a specific device.`,
     'INSPIRE-OPT': null,  // Inspire already in place — clinical detail
     'COMISA-PAP': null,  // COMISA-specific CPAP detail — merged
@@ -1516,7 +1517,7 @@ ${items}`;
   };
 
   /* Tags that are sub-items of CPAP — should not render as standalone recs */
-  const cpapSubTags = new Set(['CPAP-ALT','CPAP-PREF','CPAP-OPT','CPAP-DESENTIZE','CPAP-HUMID','CPAP-RETITRATE','CPAP-FIXED']);
+  const cpapSubTags = new Set(['CPAP-ALT','CPAP-PREF','CPAP-OPT','CPAP-DESENTIZE','CPAP-HUMID','CPAP-RETITRATE','CPAP-FIXED','PAP-SUPPORT']);
   const nasalSubTags = new Set(['NASAL-SURG','NASAL-PRIOR']);
   const suppressedTags = new Set(['POS-GUARD','REM-CHECK','REM-MAD','OXYGEN-URG','DHR-TX','ENDOTYPE-WORKUP']);
   const workupTags = new Set([
@@ -1578,7 +1579,7 @@ ${items}`;
       const lead = weightReadinessLead(data);
       const priorMedicationSupport = glpHistorySupport(data);
       const support = priorMedicationSupport || (data.bmi >= 30
-        ? 'Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible patients, prescription weight-loss medications such as GLP-1 therapies (for example, Zepbound/tirzepatide).'
+        ? 'Your doctor can connect you with resources such as dietitians, structured programs, and, for eligible adults with obesity and moderate-to-severe sleep apnea, Zepbound (tirzepatide). Your prescriber must confirm that it is appropriate and review its risks and monitoring.'
         : 'Your doctor can connect you with resources such as dietitians, structured programs, and other forms of medical support when appropriate.');
       return `<strong>Weight Management</strong> — ${lead}Weight loss can reduce sleep apnea severity and improve how well other treatments work, but the amount of improvement varies from person to person. ${support}`;
     }
@@ -1797,8 +1798,8 @@ ${items}`;
               : 'CBT-I treats insomnia while PAP treats breathing. Begin both pathways in parallel unless your clinician recommends a different sequence.';
       output += `
 <div class="comisa-callout">
-  <strong>You have both insomnia and sleep apnea (COMISA).</strong>
-  <p style="margin:0.4rem 0 0;">${comisaPlanText}</p>
+  <strong>Your screening results show clinically significant insomnia symptoms together with sleep apnea, often called COMISA.</strong>
+  <p style="margin:0.4rem 0 0;">Your clinician will confirm the insomnia diagnosis. ${comisaPlanText}</p>
 </div>`;
     }
 
@@ -2016,7 +2017,7 @@ ${items}`;
       items.push(`
 <div class="whatif-item">
   <strong>What if you lost weight?</strong>
-  <p style="margin:0.4rem 0 0;">Extra weight around the neck and throat is one of the biggest drivers of snoring and sleep apnea. Even losing 5–7 pounds can noticeably cut snoring, and it makes any future treatment work better.</p>
+  <p style="margin:0.4rem 0 0;">If you have overweight or obesity, weight management may reduce snoring and can improve sleep apnea and overall health. The amount of snoring improvement varies, and no specific number of pounds guarantees a response.</p>
 </div>`);
     }
 

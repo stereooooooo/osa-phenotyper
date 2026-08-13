@@ -85,12 +85,12 @@ const ALL_SCENARIOS = [
     checks: ['priorCpap', 'cpapCurrent', 'cpapDry', 'glp1IssueDigestive'],
     expectedGlp1: { status: 'previous', medication: 'semaglutide', effective: 'yes' },
     expectedSuggestions: ['PAP management', 'Nasal treatment', 'Positional therapy', 'Weight management'],
-    expectedTags: ['CPAP', 'NASAL-OPT', 'POS', 'WEIGHT'],
-    clinicianIncludes: ['Currently using APAP', 'difficulty reported'],
+    expectedTags: ['CPAP', 'PAP-SUPPORT', 'NASAL-OPT', 'POS', 'WEIGHT'],
+    clinicianIncludes: ['Currently using APAP', 'difficulty reported', 'PAP adherence support needs: dryness', 'not a prediction that PAP will fail', 'actual early use is the strongest practical signal'],
     clinicianExcludes: ['Currently using CPAP'],
     clinicianTooltipIncludes: ['baseline NOSE severity', 'does not reliably predict AHI improvement', 'dominant barrier'],
     patientIncludes: ['Building on your current APAP therapy', 'prioritize nasal treatment', 'supported weight management', 'previous trial of semaglutide', 'helped with weight loss', 'digestive side effects'],
-    patientExcludes: ['Begin PAP therapy now'],
+    patientExcludes: ['Begin PAP therapy now', 'PAP adherence support needs', 'prediction that PAP will fail'],
     todayPlanIncludes: ["Today's Sleep Plan", 'Make APAP easier to use', 'Improve nasal airflow', 'Choose one sustainable weight or lifestyle step', 'previous trial of semaglutide', 'digestive side effects', 'Use a positional aid'],
     todayPlanExcludes: ['Start CPAP', 'Increase your pressure']
   },
@@ -105,11 +105,11 @@ const ALL_SCENARIOS = [
     },
     checks: [],
     expectedSuggestions: ['CBT-I', 'PAP management'],
-    expectedTags: ['CBTI', 'CPAP'],
-    clinicianIncludes: ['validated digital CBT-I program', 'Individualize PAP mode and settings'],
+    expectedTags: ['CBTI', 'CPAP', 'PAP-SUPPORT'],
+    clinicianIncludes: ['validated digital CBT-I program', 'Individualize PAP mode and settings', 'clinically significant insomnia symptoms', 'Confirm insomnia frequency', 'not a prediction that PAP will fail'],
     clinicianExcludes: ['Pear Somryst', 'full sleep restriction contraindicated', 'Use APAP over fixed CPAP', 'set EPR/flex to max'],
-    patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel'],
-    patientExcludes: ['Complete DISE-Guided']
+    patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel', 'clinically significant insomnia symptoms', 'clinician will confirm the insomnia diagnosis'],
+    patientExcludes: ['Complete DISE-Guided', 'PAP adherence support needs', 'You have both insomnia and sleep apnea']
   },
   {
     id: 'sleepy-comisa-monitoring',
@@ -122,8 +122,8 @@ const ALL_SCENARIOS = [
     },
     checks: [],
     expectedSuggestions: ['CBT-I', 'PAP management'],
-    expectedTags: ['CBTI', 'CPAP'],
-    clinicianIncludes: ['COMISA screen positive', 'Individualize PAP mode and settings', 'briefly increase sleepiness during the first week', 'driving and safety-sensitive duties'],
+    expectedTags: ['CBTI', 'CPAP', 'PAP-SUPPORT'],
+    clinicianIncludes: ['COMISA screen positive', 'Individualize PAP mode and settings', 'briefly increase sleepiness during the first week', 'driving and safety-sensitive duties', 'PAP adherence support needs'],
     clinicianExcludes: ['full sleep restriction contraindicated', 'sleep restriction therapy is unsafe', 'Use APAP over fixed CPAP', 'set EPR/flex to max', 'min 4', 'max 15'],
     patientIncludes: ['Begin CBT-I', 'PAP', 'in parallel'],
     patientExcludes: ['Complete DISE-Guided']
@@ -140,8 +140,9 @@ const ALL_SCENARIOS = [
     checks: ['priorCpap', 'cpapMask', 'prefAvoidCpap'],
     expectedSuggestions: ['Oral appliance'],
     expectedTags: ['MAD'],
+    excludedTags: ['PAP-SUPPORT'],
     clinicianIncludes: ['Oral appliance response context', 'No validated individual response score is available'],
-    clinicianExcludes: [],
+    clinicianExcludes: ['PAP adherence support needs'],
     patientIncludes: ['oral appliance', 'sleep dentist'],
     patientExcludes: ['Begin PAP therapy now', 'DISE-Guided']
   },

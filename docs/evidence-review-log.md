@@ -18,6 +18,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 
 | Review ID | Review date | Evidence cutoff | Scope | Sources reviewed | Conclusion | Affected Logic IDs | Code/build effect |
 |---|---|---|---|---|---|---|---|
+| ER-2026-08-13-ISI-PAP-SNORING-SIGNOFF | 2026-08-13 | 2026-08-13 | ISI/COMISA terminology; PAP adherence support; investigational HB boundary; conventional oxygen safety bands; weight loss and snoring; Zepbound wording | Morin and Bastien ISI validation; AASM insomnia criteria; published COMISA operational definitions; AASM PAP guideline; early-use and barrier studies; PAP prediction reviews; Braver 1995 and longitudinal snoring evidence; current FDA Zepbound label. Full method and limitations are in `research/isi-comisa-pap-adherence-snoring-primary-sources.md`. | Raymond Brown, MD approved the six policies with evidence-dependent refinements. ISI ≥15 is described as clinically significant moderate-to-severe insomnia symptoms; ISI ≥15 plus objective AHI ≥5 is a COMISA screening phenotype, not by itself chronic insomnia disorder. PAP receives a clinician-only support-needs flag based on documented remediable barriers, never a failure probability or treatment demotion. HB remains investigational without diagnosis or treatment allocation; conventional oxygen bands remain local safety triggers. Weight management may reduce snoring, but the fixed 5-7 pound claim is removed. Zepbound wording now distinguishes dual GIP/GLP-1 pharmacology, the OSA indication, and prescriber authority. | PH-02, PH-07, TX-01, TX-04, TX-06, PAP-04, SAF-03 | Narrow clinician and patient wording plus clinician-only PAP support logic; paired regression and counterexample added; 193 evidence assertions and 2,149 complete headless-suite assertions passed |
 | ER-2026-08-13-COMISA-HYPOXEMIA-WEIGHT | 2026-08-13 | 2026-08-13 | COMISA screening and sequencing; conventional nocturnal hypoxemia versus event-linked hypoxic burden; weight management and tirzepatide | ISI validation and AASM insomnia guidance; Sweetman, MATRICS, and Alessi randomized trials; Azarbarzin, Trzepizur, Labarca, Esmaeili, Pinilla, and related HB sources; conventional-hypoxemia cohorts; ATS weight guidance; Sleep AHEAD; SURMOUNT-OSA; current FDA Zepbound labeling; AASM longitudinal guidance. Full method and links are in `research/comisa-hypoxemia-weight-primary-sources.md`. | Confirmed the conservative architecture: COMISA remains a screen with individualized sequencing; HB remains research context; conventional oxygen bands remain local safety triggers; weight management remains adjunctive and Zepbound OSA labeling remains distinct from general weight eligibility. Corrected source metadata and expanded rationale. Identified unsupported runtime wording for clinician signoff rather than changing output silently. | PH-07, TX-01, TX-04, SAF-03 | Documentation and source-comment correction only; no threshold, recommendation, ranking, safety action, or patient instruction changed; clinician signoff pending for runtime wording corrections |
 | ER-2026-08-13-GOVERNANCE-SIGNOFF | 2026-08-13 | 2026-08-13 | Clinician decision on six local-governance policies identified by the scientific-rationale review | Previously verified sources and limitations in `research/scientific-rationale-primary-sources.md`; no new external source was required | Raymond Brown, MD approved all six policies. Five preserve current behavior. For persistent concern after a negative HSAT, PSG is now the promoted draft default; contributor-first sequencing remains available only through explicit clinician confirmation. | DX-01, DX-02, DX-04, TX-03, TX-05 | Narrow diagnostic-routing and guidance change; paired default and override regressions added; lint and 2,091 assertions passed; not deployed |
 | ER-2026-08-13-SCIENTIFIC-RATIONALE | 2026-08-13 | 2026-08-13 | Prose decision rationale; adult diagnostic testing and HSAT adequacy; unilateral Inspire labeling, DISE, payer separation, response context, and objective follow-up | AASM diagnostic guideline and arousal-scoring statement; AASM HSAT position statement; Zhang 2020 and Tschopp 2021 PAT studies; FDA Inspire P130008/S090 SSED and labeling; STAR; Vanderveken 2013; Huyett 2021; ADHERE analyses; AASM surgical-referral and longitudinal-testing guidance; CMS LCD L38276; HOME pathway trial. Full source links and limitations are recorded in `research/scientific-rationale-primary-sources.md`. | Created a readable account of how data provenance, diagnostic boundaries, treatment context, guardrails, clinician confirmation, and follow-up interact. Confirmed the current diagnostic architecture and device-specific HGNS separation. Clarified that BMI above 40 is an FDA insufficient-study warning boundary in the reviewed Inspire labeling while the app's BMI 40 automatic referral boundary is local governance. Identified the symptomatic negative-HSAT nasal-first option as local governance with an explicit evidence gap. No decision threshold, treatment ranking, safety action, or patient instruction changed. | DX-01, DX-02, DX-03, DX-04, TX-02, TX-03, PAP-01, PAP-02, PAP-03 | Documentation and evidence classification only; no application code changed; lint and 2,081 regression assertions passed with exact output parity |
@@ -575,6 +576,45 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 - **Next review trigger:** Clinician signoff; FDA label or AASM/ATS guidance change; validated
   commercial burden-method comparison; prospective HB-guided treatment trial; or the next scheduled
   review.
+
+### ER-2026-08-13-ISI-PAP-SNORING-SIGNOFF: Clinician policy decision and runtime alignment
+
+- **Reviewer:** Raymond Brown, MD, with Codex primary-source review
+- **Review date and evidence cutoff:** 2026-08-13
+- **Reason for review:** Resolve the six clinician-signoff questions left open by the prior COMISA,
+  hypoxemia, and weight review without introducing unsupported individual prediction.
+- **Affected Logic IDs:** PH-02, PH-07, TX-01, TX-04, TX-06, PAP-04, and SAF-03.
+- **Sources and method:** PubMed/MEDLINE, AASM official materials, ATS statements, current FDA
+  labeling, DOI/journal records, and reference-list review. Reproducible search concepts, exact
+  sources, exclusions, limitations, and replacement wording are in
+  `research/isi-comisa-pap-adherence-snoring-primary-sources.md`.
+- **Key findings:** ISI 15-21 and 22-28 are the conventional moderate and severe insomnia-symptom
+  ranges. ISI at least 15 is a defensible clinically significant symptom boundary but does not prove
+  chronic insomnia disorder. Published research has combined ISI at least 15 with objectively
+  established OSA as an operational COMISA classification. No transportable externally validated
+  baseline PAP-adherence model suitable for deployment was identified. Objective early use and
+  documented, potentially remediable barriers are actionable support signals, not reasons to deny
+  PAP. Direct adult snoring/weight-loss evidence is too small and confounded to support a fixed pound
+  threshold, although it supports cautious “may reduce snoring” wording.
+- **Clinician decision:** Raymond Brown, MD approved all six policies. Preserve the HB
+  investigational boundary and the conventional-oxygen local safety pathway. Use COMISA screening
+  language at ISI at least 15 plus AHI at least 5, add a clinician-only PAP support-needs flag without
+  a prediction score, remove the fixed 5-7 pound snoring claim, and retain prescriber-controlled,
+  indication-accurate Zepbound wording.
+- **Code and patient-report effect:** Clinician guidance now explains the COMISA screen/diagnosis
+  boundary and lists direct PAP support needs. The patient report describes clinically significant
+  insomnia symptoms plus OSA without diagnosing chronic insomnia, removes the weight-loss guarantee,
+  and distinguishes Zepbound's OSA indication. Low-arousal-threshold evidence remains research
+  context and cannot rank treatment. HB and conventional oxygen runtime behavior are unchanged.
+- **Regression scenario and counterexample:** Active or planned PAP plus a documented remediable
+  barrier must produce the clinician-only support-needs flag and must not predict failure. A patient
+  without a documented barrier must not receive the flag. Patient reports must suppress the technical
+  flag, avoid unqualified insomnia diagnosis, and omit the fixed-pound snoring claim.
+- **Verification and build:** Evidence-documentation integrity passed 193 assertions; the complete
+  headless suite passed 2,149 assertions. The commit hash is recorded in Git history.
+- **Next review trigger:** Externally validated and transportable PAP-adherence model with clinical
+  utility evidence; updated AASM insomnia/COMISA guidance; stronger randomized adult snoring data;
+  FDA Zepbound label change; or the next scheduled comprehensive review.
 
 ## Review template
 

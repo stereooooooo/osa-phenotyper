@@ -502,3 +502,12 @@ These scenarios describe the earlier comprehensive platform and are intentionall
 |---|---|---|
 | 250 | Symptomatic negative HSAT promotes PSG | An adequate negative home study with persistent symptoms enters the PSG-recommended next-test state, and the clinician draft identifies in-lab PSG as the recommended diagnostic next step rather than an equal-choice consideration. |
 | 251 | Explicit contributor-first override | When independently indicated nasal treatment is selected and confirmed without Diagnostic Testing, the clinician retains the negative-HSAT warning and PSG default rationale, but the patient plan follows the explicit nasal-first choice, describes PSG only as a possible later step, and never claims a study was ordered. |
+
+### Group 55: ISI/COMISA, PAP Support, And Weight/Snoring Evidence Alignment
+
+| # | Name | Key Features |
+|---|---|---|
+| 252 | ISI-only COMISA screening phenotype | ISI at least 15 plus objectively established AHI at least 5 is presented as clinically significant insomnia symptoms plus OSA and may be called a COMISA screen. Clinician guidance requires confirmation of frequency, duration, daytime impact, sleep opportunity, and alternative causes before chronic insomnia disorder is documented. The patient report does not say the questionnaire alone proves insomnia disorder. |
+| 253 | Active or planned PAP with a remediable barrier | Mask/interface problems, leak, dryness, claustrophobia, sleep-onset difficulty, clinically significant insomnia symptoms, or symptomatic nasal obstruction can produce a clinician-only support-needs flag. The output explicitly says this is not a prediction of PAP failure, recommends targeted support and early objective review, remains suppressed from the patient report, and does not change treatment ranking. |
+| 254 | Completed PAP trial without retry intent counterexample | A documented historical PAP barrier does not create an active adherence-support flag when PAP is no longer active, planned, or being retried. The selected alternatives pathway remains unchanged. |
+| 255 | Weight management and snoring language | When overweight or obesity is relevant, patient guidance says weight management may reduce snoring but response varies and no number of pounds guarantees benefit. The prior fixed 5-7 pound claim is absent, and Zepbound wording is limited to eligible adults with obesity and moderate-to-severe OSA under prescriber review. |
