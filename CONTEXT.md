@@ -8,7 +8,7 @@ Prepare a polished, working Precision Sleep Hub demo for an informal Inspire Sle
 
 - Demo mode is available only on localhost with `?demo=inspire`.
 - All demo records are synthetic and stored only in browser memory.
-- The questionnaire itself is unchanged; demo mode opens it on the same localhost origin with synthetic answers already filled so the presenter can review and submit without completing every field manually. Submission applies answers to empty chart fields and leaves only a deliberate conflicting value for Staff Prep review, matching production intake semantics.
+- The questionnaire itself is unchanged; demo mode opens it on the same localhost origin with synthetic answers already filled so the presenter can review and submit without completing every field manually. Submission returns through a same-origin, browser-only handoff that works even when the questionnaire tab has no opener, applies answers to empty chart fields, and leaves only a deliberate conflicting value for Staff Prep review.
 - A synthetic WatchPAT import uses the real review-and-apply modal.
 - The patient reports begin with a plain-language finding and next step before supporting terminology and detail.
 - The clinician results and clinician guide begin with a decision-first visit briefing before technical evidence.

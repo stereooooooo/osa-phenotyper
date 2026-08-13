@@ -181,15 +181,27 @@
     window.OSAWorkspaceView?.setMode('clinician');
   }
 
-  window.addEventListener('message', async event => {
-    if (event.origin !== window.location.origin || event.data?.type !== 'osa-demo-intake-submitted') return;
-    const patientId = window.__OSA_WORKFLOW_TEST__?.resolveIntakePatientId(event.data.token) || state.mainPatientId;
-    if (!patientId || event.data.questionnaireType !== 'intake') return;
-    const pending = mapIntakeToFormData(event.data.payload || {});
+  async function handleDemoIntakeSubmission(data) {
+    if (!data || data.type !== 'osa-demo-intake-submitted') return;
+    const patientId = window.__OSA_WORKFLOW_TEST__?.resolveIntakePatientId(data.token) || state.mainPatientId;
+    if (!patientId || data.questionnaireType !== 'intake') return;
+    const pending = mapIntakeToFormData(data.payload || {});
     window.__OSA_WORKFLOW_TEST__.injectIntakeSubmission(patientId, pending);
     await window.OSAWorkspace.openChart(patientId);
     window.OSAWorkspaceView?.setMode('prep');
     updateDemoStatus('Questionnaire received. Staff can review patient-reported changes, then import the synthetic sleep study.');
+  }
+
+  window.addEventListener('message', async event => {
+    if (event.origin !== window.location.origin) return;
+    await handleDemoIntakeSubmission(event.data);
+  });
+
+  window.addEventListener('storage', async event => {
+    if (event.key !== 'osa-demo-intake-submission' || !event.newValue) return;
+    try {
+      await handleDemoIntakeSubmission(JSON.parse(event.newValue));
+    } catch (_) { /* malformed demo-only browser storage is ignored */ }
   });
 
   document.addEventListener('osa:workspace-ready', () => {

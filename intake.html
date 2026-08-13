@@ -1150,6 +1150,21 @@
         payload: payload
       }, window.location.origin);
     }
+    if (inspireDemoMode) {
+      // Some browsers intentionally open the questionnaire with noopener, so
+      // window.opener is unavailable even on localhost. A storage event gives
+      // another same-origin demo tab a deterministic, browser-only handoff
+      // without weakening production token or intake behavior.
+      try {
+        localStorage.setItem('osa-demo-intake-submission', JSON.stringify({
+          nonce: `${Date.now()}-${Math.random()}`,
+          type: 'osa-demo-intake-submitted',
+          token: token,
+          questionnaireType: activeQuestionnaireType,
+          payload: payload
+        }));
+      } catch (_) { /* opener messaging remains available where supported */ }
+    }
     return { ok: true };
   }
 

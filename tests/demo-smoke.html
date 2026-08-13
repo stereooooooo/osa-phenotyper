@@ -94,12 +94,6 @@ async function run() {
   const submission = intakeWin.__OSA_INTAKE_WORKFLOW_TEST__.getLastSubmission();
   assertEqual(submission.payload.cpapHistory.retryWilling, 'No', 'Synthetic patient reports CPAP failure without willingness to retry');
 
-  appWin.postMessage({
-    type: 'osa-demo-intake-submitted',
-    token: 'demo-token',
-    questionnaireType: 'intake',
-    payload: submission.payload,
-  }, window.location.origin);
   await waitFor(() => appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId()).intakePendingFieldCount > 0, 'intake pending review');
   const submittedPatient = appWin.__OSA_WORKFLOW_TEST__.getPatient(appWin.OSAInspireDemo.getMainPatientId());
   assertEqual(submittedPatient.formData.sex, 'M', 'Demo intake applies patient sex to an empty chart field');
