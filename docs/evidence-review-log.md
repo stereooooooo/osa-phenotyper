@@ -12,6 +12,7 @@ strategy, exclusions, appraisal, clinician decision, commit, and build are recor
 
 | Event ID | Date | Change | Clinical logic effect |
 |---|---|---|---|
+| EG-2026-08-13-GUIDANCE-BOUNDARY | 2026-08-13 | Established a project-wide clinician-approved boundary that Precision Sleep provides evidence-based guidance rather than autonomous diagnosis, prescribing, treatment selection, parameter setting, or outcome prediction. Unconfirmed output must present options, tradeoffs, uncertainty, and reviewable next steps; named active plans require clinician selection and confirmation. | Governance and future acceptance criterion only; no runtime output changed |
 | EG-2026-07-19 | 2026-07-19 | Created evidence-register version 1.0 with stable Logic IDs, evidence levels, explicit limitations, prospective-validation requirements, and an automated documentation-integrity check | Documentation and governance only; no clinical output changed |
 
 ## Completed reviews

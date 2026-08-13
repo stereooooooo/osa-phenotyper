@@ -37,8 +37,24 @@ register remains the controlling claim-by-claim audit record.
 
 This register does not establish that the app is clinically validated. The app remains a
 clinician-facing decision-support tool. Its phenotype labels, confidence labels, treatment ranking,
-and patient explanations must not be interpreted as independently validated diagnoses,
-probabilities, or treatment prescriptions unless a row below explicitly says otherwise.
+and patient explanations must be interpreted as decision support, never as independently validated
+diagnoses, individual probabilities, or treatment prescriptions.
+
+### Clinical decision-support boundary
+
+Precision Sleep provides evidence-based guidance, not autonomous clinical direction. It may
+synthesize available data, identify missing or safety-critical information, explain uncertainty,
+compare reasonable options and tradeoffs, and draft next steps for clinician review. Automated
+output does not independently diagnose, prescribe, select a procedure, device, medication, or PAP
+setting, or promise an individual treatment outcome.
+
+Unconfirmed output uses decision-support language such as *consider*, *discuss*, *review*,
+*verify*, or *may be appropriate*. A named treatment or procedure may be presented as the active
+plan only when it directly reflects clinician selection and confirmation. Regulatory boundaries,
+high-confidence safety warnings, and guideline-supported diagnostic escalation may be stated
+clearly, but they still preserve clinician judgment, patient preferences, and documented
+uncertainty. This governance boundary applies to every logic row and all clinician- and
+patient-facing output.
 
 This is a structured evidence register, not a completed systematic review or formal GRADE
 assessment. A manuscript that makes efficacy, diagnostic-accuracy, or predictive-performance claims
