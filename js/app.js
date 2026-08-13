@@ -2031,12 +2031,19 @@ function buildClinicianReport(f, m, T){
   })();
 
   /* ── Treatment plan with numbered badges ─────────────────── */
-  const rankedPlan = guardedRecEntries.map((entry, i) => {
+  const rankedPlanEntries = encounter.planConfirmed && encounter.planSummary
+    ? [
+        { text: encounter.planSummary, tag: 'CONFIRMED-PLAN' },
+        ...guardedRecEntries.filter(entry => entry.text !== encounter.planSummary),
+      ]
+    : guardedRecEntries;
+  const rankedPlan = rankedPlanEntries.map((entry, i) => {
     const priority = i === 0 ? ' osa-rec-priority' : '';
     const tooltip = entry.tag === 'UARS-EVAL'
       ? clinicianEvidenceTooltip('UARS refers to symptomatic sleep-disordered breathing associated with flow limitation and respiratory effort-related arousals. ICSD-3 places this presentation within OSA. In-lab PSG with arousal-based scoring can evaluate events that most home studies cannot score because they do not record EEG.', 'Why possible UARS requires arousal-based scoring')
       : '';
-    return `<div class="osa-clin-rec${priority}"><span class="osa-clin-rec-num">${i+1}</span><span>${entry.text}${tooltip}</span></div>`;
+    const text = entry.tag === 'CONFIRMED-PLAN' ? escapeHtml(entry.text) : entry.text;
+    return `<div class="osa-clin-rec${priority}"><span class="osa-clin-rec-num">${i+1}</span><span>${text}${tooltip}</span></div>`;
   }).join('');
 
   /* ── Care Pathway Bar (clinician report) ──────────────── */
@@ -2168,6 +2175,10 @@ function buildClinicianReport(f, m, T){
     </div>` : '';
   const selectedPlanLabels = encounter.selectedPlanFields.map(field => PLAN_FIELD_LABELS[field]).filter(Boolean);
   if (encounter.planObserve) selectedPlanLabels.push('observe / follow up');
+  const confirmedPlanLabel = /(?:\bDISE\b|drug-induced sleep endoscopy|sleep endoscopy)/i.test(encounter.planSummary) &&
+    /inferior turbinate reduction/i.test(encounter.planSummary)
+    ? 'DISE + inferior turbinate reduction'
+    : selectedPlanLabels.join(', ') || 'No active treatment selected';
   const nasalExamFindings = [
     ctSeptum ? 'deviated septum' : '',
     ctTurbs ? 'turbinate hypertrophy' : '',
@@ -2175,7 +2186,7 @@ function buildClinicianReport(f, m, T){
   const encounterPlanHTML = `
     <div class="alert ${encounter.planConfirmed ? 'alert-success' : 'alert-info'} py-2 px-3 mb-3">
       <div><strong>Visit goal:</strong> ${escapeHtml(encounter.visitReasonLabel)}${encounter.visitReasonNote ? `, ${escapeHtml(encounter.visitReasonNote)}` : ''}</div>
-      <div><strong>${encounter.planConfirmed ? 'Confirmed plan' : 'Planning status'}:</strong> ${encounter.planConfirmed ? escapeHtml(selectedPlanLabels.join(', ') || 'No active treatment selected') : 'Pre-visit decision support. Confirm today\'s plan before generating the patient handout.'}</div>
+      <div><strong>${encounter.planConfirmed ? 'Confirmed plan' : 'Planning status'}:</strong> ${encounter.planConfirmed ? escapeHtml(confirmedPlanLabel) : 'Pre-visit decision support. Confirm today\'s plan before generating the patient handout.'}</div>
       ${encounter.planSummary ? `<div><strong>Most important next step:</strong> ${escapeHtml(encounter.planSummary)}</div>` : ''}
     </div>`;
   const normalStudyContextHTML = exists(ahi) && ahi < T.severity.mild ? `

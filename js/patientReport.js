@@ -807,6 +807,12 @@ var PatientReport = (() => {
     return 'Review your treatment plan below with your doctor and choose a first step together.';
   }
 
+  function hasDiseTurbinateProcedurePlan(data) {
+    const plan = String(data?.planSummary || '').trim();
+    return /(?:\bDISE\b|drug-induced sleep endoscopy|sleep endoscopy)/i.test(plan) &&
+      /inferior turbinate reduction/i.test(plan);
+  }
+
   /* Keep the first screenful understandable before the terminology reference.
      This is a presentation-only restatement of the existing finding and next
      step; the detailed, clinically specific language remains unchanged below. */
@@ -814,6 +820,7 @@ var PatientReport = (() => {
     return summaryNextStep(data)
       .replace(/Cognitive Behavioral Therapy for Insomnia|CBT-I/gi, 'structured insomnia treatment')
       .replace(/\b(?:APAP|BiPAP|CPAP|PAP)\b/gi, 'breathing-machine treatment')
+      .replace(/\bdrug-induced sleep endoscopy\s*\(DISE\)/gi, 'a sleep endoscopy')
       .replace(/\b(?:DISE|drug-induced sleep endoscopy)\b/gi, 'a sleep endoscopy')
       .replace(/\b(?:HGNS|HNS|Inspire|Genio)\b/gi, 'an implanted airway-stimulation treatment')
       .replace(/\b(?:PSG|polysomnography)\b/gi, 'an in-lab sleep study')
@@ -1545,6 +1552,9 @@ ${items}`;
     if ((tag === 'HNS' || tag === 'INSPIRE-EVAL' || tag === 'HNS-WORKUP') && data && data.bmi > 40) {
       return null;
     }
+    if ((tag === 'HNS-WORKUP' || tag === 'INSPIRE-EVAL') && hasDiseTurbinateProcedurePlan(data)) {
+      return `<strong>DISE + Inferior Turbinate Reduction</strong>: ${esc(String(data.planSummary).trim())} DISE will map the airway-collapse pattern needed for the Inspire evaluation, while inferior turbinate reduction treats the documented nasal obstruction during the same anesthetic.`;
+    }
     if (tag === 'CPAP' && data && data.cpapCurrent) {
       const device = papDeviceLabel(data);
       return `<strong>Continue ${device}</strong>: Keep using your current ${device}${papSettingsText(data)} whenever you sleep. Your follow-up can focus on comfort, dryness, mask fit, and whether the settings or equipment need adjustment.`;
@@ -1768,6 +1778,13 @@ ${items}`;
       output += `\n<p>Start with these priorities; backup options remain conditional on your response and complete evaluation.</p>`;
     }
 
+    if (data.planConfirmed && String(data.planSummary || '').trim()) {
+      output += `
+<div class="confirmed-plan-box">
+  <strong>Your scheduled plan:</strong> ${esc(String(data.planSummary).trim())}
+</div>`;
+    }
+
     if (data.hasCOMISA) {
       const comisaPlanText = data.cpapFailed && !data.cpapWillRetry
         ? 'CBT-I treats insomnia. Your breathing-treatment plan uses the non-PAP options below while PAP stays off the active plan unless you choose to revisit it.'
@@ -1840,6 +1857,10 @@ ${items}`;
       !surgeryConsultFirst;
     const hasNasal = tags.has('NASAL-OPT') || tags.has('NASAL-SURG') || tags.has('NASAL-PRIOR');
 
+    if (data.planConfirmed && String(data.planSummary || '').trim()) {
+      add(String(data.planSummary).trim(), -10);
+    }
+
     if (tags.has('SLEEP-STUDY')) {
       const studyLabel = data.studyType === 'psg' ? 'in-lab sleep study' : data.studyType === 'watchpat' ? 'home sleep study' : 'sleep study';
       add(`Schedule your ${studyLabel}, then arrange a visit to review the results and choose treatment.`, 0);
@@ -1901,7 +1922,7 @@ ${items}`;
     }
 
     const hasHNS = tags.has('HNS') || tags.has('INSPIRE-EVAL');
-    if (hasHNS && !papFirst && !(data.bmi > 40)) {
+    if (hasHNS && !papFirst && !(data.bmi > 40) && !hasDiseTurbinateProcedurePlan(data)) {
       add('Discuss device-specific nerve-stimulation candidacy with your ENT, including whether the option requires sleep endoscopy (DISE).', 3);
     }
 
@@ -2231,6 +2252,8 @@ ${items.join('')}`;
       const existingDevice = Boolean(data.priorInspire);
       const reportedBenefit = String(data.hgnsHelped || '').toLowerCase();
       const implantTiming = data.hgnsImplantYear ? ` implanted around ${data.hgnsImplantYear}` : '';
+      const confirmedProcedure = String(data.planSummary || '').trim();
+      const hasDiseTurbinatePlan = hasDiseTurbinateProcedurePlan(data);
 
       // Evidence register TX-03: distinguish device-specific candidacy from
       // exploratory response context, and require objective verification.
@@ -2265,6 +2288,21 @@ ${items.join('')}`;
           shortAction: reportedBenefit === 'no'
             ? `Review the existing nerve stimulator and arrange ${urgentOxygenFollowup ? 'prompt ' : ''}objective on-therapy testing.`
             : 'Review the existing nerve stimulator, its programming, and objective treatment efficacy.',
+        });
+      } else if (hasDiseTurbinatePlan) {
+        modules.push({
+          id: 'nerve-stimulation',
+          priority: 0,
+          icon: 'bi-lightning-charge',
+          title: 'Schedule DISE + inferior turbinate reduction',
+          reason: 'Your clinician selected these two procedures as the next step. DISE maps where your airway collapses during sedated sleep, while inferior turbinate reduction treats the documented nasal blockage.',
+          actions: [
+            confirmedProcedure,
+            'Complete both procedures during the same anesthetic, as planned by your ENT.',
+            'Return to review the DISE findings before Inspire candidacy is finalized.'
+          ],
+          note: 'This plan advances the Inspire evaluation but does not guarantee device eligibility or treatment success.',
+          shortAction: confirmedProcedure,
         });
       } else {
         modules.push({

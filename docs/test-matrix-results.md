@@ -1,7 +1,7 @@
 # Patient Report Test Matrix — Results
 **Latest smoke test:** August 12, 2026
 **Latest tested build:** local meeting candidate on `codex/precision-sleep-v1` (not deployed)
-**Latest complete result:** 2,056 headless assertions passed with no failures
+**Latest complete result:** 2,063 headless assertions passed with no failures
 
 ---
 
@@ -9,12 +9,14 @@
 
 **Status at review:** local implementation and complete regression verification finished. No deployment was requested or performed.
 
-**Result:** passed 2,056 headless assertions with no failures.
+**Result:** passed 2,063 headless assertions with no failures.
 
 **Verified behavior:**
 
 - a localhost-only synthetic demo covers the real patient questionnaire, pending staff review, documented moderate WatchPAT results, clinician review, clinician guide, Today's Sleep Plan, Full Sleep Profile, and an Inspire candidacy counterexample
 - the primary demo patient has CPAP intolerance, active Inspire interest, and turbinate hypertrophy; the generated plan leads with DISE and device-specific HGNS evaluation while keeping turbinate reduction secondary and omitting unrelated weight-management promotion
+- clinician and patient handouts now repeat the exact confirmed next step, drug-induced sleep endoscopy (DISE) plus inferior turbinate reduction during the same anesthetic, and suppress later generic language that would imply DISE is still optional
+- the four main demo steps always restore Morgan before continuing, preventing accidental export of the optional complete-concentric-collapse safety chart as the meeting handout
 - demo questionnaire links remain on the current localhost origin instead of routing browser-memory tokens to the deployed intake app, and all synthetic questionnaire answers are prefilled on open
 - submitted demo answers visibly add CPAP history and Inspire interest to the clinician chart while preserving the documented WatchPAT results for Staff Review, matching the production intake merge boundary
 - the questionnaire-to-app handoff no longer depends on `window.opener`; a two-tab browser test confirmed submission returns to the original localhost app when the browser opens the questionnaire with no opener reference
@@ -25,6 +27,7 @@
 - clinician workflow markers retain readable spacing in print, and interactive tooltip/disclosure controls are flattened without browser-default button chrome
 - the patient treatment-plan heading remains with its introduction and first recommendation instead of becoming an orphaned page ending
 - output-parity matrices, evidence documentation, intake branching, parser integration, PAP compliance, the synthetic demo, and patient and clinician PDF pagination all pass
+- visual inspection of the regenerated three-page clinician guide, three-page full patient profile, and two-page Today's Sleep Plan found the combined procedure prominent, readable, and free of clipping or overlapping content
 - visual inspection of the generated two-page patient plan and three-page clinician guide found no clipped or overlapping content
 - no clinical threshold, phenotype rule, treatment rank, candidacy rule, diagnostic route, or questionnaire content changed
 

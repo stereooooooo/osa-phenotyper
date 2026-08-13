@@ -72,14 +72,14 @@ async function run() {
   appWin.bootstrap.Modal.getInstance(appDoc.getElementById('intakeLinkModal')).hide();
 
   click(appWin, '[data-demo-action="prep"]');
+  await waitFor(() => appWin.OSAWorkspaceView.getMode() === 'prep', 'staff preparation workspace');
   assertEqual(appWin.OSAWorkspaceView.getMode(), 'prep', 'Demo guide switches to the staff preparation workspace');
   assertEqual(appDoc.querySelector('[name="pahi"]').value, '28', 'Demo chart starts with documented WatchPAT results');
   assert(appDoc.querySelector('[name="ctTurbs"]').checked, 'Demo chart documents turbinate hypertrophy');
   assert(appDoc.querySelector('[name="planInspire"]').checked, 'Demo plan prioritizes nerve-stimulation evaluation');
   assert(!appDoc.querySelector('[name="planNasal"]').checked, 'Demo does not let generic nasal care outrank the Inspire workup');
   assert(!appDoc.querySelector('[name="planWeight"]').checked, 'Demo plan does not promote weight management for this encounter');
-  assert(appDoc.querySelector('[name="planSummary"]').value.startsWith('Complete DISE'), 'Demo plan names DISE as the most important next step');
-  assert(appDoc.querySelector('[name="planSummary"]').value.includes('turbinate reduction'), 'Demo plan keeps turbinate reduction as a secondary same-anesthetic step');
+  assertEqual(appDoc.querySelector('[name="planSummary"]').value, 'Schedule drug-induced sleep endoscopy (DISE) + inferior turbinate reduction during the same anesthetic.', 'Demo plan clearly names the combined procedure');
 
   const intakeFrame = document.getElementById('intakeFrame');
   await waitFor(() => intakeFrame.contentDocument?.getElementById('stateForm')?.classList.contains('intake-form-view--active'), 'demo questionnaire');
@@ -109,6 +109,23 @@ async function run() {
   click(appWin, '[data-demo-action="counterexample"]');
   await waitFor(() => appDoc.getElementById('patientName').value === 'DEMO, Safety Boundary', 'safety counterexample');
   assertEqual(appDoc.querySelector('[name="vPat"]').value, 'Concentric', 'Safety counterexample carries complete concentric collapse data');
+
+  click(appWin, '[data-demo-action="reports"]');
+  await waitFor(() => appDoc.getElementById('patientName').value === 'LEE, Morgan', 'return to primary report patient');
+  assertEqual(appDoc.getElementById('patientName').value, 'LEE, Morgan', 'Main Reports step cannot accidentally export the optional safety case');
+  appDoc.getElementById('form').requestSubmit();
+  await waitFor(() => appDoc.getElementById('clinicianReport').textContent.includes('Prioritized plan'), 'demo reports');
+  const exactProcedure = 'Schedule drug-induced sleep endoscopy (DISE) + inferior turbinate reduction during the same anesthetic.';
+  const clinicianText = appDoc.getElementById('clinicianReport').textContent;
+  const patientHtml = appWin.PatientReport.generateReportHTML(appWin.OSAReportState.getLastAnalysisData());
+  const todayPlanHtml = appWin.PatientReport.generateTodayPlanHTML(appWin.OSAReportState.getLastAnalysisData());
+  assert(clinicianText.includes(exactProcedure), 'Clinician guide leads with the exact combined procedure');
+  assert(clinicianText.includes('Confirmed plan: DISE + inferior turbinate reduction'), 'Clinician guide labels the combined procedure as the confirmed plan');
+  assert(patientHtml.includes(`<strong>Your scheduled plan:</strong> ${exactProcedure}`), 'Full patient guide repeats the exact combined procedure in the treatment section');
+  assert(patientHtml.includes(`<div>${exactProcedure}</div>`), 'Patient checklist begins with the exact combined procedure');
+  assert(!patientHtml.includes('including whether the option requires sleep endoscopy'), 'Patient guide does not weaken a scheduled DISE into a question about whether it is required');
+  assert(todayPlanHtml.includes('Schedule DISE + inferior turbinate reduction'), 'Today\'s Sleep Plan names the combined procedure in its main module');
+  assert(todayPlanHtml.includes(exactProcedure), 'Today\'s Sleep Plan carries the exact clinician-confirmed procedure wording');
 }
 
 function render() {

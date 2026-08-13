@@ -226,6 +226,7 @@ const OSAPdfExport = (() => {
     .phenotype-icon { font-size: 18px; color: #1F3A5C; flex-shrink: 0; margin-top: 2px; }
     .treatment-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; margin-top: 16px; margin-bottom: 6px; }
     .rec-item { padding: 7px 0; border-bottom: 1px solid #f3f4f6; }
+    .confirmed-plan-box { background: #eef6f3; border: 1px solid #9bc8b7; border-left: 4px solid #246452; border-radius: 6px; color: #173a31; font-size: 13px; line-height: 1.55; margin: 14px 0 16px; padding: 12px 14px; }
     .checklist-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; }
     .checklist-box { flex-shrink: 0; width: 14px; height: 14px; border: 2px solid #9ca3af; border-radius: 2px; margin-top: 3px; }
     .checklist-group { margin-bottom: 10px; }
@@ -322,7 +323,7 @@ const OSAPdfExport = (() => {
   function findBreakPoints(container, canvasScale) {
     const structuredBlocks = container.querySelectorAll(
       '.report-header, .report-section, .report-orientation, .report-terms, .report-term, .report-summary-card, .care-pathway, .care-summary-card, .ahi-scale, ' +
-      '.cpap-context-box, .comisa-callout, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-footer, ' +
+      '.cpap-context-box, .comisa-callout, .confirmed-plan-box, .phenotype-item, .rec-item, .checklist-group, .checklist-item, .whatif-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-footer, ' +
       '.osa-clin-priority-brief, .osa-clin-rec, .osa-clin-metrics-row, .osa-care-pathway, .osa-pathway-step, .osa-care-summary, .osa-next-test-guidance, .osa-clin-section, .osa-clin-section-header, .osa-clin-section-body > *, .alert, .card-header, .card-body > *, .table-responsive'
     );
     const flowBlocks = container.querySelectorAll(
@@ -857,7 +858,7 @@ const OSAPdfExport = (() => {
     const report = shell.querySelector('.patient-report');
     if (!report) return;
     const chunks = [];
-    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-orientation, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .risk-summary, .checklist-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-disclaimer, .pdf-section-continuation';
+    const blockSelector = 'h1, h2, h3, p, li, dt, dd, .report-header, .report-orientation, .report-terms, .report-term, .report-summary-card, .care-summary-card, .care-pathway, .pathway-title, .pathway-step, .ahi-scale-zone, .ahi-zone-label, .ahi-zone-range, .ahi-scale-marker, .phenotype-item, .treatment-group-label, .rec-item, .cpap-context-box, .comisa-callout, .confirmed-plan-box, .risk-summary, .checklist-item, .today-plan-focus, .today-plan-module, .today-plan-supporting, .today-plan-follow-up, .report-disclaimer, .pdf-section-continuation';
     const walk = node => {
       if (node.nodeType === Node.TEXT_NODE) {
         chunks.push(node.nodeValue || '');

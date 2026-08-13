@@ -9,7 +9,8 @@ Prepare a polished, working Precision Sleep Hub demo for an informal Inspire Sle
 - Demo mode is available only on localhost with `?demo=inspire`.
 - All demo records are synthetic and stored only in browser memory.
 - The questionnaire itself is unchanged; demo mode opens it on the same localhost origin with synthetic answers already filled so the presenter can review and submit without completing every field manually. Submission returns through a same-origin, browser-only handoff that works even when the questionnaire tab has no opener, queues the patient-reported answers for Staff Review, and preserves the documented study results.
-- Morgan's chart starts with documented moderate WatchPAT results. The questionnaire adds CPAP intolerance and Inspire interest; turbinate hypertrophy is documented on exam. The confirmed plan leads with DISE and device-specific HGNS evaluation, with turbinate reduction presented only as a secondary same-anesthetic step.
+- Morgan's chart starts with documented moderate WatchPAT results. The questionnaire adds CPAP intolerance and Inspire interest; turbinate hypertrophy is documented on exam. Both clinician and patient outputs name the confirmed next step as drug-induced sleep endoscopy (DISE) plus inferior turbinate reduction during the same anesthetic, while keeping final Inspire candidacy conditional on the DISE findings.
+- The four numbered demo steps always reopen Morgan before continuing, so visiting the optional safety counterexample cannot accidentally produce the meeting handouts for the contraindication case.
 - The patient reports begin with a plain-language finding and next step before supporting terminology and detail.
 - The clinician results and clinician guide begin with a decision-first visit briefing before technical evidence.
 - The clinician guide can be previewed in the browser or downloaded.

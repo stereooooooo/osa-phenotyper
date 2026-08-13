@@ -299,6 +299,18 @@ body.report-preview-open {
   border-bottom: 1px solid #f3f4f6;
 }
 
+.patient-report .confirmed-plan-box {
+  background: #eef6f3;
+  border: 1px solid #9bc8b7;
+  border-left: 4px solid #246452;
+  border-radius: 6px;
+  color: #173a31;
+  font-size: 0.96rem;
+  line-height: 1.55;
+  margin: 1rem 0 1.25rem;
+  padding: 0.9rem 1.05rem;
+}
+
 /* ── CPAP Context Box ── */
 .patient-report .cpap-context-box {
   background: #fef3c7;

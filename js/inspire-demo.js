@@ -119,6 +119,9 @@
     guide.addEventListener('click', async event => {
       const action = event.target.closest('[data-demo-action]')?.dataset.demoAction;
       if (!action) return;
+      if (['questionnaire', 'prep', 'clinician', 'reports'].includes(action) && state.mainPatientId) {
+        await window.OSAWorkspace.openChart(state.mainPatientId);
+      }
       if (action === 'questionnaire') {
         document.getElementById('btnIntakeLink')?.click();
       } else if (action === 'prep') {
@@ -153,7 +156,7 @@
         retrognathia: 'mild', ctTurbs: 'on', studyType: 'watchpat',
         alcoholNearBed: 'none',
         planInspire: 'on', planConfirmed: 'on',
-        planSummary: 'Complete DISE and the device-specific Inspire candidacy evaluation; if proceeding, perform turbinate reduction during the same anesthetic.',
+        planSummary: 'Schedule drug-induced sleep endoscopy (DISE) + inferior turbinate reduction during the same anesthetic.',
       },
     });
     const safety = await OSADatabase.createPatient({
